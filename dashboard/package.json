@@ -26,13 +26,19 @@
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "open-dyslexic": "^1.0.3",
+<<<<<<< HEAD
     "react": "^19.0.0",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
+=======
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router-dom": "^7.15.0",
+>>>>>>> docs/changelog-may-7
     "react-window": "^2.2.7",
     "recharts": "^3.8.1",
     "zod": "^4.3.6",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.13"
   },
   "overrides": {
     "zod": "^4.3.6"

@@ -61,16 +61,27 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   return (
     <div className="my-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-deepest)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-1 border-b border-[var(--color-void-lighter)]">
+<<<<<<< HEAD
         <span className="text-[10px] text-zinc-500 font-mono">{language || 'code'}</span>
         <button
           onClick={handleCopy}
           className="text-zinc-500 hover:text-zinc-300 transition-colors"
+=======
+        <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{language || 'code'}</span>
+        <button
+          onClick={handleCopy}
+          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+>>>>>>> docs/changelog-may-7
           aria-label="Copy code"
         >
           {copied ? <Check className="h-3.5 w-3.5 text-[var(--color-success)]" /> : <Copy className="h-3.5 w-3.5" />}
         </button>
       </div>
+<<<<<<< HEAD
       <pre className="px-3 py-2 overflow-x-auto text-xs leading-relaxed font-mono text-zinc-300">
+=======
+      <pre className="px-3 py-2 overflow-x-auto text-xs leading-relaxed font-mono text-[var(--color-text-primary)]">
+>>>>>>> docs/changelog-may-7
         <code dangerouslySetInnerHTML={{ __html: highlight(code, language) }} />
       </pre>
     </div>

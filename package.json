@@ -1,6 +1,10 @@
 {
   "name": "@onestepat4time/aegis",
+<<<<<<< HEAD
   "version": "0.6.6",
+=======
+  "version": "0.6.6-preview.1",
+>>>>>>> docs/changelog-may-7
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
@@ -24,6 +28,10 @@
   },
   "files": [
     "dist",
+<<<<<<< HEAD
+=======
+    "scripts",
+>>>>>>> docs/changelog-may-7
     "templates",
     "!dist/__tests__",
     "!dist/**/*.map"
@@ -39,6 +47,10 @@
     "dashboard:tokens:gate": "node scripts/dashboard-tokens-gate.cjs",
     "dashboard:clickable:gate": "node scripts/clickable-gate.cjs",
     "dashboard:i18n:check": "node scripts/i18n-gate.cjs",
+<<<<<<< HEAD
+=======
+    "postinstall": "node scripts/postinstall-verify.cjs",
+>>>>>>> docs/changelog-may-7
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
     "gate": "npm run hygiene-check && npm run security-check && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
@@ -79,11 +91,17 @@
     "@fastify/websocket": "^11.2.0",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/auto-instrumentations-node": "^0.72.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.75.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.214.0",
+<<<<<<< HEAD
     "@opentelemetry/exporter-trace-otlp-http": "^0.216.0",
     "@opentelemetry/instrumentation-fastify": "^0.57.0",
     "@opentelemetry/sdk-node": "^0.215.0",
+=======
+    "@opentelemetry/exporter-trace-otlp-http": "^0.217.0",
+    "@opentelemetry/instrumentation-fastify": "^0.57.0",
+    "@opentelemetry/sdk-node": "^0.217.0",
+>>>>>>> docs/changelog-may-7
     "@opentelemetry/sdk-trace-base": "^2.6.1",
     "@types/nodemailer": "^8.0.0",
     "async-mutex": "^0.5.0",
@@ -92,12 +110,22 @@
     "openid-client": "^6.8.4",
     "prom-client": "^15.1.3",
     "yaml": "^2.8.3",
+<<<<<<< HEAD
     "zod": "^4.3.6"
+=======
+    "zod": "^4.3.6",
+    "ip-address": "^10.2.0"
+>>>>>>> docs/changelog-may-7
   },
   "overrides": {
     "zod": "^4.3.6",
     "@anthropic-ai/sdk": "^0.91.1",
+<<<<<<< HEAD
     "ip-address": "^10.1.1"
+=======
+"ip-address": "^10.2.0",
+    "express-rate-limit": "^8.5.1"
+>>>>>>> docs/changelog-may-7
   },
   "repository": {
     "type": "git",

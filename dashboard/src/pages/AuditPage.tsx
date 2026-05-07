@@ -141,7 +141,11 @@ function actionBadgeClass(action: string): string {
   if (action.includes('create') || action.includes('authenticated')) {
     return 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-300';
   }
+<<<<<<< HEAD
   return 'border border-gray-300 dark:border-zinc-700 bg-gray-200/60 dark:bg-zinc-700/40 text-gray-600 dark:text-zinc-300';
+=======
+  return 'border border-gray-300 dark:border-[var(--color-void-lighter)] bg-gray-200/60 dark:bg-[var(--color-void-lighter)]/40 text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)]';
+>>>>>>> docs/changelog-may-7
 }
 
 function truncateHash(hash: string, len = 8): string {
@@ -153,12 +157,21 @@ function SkeletonRows({ count }: { count: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
+<<<<<<< HEAD
         <tr key={index} className="border-b border-gray-200 dark:border-zinc-800">
           <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
           <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" /></td>
+=======
+        <tr key={index} className="border-b border-gray-200 dark:border-[var(--color-void-lighter)]">
+          <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-28 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+          <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-[var(--color-void-light)]" /></td>
+>>>>>>> docs/changelog-may-7
         </tr>
       ))}
     </>
@@ -176,12 +189,21 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
         ease: [0.2, 0, 0, 1],
       }}
       onClick={onClick}
+<<<<<<< HEAD
       className="border-b border-gray-200 dark:border-zinc-800 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800/40 cursor-pointer"
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-zinc-400">
         {formatTimestamp(record.ts)}
       </td>
       <td className="max-w-[120px] truncate px-4 py-3 font-mono text-sm text-gray-700 dark:text-zinc-200" title={record.actor}>
+=======
+      className="border-b border-gray-200 dark:border-[var(--color-void-lighter)] transition-colors hover:bg-gray-50 dark:hover:bg-[var(--color-void-light)]/40 cursor-pointer"
+    >
+      <td className="whitespace-nowrap px-4 py-3 text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]">
+        {formatTimestamp(record.ts)}
+      </td>
+      <td className="max-w-[120px] truncate px-4 py-3 font-mono text-sm text-gray-700 dark:text-[var(--color-text-primary)]" title={record.actor}>
+>>>>>>> docs/changelog-may-7
         {record.actor}
       </td>
       <td className="px-4 py-3">
@@ -189,10 +211,17 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
           {record.action}
         </span>
       </td>
+<<<<<<< HEAD
       <td className="max-w-[140px] truncate px-4 py-3 font-mono text-sm text-gray-600 dark:text-zinc-300" title={record.sessionId ?? ''}>
         {record.sessionId ? truncateHash(record.sessionId, 12) : '—'}
       </td>
       <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-zinc-400" title={record.hash}>
+=======
+      <td className="max-w-[140px] truncate px-4 py-3 font-mono text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)]" title={record.sessionId ?? ''}>
+        {record.sessionId ? truncateHash(record.sessionId, 12) : '—'}
+      </td>
+      <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" title={record.hash}>
+>>>>>>> docs/changelog-may-7
         {truncateHash(record.hash)}
       </td>
     </motion.tr>
@@ -209,9 +238,15 @@ function MetadataField({
   monospace?: boolean;
 }) {
   return (
+<<<<<<< HEAD
     <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-100/50 dark:bg-zinc-950/50 p-3">
       <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
       <p className={`mt-1 text-sm text-gray-700 dark:text-zinc-200 ${monospace ? 'break-all font-mono text-xs' : ''}`}>
+=======
+    <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-100/50 dark:bg-zinc-950/50 p-3">
+      <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{label}</p>
+      <p className={`mt-1 text-sm text-gray-700 dark:text-[var(--color-text-primary)] ${monospace ? 'break-all font-mono text-xs' : ''}`}>
+>>>>>>> docs/changelog-may-7
         {value}
       </p>
     </div>
@@ -226,11 +261,19 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
   const integrityLabel = result.integrity?.valid ? 'Integrity verified' : 'Integrity check failed';
 
   return (
+<<<<<<< HEAD
     <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Latest export metadata</p>
           <p className="mt-1 text-xs text-zinc-500">
+=======
+    <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">Latest export metadata</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             {result.filename} · {result.format.toUpperCase()}
           </p>
         </div>
@@ -287,7 +330,11 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
 
   if (state.loading && !state.chain) {
     return (
+<<<<<<< HEAD
       <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 px-3 py-2 text-xs text-zinc-500">
+=======
+      <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50 px-3 py-2 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
         <RefreshCw className="h-4 w-4 animate-spin" />
         <span>Verifying chain…</span>
       </div>
@@ -380,6 +427,7 @@ function DetailDrawer({
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+<<<<<<< HEAD
           className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] overflow-y-auto border-l border-white/10 bg-white dark:bg-zinc-900 shadow-2xl"
         >
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 px-6 py-4">
@@ -390,6 +438,18 @@ function DetailDrawer({
             <button
               onClick={onClose}
               className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"
+=======
+          className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] overflow-y-auto border-l border-white/10 bg-white dark:bg-[var(--color-void)] shadow-2xl"
+        >
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-[var(--color-void-lighter)] px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-[var(--color-accent-cyan)]" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">Record Detail</h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] dark:hover:text-[var(--color-text-primary)] transition-colors"
+>>>>>>> docs/changelog-may-7
               aria-label="Close detail drawer"
             >
               <X className="h-4 w-4" />
@@ -398,18 +458,30 @@ function DetailDrawer({
 
           <div className="p-6 flex flex-col gap-4">
             {fields.map((field) => (
+<<<<<<< HEAD
               <div key={field.label} className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">{field.label}</p>
                 <p className={`mt-1 text-sm text-gray-700 dark:text-zinc-200 ${field.mono ? 'font-mono' : ''}`}>
+=======
+              <div key={field.label} className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-zinc-950/50 p-3">
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{field.label}</p>
+                <p className={`mt-1 text-sm text-gray-700 dark:text-[var(--color-text-primary)] ${field.mono ? 'font-mono' : ''}`}>
+>>>>>>> docs/changelog-may-7
                   {field.value}
                 </p>
               </div>
             ))}
 
             {/* Hash fields with copy */}
+<<<<<<< HEAD
             <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Hash</p>
+=======
+            <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Hash</p>
+>>>>>>> docs/changelog-may-7
                 <button
                   onClick={() => { void handleCopy('hash', record.hash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -418,12 +490,21 @@ function DetailDrawer({
                   {copied === 'hash' ? 'Copied' : 'Copy'}
                 </button>
               </div>
+<<<<<<< HEAD
               <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-zinc-200">{record.hash}</p>
             </div>
 
             <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Previous Hash</p>
+=======
+              <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-[var(--color-text-primary)]">{record.hash}</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Previous Hash</p>
+>>>>>>> docs/changelog-may-7
                 <button
                   onClick={() => { void handleCopy('prevHash', record.prevHash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -432,6 +513,7 @@ function DetailDrawer({
                   {copied === 'prevHash' ? 'Copied' : 'Copy'}
                 </button>
               </div>
+<<<<<<< HEAD
               <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-zinc-200">{record.prevHash}</p>
             </div>
 
@@ -439,6 +521,15 @@ function DetailDrawer({
             <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Full Record (JSON)</p>
+=======
+              <p className="mt-1 break-all font-mono text-xs text-gray-700 dark:text-[var(--color-text-primary)]">{record.prevHash}</p>
+            </div>
+
+            {/* Full record JSON */}
+            <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-zinc-950/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Full Record (JSON)</p>
+>>>>>>> docs/changelog-may-7
                 <button
                   onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -447,7 +538,11 @@ function DetailDrawer({
                   {copied === 'json' ? 'Copied' : 'Copy'}
                 </button>
               </div>
+<<<<<<< HEAD
               <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-gray-600 dark:text-zinc-300">
+=======
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)]">
+>>>>>>> docs/changelog-may-7
                 {JSON.stringify(record, null, 2)}
               </pre>
             </div>
@@ -667,8 +762,13 @@ export default function AuditPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
+<<<<<<< HEAD
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Audit Trail</h1>
           <p className="mt-1 text-sm text-gray-500">
+=======
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Audit Trail</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             Query admin audit events, export CSV or NDJSON, and review chain-integrity metadata.
           </p>
         </div>
@@ -681,7 +781,11 @@ export default function AuditPage() {
             className={`flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               liveTail
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+<<<<<<< HEAD
                 : 'border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700'
+=======
+                : 'border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] text-gray-700 dark:text-[var(--color-text-primary)] hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]'
+>>>>>>> docs/changelog-may-7
             }`}
             aria-label={liveTail ? 'Pause live tail' : 'Start live tail'}
             title={page !== 1 ? 'Live tail only works on page 1' : undefined}
@@ -700,7 +804,11 @@ export default function AuditPage() {
           <button
             onClick={() => { void handleExport('csv'); }}
             disabled={loading || exportingFormat !== null}
+<<<<<<< HEAD
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
+=======
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-gray-700 dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
+>>>>>>> docs/changelog-may-7
             aria-label="Export CSV"
           >
             <Download className="h-3.5 w-3.5" />
@@ -709,7 +817,11 @@ export default function AuditPage() {
           <button
             onClick={() => { void handleExport('ndjson'); }}
             disabled={loading || exportingFormat !== null}
+<<<<<<< HEAD
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-200 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:opacity-50"
+=======
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-gray-700 dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
+>>>>>>> docs/changelog-may-7
             aria-label="Export NDJSON"
           >
             <Download className="h-3.5 w-3.5" />
@@ -721,15 +833,26 @@ export default function AuditPage() {
       {/* Chain integrity badge */}
       <ChainIntegrityBadge state={integrityState} />
 
+<<<<<<< HEAD
       <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <Filter className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
           <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">Filters</span>
+=======
+      <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Filter className="h-4 w-4 text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" />
+          <span className="text-sm font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)]">Filters</span>
+>>>>>>> docs/changelog-may-7
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div className="flex flex-col gap-1">
+<<<<<<< HEAD
             <label htmlFor="audit-filter-actor" className="text-xs text-zinc-500">Actor</label>
+=======
+            <label htmlFor="audit-filter-actor" className="text-xs text-[var(--color-text-muted)]">Actor</label>
+>>>>>>> docs/changelog-may-7
             <input
               id="audit-filter-actor"
               type="text"
@@ -737,12 +860,20 @@ export default function AuditPage() {
               value={filters.actor}
               onChange={(event) => setFilters((current) => ({ ...current, actor: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
+<<<<<<< HEAD
               className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
             />
           </div>
 
           <div className="flex flex-col gap-1">
+<<<<<<< HEAD
             <label htmlFor="audit-filter-action" className="text-xs text-zinc-500">Action</label>
+=======
+            <label htmlFor="audit-filter-action" className="text-xs text-[var(--color-text-muted)]">Action</label>
+>>>>>>> docs/changelog-may-7
             <input
               id="audit-filter-action"
               type="text"
@@ -751,7 +882,11 @@ export default function AuditPage() {
               value={filters.action}
               onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
+<<<<<<< HEAD
               className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
             />
             <datalist id="audit-action-suggestions">
               {ACTION_SUGGESTIONS.map((action) => (
@@ -761,7 +896,11 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
+<<<<<<< HEAD
             <label htmlFor="audit-filter-session" className="text-xs text-zinc-500">Session ID</label>
+=======
+            <label htmlFor="audit-filter-session" className="text-xs text-[var(--color-text-muted)]">Session ID</label>
+>>>>>>> docs/changelog-may-7
             <input
               id="audit-filter-session"
               type="text"
@@ -769,29 +908,49 @@ export default function AuditPage() {
               value={filters.sessionId}
               onChange={(event) => setFilters((current) => ({ ...current, sessionId: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
+<<<<<<< HEAD
               className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
             />
           </div>
 
           <div className="flex flex-col gap-1">
+<<<<<<< HEAD
             <label htmlFor="audit-filter-from" className="text-xs text-zinc-500">From</label>
+=======
+            <label htmlFor="audit-filter-from" className="text-xs text-[var(--color-text-muted)]">From</label>
+>>>>>>> docs/changelog-may-7
             <input
               id="audit-filter-from"
               type="datetime-local"
               value={filters.from}
               onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+<<<<<<< HEAD
               className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
             />
           </div>
 
           <div className="flex flex-col gap-1">
+<<<<<<< HEAD
             <label htmlFor="audit-filter-to" className="text-xs text-zinc-500">To</label>
+=======
+            <label htmlFor="audit-filter-to" className="text-xs text-[var(--color-text-muted)]">To</label>
+>>>>>>> docs/changelog-may-7
             <input
               id="audit-filter-to"
               type="datetime-local"
               value={filters.to}
               onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+<<<<<<< HEAD
               className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-gray-900 dark:text-zinc-100 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+              className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-gray-900 dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
             />
           </div>
         </div>
@@ -805,11 +964,19 @@ export default function AuditPage() {
           </button>
           <button
             onClick={clearFilters}
+<<<<<<< HEAD
             className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700"
           >
             Clear
           </button>
           <p className="text-xs text-zinc-500">
+=======
+            className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)]"
+          >
+            Clear
+          </button>
+          <p className="text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             CSV and NDJSON exports use the currently applied filters.
           </p>
         </div>
@@ -825,10 +992,17 @@ export default function AuditPage() {
       {latestExport ? <ExportMetadataCard result={latestExport} /> : null}
 
       {endpointMissing ? (
+<<<<<<< HEAD
         <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
           <Shield className="mx-auto mb-3 h-10 w-10 text-zinc-600" />
           <p className="font-medium text-zinc-400">Audit endpoint not available yet</p>
           <p className="mt-1 text-xs text-zinc-600">
+=======
+        <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
+          <Shield className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-muted)]" />
+          <p className="font-medium text-[var(--color-text-muted)]">Audit endpoint not available yet</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             The /v1/audit endpoint has not been implemented on the server.
           </p>
         </div>
@@ -836,7 +1010,11 @@ export default function AuditPage() {
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
           <p className="font-medium text-red-400">Failed to load audit logs</p>
+<<<<<<< HEAD
           <p className="mt-1 text-xs text-zinc-500">{error}</p>
+=======
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
+>>>>>>> docs/changelog-may-7
           <button
             onClick={() => { void fetchData(); }}
             className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
@@ -845,12 +1023,21 @@ export default function AuditPage() {
           </button>
         </div>
       ) : loading ? (
+<<<<<<< HEAD
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0} aria-label="Audit records loading table">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-200 dark:border-zinc-800">
                 {TABLE_HEADERS.map((h) => (
                   <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+=======
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50" tabIndex={0} aria-label="Audit records loading table">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-[var(--color-void-lighter)]">
+                {TABLE_HEADERS.map((h) => (
+                  <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{h}</th>
+>>>>>>> docs/changelog-may-7
                 ))}
               </tr>
             </thead>
@@ -860,24 +1047,41 @@ export default function AuditPage() {
           </table>
         </div>
       ) : records.length === 0 ? (
+<<<<<<< HEAD
         <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-[var(--color-surface)] p-12 text-center">
+=======
+        <div className="rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
+>>>>>>> docs/changelog-may-7
           <EmptyState
             icon={<SearchX className="h-10 w-10" />}
             title={t("audit.noRecordsFound")}
             description={t("audit.noRecordsDescription")}
           />
+<<<<<<< HEAD
           <p className="mt-1 text-xs text-zinc-600">
+=======
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             {hasFilters ? t('audit.tryAdjustingFilters') : t('audit.recordsWillAppear')}
           </p>
         </div>
       ) : (
         <>
+<<<<<<< HEAD
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50" tabIndex={0} aria-label="Audit records table">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-zinc-800">
                   {TABLE_HEADERS.map((h) => (
                     <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-zinc-500">{h}</th>
+=======
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-[var(--color-void-lighter)] bg-gray-50 dark:bg-[var(--color-void)]/50" tabIndex={0} aria-label="Audit records table">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-[var(--color-void-lighter)]">
+                  {TABLE_HEADERS.map((h) => (
+                    <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{h}</th>
+>>>>>>> docs/changelog-may-7
                   ))}
                 </tr>
               </thead>
@@ -895,9 +1099,15 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
+<<<<<<< HEAD
             <div className="flex items-center gap-2 text-sm text-zinc-500">
               <span>{total} record{total !== 1 ? 's' : ''}</span>
               <span className="text-zinc-700">|</span>
+=======
+            <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+              <span>{total} record{total !== 1 ? 's' : ''}</span>
+              <span className="text-[var(--color-text-muted)]">|</span>
+>>>>>>> docs/changelog-may-7
               <label htmlFor="audit-page-size" className="sr-only">Page size</label>
               <select
                 id="audit-page-size"
@@ -907,7 +1117,11 @@ export default function AuditPage() {
                   setPageSize(Number(event.target.value));
                   setPage(1);
                 }}
+<<<<<<< HEAD
                 className="min-h-[44px] rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+=======
+                className="min-h-[44px] rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+>>>>>>> docs/changelog-may-7
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size} / page</option>
@@ -916,13 +1130,17 @@ export default function AuditPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-[var(--color-text-muted)]">
                 Page {page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page <= 1}
+<<<<<<< HEAD
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+=======
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"
+>>>>>>> docs/changelog-may-7
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -930,7 +1148,11 @@ export default function AuditPage() {
               <button
                 onClick={() => setPage((current) => current + 1)}
                 disabled={!hasMore || page >= totalPages}
+<<<<<<< HEAD
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs text-gray-600 dark:text-zinc-300 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+=======
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-gray-300 dark:border-[var(--color-void-lighter)] bg-white dark:bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-gray-100 dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"
+>>>>>>> docs/changelog-may-7
                 aria-label="Next page"
               >
                 <ChevronRight className="h-3.5 w-3.5" />

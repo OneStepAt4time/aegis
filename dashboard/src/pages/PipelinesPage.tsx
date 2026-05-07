@@ -1,10 +1,16 @@
 /**
  * pages/PipelinesPage.tsx — Pipeline list with metrics and create action.
+ *
+ * Demo data removed — shows only real API data. (#2811)
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+<<<<<<< HEAD
 import { Plus, GitBranch, Sparkles } from 'lucide-react';
+=======
+import { Plus, GitBranch } from 'lucide-react';
+>>>>>>> docs/changelog-may-7
 import EmptyState from '../components/shared/EmptyState';
 import { getPipelines } from '../api/client';
 import type { PipelineInfo } from '../api/client';
@@ -99,10 +105,13 @@ export default function PipelinesPage() {
   const sseConnected = useStore((s) => s.sseConnected);
   const addToast = useToastStore((t) => t.addToast);
 
+<<<<<<< HEAD
   // Demo pipelines state
   const demoPipelines = useMemo(() => getDemoPipelines(), [pipelines.length]);
   const allPipelines = useMemo(() => [...pipelines, ...demoPipelines], [pipelines, demoPipelines]);
 
+=======
+>>>>>>> docs/changelog-may-7
   // Idle tips for empty state
   const { showTip, currentTip } = useIdleTips({
     tips: [
@@ -176,7 +185,11 @@ export default function PipelinesPage() {
     failed: allPipelines.filter((p) => p.status === 'failed').length,
   };
 
+<<<<<<< HEAD
   const filteredPipelines = allPipelines
+=======
+  const filteredPipelines = pipelines
+>>>>>>> docs/changelog-may-7
     .filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
@@ -190,6 +203,7 @@ export default function PipelinesPage() {
       return sortAsc ? cmp : -cmp;
     });
 
+<<<<<<< HEAD
   function handleSurpriseMe() {
     setDemoPipelines();
     setPipelines([...pipelines]); // Trigger re-render
@@ -201,6 +215,13 @@ export default function PipelinesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
+=======
+  const isEmpty = pipelines.length === 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] text-[var(--color-text-muted)] text-sm" role="status" aria-busy="true">
+>>>>>>> docs/changelog-may-7
         <div className="animate-pulse">{t("pipelines.loading")}</div>
       </div>
     );
@@ -211,8 +232,13 @@ export default function PipelinesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+<<<<<<< HEAD
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h1>
           <p className="mt-1 text-sm text-gray-500">
+=======
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t("pipelines.title")}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             Manage and monitor session pipelines
           </p>
         </div>
@@ -232,12 +258,20 @@ export default function PipelinesPage() {
           placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+<<<<<<< HEAD
           className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
         />
         <select aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+<<<<<<< HEAD
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
         >
           <option value="all">All</option>
           <option value="running">Running</option>
@@ -248,7 +282,11 @@ export default function PipelinesPage() {
         <select aria-label="Sort by"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
+<<<<<<< HEAD
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
         >
           <option value="createdAt">Date</option>
           <option value="name">Name</option>
@@ -256,7 +294,11 @@ export default function PipelinesPage() {
         </select>
         <button
           onClick={() => setSortAsc(!sortAsc)}
+<<<<<<< HEAD
           className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+=======
+          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+>>>>>>> docs/changelog-may-7
           aria-label={sortAsc ? 'Sort ascending' : 'Sort descending'}
           title={sortAsc ? 'Ascending' : 'Descending'}
         >
@@ -273,7 +315,11 @@ export default function PipelinesPage() {
       </div>
 
       {/* Pipeline List */}
+<<<<<<< HEAD
       {(allPipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
+=======
+      {(pipelines.length === 0 || filteredPipelines.length === 0) && (loadError || searchQuery || statusFilter !== 'all') ? (
+>>>>>>> docs/changelog-may-7
         <EmptyState
           variant="empty-error"
           icon={<GitBranch className="h-8 w-8" />}
@@ -289,11 +335,19 @@ export default function PipelinesPage() {
             action={
               <button
                 type="button"
+<<<<<<< HEAD
                 onClick={handleSurpriseMe}
                 className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
               >
                 <Sparkles className="h-4 w-4" />
                 Surprise me
+=======
+                onClick={() => setModalOpen(true)}
+                className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
+              >
+                <Plus className="h-4 w-4" />
+                Create Pipeline
+>>>>>>> docs/changelog-may-7
               </button>
             }
           />
@@ -313,12 +367,12 @@ export default function PipelinesPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-medium text-gray-200 truncate">
+                  <span className="font-medium text-[var(--color-text-primary)] truncate">
                     {pipeline.name}
                   </span>
                   <PipelineStatusBadge status={pipeline.status} />
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0 ml-4">
+                <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] shrink-0 ml-4">
                   <span>{pipeline.stages.length} step{pipeline.stages.length !== 1 ? 's' : ''}</span>
                   <span>{formatTimeAgo(pipeline.createdAt)}</span>
                 </div>

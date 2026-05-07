@@ -36,6 +36,18 @@ aegis:
   # -- Additional envFrom entries appended to the container.
   extraEnvFrom: []
 
+<<<<<<< HEAD
+=======
+otel:
+  # -- Enable OpenTelemetry tracing (AEGIS_OTEL_ENABLED).
+  enabled: false
+  # -- OTLP endpoint for exporting traces (AEGIS_OTEL_OTLP_ENDPOINT).
+  #    Example: "http://jaeger:4318/v1/traces"
+  endpoint: ""
+  # -- Additional OTel environment variables (list of {name, value} or {name, valueFrom}).
+  extraEnv: []
+
+>>>>>>> docs/changelog-may-7
 auth:
   # -- Inline API token stored in a generated Secret and exposed as AEGIS_AUTH_TOKEN.
   token: ""

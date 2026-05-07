@@ -55,7 +55,11 @@ interface StatTileProps {
 function StatTile({ icon, label, value, color = 'text-[var(--color-accent)]' }: StatTileProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3">
+<<<<<<< HEAD
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--color-void-dark)] text-[#888]">
+=======
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--color-void-dark)] text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
         {icon}
       </div>
       <div>
@@ -132,7 +136,7 @@ export default function MetricsPanel() {
   return (
     <div className="space-y-1.5">
       {isUnavailable && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--color-text-muted)]">
           Metrics endpoint unavailable — showing placeholder values.
         </p>
       )}

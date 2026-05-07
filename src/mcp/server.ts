@@ -53,7 +53,33 @@ export function createMcpServer(aegisBaseUrlOrPort: number | string, authToken?:
   return createMcpServerFromBackend(client);
 }
 
+<<<<<<< HEAD
 export async function startMcpServer(baseUrlOrPort: number | string, authToken?: string): Promise<void> {
+=======
+/**
+ * Redirect console.log to stderr in MCP stdio mode.
+ *
+ * The StdioServerTransport uses process.stdout for JSON-RPC messages.
+ * Any console.log call (from Aegis code or transitive dependencies) would
+ * inject non-protocol data into stdout, triggering the Claude Code memory
+ * leak in versions before 2.1.132 (10GB+ RSS) or causing protocol parse errors.
+ *
+ * This defense-in-depth measure ensures that even if a console.log sneaks
+ * into a shared code path, it goes to stderr instead of corrupting the
+ * MCP transport channel.
+ */
+export function redirectConsoleLogToStderr(): void {
+  console.log = (...args: unknown[]) => {
+    process.stderr.write(args.map(String).join(' ') + '\n');
+  };
+}
+
+export async function startMcpServer(baseUrlOrPort: number | string, authToken?: string): Promise<void> {
+  // Defense-in-depth: redirect console.log to stderr before connecting transport.
+  // Prevents accidental non-protocol data from corrupting the MCP stdout channel.
+  redirectConsoleLogToStderr();
+
+>>>>>>> docs/changelog-may-7
   const server = createMcpServer(baseUrlOrPort, authToken);
   const transport = new StdioServerTransport();
   await server.connect(transport);

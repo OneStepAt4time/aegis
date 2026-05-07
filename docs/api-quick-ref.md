@@ -35,7 +35,11 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/escape` | Bearer | Send Escape key |
 | `POST` | `/v1/sessions/{id}/interrupt` | Bearer | Send Ctrl+C (interrupt) |
 | `DELETE` | `/v1/sessions/{id}` | Bearer | Kill session |
+<<<<<<< HEAD
 | `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane |
+=======
+| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane (tmux only — returns 501 in ACP mode) |
+>>>>>>> docs/changelog-may-7
 | `GET` | `/v1/sessions/{id}/children` | Bearer | Get child sessions |
 | `POST` | `/v1/sessions/{id}/spawn` | Bearer | Spawn a child session |
 | `POST` | `/v1/sessions/{id}/fork` | Bearer | Fork the session |
@@ -98,7 +102,11 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/sessions/{id}/tools` | Bearer | Per-session tool usage counts |
 | `POST` | `/v1/sessions/{id}/screenshot` | Bearer | Capture screenshot (Playwright) |
 | `POST` | `/v1/sessions/{id}/verify` | Bearer | Run verification protocol |
+<<<<<<< HEAD
 | `GET` | `/v1/sessions/{id}/events` | Bearer | Per-session SSE event stream |
+=======
+| `GET` | `/v1/sessions/{id}/events` | SSE Token | Per-session SSE event stream |
+>>>>>>> docs/changelog-may-7
 
 ## Permissions
 
@@ -137,7 +145,11 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/auth/keys` | Bearer | List API keys |
 | `DELETE` | `/v1/auth/keys/{id}` | Bearer | Revoke API key |
 | `POST` | `/v1/auth/keys/{id}/rotate` | Bearer | Rotate API key |
+<<<<<<< HEAD
 | `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token |
+=======
+| `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token (required for SSE endpoints) |
+>>>>>>> docs/changelog-may-7
 | `POST` | `/v1/keys` | Bearer | Create API key (alias) |
 | `GET` | `/v1/keys` | Bearer | List API keys (alias) |
 | `DELETE` | `/v1/keys/{id}` | Bearer | Revoke API key (alias) |
@@ -166,6 +178,10 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
 | `GET` | `/v1/health` | No Auth | Server health check |
+<<<<<<< HEAD
+=======
+| `GET` | `/v1/version` | No Auth | Server version discovery |
+>>>>>>> docs/changelog-may-7
 | `POST` | `/v1/handshake` | No Auth | Protocol handshake |
 | `GET` | `/v1/swarm` | Bearer | Swarm awareness scan |
 | `GET` | `/v1/alerts/stats` | Bearer | Alert manager stats |
@@ -186,7 +202,11 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
+<<<<<<< HEAD
 | `GET` | `/v1/events` | Bearer | Global SSE event stream (all sessions) |
+=======
+| `GET` | `/v1/events` | SSE Token | Global SSE event stream (all sessions) |
+>>>>>>> docs/changelog-may-7
 
 ---
 
@@ -221,7 +241,11 @@ See [API Rate Limiting](api-rate-limiting.md) for full documentation.
 ## See Also
 
 - [API Reference](api-reference.md) — detailed endpoint docs with schemas
+<<<<<<< HEAD
 - [API Examples](api-examples.md) — curl examples for all 58 endpoints
+=======
+- [API Examples](api-examples.md) — curl examples for all 59 endpoints
+>>>>>>> docs/changelog-may-7
 - [Authentication](api-reference.md#authentication) — auth setup
 - [Rate Limiting](api-rate-limiting.md) — rate limits and headers
 - [Webhook Retry](webhook-retry.md) — webhook delivery with retry

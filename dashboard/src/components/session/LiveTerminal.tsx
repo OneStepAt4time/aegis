@@ -185,7 +185,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-[var(--color-void-lighter)]">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[#888]">Terminal</span>
+          <span className="font-mono text-[var(--color-text-muted)]">Terminal</span>
         </div>
         <div className="flex items-center gap-3">
           {/* Connection indicator */}
@@ -198,7 +198,11 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
+<<<<<<< HEAD
             <span className="text-[10px] text-[#555] uppercase">
+=======
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase">
+>>>>>>> docs/changelog-may-7
               {connectionState === 'connecting' ? 'connecting...'
                 : connectionState === 'reconnecting' ? 'RECONNECTING...'
                 : connectionState === 'connected' ? 'ws live'
@@ -214,7 +218,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
                 boxShadow: isLive ? '0 0 4px var(--color-success)' : 'none',
               }}
             />
-            <span className="text-[10px] text-[#555] uppercase">
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase">
               {isLive ? 'active' : 'idle'}
             </span>
           </div>

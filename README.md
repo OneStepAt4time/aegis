@@ -19,7 +19,7 @@
 > 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [ACP Migration Guide](docs/acp-migration-guide.md) if you're upgrading.
 
 <p align="center">
-  <strong>Orchestrate Claude Code sessions via REST API, MCP, CLI, webhooks, or Telegram.</strong>
+  <strong>Enterprise orchestration middleware for Claude Code — REST API, MCP, SSE, webhooks, and dashboard.</strong>
 </p>
 
 <p align="center">
@@ -385,12 +385,42 @@ curl -X POST http://localhost:9100/v1/pipelines \
 
 ## Security
 
-Aegis includes built-in security defaults:
+Aegis is built with production security as a first-class concern — not an afterthought.
 
-- **Permission mode** — `default` requires approval for dangerous operations (shell commands, file writes). Change with `permissionMode` when creating a session.
-- **Hook secrets** — use `X-Hook-Secret` header (preferred). Query-param `secret` remains backward compatible by default but is deprecated.
-- **Auth tokens** — protect the API with `AEGIS_AUTH_TOKEN` (Bearer auth on all endpoints except `/v1/health`).
-- **WebSocket auth** — session existence is not revealed before authentication.
+### Authentication & Authorization
+
+- **Bearer token auth** — `AEGIS_AUTH_TOKEN` protects all endpoints except `/v1/health`
+- **SSE token separation** — dedicated `sse_`-prefixed tokens for event streams (regular API keys are rejected on SSE routes)
+- **API key management** — CRUD with role-based access (admin, operator, viewer, custom)
+- **Hook secret authentication** — `X-Hook-Secret` header with header-only enforcement mode
+
+### Audit & Compliance
+
+- **Immutable audit trail** — hash-chained event log for every session action
+- **Permission policies** — configurable approval/rejection per tool, per session
+- **Per-IP rate limiting** — auth failure limits, connection limits, request throttling
+
+### Observability
+
+- **OpenTelemetry tracing** — distributed spans for HTTP, session lifecycle, tool invocations, and channel delivery
+- **Prometheus metrics** — standard exposition format for session counts, tool usage, latency histograms
+- **SSE real-time events** — live session state, permission requests, tool calls
+
+### Network Security
+
+- **Default localhost binding** — `127.0.0.1` unless explicitly configured
+- **Docker auto-detection** — binds `0.0.0.0` in containers, `127.0.0.1` everywhere else
+- **No telemetry home** — Aegis never phones home or sends data to external services
+- **Self-hosted only** — your data stays on your infrastructure
+
+### Safety Mechanisms
+
+- **Circuit breaker** — detects rapid hook failure loops and trips breaker to prevent session death
+- **Payload validation** — strict Zod schema validation on all inbound hooks
+- **Payload truncation protection** — warns when hook payloads approach Claude Code's 2KB truncation limit
+- **WebSocket auth** — session existence is not revealed before authentication
+
+For the full security questionnaire (pre-filled for vendor assessments), see [Security Questionnaire](docs/SECURITY_QUESTIONNAIRE.md). For deployment hardening, see [Enterprise Deployment](docs/enterprise.md).
 
 ---
 
@@ -528,6 +558,10 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 ## Documentation
 
 - **[Getting Started](docs/getting-started.md)** — Zero to first session in 5 minutes
+<<<<<<< HEAD
+=======
+- **[Why Aegis?](docs/why-aegis.md)** — How Aegis differs from dev tools and multi-agent frameworks
+>>>>>>> docs/changelog-may-7
 - **[Roadmap](ROADMAP.md)** — Phase 3 (Team & Early-Enterprise) is now active
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation

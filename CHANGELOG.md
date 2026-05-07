@@ -26,6 +26,19 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **ACP golden event contracts** — typed test fixtures for ACP event parsing and mapping ([#2709](https://github.com/OneStepAt4time/aegis/pull/2709))
 - **Playwright E2E tests for ACP dashboard views** — end-to-end coverage for the new ACP-native dashboard ([#2720](https://github.com/OneStepAt4time/aegis/pull/2720))
 - **Karpathy-style coding behavior rules** — `.claude/rules/coding.md` with think-first, simplicity, surgical edits, and goal-driven execution principles ([#2736](https://github.com/OneStepAt4time/aegis/pull/2736))
+<<<<<<< HEAD
+=======
+- **CCMeter-inspired dashboard overview** — redesigned OverviewPage with KPI banner, cost/day bar chart, model distribution, efficiency gauge, and keyboard shortcuts ([#2890](https://github.com/OneStepAt4time/aegis/pull/2890), [#2898](https://github.com/OneStepAt4time/aegis/pull/2898), [#2903](https://github.com/OneStepAt4time/aegis/pull/2903))
+- **OTel tool span helpers** — `tool.invoke` spans for Claude Code tool calls with `toolName`, `toolUseId`, token counts; covers both CC HTTP hooks and JSONL transcript polling ([#2902](https://github.com/OneStepAt4time/aegis/pull/2902))
+- **Per-session custom system prompts** — `systemPrompt` parameter on session creation, passed via ACP `_meta.systemPrompt` ([#2917](https://github.com/OneStepAt4time/aegis/pull/2917))
+- **CI/PR integration panel** — session detail tab that detects `gh pr create` and `git push` activity from transcripts ([#2911](https://github.com/OneStepAt4time/aegis/pull/2911))
+- **File diff viewer** — session detail tab with file list sidebar and inline diff highlighting for `edit`/`write` tool events ([#2925](https://github.com/OneStepAt4time/aegis/pull/2925))
+- **Helm chart OTel configuration** — `otel` section in `values.yaml` for tracing enablement in Kubernetes deployments ([#2914](https://github.com/OneStepAt4time/aegis/pull/2914))
+- **ACP chat and approval wiring** — dashboard components connected to real hook data ([#2897](https://github.com/OneStepAt4time/aegis/pull/2897), [#2899](https://github.com/OneStepAt4time/aegis/pull/2899))
+- **Docker auto-detection** — binds `0.0.0.0` inside Docker containers, `127.0.0.1` everywhere else; explicit `AEGIS_HOST` always overrides ([#2891](https://github.com/OneStepAt4time/aegis/pull/2891))
+- **Rate limit headers on custom 429s** — `X-RateLimit-*` and `Retry-After` headers on all 429 responses, including custom auth-middleware rejections ([#2891](https://github.com/OneStepAt4time/aegis/pull/2891))
+- **Dashboard Activity page in sidebar** — ActivityPage added to sidebar navigation ([#2893](https://github.com/OneStepAt4time/aegis/pull/2893))
+>>>>>>> docs/changelog-may-7
 
 ### Changed
 
@@ -40,6 +53,35 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 ### Fixed
 
 - **ACP crash recovery** — implement `session/load` for restoring sessions after ACP process crashes (ACP-065) ([#2744](https://github.com/OneStepAt4time/aegis/pull/2744))
+<<<<<<< HEAD
+=======
+- **Hardcoded demo data removal** — removed demo sessions from SessionTable ([#2900](https://github.com/OneStepAt4time/aegis/pull/2900))
+- **CI scripts/ in Docker** — include `scripts/` directory in Docker image and npm package for postinstall verification ([#2901](https://github.com/OneStepAt4time/aegis/pull/2901))
+- **Gitleaks false positives** — allowlist `docs/` in gitleaks config ([#2910](https://github.com/OneStepAt4time/aegis/pull/2910))
+- **Helm smoke CI fix** — copy `scripts/` before `npm ci` in build stage ([#2918](https://github.com/OneStepAt4time/aegis/pull/2918))
+- **Attest-build-provenance CI bump** — actions/attest-build-provenance v2 → v4 ([#2894](https://github.com/OneStepAt4time/aegis/pull/2894))
+- **SDK drift fixes** — regenerated TypeScript and Python client SDKs for `systemPrompt` field ([#2920](https://github.com/OneStepAt4time/aegis/pull/2920), [#2924](https://github.com/OneStepAt4time/aegis/pull/2924))
+
+### Documentation
+
+- **Lifecycle hooks guide** — comprehensive hook system docs with security model, observability, and comparison table vs shell/HTTP-only systems ([#2915](https://github.com/OneStepAt4time/aegis/pull/2915))
+- **Security posture + positioning** — expanded README Security section to 5 categories (20 features); repositioned as "enterprise orchestration middleware" ([#2916](https://github.com/OneStepAt4time/aegis/pull/2916))
+- **"Why Aegis?" page** — public-facing positioning with comparison tables vs dev tools and multi-agent frameworks ([#2927](https://github.com/OneStepAt4time/aegis/pull/2927))
+- **Architecture guide update** — added OTel tool spans and CCMeter overview to module overview ([#2905](https://github.com/OneStepAt4time/aegis/pull/2905))
+- **SSE auth flow docs** — documented two-step SSE token authentication flow and fixed incorrect auth column in quick-ref ([#2882](https://github.com/OneStepAt4time/aegis/pull/2882))
+- **Docker + rate limits docs** — documented Docker auto-detection and rate limit headers on custom 429s ([#2896](https://github.com/OneStepAt4time/aegis/pull/2896))
+- **CCMeter + OTel + ACP docs** — documented CCMeter overview redesign, OTel tool spans, and ACP dashboard integration ([#2904](https://github.com/OneStepAt4time/aegis/pull/2904))
+- **Session detail tabs docs** — updated dashboard docs with Timeline, PR, and Diff tabs ([#2926](https://github.com/OneStepAt4time/aegis/pull/2926))
+- **systemPrompt + CI/PR panel docs** — documented per-session system prompt parameter and CI/PR integration panel ([#2923](https://github.com/OneStepAt4time/aegis/pull/2923))
+- **Reserved MCP name docs** — noted `workspace` as reserved in CC 2.1.128+ ([#2847](https://github.com/OneStepAt4time/aegis/pull/2847))
+- **Version endpoint docs** — documented `GET /v1/version` and fixed stale `/pane` references ([#2877](https://github.com/OneStepAt4time/aegis/pull/2877))
+
+### Dependencies
+
+- Bump `react` and `react-dom` to 19.2.6 ([#2922](https://github.com/OneStepAt4time/aegis/pull/2922))
+- Bump `ip-address` to 10.2.0 and `express-rate-limit` to 8.5.1 ([#2921](https://github.com/OneStepAt4time/aegis/pull/2921))
+- Consolidated dependency bumps + `.gitleaksignore` cleanup ([#2919](https://github.com/OneStepAt4time/aegis/pull/2919))
+>>>>>>> docs/changelog-may-7
 
 ### Internal
 

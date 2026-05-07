@@ -408,7 +408,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
       {/* Header with filters, status strip, and connection status */}
       <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/5 bg-white/5 backdrop-blur-md shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
+          <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Filter:</span>
           {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
             <button
               key={key}
@@ -417,14 +417,22 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               className={`relative inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 filters[key]
                   ? 'border-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10 font-medium'
+<<<<<<< HEAD
                   : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888] bg-transparent'
+=======
+                  : 'border-[var(--color-void-lighter)] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] bg-transparent'
+>>>>>>> docs/changelog-may-7
               }`}
             >
               <span>{key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}</span>
               <span className={`inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-semibold rounded ${
                 filters[key] 
                   ? 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
+<<<<<<< HEAD
                   : 'bg-[var(--color-void-lighter)] text-[#555]'
+=======
+                  : 'bg-[var(--color-void-lighter)] text-[var(--color-text-muted)]'
+>>>>>>> docs/changelog-may-7
               }`}>
                 {messages.filter(m => 
                   key === 'thinking' ? m.contentType === 'thinking' :
@@ -434,7 +442,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
               </span>
             </button>
           ))}
-          <span className="text-[10px] text-[#444]">
+          <span className="text-[10px] text-[var(--color-text-muted)]">
             {filteredMessages.length} / {messages.length} messages
           </span>
         </div>
@@ -460,7 +468,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />
-            <span className="text-[10px] text-[#555] uppercase">
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase">
               {connectionState === 'connecting' ? 'connecting…'
                 : connectionState === 'reconnecting' ? 'reconnecting…'
                 : connectionState === 'connected' ? 'ws live'
@@ -477,7 +485,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 boxShadow: isLive ? '0 0 4px var(--color-cyan-bright)' : 'none',
               }}
             />
-            <span className="text-[10px] text-[#555] uppercase">
+            <span className="text-[10px] text-[var(--color-text-muted)] uppercase">
               {isLive ? 'active' : 'idle'}
             </span>
           </div>

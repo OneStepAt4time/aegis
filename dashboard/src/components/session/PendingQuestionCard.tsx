@@ -36,7 +36,11 @@ export function PendingQuestionCard({
           </div>
         )}
 
+<<<<<<< HEAD
         <p className="text-xs text-gray-400">
+=======
+        <p className="text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
           Reply below to keep the session moving.
         </p>
       </div>

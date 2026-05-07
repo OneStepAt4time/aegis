@@ -105,6 +105,13 @@ class CreateSessionRequest(BaseModel):
     stallThresholdMs: int | None = Field(
         None, description='Stall detection threshold override'
     )
+<<<<<<< HEAD
+=======
+    systemPrompt: constr(max_length=100000) | None = Field(
+        None,
+        description='Per-session custom system prompt. Passed to Claude Code via ACP _meta.systemPrompt. Supported only when ACP is enabled.',
+    )
+>>>>>>> docs/changelog-may-7
 
 
 class PromptDelivery(BaseModel):

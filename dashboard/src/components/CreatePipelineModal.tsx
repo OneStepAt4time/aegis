@@ -121,10 +121,14 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
       <div ref={trapRef} role="dialog" aria-modal="true" aria-label="Create new pipeline" className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
+<<<<<<< HEAD
           <h2 className="text-sm font-semibold text-gray-100">New Pipeline</h2>
+=======
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">New Pipeline</h2>
+>>>>>>> docs/changelog-may-7
           <button aria-label="Close"
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -133,7 +137,11 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
           {/* Pipeline Name */}
           <div>
+<<<<<<< HEAD
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
+=======
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+>>>>>>> docs/changelog-may-7
               Pipeline Name <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
@@ -143,12 +151,20 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
               onChange={(e) => setPipelineName(e.target.value)}
               placeholder="my-pipeline"
               aria-label="Pipeline Name"
+<<<<<<< HEAD
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
+=======
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+>>>>>>> docs/changelog-may-7
             />
           </div>
 
           {/* Step column headers */}
+<<<<<<< HEAD
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-gray-500 px-1">
+=======
+          <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-[var(--color-text-muted)] px-1">
+>>>>>>> docs/changelog-may-7
             <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
             <span>Name</span>
             <span>Prompt</span>
@@ -164,28 +180,44 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
                   value={step.workDir}
                   onChange={(e) => updateStep(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
+<<<<<<< HEAD
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)] font-mono"
+=======
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] font-mono"
+>>>>>>> docs/changelog-may-7
                 />
                 <input
                   type="text"
                   value={step.name}
                   onChange={(e) => updateStep(i, 'name', e.target.value)}
                   placeholder="name"
+<<<<<<< HEAD
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
+=======
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+>>>>>>> docs/changelog-may-7
                 />
                 <input
                   type="text"
                   value={step.prompt}
                   onChange={(e) => updateStep(i, 'prompt', e.target.value)}
                   placeholder="Initial prompt..."
+<<<<<<< HEAD
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent)]"
+=======
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+>>>>>>> docs/changelog-may-7
                 />
                 <button
                   type="button"
                   onClick={() => removeStep(i)}
                   disabled={steps.length <= 1}
                   aria-label={`Remove step ${i + 1}`}
+<<<<<<< HEAD
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+=======
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+>>>>>>> docs/changelog-may-7
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -198,7 +230,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
             <button
               type="button"
               onClick={addStep}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Step
@@ -217,7 +249,11 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
             <button
               type="button"
               onClick={handleClose}
+<<<<<<< HEAD
               className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-gray-300 transition-colors"
+=======
+              className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition-colors"
+>>>>>>> docs/changelog-may-7
             >
               Cancel
             </button>

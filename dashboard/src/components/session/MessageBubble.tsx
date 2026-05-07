@@ -45,7 +45,7 @@ function TextMessage({ entry }: { entry: ParsedEntry }) {
       >
         <RenderWithCodeBlocks text={entry.text} />
         {entry.timestamp && (
-          <div className={`text-[10px] mt-1 ${isUser ? 'text-[#555]' : 'text-[#444]'}`}>
+          <div className={`text-[10px] mt-1 ${isUser ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-muted)]'}`}>
             {formatTimestamp(entry.timestamp)}
           </div>
         )}
@@ -63,7 +63,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
       <div className="max-w-[80%] w-full">
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 text-xs text-[#555] hover:text-[#777] transition-colors py-1 group"
+          className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] transition-colors py-1 group"
         >
           <span
             className="inline-block transition-transform duration-200"
@@ -74,7 +74,11 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
           <span className="italic">Thinking\u2026</span>
         </button>
         {open && (
+<<<<<<< HEAD
           <div className="bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 mt-1 text-sm text-[#555] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+=======
+          <div className="bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 mt-1 text-sm text-[var(--color-text-muted)] italic leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+>>>>>>> docs/changelog-may-7
             {entry.text}
           </div>
         )}
@@ -97,21 +101,33 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
           <span className="text-xs font-semibold text-[var(--color-accent)] font-mono">
             {entry.toolName ?? 'Tool'}
           </span>
+<<<<<<< HEAD
           <span className="text-[10px] text-[#555] ml-auto">tool_use</span>
+=======
+          <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">tool_use</span>
+>>>>>>> docs/changelog-may-7
         </div>
         {containsCodeBlocks ? (
           <div className={`px-3 py-2 overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
             <RenderWithCodeBlocks text={rawText} />
           </div>
         ) : (
+<<<<<<< HEAD
           <div className={`px-3 py-2 text-xs text-[#888] font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+=======
+          <div className={`px-3 py-2 text-xs text-[var(--color-text-muted)] font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+>>>>>>> docs/changelog-may-7
             {expanded ? rawText : (rawText.length > 100 ? rawText.slice(0, 100) + '\u2026' : rawText)}
           </div>
         )}
         {rawText.length > 100 && (
           <button
             onClick={() => setExpanded(e => !e)}
+<<<<<<< HEAD
             className="w-full text-[10px] text-[#555] hover:text-[#888] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+=======
+            className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+>>>>>>> docs/changelog-may-7
           >
             {expanded ? 'Collapse' : 'Expand'}
           </button>
@@ -138,11 +154,15 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
         }`}
       >
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-void-lighter)]">
+<<<<<<< HEAD
           <span className="text-xs font-semibold text-[#888]">
+=======
+          <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             {isError ? 'X Result' : 'OK Result'}
           </span>
           {entry.toolName && (
-            <span className="text-[10px] text-[#555] font-mono">{entry.toolName}</span>
+            <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{entry.toolName}</span>
           )}
         </div>
         {containsCodeBlocks ? (
@@ -157,7 +177,11 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
         {rawText.length > 100 && (
           <button
             onClick={() => setExpanded(e => !e)}
+<<<<<<< HEAD
             className="w-full text-[10px] text-[#555] hover:text-[#888] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+=======
+            className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+>>>>>>> docs/changelog-may-7
           >
             {expanded ? 'Collapse' : 'Expand'}
           </button>

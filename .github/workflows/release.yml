@@ -962,7 +962,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Generate build provenance attestation
+<<<<<<< HEAD
         uses: actions/attest-build-provenance@v2
+=======
+        uses: actions/attest-build-provenance@v4
+>>>>>>> docs/changelog-may-7
         with:
           subject-path: |
             *.tgz

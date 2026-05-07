@@ -177,7 +177,11 @@ export default function ActivityStream({
     <div className="card-glass w-full animate-bento-reveal overflow-hidden">
       {/* Header + filters */}
       <div className="flex flex-col gap-3 border-b border-white/5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+<<<<<<< HEAD
         <h3 className="text-sm font-semibold text-gray-200">{title}</h3>
+=======
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
+>>>>>>> docs/changelog-may-7
         {showFilters && (
           <div className="flex items-center gap-2">
             {!sseConnected && sseError && <RealtimeBadge mode="paused" message={sseError} />}
@@ -186,7 +190,11 @@ export default function ActivityStream({
             <select
               value={filterSession ?? ''}
               onChange={(e) => setFilterSession(e.target.value || null)}
+<<<<<<< HEAD
               className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
+=======
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+>>>>>>> docs/changelog-may-7
             >
               <option value="">All sessions</option>
               {sessions.map((s) => (
@@ -200,7 +208,11 @@ export default function ActivityStream({
             <select
               value={filterType ?? ''}
               onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
+<<<<<<< HEAD
               className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-gray-400 focus:outline-none focus:border-[var(--color-accent)]"
+=======
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+>>>>>>> docs/changelog-may-7
             >
               <option value="">All types</option>
               {Object.entries(EVENT_META).map(([key, meta]) => (
@@ -212,7 +224,11 @@ export default function ActivityStream({
             {(filterSession || filterType) && (
               <button
                 onClick={() => { setFilterSession(null); setFilterType(null); }}
+<<<<<<< HEAD
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300"
+=======
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+>>>>>>> docs/changelog-may-7
               >
                 <X className="h-4 w-4" />
               </button>

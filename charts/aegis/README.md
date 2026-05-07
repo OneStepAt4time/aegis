@@ -49,6 +49,12 @@ helm upgrade aegis ./charts/aegis \
 | `aegis.stateDir` | string | `/var/lib/aegis` | State dir mounted from PVC (`AEGIS_STATE_DIR`) |
 | `aegis.extraEnv` | list | `[]` | Additional env vars (`{name, value}` or `{name, valueFrom}`) |
 | `aegis.extraEnvFrom` | list | `[]` | Additional `envFrom` entries |
+<<<<<<< HEAD
+=======
+| `otel.enabled` | bool | `false` | Enable OpenTelemetry tracing |
+| `otel.endpoint` | string | `""` | OTLP endpoint for exporting traces |
+| `otel.extraEnv` | list | `[]` | Additional OTel environment variables |
+>>>>>>> docs/changelog-may-7
 | `auth.token` | string | `""` | Inline API token stored in a generated Secret |
 | `auth.existingSecret` | string | `""` | Existing Secret name (overrides `auth.token`) |
 | `auth.existingSecretKey` | string | `AEGIS_AUTH_TOKEN` | Key inside the Secret |

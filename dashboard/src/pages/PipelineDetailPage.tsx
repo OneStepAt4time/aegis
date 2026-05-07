@@ -97,7 +97,11 @@ export default function PipelineDetailPage() {
 
   if (loading) {
     return (
+<<<<<<< HEAD
       <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
+=======
+      <div className="flex items-center justify-center min-h-[50vh] text-[var(--color-text-muted)] text-sm" role="status" aria-busy="true">
+>>>>>>> docs/changelog-may-7
         <div className="animate-pulse">Loading pipeline…</div>
       </div>
     );
@@ -105,9 +109,15 @@ export default function PipelineDetailPage() {
 
   if (notFound || !pipeline) {
     return (
+<<<<<<< HEAD
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-gray-500" role="alert">
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-gray-200">Pipeline not found</div>
+=======
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-[var(--color-text-muted)]" role="alert">
+        <div className="text-6xl mb-4">404</div>
+        <div className="text-lg mb-6 text-[var(--color-text-primary)]">Pipeline not found</div>
+>>>>>>> docs/changelog-may-7
         <Link to="/pipelines" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
           ← Back to Pipelines
         </Link>
@@ -118,12 +128,16 @@ export default function PipelineDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
+<<<<<<< HEAD
       <nav className="text-xs text-gray-500 flex items-center gap-1" aria-label="Pipeline breadcrumb">
+=======
+      <nav className="text-xs text-[var(--color-text-muted)] flex items-center gap-1" aria-label="Pipeline breadcrumb">
+>>>>>>> docs/changelog-may-7
         <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
           Pipelines
         </Link>
-        <span className="text-gray-700">/</span>
-        <span className="text-gray-200 truncate max-w-xs">
+        <span className="text-[var(--color-text-muted)]">/</span>
+        <span className="text-[var(--color-text-primary)] truncate max-w-xs">
           {pipeline.name}
         </span>
       </nav>
@@ -131,10 +145,14 @@ export default function PipelineDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+<<<<<<< HEAD
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pipeline.name}</h1>
+=======
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{pipeline.name}</h1>
+>>>>>>> docs/changelog-may-7
           <PipelineStatusBadge status={pipeline.status} />
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-[var(--color-text-muted)]">
           Created {formatTimeAgo(pipeline.createdAt)}
         </div>
       </div>
@@ -142,19 +160,19 @@ export default function PipelineDetailPage() {
       {/* Steps Table */}
       <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]">
         <div className="px-4 py-3 border-b border-void-lighter">
-          <h3 className="text-sm font-semibold text-gray-200">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             Steps ({pipeline.stages.length})
           </h3>
         </div>
         {pipeline.stages.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">
+          <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
             No steps yet
           </div>
         ) : (
           <div className="overflow-x-auto" tabIndex={0} aria-label="Pipeline steps table">
           <table className="w-full text-left text-sm" aria-label="Pipeline steps">
             <thead>
-              <tr className="border-b border-void-lighter text-gray-600">
+              <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
                 <th className="px-4 py-3 font-medium w-16">#</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -167,7 +185,7 @@ export default function PipelineDetailPage() {
                   key={stage.name}
                   className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan"
                 >
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                  <td className="px-4 py-3 text-[var(--color-text-muted)] font-mono text-xs">
                     #{i + 1}
                   </td>
                   <td className="px-4 py-3">
@@ -177,15 +195,15 @@ export default function PipelineDetailPage() {
                     {stage.sessionId ? (
                       <Link
                         to={`/sessions/${encodeURIComponent(stage.sessionId)}`}
-                        className="font-medium text-gray-200 hover:text-cyan transition-colors"
+                        className="font-medium text-[var(--color-text-primary)] hover:text-cyan transition-colors"
                       >
                         {stage.name}
                       </Link>
                     ) : (
-                      <span className="font-medium text-gray-200">{stage.name}</span>
+                      <span className="font-medium text-[var(--color-text-primary)]">{stage.name}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">
                     {stage.sessionId ?? '—'}
                   </td>
                 </tr>

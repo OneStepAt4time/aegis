@@ -18,7 +18,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48 text-[#555] text-sm animate-pulse">
+      <div className="flex items-center justify-center h-48 text-[var(--color-text-muted)] text-sm animate-pulse">
         Loading terminalâ€¦
       </div>
     );
@@ -29,7 +29,11 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
       {/* Toggle header */}
       <button
         onClick={() => setCollapsed(c => !c)}
+<<<<<<< HEAD
         className="flex items-center justify-between w-full px-4 py-2 text-xs text-[#888] hover:text-[var(--color-text-primary)] transition-colors border-b border-[var(--color-void-lighter)]"
+=======
+        className="flex items-center justify-between w-full px-4 py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors border-b border-[var(--color-void-lighter)]"
+>>>>>>> docs/changelog-may-7
       >
         <div className="flex items-center gap-2">
           <span
@@ -48,7 +52,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
               boxShadow: status === 'working' ? '0 0 4px var(--color-success)' : 'none',
             }}
           />
-          <span className="text-[10px] text-[#555] uppercase">
+          <span className="text-[10px] text-[var(--color-text-muted)] uppercase">
             {status === 'working' ? 'live' : 'idle'}
           </span>
         </div>
@@ -64,7 +68,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
           }}
         >
-          {content ? stripAnsi(content) : <span className="text-[#444] italic">No terminal output</span>}
+          {content ? stripAnsi(content) : <span className="text-[var(--color-text-muted)] italic">No terminal output</span>}
         </pre>
       )}
     </div>

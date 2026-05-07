@@ -92,6 +92,13 @@ export type CreateSessionRequest = {
      * Stall detection threshold override
      */
     stallThresholdMs?: number;
+<<<<<<< HEAD
+=======
+    /**
+     * Per-session custom system prompt. Passed to Claude Code via ACP _meta.systemPrompt. Supported only when ACP is enabled.
+     */
+    systemPrompt?: string;
+>>>>>>> docs/changelog-may-7
 };
 
 export type SessionCreated = {

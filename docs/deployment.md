@@ -15,7 +15,11 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 |----------|----------|---------|-------------|
 | `AEGIS_AUTH_TOKEN` | Yes | - | Bearer token for API authentication |
 | `AEGIS_PORT` | No | `9100` | HTTP server port |
+<<<<<<< HEAD
 | `AEGIS_HOST` | No | `127.0.0.1` | Bind address |
+=======
+| `AEGIS_HOST` | No | `127.0.0.1` (Docker: `0.0.0.0`) | Bind address — [auto-detects Docker](#docker-auto-detection) |
+>>>>>>> docs/changelog-may-7
 | `AEGIS_STATE_DIR` | No | `~/.aegis` | Session state, audit logs, and runtime metadata storage |
 | `AEGIS_DASHBOARD_URL` | No | `http://localhost:9100/dashboard` | Dashboard URL |
 | `CLAUDE_DATA_DIR` | No | `~/.claude` | Claude Code data directory |
@@ -98,6 +102,29 @@ sudo systemctl enable aegis
 sudo systemctl start aegis
 ```
 
+<<<<<<< HEAD
+=======
+### Docker Auto-Detection
+
+When running inside a Docker container, Aegis automatically detects the
+environment and binds to `0.0.0.0` instead of `127.0.0.1`. This avoids the
+classic issue where Docker port forwarding (`-p 9100:9100`) cannot reach a
+process listening on container-localhost.
+
+Detection checks:
+
+1. `/.dockerenv` file exists (standard Docker indicator)
+2. `/proc/1/cgroup` contains `docker` or `containerd` strings
+
+Setting `AEGIS_HOST` explicitly **always overrides** auto-detection.
+
+| Environment | Default bind address |
+|-------------|---------------------|
+| Bare metal / VM | `127.0.0.1` |
+| Docker (no `AEGIS_HOST`) | `0.0.0.0` |
+| Any + `AEGIS_HOST=x.x.x.x` | `x.x.x.x` |
+
+>>>>>>> docs/changelog-may-7
 ### Docker
 
 ```bash
@@ -112,6 +139,12 @@ docker run -d \
   ghcr.io/onestepat4time/aegis:latest
 ```
 
+<<<<<<< HEAD
+=======
+> **Note:** You no longer need to set `-e AEGIS_HOST=0.0.0.0` — Aegis
+> auto-detects Docker and binds to all interfaces automatically.
+
+>>>>>>> docs/changelog-may-7
 ### Docker Compose
 
 ```yaml

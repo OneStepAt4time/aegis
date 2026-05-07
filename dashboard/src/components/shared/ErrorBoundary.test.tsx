@@ -1,7 +1,11 @@
 /**
  * ErrorBoundary.test.tsx — Vitest tests for the error boundary component.
  *
+<<<<<<< HEAD
  * @see #2829
+=======
+ * @see issue 2829
+>>>>>>> docs/changelog-may-7
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

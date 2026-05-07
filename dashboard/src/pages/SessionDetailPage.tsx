@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+<<<<<<< HEAD
 import type { AuditRecord } from '../types';
+=======
+import type { AuditRecord, ParsedEntry } from '../types';
+>>>>>>> docs/changelog-may-7
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -35,9 +39,18 @@ import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
+<<<<<<< HEAD
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+=======
+import { PRStatusPanel } from '../components/session/PRStatusPanel';
+import { DiffViewer } from '../components/session/DiffViewer';
+import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
+import SaveTemplateModal from '../components/SaveTemplateModal';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { getSessionMessages } from '../api/client';
+>>>>>>> docs/changelog-may-7
 
 interface ScreenshotState {
   image: string;
@@ -45,13 +58,22 @@ interface ScreenshotState {
   capturedAt: number;
 }
 
+<<<<<<< HEAD
 type TabId = 'stream' | 'metrics' | 'audit' | 'timeline';
+=======
+type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'pr' | 'diff';
+>>>>>>> docs/changelog-may-7
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'stream', label: 'Stream' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'audit', label: 'Audit' },
   { id: 'timeline', label: 'Timeline' },
+<<<<<<< HEAD
+=======
+  { id: 'pr', label: 'PR' },
+  { id: 'diff', label: 'Diff' },
+>>>>>>> docs/changelog-may-7
 ];
 
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
@@ -129,6 +151,11 @@ export default function SessionDetailPage() {
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+<<<<<<< HEAD
+=======
+  const [prEntries, setPrEntries] = useState<ParsedEntry[]>([]);
+  const [prLoading, setPrLoading] = useState(false);
+>>>>>>> docs/changelog-may-7
   const desktopMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileMsgInputRef = useRef<HTMLInputElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -231,6 +258,31 @@ export default function SessionDetailPage() {
     return () => { cancelled = true; };
   }, [activeTab, id]);
 
+<<<<<<< HEAD
+=======
+  // Fetch transcript for PR parsing when PR tab is active
+  useEffect(() => {
+    if (activeTab !== 'pr' || !id) return;
+
+    let cancelled = false;
+    setPrLoading(true);
+
+    getSessionMessages(id)
+      .then((data) => {
+        if (cancelled) return;
+        setPrEntries(data.messages);
+      })
+      .catch(() => {
+        if (!cancelled) setPrEntries([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPrLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab, id]);
+
+>>>>>>> docs/changelog-may-7
   if (loading) {
     return (
       <div className="flex flex-col gap-6 p-4 sm:p-6 animate-pulse">
@@ -258,7 +310,11 @@ export default function SessionDetailPage() {
 
   if (notFound || !session || !health) {
     return (
+<<<<<<< HEAD
       <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[#555] overscroll-contain">
+=======
+      <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[var(--color-text-muted)] overscroll-contain">
+>>>>>>> docs/changelog-may-7
         <div className="text-6xl mb-4">404</div>
         <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
       </div>
@@ -445,11 +501,19 @@ export default function SessionDetailPage() {
       ? 'grid gap-2'
       : 'flex flex-wrap items-center gap-2';
     const selectClass = isMobile
+<<<<<<< HEAD
       ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
       : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-200 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
     const buttonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
+=======
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
+    const buttonClass = isMobile
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
+>>>>>>> docs/changelog-may-7
     const accentButtonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-info-bg-dark)] px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-info-bg)] disabled:cursor-not-allowed disabled:opacity-30';
@@ -735,6 +799,49 @@ export default function SessionDetailPage() {
                 </motion.div>
               )}
 
+<<<<<<< HEAD
+=======
+              {activeTab === 'pr' && (
+                <motion.div
+                  key="panel-pr"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-pr"
+                  role="tabpanel"
+                  aria-labelledby="tab-pr"
+                  tabIndex={0}
+                  className="p-4"
+                >
+                  <PRStatusPanel
+                    entries={prEntries}
+                    isLoading={prLoading}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'diff' && (
+                <motion.div
+                  key="panel-diff"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-diff"
+                  role="tabpanel"
+                  aria-labelledby="tab-diff"
+                  tabIndex={0}
+                  className="p-4"
+                >
+                  <DiffViewer
+                    entries={prEntries}
+                    isLoading={prLoading}
+                  />
+                </motion.div>
+              )}
+
+>>>>>>> docs/changelog-may-7
             </AnimatePresence>
           </div>
 
@@ -857,10 +964,17 @@ export default function SessionDetailPage() {
           {screenshot && (
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
+<<<<<<< HEAD
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Latest screenshot
                 </h3>
                 <span className="text-[11px] text-gray-500">
+=======
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  Latest screenshot
+                </h3>
+                <span className="text-[11px] text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                   {new Date(screenshot.capturedAt).toLocaleTimeString()}
                 </span>
               </div>
@@ -869,7 +983,7 @@ export default function SessionDetailPage() {
                 alt="Session screenshot preview"
                 className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] bg-black object-contain"
               />
-              <div className="mt-2 text-[11px] text-gray-500">
+              <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
                 {screenshot.mimeType ?? 'image/png'}
               </div>
             </div>
@@ -904,14 +1018,22 @@ export default function SessionDetailPage() {
               <button
                 type="button"
                 onClick={handleInterrupt}
+<<<<<<< HEAD
                 className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+=======
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+>>>>>>> docs/changelog-may-7
               >
                 Interrupt
               </button>
               <button
                 type="button"
                 onClick={handleEscape}
+<<<<<<< HEAD
                 className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+=======
+                className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+>>>>>>> docs/changelog-may-7
               >
                 Escape
               </button>
@@ -939,7 +1061,11 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Send a message to Claude…"
                 disabled={sending || !h.alive}
+<<<<<<< HEAD
                 className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-gray-200 placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+=======
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+>>>>>>> docs/changelog-may-7
               />
 
               <button
@@ -957,11 +1083,19 @@ export default function SessionDetailPage() {
               <button
                 type="button"
                 onClick={() => setMobileToolsOpen((current) => !current)}
+<<<<<<< HEAD
                 className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-[var(--color-surface-hover)]"
               >
                 {mobileToolsOpen ? 'Hide tools' : 'More tools'}
               </button>
               <span className="text-xs text-gray-500">
+=======
+                className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              >
+                {mobileToolsOpen ? 'Hide tools' : 'More tools'}
+              </button>
+              <span className="text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                 {needsApproval
                   ? 'Approve, reject, escape, and kill stay pinned above.'
                   : 'Quick actions stay within thumb reach.'}

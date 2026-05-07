@@ -1,6 +1,92 @@
+<<<<<<< HEAD
 .git/
 node_modules/
 dashboard/node_modules/
 dist/
 dashboard/dist/
 .tmp*/
+=======
+# Version control
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+dashboard/node_modules/
+
+# Build output
+dist/
+dashboard/dist/
+*.tsbuildinfo
+
+# Temporary files
+.tmp*/
+.tmp/
+
+# Environment / secrets (defense-in-depth)
+.env
+.env.*
+!.env.example
+credentials*.json
+!credentials.example.json
+
+# TLS / credential files (Issue #1106)
+*.pem
+*.key
+*.p12
+*.pfx
+keys.env
+
+# Claude Code / MCP local config
+.claude/
+.claude-internals
+claude-internals
+.mcp.json
+settings.local.json
+*.claude-backup
+
+# Logs and session data
+*.log
+*.jsonl
+session_map.json
+
+# IDE / editor
+.idea/
+.vscode/
+*.swo
+*.swp
+Thumbs.db
+.DS_Store
+
+# Aegis runtime state
+.aegis/
+state.json
+*.pid
+/state/
+
+# Test artifacts
+/.test-scratch/
+playwright-report/
+test-results/
+
+# Local memory / research (not for images)
+memory/
+docs/internal/
+docs/superpowers/
+docs/api/
+docs/*-analysis-20??-??-??.md
+docs/*-report-20??-??-??.md
+*-analysis-20??-??-??.md
+*-report-20??-??-??.md
+.omc/
+competitors/
+_competitors/
+results.tsv
+
+# Worktrees and misc
+.claude/worktrees/
+.worktrees/
+*.tgz
+scripts/dashboard-icons-audit.current.txt
+tracked.txt
+>>>>>>> docs/changelog-may-7

@@ -108,7 +108,11 @@ function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
       <span
         aria-hidden="true"
         className={`relative h-7 w-12 rounded-full transition-colors ${
+<<<<<<< HEAD
           checked ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-zinc-700'
+=======
+          checked ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-[var(--color-void-lighter)]'
+>>>>>>> docs/changelog-may-7
         }`}
       >
         <span

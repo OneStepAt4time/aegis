@@ -10,7 +10,7 @@ const STATUS_STYLES: Record<string, string> = {
   running: 'bg-cyan/10 text-cyan border-cyan/30',
   completed: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30',
   failed: 'bg-red-400/10 text-red-400 border-red-400/30',
-  pending: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
+  pending: 'bg-[var(--color-void-lighter)] text-[var(--color-text-muted)] border-[var(--color-void-lighter)]',
 };
 
 const PULSE_STATUSES = new Set(['running']);
@@ -23,7 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function PipelineStatusBadge({ status }: PipelineStatusBadgeProps) {
-  const styles = STATUS_STYLES[status] ?? 'bg-gray-500/10 text-gray-500 border-gray-500/30';
+  const styles = STATUS_STYLES[status] ?? 'bg-[var(--color-void-lighter)] text-[var(--color-text-muted)] border-[var(--color-void-lighter)]';
   const shouldPulse = PULSE_STATUSES.has(status);
   const label = STATUS_LABELS[status] ?? status;
 

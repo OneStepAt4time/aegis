@@ -100,10 +100,14 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
+<<<<<<< HEAD
           <h2 className="text-sm font-semibold text-gray-100">Save as Template</h2>
+=======
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Save as Template</h2>
+>>>>>>> docs/changelog-may-7
           <button aria-label="Close"
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -118,7 +122,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
           )}
 
           <div>
-            <label htmlFor="template-name" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="template-name" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Template Name *
             </label>
             <input
@@ -127,13 +131,17 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My template name"
+<<<<<<< HEAD
               className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+=======
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+>>>>>>> docs/changelog-may-7
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="template-desc" className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label htmlFor="template-desc" className="block text-xs font-medium text-[var(--color-text-primary)] mb-1.5">
               Description (optional)
             </label>
             <textarea
@@ -142,7 +150,11 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this template for?"
               rows={3}
+<<<<<<< HEAD
               className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+=======
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+>>>>>>> docs/changelog-may-7
               disabled={loading}
             />
           </div>
@@ -152,7 +164,11 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               type="button"
               onClick={handleClose}
               disabled={loading}
+<<<<<<< HEAD
               className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors disabled:opacity-50"
+=======
+              className="flex-1 px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] hover:border-[#333] transition-colors disabled:opacity-50"
+>>>>>>> docs/changelog-may-7
             >
               Cancel
             </button>

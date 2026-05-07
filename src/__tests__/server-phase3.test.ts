@@ -41,6 +41,13 @@ const rateLimiterSpies = {
   pruneAuthFailLimits: vi.fn<() => void>(),
   pruneIpRateLimits: vi.fn<() => void>(),
   dispose: vi.fn<() => void>(),
+<<<<<<< HEAD
+=======
+  // Issue #2810: bucket info methods for rate limit headers
+  getIpBucketInfo: vi.fn<() => { limit: number; remaining: number; reset: number }>(() => ({ limit: 120, remaining: 119, reset: Math.ceil(Date.now() / 1000) + 60 })),
+  getUnauthIpBucketInfo: vi.fn<() => { limit: number; remaining: number; reset: number }>(() => ({ limit: 30, remaining: 29, reset: Math.ceil(Date.now() / 1000) + 60 })),
+  getAuthFailBucketInfo: vi.fn<() => { limit: number; remaining: number; reset: number }>(() => ({ limit: 5, remaining: 4, reset: Math.ceil(Date.now() / 1000) + 60 })),
+>>>>>>> docs/changelog-may-7
 };
 
 vi.mock('../services/auth/RateLimiter.js', () => ({
@@ -52,6 +59,12 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
     pruneAuthFailLimits = rateLimiterSpies.pruneAuthFailLimits;
     pruneIpRateLimits = rateLimiterSpies.pruneIpRateLimits;
     dispose = rateLimiterSpies.dispose;
+<<<<<<< HEAD
+=======
+    getIpBucketInfo = rateLimiterSpies.getIpBucketInfo;
+    getUnauthIpBucketInfo = rateLimiterSpies.getUnauthIpBucketInfo;
+    getAuthFailBucketInfo = rateLimiterSpies.getAuthFailBucketInfo;
+>>>>>>> docs/changelog-may-7
   },
 }));
 

@@ -23,10 +23,17 @@ function MessagePreview({ msg }: { msg: ParsedEntry }) {
   const isUser = msg.role === 'user';
   return (
     <div className={`flex gap-2 py-1 ${isUser ? 'flex-row-reverse' : ''}`}>
+<<<<<<< HEAD
       <span className={`shrink-0 text-xs font-medium w-12 text-right ${isUser ? 'text-cyan-400' : 'text-zinc-500'}`}>
         {isUser ? 'You' : 'CC'}
       </span>
       <div className={`rounded px-2 py-1 text-xs ${isUser ? 'bg-cyan-950/40 text-cyan-200' : 'bg-zinc-800 text-zinc-300'}`}>
+=======
+      <span className={`shrink-0 text-xs font-medium w-12 text-right ${isUser ? 'text-cyan-400' : 'text-[var(--color-text-muted)]'}`}>
+        {isUser ? 'You' : 'CC'}
+      </span>
+      <div className={`rounded px-2 py-1 text-xs ${isUser ? 'bg-cyan-950/40 text-cyan-200' : 'bg-[var(--color-void-light)] text-[var(--color-text-primary)]'}`}>
+>>>>>>> docs/changelog-may-7
         {text}
       </div>
     </div>
@@ -100,41 +107,69 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
   return (
     <div
       ref={cardRef}
+<<<<<<< HEAD
       className="fixed z-50 w-80 rounded-lg border border-zinc-600 bg-[var(--color-surface)] p-3 shadow-xl"
+=======
+      className="fixed z-50 w-80 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 shadow-xl"
+>>>>>>> docs/changelog-may-7
       style={{ top: position.top, left: position.left }}
     >
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusDot status={session.status} />
+<<<<<<< HEAD
           <span className="text-sm font-medium text-gray-200">{session.displayName || session.id}</span>
         </div>
         <button
           onClick={onClose}
           className="text-xs text-zinc-500 hover:text-zinc-300"
+=======
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">{session.displayName || session.id}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+>>>>>>> docs/changelog-may-7
         >
           ✕
         </button>
       </div>
 
       {/* Meta */}
+<<<<<<< HEAD
       <div className="mb-2 flex gap-4 text-xs text-zinc-500">
+=======
+      <div className="mb-2 flex gap-4 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
         <span>{formatTimeAgo(session.createdAt)}</span>
         <span>{session.permissionMode}</span>
       </div>
 
       {/* Messages */}
+<<<<<<< HEAD
       <div className="max-h-48 overflow-y-auto rounded border border-zinc-800 bg-zinc-900/50 p-2">
         {loading ? (
           <div className="py-4 text-center text-xs text-zinc-500">Loading preview…</div>
         ) : messages.length === 0 ? (
           <div className="py-4 text-center text-xs text-zinc-500">No messages yet</div>
+=======
+      <div className="max-h-48 overflow-y-auto rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-2">
+        {loading ? (
+          <div className="py-4 text-center text-xs text-[var(--color-text-muted)]">Loading preview…</div>
+        ) : messages.length === 0 ? (
+          <div className="py-4 text-center text-xs text-[var(--color-text-muted)]">No messages yet</div>
+>>>>>>> docs/changelog-may-7
         ) : (
           messages.map((msg, i) => <MessagePreview key={i} msg={msg} />)
         )}
       </div>
 
+<<<<<<< HEAD
       <div className="mt-2 text-xs text-zinc-600">Hover to keep open · Click to open session</div>
+=======
+      <div className="mt-2 text-xs text-[var(--color-text-muted)]">Hover to keep open · Click to open session</div>
+>>>>>>> docs/changelog-may-7
     </div>
   );
 }

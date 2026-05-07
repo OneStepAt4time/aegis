@@ -50,6 +50,11 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     // Issue #2535: allow callers to declare the model at creation so analytics
     // can group by model before the first hook event arrives.
     model: z.string().max(200).optional(),
+<<<<<<< HEAD
+=======
+    // Issue #2913: per-session custom system prompt (cc-connect parity).
+    systemPrompt: z.string().max(100_000).optional(),
+>>>>>>> docs/changelog-may-7
   }).strict();
 }
 
@@ -318,7 +323,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   // Create session (Issue #607: reuse idle session for same workDir)
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
+<<<<<<< HEAD
     const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model } = data;
+=======
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt } = data;
+>>>>>>> docs/changelog-may-7
     // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
@@ -403,6 +412,10 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           parentSessionId: parentId,
           resumeFromSessionId: resumeSessionId,
           backendMetadata: model ? { model } : undefined,
+<<<<<<< HEAD
+=======
+          systemPrompt,
+>>>>>>> docs/changelog-may-7
         });
       } catch (e) {
         const auditLogger = getAuditLogger();

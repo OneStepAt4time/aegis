@@ -138,13 +138,21 @@ export function NewSessionDrawer() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
               <div>
                 <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">New Session</h2>
+<<<<<<< HEAD
                 <p className="text-xs text-gray-400 mt-0.5">Create a new Aegis agent session</p>
+=======
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Create a new Aegis agent session</p>
+>>>>>>> docs/changelog-may-7
               </div>
               <button
                 type="button"
                 onClick={closeNewSession}
                 aria-label="Close drawer"
+<<<<<<< HEAD
                 className="rounded-lg p-2 text-gray-400 hover:bg-white/5 hover:text-gray-200 transition-colors"
+=======
+                className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)] transition-colors"
+>>>>>>> docs/changelog-may-7
               >
                 <X className="h-4 w-4" />
               </button>
@@ -154,7 +162,11 @@ export function NewSessionDrawer() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6 flex-1">
               {/* Work Directory */}
               <div>
+<<<<<<< HEAD
                 <label htmlFor="drawer-workDir" className="block text-sm font-medium text-gray-300 mb-1.5">
+=======
+                <label htmlFor="drawer-workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+>>>>>>> docs/changelog-may-7
                   Working Directory <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -165,15 +177,26 @@ export function NewSessionDrawer() {
                   onChange={(e) => setWorkDir(e.target.value)}
                   placeholder="/home/user/projects/myapp"
                   required
+<<<<<<< HEAD
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
                 <p className="mt-1 text-xs text-gray-500">Absolute path where the session will run</p>
+=======
+                  className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+                />
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">Absolute path where the session will run</p>
+>>>>>>> docs/changelog-may-7
               </div>
 
               {/* Session Name */}
               <div>
+<<<<<<< HEAD
                 <label htmlFor="drawer-name" className="block text-sm font-medium text-gray-300 mb-1.5">
                   Session Name <span className="text-gray-500">(optional)</span>
+=======
+                <label htmlFor="drawer-name" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+                  Session Name <span className="text-[var(--color-text-muted)]">(optional)</span>
+>>>>>>> docs/changelog-may-7
                 </label>
                 <input
                   id="drawer-name"
@@ -181,14 +204,23 @@ export function NewSessionDrawer() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="my-session"
+<<<<<<< HEAD
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+                  className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
                 />
               </div>
 
               {/* Claude Command */}
               <div>
+<<<<<<< HEAD
                 <label htmlFor="drawer-claudeCommand" className="block text-sm font-medium text-gray-300 mb-1.5">
                   Claude Command <span className="text-gray-500">(optional)</span>
+=======
+                <label htmlFor="drawer-claudeCommand" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+                  Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
+>>>>>>> docs/changelog-may-7
                 </label>
                 <input
                   id="drawer-claudeCommand"
@@ -196,15 +228,26 @@ export function NewSessionDrawer() {
                   value={claudeCommand}
                   onChange={(e) => setClaudeCommand(e.target.value)}
                   placeholder="claude --print"
+<<<<<<< HEAD
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
                 <p className="mt-1 text-xs text-gray-500">Default: claude --print</p>
+=======
+                  className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+                />
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">Default: claude --print</p>
+>>>>>>> docs/changelog-may-7
               </div>
 
               {/* Initial Prompt */}
               <div>
+<<<<<<< HEAD
                 <label htmlFor="drawer-prompt" className="block text-sm font-medium text-gray-300 mb-1.5">
                   Initial Prompt <span className="text-gray-500">(optional)</span>
+=======
+                <label htmlFor="drawer-prompt" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+                  Initial Prompt <span className="text-[var(--color-text-muted)]">(optional)</span>
+>>>>>>> docs/changelog-may-7
                 </label>
                 <textarea
                   id="drawer-prompt"
@@ -212,20 +255,32 @@ export function NewSessionDrawer() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="What do you want to accomplish?"
                   rows={3}
+<<<<<<< HEAD
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
+=======
+                  className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
+>>>>>>> docs/changelog-may-7
                 />
               </div>
 
               {/* Permission Mode */}
               <div>
+<<<<<<< HEAD
                 <label htmlFor="drawer-permissionMode" className="block text-sm font-medium text-gray-300 mb-1.5">
+=======
+                <label htmlFor="drawer-permissionMode" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+>>>>>>> docs/changelog-may-7
                   Permission Mode
                 </label>
                 <select
                   id="drawer-permissionMode"
                   value={permissionMode}
                   onChange={(e) => setPermissionMode(e.target.value)}
+<<<<<<< HEAD
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+                  className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
                 >
                   {PERMISSION_MODES.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
@@ -234,7 +289,11 @@ export function NewSessionDrawer() {
               </div>
 
               {templates.length > 0 && (
+<<<<<<< HEAD
                 <p className="text-xs text-gray-500">
+=======
+                <p className="text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                   {templates.length} template{templates.length !== 1 ? 's' : ''} available — use the Overview page to create from template
                 </p>
               )}
@@ -253,7 +312,11 @@ export function NewSessionDrawer() {
                 <button
                   type="button"
                   onClick={closeNewSession}
+<<<<<<< HEAD
                   className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-gray-300 hover:bg-[var(--color-void-lighter)] transition-colors"
+=======
+                  className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
+>>>>>>> docs/changelog-may-7
                 >
                   Cancel
                 </button>

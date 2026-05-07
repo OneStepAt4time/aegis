@@ -216,7 +216,11 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
           aria-live="polite"
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3"
         >
+<<<<<<< HEAD
           <div className="text-xs text-gray-400">
+=======
+          <div className="text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             {loadError ?? 'Using the latest available home status data.'}
           </div>
           {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
@@ -247,8 +251,13 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
         <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
+<<<<<<< HEAD
               <h3 className="text-lg font-semibold text-gray-100">Create your first session</h3>
               <p className="mt-1 text-sm text-gray-400">
+=======
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Create your first session</h3>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                 Aegis is healthy. Start a Claude Code session in a working directory to unlock live activity and session controls.
               </p>
             </div>

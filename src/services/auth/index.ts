@@ -2,6 +2,10 @@ export { AuthManager, classifyBearerTokenForRoute } from './AuthManager.js';
 export { QuotaManager } from './QuotaManager.js';
 export type { QuotaCheckResult, QuotaUsage } from './QuotaManager.js';
 export { RateLimiter } from './RateLimiter.js';
+<<<<<<< HEAD
+=======
+export type { RateLimitBucketInfo } from './RateLimiter.js';
+>>>>>>> docs/changelog-may-7
 export {
   DASHBOARD_SESSION_COOKIE,
   OIDC_STATE_COOKIE,

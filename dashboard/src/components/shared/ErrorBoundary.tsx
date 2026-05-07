@@ -2,7 +2,11 @@
  * components/shared/ErrorBoundary.tsx — React error boundary with fallback UI.
  *
  * Uses theme-aware colors via dark: variants so the fallback is
+<<<<<<< HEAD
  * legible in both light and dark mode (fixes #2829).
+=======
+ * legible in both light and dark mode (fixes issue 2829).
+>>>>>>> docs/changelog-may-7
  */
 
 import { Component, type ReactNode } from 'react';

@@ -107,7 +107,11 @@ export function PermissionPromptSheet({
         <button
           type="button"
           onClick={onEscape}
+<<<<<<< HEAD
           className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-4 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-[var(--color-surface-hover)]"
+=======
+          className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+>>>>>>> docs/changelog-may-7
         >
           Escape
         </button>

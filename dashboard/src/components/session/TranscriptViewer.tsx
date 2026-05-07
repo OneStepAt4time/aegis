@@ -166,7 +166,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-[#555] text-sm">
+      <div className="flex items-center justify-center h-full text-[var(--color-text-muted)] text-sm">
         <div className="animate-pulse">Loading transcript…</div>
       </div>
     );
@@ -184,7 +184,11 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     <div className="flex flex-col h-full relative">
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
+<<<<<<< HEAD
         <span className="text-[10px] text-[#555] uppercase tracking-wider">Filter:</span>
+=======
+        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Filter:</span>
+>>>>>>> docs/changelog-may-7
         {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
           <button
             key={key}
@@ -193,13 +197,21 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
               filters[key]
                 ? 'border-[var(--color-accent)]/40 text-[var(--color-accent)] bg-[var(--color-accent)]/10'
+<<<<<<< HEAD
                 : 'border-[var(--color-void-lighter)] text-[#555] hover:text-[#888]'
+=======
+                : 'border-[var(--color-void-lighter)] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)]'
+>>>>>>> docs/changelog-may-7
             }`}
           >
             {key === 'tool_use' ? 'Tools' : key === 'tool_result' ? 'Results' : key}
           </button>
         ))}
+<<<<<<< HEAD
         <span className="ml-auto text-[10px] text-[#444]">
+=======
+        <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
           {filteredMessages.length} / {messages.length}
         </span>
       </div>
@@ -211,7 +223,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
         className="flex-1 overflow-y-auto px-4 py-3"
       >
         {filteredMessages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-[#555] text-sm">
+          <div className="flex items-center justify-center h-full text-[var(--color-text-muted)] text-sm">
             No messages yet
           </div>
         )}

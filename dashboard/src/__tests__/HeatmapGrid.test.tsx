@@ -1,22 +1,63 @@
 /**
  * __tests__/HeatmapGrid.test.tsx
+<<<<<<< HEAD
+=======
+ *
+ * Fixed flaky assertions (issue #2848):
+ * - Replaced Math.random() with deterministic seed data
+ * - Scoped all DOM queries to rendered container (not global document)
+ * - Fixed month label test to use fake timer date consistently
+>>>>>>> docs/changelog-may-7
  */
 
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HeatmapGrid, type HeatmapDataPoint } from '../components/analytics/HeatmapGrid';
 
+<<<<<<< HEAD
 /** Generate daily data for the last N days. */
 function generateDailyData(days: number, maxVal: number = 100): HeatmapDataPoint[] {
   const data: HeatmapDataPoint[] = [];
   const now = new Date();
+=======
+/** Generate deterministic daily data for the last N days (no Math.random). */
+function generateDailyData(days: number, startValue: number = 1): HeatmapDataPoint[] {
+  const data: HeatmapDataPoint[] = [];
+  // Use the fake timer's fixed time (2026-04-28)
+  const now = new Date('2026-04-28T12:00:00Z');
+>>>>>>> docs/changelog-may-7
   for (let i = 0; i < days; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split('T')[0] ?? '';
+<<<<<<< HEAD
     data.push({
       date: dateStr,
       value: Math.round(Math.random() * maxVal),
+=======
+    // Deterministic: spread values across the range
+    data.push({
+      date: dateStr,
+      value: startValue + (i * 7) % 100,
+    });
+  }
+  return data;
+}
+
+/** Generate data with guaranteed non-zero values for color tests. */
+function generateColorfulData(days: number): HeatmapDataPoint[] {
+  const data: HeatmapDataPoint[] = [];
+  const now = new Date('2026-04-28T12:00:00Z');
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0] ?? '';
+    // Deterministic spread across intensity levels
+    const levelValues = [0, 10, 50, 75, 100];
+    data.push({
+      date: dateStr,
+      value: levelValues[i % levelValues.length],
+>>>>>>> docs/changelog-may-7
     });
   }
   return data;
@@ -81,7 +122,12 @@ describe('HeatmapGrid', () => {
   });
 
   it('supports different color scales', () => {
+<<<<<<< HEAD
     const data = generateDailyData(14);
+=======
+    // Use deterministic data with guaranteed non-zero values
+    const data = generateColorfulData(14);
+>>>>>>> docs/changelog-may-7
     const { container: cyanContainer } = render(
       <HeatmapGrid data={data} weeks={2} color="cyan" />,
     );
@@ -128,12 +174,17 @@ describe('HeatmapGrid', () => {
     expect(screen.getByText('Less')).toBeTruthy();
     expect(screen.getByText('More')).toBeTruthy();
 
+<<<<<<< HEAD
     // Legend should have 5 color swatches
+=======
+    // Legend should have 5 color swatches — scoped to container
+>>>>>>> docs/changelog-may-7
     const swatches = container.querySelectorAll('.rounded-sm');
     expect(swatches).toHaveLength(5);
   });
 
   it('renders month labels for transitions', () => {
+<<<<<<< HEAD
     // Generate data spanning 2 months
     const data: HeatmapDataPoint[] = [];
     for (let i = 0; i < 60; i++) {
@@ -146,6 +197,22 @@ describe('HeatmapGrid', () => {
     const textElements = document.querySelectorAll('svg text');
     const monthTexts = Array.from(textElements).filter(
       (t) => t.textContent && ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].includes(t.textContent),
+=======
+    // Generate data spanning 2 months using fixed fake-timer date
+    const data: HeatmapDataPoint[] = [];
+    const baseDate = new Date('2026-04-28T12:00:00Z');
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() - i);
+      data.push({ date: d.toISOString().split('T')[0] ?? '', value: 10 });
+    }
+    const { container } = render(<HeatmapGrid data={data} weeks={9} />);
+    // Should have at least 1 month label — scoped to container, not global document
+    const textElements = container.querySelectorAll('svg text');
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthTexts = Array.from(textElements).filter(
+      (t) => t.textContent && MONTH_NAMES.includes(t.textContent),
+>>>>>>> docs/changelog-may-7
     );
     expect(monthTexts.length).toBeGreaterThanOrEqual(1);
   });
@@ -155,14 +222,23 @@ describe('HeatmapGrid', () => {
       { date: '2026-04-28', value: 99 },
       { date: '2026-04-27', value: 0 },
     ];
+<<<<<<< HEAD
     render(<HeatmapGrid data={data} weeks={1} />);
+=======
+    const { container } = render(<HeatmapGrid data={data} weeks={1} />);
+>>>>>>> docs/changelog-may-7
 
     const cell = screen.getByRole('gridcell', { name: /2026-04-28/ });
     fireEvent.mouseEnter(cell);
 
+<<<<<<< HEAD
     // Tooltip should appear as SVG text
     const svg = screen.getByRole('img');
     const tooltipGroup = svg.querySelector('g[pointer-events="none"]');
+=======
+    // Tooltip should appear as SVG text — scoped to container
+    const tooltipGroup = container.querySelector('g[pointer-events="none"]');
+>>>>>>> docs/changelog-may-7
     expect(tooltipGroup).toBeTruthy();
   });
 
@@ -170,15 +246,24 @@ describe('HeatmapGrid', () => {
     const data: HeatmapDataPoint[] = [
       { date: '2026-04-28', value: 50 },
     ];
+<<<<<<< HEAD
     render(<HeatmapGrid data={data} weeks={1} />);
+=======
+    const { container } = render(<HeatmapGrid data={data} weeks={1} />);
+>>>>>>> docs/changelog-may-7
 
     const cell = screen.getByRole('gridcell', { name: /2026-04-28/ });
     fireEvent.mouseEnter(cell);
     fireEvent.mouseLeave(cell);
 
+<<<<<<< HEAD
     // Tooltip group should be gone
     const svg = screen.getByRole('img');
     const tooltipGroup = svg.querySelector('g[pointer-events="none"]');
+=======
+    // Tooltip group should be gone — scoped to container
+    const tooltipGroup = container.querySelector('g[pointer-events="none"]');
+>>>>>>> docs/changelog-may-7
     expect(tooltipGroup).toBeNull();
   });
 

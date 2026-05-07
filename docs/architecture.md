@@ -161,7 +161,11 @@ App.tsx (Router)
 │       ├── Header (theme toggle, user info)
 │       ├── Sidebar (nav: Overview, Sessions, Pipelines, Audit, Users)
 │       └── Outlet (page content)
+<<<<<<< HEAD
 │           ├── OverviewPage
+=======
+│           ├── OverviewPage     # CCMeter-inspired layout: KPI banner, cost/day chart, model distribution, efficiency gauge
+>>>>>>> docs/changelog-may-7
 │           ├── SessionHistoryPage
 │           ├── SessionDetailPage
 │           ├── PipelinesPage
@@ -230,7 +234,11 @@ await client.sessions.send(sessionId, { content: 'refactor the auth module' })
 
 | Page | Route | Features |
 |---|---|---|
+<<<<<<< HEAD
 | Overview | `/dashboard/overview` | Metric cards with sparklines, live session count, health status |
+=======
+| Overview | `/dashboard/overview` | CCMeter-inspired layout: KPI banner (cost, tokens, sessions, error rate), cost/day bar chart, model distribution, efficiency gauge, keyboard shortcuts |
+>>>>>>> docs/changelog-may-7
 | Sessions | `/dashboard/sessions` | Search, date range filter, sortable table, CSV export |
 | Session Detail | `/dashboard/sessions/:id` | Transcript viewer, action buttons, pane/screenshot, breadcrumb |
 | Pipelines | `/dashboard/pipelines` | Pipeline list, status, create modal |
@@ -346,7 +354,11 @@ Backend selection via environment:
 | `sse-writer.ts` | Streams SSE events to HTTP clients |
 | `sse-limiter.ts` | Rate-limits SSE connections per client |
 | `ws-terminal.ts` | Relays terminal output over WebSocket using real-time PTY streaming |
+<<<<<<< HEAD
 | `tracing.ts` | OpenTelemetry tracing — spans for HTTP routes, session create/kill, ACP operations, channel delivery |
+=======
+| `tracing.ts` | OpenTelemetry tracing — spans for HTTP routes, session lifecycle, tool invocations, ACP operations, channel delivery |
+>>>>>>> docs/changelog-may-7
 
 #### OpenTelemetry Tracing
 
@@ -354,9 +366,18 @@ Aegis emits distributed traces via OTLP HTTP when enabled (`AEGIS_OTEL_ENABLED=t
 
 - **HTTP routes** — auto-instrumented via `@opentelemetry/instrumentation-fastify`
 - **Session lifecycle** — `session.create`, `session.kill` spans with `acp.spawn`/`acp.terminate` sub-spans
+<<<<<<< HEAD
 - **Channel delivery** — `channel.deliver` spans in `ChannelManager.fanOut()`
 - **Log correlation** — structured logs include `trace_id` and `span_id` when tracing is active
 
+=======
+- **Tool invocations** — `tool.invoke` spans for every Claude Code tool call, with `toolName`, `toolUseId`, `inputTokens`, `outputTokens` attributes. Covers both CC HTTP hooks (`PreToolUse`/`PostToolUse`) and JSONL transcript polling (`assistant:tool_use`/`assistant:tool_result`).
+- **Channel delivery** — `channel.deliver` spans in `ChannelManager.fanOut()`
+- **Log correlation** — structured logs include `trace_id` and `span_id` when tracing is active
+
+Key helpers: `startToolSpan(operation, attrs)` creates a `tool.*` span; `setToolResult(span, result)` records success/failure and duration before ending.
+
+>>>>>>> docs/changelog-may-7
 See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and quick-start guides.
 
 ### 8. Permissions
@@ -401,7 +422,11 @@ See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and
 | `retry.ts` | Generic retry with exponential backoff |
 | `suppress.ts` | Log suppression for noisy operations |
 | `logger.ts` | Structured logging with trace ID correlation |
+<<<<<<< HEAD
 | `tracing.ts` | OpenTelemetry distributed tracing — spans for HTTP, session lifecycle, ACP, channel delivery |
+=======
+| `tracing.ts` | OpenTelemetry distributed tracing — spans for HTTP, session lifecycle, tool invocations, ACP, channel delivery |
+>>>>>>> docs/changelog-may-7
 | `diagnostics.ts` | Health check and diagnostic data collection |
 | `fault-injection.ts` | Testing helper for simulating failures |
 | `shutdown-utils.ts` | Graceful shutdown coordination |

@@ -119,7 +119,11 @@ export function RingGauge({
           {value}%
         </motion.span>
         {label && (
+<<<<<<< HEAD
           <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider mt-1">
+=======
+          <span className="text-[10px] uppercase font-semibold text-[var(--color-text-muted)] tracking-wider mt-1">
+>>>>>>> docs/changelog-may-7
             {label}
           </span>
         )}

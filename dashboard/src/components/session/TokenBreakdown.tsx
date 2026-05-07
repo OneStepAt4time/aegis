@@ -57,13 +57,17 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
               className="inline-block w-2 h-2 rounded-full"
               style={{ backgroundColor: bar.color }}
             />
-            <span className="text-[#888]">{bar.label}</span>
+            <span className="text-[var(--color-text-muted)]">{bar.label}</span>
             <span className="text-[#ccc] font-mono">{formatTokens(bar.value)}</span>
           </div>
         ))}
         {estimatedCostUsd != null && (
           <div className="flex items-center gap-1.5 ml-auto">
+<<<<<<< HEAD
             <span className="text-[#888]">Cost</span>
+=======
+            <span className="text-[var(--color-text-muted)]">Cost</span>
+>>>>>>> docs/changelog-may-7
             <span className="text-[var(--color-accent-cyan)] font-mono">
               ${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd.toFixed(3)}
             </span>

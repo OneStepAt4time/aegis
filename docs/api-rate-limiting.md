@@ -19,12 +19,22 @@ When a limit is exceeded, the server returns `429 Too Many Requests`.
 
 ## Response Headers
 
+<<<<<<< HEAD
 Every API response includes rate limit headers:
+=======
+Every API response includes rate limit headers — including custom `429`
+responses from authentication middleware (auth failure limits, unauthenticated
+IP limits):
+>>>>>>> docs/changelog-may-7
 
 ```
 X-RateLimit-Limit: 30
 X-RateLimit-Remaining: 27
 X-RateLimit-Reset: 1713782460
+<<<<<<< HEAD
+=======
+Retry-After: 12
+>>>>>>> docs/changelog-may-7
 ```
 
 | Header | Description |
@@ -32,6 +42,14 @@ X-RateLimit-Reset: 1713782460
 | `X-RateLimit-Limit` | Maximum requests allowed in the current window |
 | `X-RateLimit-Remaining` | Requests remaining in the current window |
 | `X-RateLimit-Reset` | Unix timestamp when the window resets |
+<<<<<<< HEAD
+=======
+| `Retry-After` | Seconds until the rate limit window resets |
+
+All `429` responses include these headers — whether from the global
+`@fastify/rate-limit` plugin or from the custom auth-middleware rate limiter
+(e.g., too many failed auth attempts, unauthenticated IP overuse).
+>>>>>>> docs/changelog-may-7
 
 ---
 
@@ -51,9 +69,20 @@ curl -X POST http://localhost:9100/v1/sessions \
 {"error": "Rate limit exceeded. Retry after 12 seconds."}
 ```
 
+<<<<<<< HEAD
 A `Retry-After` header is also included:
 
 ```
+=======
+The response also includes `X-RateLimit-*` and `Retry-After` headers so
+clients can programmatically determine when to retry without parsing the
+error body:
+
+```
+X-RateLimit-Limit: 30
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1746597600
+>>>>>>> docs/changelog-may-7
 Retry-After: 12
 ```
 

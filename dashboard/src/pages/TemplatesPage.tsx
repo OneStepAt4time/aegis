@@ -162,8 +162,13 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
+<<<<<<< HEAD
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Templates</h1>
           <p className="mt-1 text-sm text-gray-500">
+=======
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Templates</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             Create reusable session configurations to standardize agent launches.
           </p>
         </div>
@@ -172,7 +177,11 @@ export default function TemplatesPage() {
             type="button"
             onClick={() => void fetchTemplates(true)}
             disabled={refreshing}
+<<<<<<< HEAD
             className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
+=======
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
+>>>>>>> docs/changelog-may-7
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -190,7 +199,11 @@ export default function TemplatesPage() {
 
       {/* Content */}
       {loading ? (
+<<<<<<< HEAD
         <div className="flex min-h-[240px] items-center justify-center text-sm text-gray-500" role="status" aria-busy="true">
+=======
+        <div className="flex min-h-[240px] items-center justify-center text-sm text-[var(--color-text-muted)]" role="status" aria-busy="true">
+>>>>>>> docs/changelog-may-7
           <div className="animate-pulse">Loading templates…</div>
         </div>
       ) : error ? (
@@ -207,9 +220,15 @@ export default function TemplatesPage() {
         </div>
       ) : templates.length === 0 ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center" role="status">
+<<<<<<< HEAD
           <FileText className="h-8 w-8 text-gray-600" />
           <p className="mt-4 text-sm font-medium text-gray-300">No templates yet</p>
           <p className="mt-1 max-w-md text-sm text-gray-500">
+=======
+          <FileText className="h-8 w-8 text-[var(--color-text-muted)]" />
+          <p className="mt-4 text-sm font-medium text-[var(--color-text-primary)]">No templates yet</p>
+          <p className="mt-1 max-w-md text-sm text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
             Create a template to define reusable session configurations for common workflows.
           </p>
           <button
@@ -231,19 +250,33 @@ export default function TemplatesPage() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+<<<<<<< HEAD
                     <span className="truncate font-medium text-gray-900 dark:text-gray-100">
                       {template.name}
                     </span>
                     {template.permissionMode && template.permissionMode !== 'default' && (
                       <span className="rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-2 py-0.5 font-mono text-[11px] text-gray-500">
+=======
+                    <span className="truncate font-medium text-gray-900 dark:text-[var(--color-text-primary)]">
+                      {template.name}
+                    </span>
+                    {template.permissionMode && template.permissionMode !== 'default' && (
+                      <span className="rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                         {template.permissionMode}
                       </span>
                     )}
                   </div>
                   {template.description && (
+<<<<<<< HEAD
                     <p className="mt-1 text-sm text-gray-400 line-clamp-2">{template.description}</p>
                   )}
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+=======
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)] line-clamp-2">{template.description}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
+>>>>>>> docs/changelog-may-7
                     <span>
                       Created {new Date(template.createdAt).toLocaleDateString()}
                     </span>
@@ -275,7 +308,11 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => handleEdit(template)}
+<<<<<<< HEAD
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+=======
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
@@ -283,7 +320,11 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => void handleDuplicate(template)}
+<<<<<<< HEAD
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+=======
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
                     title="Duplicate template"
                   >
                     <Copy className="h-3.5 w-3.5" />

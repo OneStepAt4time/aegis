@@ -264,6 +264,11 @@ export class AcpBackend {
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
   private readonly participants = new Map<string, AcpBackendParticipantsResult>();
   private readonly driverFences = new Map<string, number>();
+<<<<<<< HEAD
+=======
+  /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
+  private readonly inFlightPrompts = new Map<string, AbortController>();
+>>>>>>> docs/changelog-may-7
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -281,7 +286,11 @@ export class AcpBackend {
 
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
+<<<<<<< HEAD
     return this.startNewRuntime(session, input.cwd, input.mcpServers);
+=======
+    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt);
+>>>>>>> docs/changelog-may-7
   }
 
   async resumeSession(input: AcpBackendResumeSessionInput): Promise<AcpBackendStartResult> {
@@ -528,7 +537,12 @@ export class AcpBackend {
   private async startNewRuntime(
     session: AcpSessionRecord,
     cwd: string,
+<<<<<<< HEAD
     mcpServers: AcpJsonObject | undefined
+=======
+    mcpServers: AcpJsonObject | undefined,
+    systemPrompt?: string
+>>>>>>> docs/changelog-may-7
   ): Promise<AcpBackendStartResult> {
     const backendRunId = this.backendRunIdProvider();
     const runtime = this.createRuntime(session, cwd, backendRunId);
@@ -538,7 +552,11 @@ export class AcpBackend {
       started = true;
       const response = await runtime.client.request<AcpBackendSessionResult>(
         'session/new',
+<<<<<<< HEAD
         this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers)
+=======
+        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers, systemPrompt)
+>>>>>>> docs/changelog-may-7
       );
       const attachment = attachmentFromResult(response.result, backendRunId);
       const attached = await this.sessionService.attachAgentSession(
@@ -683,22 +701,54 @@ export class AcpBackend {
     acpSessionId: string,
     action: AcpActionRecord
   ): Promise<AcpBackendDispatchActionResult> {
+<<<<<<< HEAD
     const text = requireActionMetadataString(action, 'text', 'prompt action metadata.text');
     await this.sessionService.transition(action.sessionId, runtime.scope, { type: 'run_started' });
+=======
+    const sessionId = action.sessionId;
+
+    // Issue #2805: Reject concurrent prompts — CC blocks on background terminals
+    const existing = this.inFlightPrompts.get(sessionId);
+    if (existing) {
+      throw new AcpBackendLifecycleError(
+        `Session ${sessionId} already has a prompt in-flight (action ${action.actionId}). ` +
+        'Claude Code blocks on background terminals — wait for the current prompt to complete or cancel it.'
+      );
+    }
+
+    const abort = new AbortController();
+    this.inFlightPrompts.set(sessionId, abort);
+
+    const text = requireActionMetadataString(action, 'text', 'prompt action metadata.text');
+    await this.sessionService.transition(sessionId, runtime.scope, { type: 'run_started' });
+>>>>>>> docs/changelog-may-7
     try {
       const response = await runtime.client.request<AcpJsonValue>('session/prompt', {
         sessionId: acpSessionId,
         prompt: [{ type: 'text', text }],
       });
+<<<<<<< HEAD
       await this.sessionService.transition(action.sessionId, runtime.scope, {
+=======
+      await this.sessionService.transition(sessionId, runtime.scope, {
+>>>>>>> docs/changelog-may-7
         type: 'run_completed',
       });
       return { resultMetadata: primitiveResultMetadata(response.result) };
     } catch (error) {
+<<<<<<< HEAD
       await this.sessionService.transition(action.sessionId, runtime.scope, {
         type: 'runtime_failed',
       });
       throw error;
+=======
+      await this.sessionService.transition(sessionId, runtime.scope, {
+        type: 'runtime_failed',
+      });
+      throw error;
+    } finally {
+      this.inFlightPrompts.delete(sessionId);
+>>>>>>> docs/changelog-may-7
     }
   }
 
@@ -746,12 +796,24 @@ export class AcpBackend {
     durableSessionId: string,
     backendRunId: string,
     cwd: string,
+<<<<<<< HEAD
     mcpServers: AcpJsonObject | undefined
+=======
+    mcpServers: AcpJsonObject | undefined,
+    systemPrompt?: string
+>>>>>>> docs/changelog-may-7
   ): AcpJsonObject {
     return {
       cwd,
       ...(mcpServers ? { mcpServers } : {}),
+<<<<<<< HEAD
       _meta: this.buildAegisMetadata(durableSessionId, backendRunId),
+=======
+      _meta: {
+        ...this.buildAegisMetadata(durableSessionId, backendRunId),
+        ...(systemPrompt ? { systemPrompt } : {}),
+      },
+>>>>>>> docs/changelog-may-7
     };
   }
 
@@ -787,6 +849,10 @@ export class AcpBackend {
       }
       this.disposeRuntime(runtime);
       this.runtimes.delete(sessionId);
+<<<<<<< HEAD
+=======
+      this.inFlightPrompts.delete(sessionId);
+>>>>>>> docs/changelog-may-7
     }
   }
 

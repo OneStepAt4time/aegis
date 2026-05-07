@@ -50,9 +50,9 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Clock className="h-4 w-4 text-gray-500" />
-        <label className="block text-xs font-medium text-gray-400">
-          Session TTL <span className="text-gray-600">(optional)</span>
+        <Clock className="h-4 w-4 text-[var(--color-text-muted)]" />
+        <label className="block text-xs font-medium text-[var(--color-text-muted)]">
+          Session TTL <span className="text-[var(--color-text-muted)]">(optional)</span>
         </label>
       </div>
 
@@ -66,7 +66,11 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
             className={`py-2 px-2 text-xs rounded transition-colors border ${
               value === preset.seconds
                 ? 'bg-[var(--color-accent-cyan)]/10 border-[var(--color-accent-cyan)] text-[var(--color-accent-cyan)]'
+<<<<<<< HEAD
                 : 'border-[var(--color-void-lighter)] text-gray-400 hover:text-gray-300 hover:border-[var(--color-surface-hover)]'
+=======
+                : 'border-[var(--color-void-lighter)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-surface-hover)]'
+>>>>>>> docs/changelog-may-7
             }`}
           >
             {preset.label}
@@ -82,10 +86,14 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
           onChange={handleCustomChange}
           placeholder="Custom minutes…"
           min="1"
+<<<<<<< HEAD
           className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+=======
+          className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+>>>>>>> docs/changelog-may-7
         />
         {customInput && !isNaN(parseInt(customInput, 10)) && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">
             {formatDuration(parseInt(customInput, 10) * 60)}
           </p>
         )}
@@ -93,7 +101,7 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
 
       {/* Current value display */}
       {value !== undefined && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--color-text-muted)]">
           TTL: {formatDuration(value)}
         </p>
       )}

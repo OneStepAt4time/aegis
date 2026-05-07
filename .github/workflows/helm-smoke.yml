@@ -87,6 +87,10 @@ jobs:
           FROM node:20-bookworm-slim AS build
           WORKDIR /app
           COPY package*.json ./
+<<<<<<< HEAD
+=======
+          COPY scripts/ scripts/
+>>>>>>> docs/changelog-may-7
           RUN npm ci
           COPY . .
           RUN npm run build
@@ -94,6 +98,10 @@ jobs:
           FROM node:20-bookworm-slim
           WORKDIR /app
           COPY package*.json ./
+<<<<<<< HEAD
+=======
+          COPY scripts/ scripts/
+>>>>>>> docs/changelog-may-7
           RUN npm ci --omit=dev \
             && apt-get update \
             && apt-get install -y --no-install-recommends ca-certificates \
