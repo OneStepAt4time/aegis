@@ -51,7 +51,7 @@ export default function OverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("overview.title")}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
+          <p className="mt-1 text-sm text-[var(--color-text-muted)] dark:text-slate-400 flex items-center gap-2">
             {t("overview.subtitle")}
             <LiveStatusIndicator />
             {sseError && (
@@ -74,7 +74,7 @@ export default function OverviewPage() {
 
       {/* Top Sessions */}
       <div>
-        <h3 className="mb-3 text-base font-semibold text-gray-500 dark:text-slate-200 uppercase tracking-wider text-[11px]" id="recent-sessions-heading">
+        <h3 className="mb-3 text-base font-semibold text-[var(--color-text-muted)] dark:text-slate-200 uppercase tracking-wider text-[11px]" id="recent-sessions-heading">
           Recent Sessions
         </h3>
         <div aria-labelledby="recent-sessions-heading"><SessionTable maxRows={5} /></div>

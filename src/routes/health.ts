@@ -194,4 +194,13 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       v1_base: '/v1/',
     });
   });
+
+  // Issue #2814: Version discovery endpoint — unauthenticated, no sensitive data
+  registerWithLegacy(app, 'get', '/v1/version', async (_req: FastifyRequest, reply: FastifyReply) => {
+    const pkg = await import('../../package.json', { with: { type: 'json' } });
+    return reply.header('X-Aegis-Version', pkg.default.version).send({
+      name: '@onestepat4time/aegis',
+      version: pkg.default.version,
+    });
+  });
 }
