@@ -1703,6 +1703,110 @@ curl http://localhost:9100/v1/sessions/abc123/intervention \
 | 404 | No intervention found |
 | 501 | Pause store not configured |
 
+#### Cancel Session
+
+```
+POST /v1/sessions/:id/cancel
+```
+
+Cancels a running ACP session. Sends a cancel signal to the ACP backend.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/cancel \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `force` | boolean | no | Force cancel even if session is busy |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP backend not configured |
+
+#### Approve Permission
+
+```
+POST /v1/sessions/:id/approval/approve
+```
+
+Approves a pending permission prompt (tool execution, file access, etc.).
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/approval/approve \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"approvalId": "perm-123"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `approvalId` | string | **yes** | ID of the pending approval (max 256 chars) |
+| `reason` | string | no | Reason for approval (max 2048 chars) |
+
+**Response:** Approval result from the ACP backend.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP backend not configured |
+
+#### Reject Permission
+
+```
+POST /v1/sessions/:id/approval/reject
+```
+
+Rejects a pending permission prompt.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/approval/reject \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"approvalId": "perm-123", "reason": "Unsafe command"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `approvalId` | string | **yes** | ID of the pending approval (max 256 chars) |
+| `reason` | string | no | Reason for rejection (max 2048 chars) |
+
+**Response:** Rejection result from the ACP backend.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP backend not configured |
+
+#### Get Pending Approvals
+
+```
+GET /v1/sessions/:id/approval/pending
+```
+
+Returns the current pending permission approval, if any.
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/approval/pending \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** `{ "pending": { ... } | null }`
+
 ---
 
 ## 6. Session ACP
@@ -1883,6 +1987,309 @@ curl http://localhost:9100/v1/sessions/abc123/events/schema \
   "fields": { "sessionId": { "type": "string", "description": "..." }, "..." }
 }
 ```
+
+---
+
+### Driver Controls
+
+Manage driver (operator) ownership of ACP sessions. The driver has exclusive send/control access; other connections are observers.
+
+#### Claim Driver
+
+```
+POST /v1/sessions/:id/driver/claim
+```
+
+Claims driver ownership of a session. Only one driver can be active at a time.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/driver/claim \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"holderId": "operator-1", "ttlMs": 3600000}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `holderId` | string | no | Unique holder identifier (max 256 chars). Defaults to the auth key ID. |
+| `ttlMs` | number | no | Claim TTL in milliseconds (max 3,600,000 = 1 hour) |
+
+**Response:** Claim result from the ACP backend.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 409 | Driver already claimed (`DRIVER_CLAIMED`) |
+| 501 | ACP backend not configured |
+
+#### Release Driver
+
+```
+POST /v1/sessions/:id/driver/release
+```
+
+Releases driver ownership, allowing another operator to claim it.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/driver/release \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"holderId": "operator-1"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `holderId` | string | no | Holder to release (max 256 chars). Defaults to the auth key ID. |
+
+**Response:** Release result from the ACP backend.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP backend not configured |
+
+#### Transfer Driver
+
+```
+POST /v1/sessions/:id/driver/transfer
+```
+
+Transfers driver ownership to another subscriber.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/driver/transfer \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"targetSubscriberId": "operator-2", "reason": "Shift change"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `targetSubscriberId` | string | **yes** | Subscriber to transfer to (max 256 chars) |
+| `reason` | string | no | Reason for transfer (max 2048 chars) |
+
+**Response:** Transfer result from the ACP backend.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP backend not configured |
+
+#### Get Participants
+
+```
+GET /v1/sessions/:id/participants
+```
+
+Returns the current driver and observer list for a session.
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/participants \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "driver": { "holderId": "operator-1", "claimedAt": "2026-05-07T00:00:00Z" },
+  "observers": [],
+  "activeCount": 1
+}
+```
+
+When ACP backend is not configured: `{ "driver": null, "observers": [], "activeCount": 0 }`
+
+---
+
+### Terminal REST API
+
+ACP terminal debug endpoints for programmatic terminal access (open, input, resize, reconnect, close).
+These complement the WebSocket terminal streaming documented in the WebSocket section below.
+
+#### Open Terminal
+
+```
+POST /v1/sessions/:id/terminal/open
+```
+
+Opens a new terminal session for an ACP session.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/open \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+**Response:** Terminal open result (contains `terminalId`).
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP terminal extension not supported (`TERMINAL_UNSUPPORTED`) |
+| 503 | ACP runtime not active (`RUNTIME_UNAVAILABLE`) |
+
+#### Send Terminal Input
+
+```
+POST /v1/sessions/:id/terminal/input
+```
+
+Sends raw input data to an open terminal.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/input \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"terminalId": "term-1", "data": "ls -la\n"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `terminalId` | string | **yes** | Terminal session ID |
+| `data` | string | **yes** | Raw input data (max 4096 chars) |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP terminal bridge not configured |
+
+#### Resize Terminal
+
+```
+POST /v1/sessions/:id/terminal/resize
+```
+
+Resizes the terminal viewport.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/resize \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"terminalId": "term-1", "columns": 120, "rows": 40}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `terminalId` | string | **yes** | Terminal session ID |
+| `columns` | number | **yes** | Column count (1–512) |
+| `rows` | number | **yes** | Row count (1–512) |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP terminal bridge not configured |
+
+#### Reconnect Terminal
+
+```
+POST /v1/sessions/:id/terminal/reconnect
+```
+
+Reconnects to an existing terminal session (e.g., after connection drop).
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/reconnect \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"terminalId": "term-1"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `terminalId` | string | **yes** | Terminal session ID to reconnect |
+
+**Response:** Reconnection result with current terminal state.
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP terminal bridge not configured |
+
+#### Close Terminal
+
+```
+POST /v1/sessions/:id/terminal/close
+```
+
+Closes an open terminal session.
+
+| Role | Required |
+|------|----------|
+| admin, operator (send) | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/close \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"terminalId": "term-1"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `terminalId` | string | **yes** | Terminal session ID to close |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 501 | ACP terminal bridge not configured |
 
 ---
 
