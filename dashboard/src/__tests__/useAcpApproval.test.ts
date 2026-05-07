@@ -44,6 +44,8 @@ class MockEventSource {
 // @ts-expect-error — mock
 globalThis.EventSource = MockEventSource;
 
+// Dynamic timestamps — expires 30s from test start so countdown works
+const _now = new Date('2026-05-07T12:00:00Z');
 const SAMPLE_APPROVAL = {
   approvalId: 'appr-1',
   sessionId: 'sess-1',
@@ -118,6 +120,8 @@ describe('useAcpApproval', () => {
   });
 
   it('handles approval_request SSE event', () => {
+    vi.useFakeTimers({ now: new Date('2026-05-07T12:00:00Z') });
+
     const { result } = renderHook(() =>
       useAcpApproval({ sessionId: 'sess-1', autoFetch: false, autoConnect: true }),
     );
@@ -135,6 +139,8 @@ describe('useAcpApproval', () => {
 
     expect(result.current.approval).toEqual(SAMPLE_APPROVAL);
     expect(result.current.isExpired).toBe(false);
+
+    vi.useRealTimers();
   });
 
   it('handles approval_resolved SSE event', () => {
