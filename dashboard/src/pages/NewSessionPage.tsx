@@ -92,21 +92,21 @@ export default function NewSessionPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded hover:bg-[var(--color-void-lighter)] transition-colors text-gray-400 hover:text-gray-200"
+          className="p-2 rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           title="Go back"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">New Session</h1>
-          <p className="mt-1 text-sm text-gray-500">Create a new Aegis session</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">New Session</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Create a new Aegis session</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Work Directory */}
         <div>
-          <label htmlFor="workDir" className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label htmlFor="workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
             Working Directory <span className="text-red-400">*</span>
           </label>
           <input
@@ -116,16 +116,16 @@ export default function NewSessionPage() {
             onChange={(e) => setWorkDir(e.target.value)}
             placeholder="/home/user/projects/myapp"
             required
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
-          <p className="mt-1 text-xs text-gray-500">Absolute path where the session will run</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">Absolute path where the session will run</p>
 
           {/* Recent & Starred Directories */}
           {recent.length > 0 && (
             <div className="mt-3 space-y-2">
               {starred.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1">
+                  <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Starred
                   </p>
@@ -158,7 +158,7 @@ export default function NewSessionPage() {
                 </div>
               )}
               <div>
-                <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1">
+                <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   Recent
                 </p>
@@ -166,7 +166,7 @@ export default function NewSessionPage() {
                   {recent.filter((d) => !d.starred).slice(0, 5).map((dir) => (
                     <div
                       key={dir.path}
-                      className="group relative flex items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:border-gray-400 transition-colors"
+                      className="group relative flex items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-void-lighter)] transition-colors"
                     >
                       <button
                         type="button"
@@ -202,8 +202,8 @@ export default function NewSessionPage() {
 
         {/* Session Name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1.5">
-            Session Name <span className="text-gray-500">(optional)</span>
+          <label htmlFor="name" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            Session Name <span className="text-[var(--color-text-muted)]">(optional)</span>
           </label>
           <input
             id="name"
@@ -211,14 +211,14 @@ export default function NewSessionPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="my-session"
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
         </div>
 
         {/* Claude Command */}
         <div>
-          <label htmlFor="claudeCommand" className="block text-sm font-medium text-gray-300 mb-1.5">
-            Claude Command <span className="text-gray-500">(optional)</span>
+          <label htmlFor="claudeCommand" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
           </label>
           <input
             id="claudeCommand"
@@ -226,15 +226,15 @@ export default function NewSessionPage() {
             value={claudeCommand}
             onChange={(e) => setClaudeCommand(e.target.value)}
             placeholder="claude --print"
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
-          <p className="mt-1 text-xs text-gray-500">Default: claude --print</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">Default: claude --print</p>
         </div>
 
         {/* Initial Prompt */}
         <div>
-          <label htmlFor="prompt" className="block text-sm font-medium text-gray-300 mb-1.5">
-            Initial Prompt <span className="text-gray-500">(optional)</span>
+          <label htmlFor="prompt" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+            Initial Prompt <span className="text-[var(--color-text-muted)]">(optional)</span>
           </label>
           <textarea
             id="prompt"
@@ -242,20 +242,20 @@ export default function NewSessionPage() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="What do you want to accomplish?"
             rows={3}
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
           />
         </div>
 
         {/* Permission Mode */}
         <div>
-          <label htmlFor="permissionMode" className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label htmlFor="permissionMode" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
             Permission Mode
           </label>
           <select
             id="permissionMode"
             value={permissionMode}
             onChange={(e) => setPermissionMode(e.target.value)}
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           >
             {PERMISSION_MODES.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -266,7 +266,7 @@ export default function NewSessionPage() {
         {/* Template Selector */}
         {templates.length > 0 && (
           <div>
-            <p className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
+            <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2 flex items-center gap-1.5">
               <FileText className="h-4 w-4" />
               Start from a template
             </p>
@@ -276,7 +276,7 @@ export default function NewSessionPage() {
                   key={template.id}
                   type="button"
                   onClick={() => applyTemplate(template)}
-                  className="flex items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-gray-300 transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                  className="flex items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                   aria-label={`Apply template ${template.name}`}
                 >
                   <FileText className="h-3.5 w-3.5" />
@@ -284,7 +284,7 @@ export default function NewSessionPage() {
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-xs text-gray-500">Click a template to pre-fill the form fields above.</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">Click a template to pre-fill the form fields above.</p>
           </div>
         )}
 
@@ -301,7 +301,7 @@ export default function NewSessionPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-gray-300 hover:bg-[var(--color-void-lighter)] transition-colors"
+            className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
           >
             Cancel
           </button>

@@ -200,7 +200,7 @@ export default function PipelinesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-sm" role="status" aria-busy="true">
+      <div className="flex items-center justify-center min-h-[50vh] text-[var(--color-text-muted)] text-sm" role="status" aria-busy="true">
         <div className="animate-pulse">{t("pipelines.loading")}</div>
       </div>
     );
@@ -211,8 +211,8 @@ export default function PipelinesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t("pipelines.title")}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t("pipelines.title")}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Manage and monitor session pipelines
           </p>
         </div>
@@ -232,12 +232,12 @@ export default function PipelinesPage() {
           placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         />
         <select aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="all">All</option>
           <option value="running">Running</option>
@@ -248,7 +248,7 @@ export default function PipelinesPage() {
         <select aria-label="Sort by"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
-          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         >
           <option value="createdAt">Date</option>
           <option value="name">Name</option>
@@ -256,7 +256,7 @@ export default function PipelinesPage() {
         </select>
         <button
           onClick={() => setSortAsc(!sortAsc)}
-          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-gray-200 hover:border-[var(--color-accent-cyan)]/50 transition-colors"
+          className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent-cyan)]/50 transition-colors"
           aria-label={sortAsc ? 'Sort ascending' : 'Sort descending'}
           title={sortAsc ? 'Ascending' : 'Descending'}
         >
@@ -313,12 +313,12 @@ export default function PipelinesPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-medium text-gray-200 truncate">
+                  <span className="font-medium text-[var(--color-text-primary)] truncate">
                     {pipeline.name}
                   </span>
                   <PipelineStatusBadge status={pipeline.status} />
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0 ml-4">
+                <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] shrink-0 ml-4">
                   <span>{pipeline.stages.length} step{pipeline.stages.length !== 1 ? 's' : ''}</span>
                   <span>{formatTimeAgo(pipeline.createdAt)}</span>
                 </div>
