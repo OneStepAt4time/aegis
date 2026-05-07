@@ -98,7 +98,10 @@ export default function CostPage() {
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const daysPassed = today.getDate();
   const daysRemaining = daysInMonth - daysPassed;
-  const projectedMonthCost = daysWithData > 0 ? (totalCost / daysWithData) * daysInMonth : 0;
+  // Guard: avoid inflated projections from too few data points (Argus review)
+  const projectedMonthCost = daysWithData >= 3
+    ? (totalCost / daysWithData) * daysInMonth
+    : last7Avg > 0 ? last7Avg * daysInMonth : 0;
 
   // Loading state
   if (isLoading) {
