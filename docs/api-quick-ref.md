@@ -98,7 +98,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/sessions/{id}/tools` | Bearer | Per-session tool usage counts |
 | `POST` | `/v1/sessions/{id}/screenshot` | Bearer | Capture screenshot (Playwright) |
 | `POST` | `/v1/sessions/{id}/verify` | Bearer | Run verification protocol |
-| `GET` | `/v1/sessions/{id}/events` | Bearer | Per-session SSE event stream |
+| `GET` | `/v1/sessions/{id}/events` | SSE Token | Per-session SSE event stream |
 
 ## Permissions
 
@@ -137,7 +137,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/auth/keys` | Bearer | List API keys |
 | `DELETE` | `/v1/auth/keys/{id}` | Bearer | Revoke API key |
 | `POST` | `/v1/auth/keys/{id}/rotate` | Bearer | Rotate API key |
-| `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token |
+| `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token (required for SSE endpoints) |
 | `POST` | `/v1/keys` | Bearer | Create API key (alias) |
 | `GET` | `/v1/keys` | Bearer | List API keys (alias) |
 | `DELETE` | `/v1/keys/{id}` | Bearer | Revoke API key (alias) |
@@ -187,7 +187,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
-| `GET` | `/v1/events` | Bearer | Global SSE event stream (all sessions) |
+| `GET` | `/v1/events` | SSE Token | Global SSE event stream (all sessions) |
 
 ---
 
