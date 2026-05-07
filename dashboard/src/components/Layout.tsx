@@ -423,7 +423,7 @@ export default function Layout() {
               onClick={closeMobile}
               tabIndex={hiddenMobileSidebarControlTabIndex}
               disabled={isMobileSidebarHidden}
-              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200"
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
               aria-label="Close menu"
               aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
             >
@@ -451,7 +451,7 @@ export default function Layout() {
                     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                       isActive
                         ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
                     } ${isCollapsed ? 'justify-center' : ''}`
                   }
                   title={isCollapsed ? label : undefined}
@@ -468,8 +468,8 @@ export default function Layout() {
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
           {identityLabel && identityDetailLabel && !isCollapsed && (
             <div className="px-3 py-2" aria-label="Signed in user">
-              <p className="truncate text-xs font-medium text-slate-700 dark:text-gray-200">{identityLabel}</p>
-              <p className="truncate text-[11px] text-slate-500 dark:text-gray-500">
+              <p className="truncate text-xs font-medium text-slate-700 dark:text-[var(--color-text-primary)]">{identityLabel}</p>
+              <p className="truncate text-[11px] text-slate-500 dark:text-[var(--color-text-muted)]">
                 {identityDetailLabel}
               </p>
             </div>
@@ -484,7 +484,7 @@ export default function Layout() {
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                 isActive
                   ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
               } ${isCollapsed ? 'justify-center' : ''}`
             }
             title={isCollapsed ? 'Settings' : undefined}
@@ -497,7 +497,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full"
+            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -514,7 +514,7 @@ export default function Layout() {
             type="button"
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -535,7 +535,7 @@ export default function Layout() {
                 onClick={toggleMobile}
                 tabIndex={isMobileDrawerOpen ? -1 : undefined}
                 aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
-                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -557,7 +557,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label="New Session (⌘N)"
                 title="New Session (⌘N)"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-void-lighter dark:hover:text-gray-200 transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -574,11 +574,11 @@ export default function Layout() {
               </button>
 
               {/* Version + theme toggle */}
-              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-slate-200 bg-white px-1.5 py-1 sm:px-2 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-gray-300">
+              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-slate-200 bg-white px-1.5 py-1 sm:px-2 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-[var(--color-text-primary)]">
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-void-lighter dark:hover:text-zinc-200"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -592,14 +592,14 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-700 dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-zinc-400"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-700 dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
               </button>
 
               {updateResult && (
-                <div className="hidden text-xs text-gray-400 sm:block">
+                <div className="hidden text-xs text-[var(--color-text-muted)] sm:block">
                   {updateResult.updateAvailable ? (
                     <a
                       href={updateResult.releaseUrl}

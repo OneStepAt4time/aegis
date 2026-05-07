@@ -92,18 +92,18 @@ export function ConfirmDialog({
         <div className="p-4 sm:p-5 space-y-4">
           <h2
             id={titleId}
-            className="text-sm font-semibold text-gray-100"
+            className="text-sm font-semibold text-[var(--color-text-primary)]"
           >
             {title}
           </h2>
-          <p className="text-sm text-gray-400">{message}</p>
+          <p className="text-sm text-[var(--color-text-muted)]">{message}</p>
         </div>
 
         <div className="flex gap-2 px-4 sm:px-5 pb-4 sm:pb-5">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-gray-300 hover:text-gray-100 hover:border-[#333] transition-colors"
+            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] hover:border-[#333] transition-colors"
           >
             {cancelLabel}
           </button>
