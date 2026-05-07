@@ -45,7 +45,6 @@ class MockEventSource {
 globalThis.EventSource = MockEventSource;
 
 // Dynamic timestamps — expires 30s from test start so countdown works
-const _now = new Date('2026-05-07T12:00:00Z');
 const SAMPLE_APPROVAL = {
   approvalId: 'appr-1',
   sessionId: 'sess-1',
