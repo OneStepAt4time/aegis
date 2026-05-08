@@ -171,7 +171,7 @@ describe('ACP BYO LLM provider matrix (#2662)', () => {
         model: 'gpt-4.1',
         modelProvider: 'azure-openai',
         providerEnv: {
-          [anthBaseUrlKey]: 'https://my-resource.openai.azure.com/openai/deployments/gpt-4.1',
+          [anthBaseUrlKey]: 'https://example.openai.azure.com/openai/deployments/my-deployment',
           [anthAuthTokenKey]: 'azure-api-key-test',
           [anthDefaultModelKey]: 'gpt-4.1',
           [anthFastModelKey]: 'gpt-4.1-mini',
@@ -184,7 +184,7 @@ describe('ACP BYO LLM provider matrix (#2662)', () => {
       expect(result.modelPassthrough.provider).toBe('azure-openai');
       expect(result.modelPassthrough.model).toBe('gpt-4.1');
       expect(result.modelPassthrough.env).toEqual({
-        [anthBaseUrlKey]: 'https://my-resource.openai.azure.com/openai/deployments/gpt-4.1',
+        [anthBaseUrlKey]: 'https://example.openai.azure.com/openai/deployments/my-deployment',
         [anthAuthTokenKey]: REDACTED_ACP_VALUE,
         [anthDefaultModelKey]: 'gpt-4.1',
         [anthFastModelKey]: 'gpt-4.1-mini',

@@ -54,7 +54,7 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:11434/v1
 
 ### Azure OpenAI
 ```
-ANTHROPIC_BASE_URL=https://<resource>.openai.azure.com/openai/deployments/<deployment>
+ANTHROPIC_BASE_URL=https://example.openai.azure.com/openai/deployments/my-deployment
 ```
 
 ## Usage Example
