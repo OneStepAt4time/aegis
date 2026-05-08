@@ -2,19 +2,18 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { SessionMobileCard } from './SessionMobileCard';
+import type { SessionsPaginationState, SessionRowViewModel } from './sessionTableUtils';
+import { matchesSearch, formatStatusLabel } from './sessionTableUtils';
 import type { MouseEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  Ban,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   FolderOpen,
-  Play,
   Search,
-  XCircle,
   Sparkles,
 } from 'lucide-react';
 import {
@@ -28,12 +27,10 @@ import {
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
-import type { RowHealth, SessionInfo, SessionStatusCounts, SessionStatusFilter } from '../../types';
-import { formatTimeAgo } from '../../utils/format';
+import type { RowHealth, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
 import { SessionPreviewCard } from '../session/SessionPreviewCard';
-import StatusDot from './StatusDot';
 import { VirtualizedSessionList } from './VirtualizedSessionList';
 import type { VirtualizedRowData } from './VirtualizedSessionList';
 
@@ -74,56 +71,7 @@ const STATUS_FILTERS: SessionStatusFilter[] = [
   'unknown',
 ];
 
-interface SessionRowProps {
-  session: SessionInfo;
-  isAlive: boolean;
-  health: import('../../types').SessionHealthState | null;
-  selected: boolean;
-  currentAction: string | null;
-  estimatedCostUsd?: number;
-  isFocused: boolean;
-  onToggleSelect: (id: string, checked: boolean) => void;
-  onApprove: (e: MouseEvent, id: string) => void;
-  onInterrupt: (e: MouseEvent, id: string) => void;
-  onKill: (e: MouseEvent, id: string) => void;
-}
-
-interface SessionsPaginationState {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-interface SessionRowViewModel {
-  session: SessionInfo;
-  isAlive: boolean;
-  health: import('../../types').SessionHealthState | null;
-  selected: boolean;
-  currentAction: string | null;
-  estimatedCostUsd?: number;
-  isFocused: boolean;
-}
-
-const needsApproval = (session: SessionInfo): boolean =>
-  session.status === 'permission_prompt' || session.status === 'bash_approval';
-
-const truncateDir = (dir: string, max = 40): string => {
-  const normalized = dir.replace(/\\/g, '/');
-  const abbreviated = normalized
-    .replace(/^\/home\/[^/]+\//, '~/')
-    .replace(/^[A-Z]:\/Users\/[^/]+\//i, (m) => `${m[0]}:/…/`);
-  if (abbreviated.length <= max) return abbreviated;
-  const segments = abbreviated.split('/');
-  let result = segments[segments.length - 1] || abbreviated;
-  for (let i = segments.length - 2; i >= 0; i--) {
-    const candidate = segments.slice(i).join('/');
-    if (candidate.length > max) break;
-    result = candidate;
-  }
-  if (result.length > max) result = result.slice(-(max - 1));
-  return result.length < abbreviated.length ? `…${result}` : `…${abbreviated.slice(-(max - 1))}`;
-};
+// Types moved to sessionTableUtils.ts
 
 const extractDirKey = (workDir: string): string => {
   const normalized = workDir.replace(/\\/g, '/');
@@ -131,248 +79,7 @@ const extractDirKey = (workDir: string): string => {
   return segments[segments.length - 1] || workDir;
 };
 
-function formatStatusLabel(status: SessionStatusFilter): string {
-  if (status === 'all') return 'All';
-
-  return status
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function matchesSearch(session: SessionInfo, query: string): boolean {
-  if (!query) return true;
-
-  const haystack = `${session.displayName} ${session.id} ${session.workDir}`.toLowerCase();
-  return haystack.includes(query);
-}
-
-function isDisplayedSessionEqual(a: SessionInfo, b: SessionInfo): boolean {
-  return a.id === b.id
-    && a.displayName === b.displayName
-    && a.workDir === b.workDir
-    && a.status === b.status
-    && a.createdAt === b.createdAt
-    && a.lastActivity === b.lastActivity
-    && a.permissionMode === b.permissionMode;
-}
-
-function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowProps): boolean {
-  return isDisplayedSessionEqual(prev.session, next.session)
-    && prev.isAlive === next.isAlive
-    && prev.health === next.health
-    && prev.selected === next.selected
-    && prev.currentAction === next.currentAction;
-}
-
-const SessionMobileCard = memo(function SessionMobileCard({
-  session,
-  isAlive,
-  health,
-  selected,
-  currentAction,
-  estimatedCostUsd,
-  isFocused,
-  onToggleSelect,
-  onApprove,
-  onInterrupt,
-  onKill,
-}: SessionRowProps) {
-  return (
-    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-cyan-500 ring-1 ring-cyan-500/30' : ''}`}>
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
-          <input
-            type="checkbox"
-            aria-label={`Select session ${session.displayName || session.id}`}
-            checked={selected}
-            onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-            className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
-          />
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <StatusDot status={session.status} health={health} />
-              <Link
-                to={`/sessions/${encodeURIComponent(session.id)}`}
-                className="inline-flex min-h-[44px] items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
-              >
-                {session.displayName || session.id}
-              </Link>
-              {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
-            </div>
-            <div className="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">
-              {truncateDir(session.workDir, 50)}
-            </div>
-          </div>
-        </label>
-
-        <div className="flex shrink-0 items-center gap-1.5">
-          {needsApproval(session) && (
-            <button
-              onClick={(e) => onApprove(e, session.id)}
-              disabled={currentAction === 'approve'}
-              aria-label={`Approve session ${session.displayName || session.id}`}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
-              title="Approve"
-            >
-              <Play className="h-4 w-4" />
-            </button>
-          )}
-          <button
-            onClick={(e) => onInterrupt(e, session.id)}
-            disabled={currentAction === 'interrupt' || currentAction === 'kill'}
-            aria-label={`Interrupt session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
-            title="Interrupt"
-          >
-            <Ban className="h-4 w-4" />
-          </button>
-          <button
-            onClick={(e) => onKill(e, session.id)}
-            disabled={currentAction === 'kill'}
-            aria-label={`Kill session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
-            title="Kill"
-          >
-            <XCircle className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
-        <span>Age: {formatTimeAgo(session.createdAt)}</span>
-        <span>Active: {formatTimeAgo(session.lastActivity)}</span>
-        {estimatedCostUsd != null && estimatedCostUsd > 0 && (
-          <span className="font-mono tabular-nums text-[var(--color-accent-cyan)]">
-            {`$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`}
-          </span>
-        )}
-        {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
-            <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-[var(--color-text-muted)]">
-            default
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}, areSessionRowPropsEqual);
-
-export const SessionDesktopRow = memo(function SessionDesktopRow({
-  session,
-  isAlive,
-  health,
-  selected,
-  currentAction,
-  estimatedCostUsd,
-  isFocused,
-  onToggleSelect,
-  onApprove,
-  onInterrupt,
-  onKill,
-}: SessionRowProps) {
-  return (
-    <tr className={`border-b border-white/5 transition-all duration-300 ease-out animate-bento-reveal ${isFocused ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'}`}>
-      <td className="px-4 py-3">
-        <input
-          type="checkbox"
-          aria-label={`Select session ${session.displayName || session.id}`}
-          checked={selected}
-          onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-          className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
-        />
-      </td>
-
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <StatusDot status={session.status} health={health} />
-          {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
-        </div>
-      </td>
-
-      <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">
-        {session.ownerKeyId ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}` : '\u2014'}
-      </td>
-
-      <td className="px-4 py-3">
-        <Link
-          to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
-        >
-          {session.displayName || session.id}
-        </Link>
-      </td>
-
-      <td className="max-w-[200px] truncate px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
-        {truncateDir(session.workDir)}
-      </td>
-
-      <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-        {formatTimeAgo(session.createdAt)}
-      </td>
-
-      <td className="whitespace-nowrap px-4 py-3 text-[var(--color-text-muted)]">
-        {formatTimeAgo(session.lastActivity)}
-      </td>
-
-      <td className="px-4 py-3">
-        {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
-            <CheckCircle2 className="h-3 w-3" />
-            {session.permissionMode}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
-            default
-          </span>
-        )}
-      </td>
-
-      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-[var(--color-accent-cyan)]">
-        {estimatedCostUsd != null && estimatedCostUsd > 0
-          ? `$${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd < 1 ? estimatedCostUsd.toFixed(3) : estimatedCostUsd.toFixed(2)}`
-          : '\u2014'}
-      </td>
-
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          {needsApproval(session) && (
-            <button
-              onClick={(e) => onApprove(e, session.id)}
-              disabled={currentAction === 'approve'}
-              aria-label={`Approve session ${session.displayName || session.id}`}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
-              title="Approve"
-            >
-              <Play className="h-3 w-3" />
-            </button>
-          )}
-          <button
-            onClick={(e) => onInterrupt(e, session.id)}
-            disabled={currentAction === 'interrupt' || currentAction === 'kill'}
-            aria-label={`Interrupt session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 text-xs font-medium text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
-            title="Interrupt"
-          >
-            <Ban className="h-3 w-3" />
-          </button>
-          <button
-            onClick={(e) => onKill(e, session.id)}
-            disabled={currentAction === 'kill'}
-            aria-label={`Kill session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
-            title="Kill"
-          >
-            <XCircle className="h-3 w-3" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}, areSessionRowPropsEqual);
+// Utilities moved to sessionTableUtils.ts
 
 interface SessionTableProps {
   maxRows?: number;
@@ -989,7 +696,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                           health={row.health}
                           selected={row.selected}
                           currentAction={row.currentAction}
-                          estimatedCostUsd={row.estimatedCostUsd}
+                          estimatedCostUsd={row.estimatedCostUsd ?? 0}
                           isFocused={row.isFocused}
                           onToggleSelect={handleToggleSelect}
                           onApprove={handleApprove}
@@ -1008,7 +715,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     health={row.health}
                     selected={row.selected}
                     currentAction={row.currentAction}
-                    estimatedCostUsd={row.estimatedCostUsd}
+                    estimatedCostUsd={row.estimatedCostUsd ?? 0}
                     isFocused={row.isFocused}
                     onToggleSelect={handleToggleSelect}
                     onApprove={handleApprove}
