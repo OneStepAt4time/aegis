@@ -393,7 +393,7 @@ export default function SessionHistoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Session History</h2>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Session History</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">Merged audit and live session lifecycle records</p>
         </div>
         <div className="flex items-center gap-2">
