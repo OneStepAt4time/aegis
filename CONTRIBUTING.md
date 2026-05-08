@@ -19,6 +19,24 @@ team/early-enterprise follow-through and Phase 3.5 ACP backend migration. Phase
 [.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md)
 and its linked GitHub issue.
 
+### Phase Activation Rules
+
+Aegis uses a label-driven gating system to control which issues are actionable:
+
+| Label | Meaning |
+|-------|----------|
+| `phase-3` | Current active phase — issues can be picked up immediately |
+| `phase-3.5` | ACP backend migration — issues must reference the epic |
+| `phase-4` | Enterprise GA — **NOT ACTIVE** until Ema explicitly activates it |
+| `ready` | Triaged and available for work |
+| `needs-human` | Blocked — requires maintainer decision or Ema approval |
+| `blocked-by-graduation` | Technically ready, but blocked by phase/release policy |
+
+**Critical rules for Phase 4:**
+1. Issues labeled `phase-4` + `needs-human` are **pre-activation prep only** — agents may write documentation, create implementation specs, and prepare scaffolding, but must NOT implement features or change code without explicit Ema approval.
+2. Phase 4 activates when Ema removes `needs-human` from Phase 4 issues and adds `ready`. Until then, all Phase 4 work is speculative.
+3. Implementation specs (`impl-spec:` issues) filed during pre-activation are documentation, not work tickets. They become actionable only after activation.
+
 ## Quick Start
 
 1. **Fork** the repo
