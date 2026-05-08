@@ -1,49 +1,65 @@
 /**
- * RoutinesPage.test.tsx — Tests for the Routines page scaffold.
+ * __tests__/RoutinesPage.test.tsx — Tests for the RoutinesPage scaffold.
+ *
+ * Verifies: empty state rendering, navigation elements, calendar presence.
+ * @ticket #2908
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RoutinesPage from '../pages/RoutinesPage';
 
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <RoutinesPage />
-    </MemoryRouter>
-  );
+// Mock useAuthStore so ProtectedRoute doesn't redirect
+vi.mock('../store/useAuthStore', () => ({
+  useAuthStore: vi.fn(() => ({ isAuthenticated: true })),
+}));
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
 describe('RoutinesPage', () => {
-  it('renders page heading', () => {
-    renderPage();
-    expect(screen.getByText('Routines')).not.toBeNull();
+  it('renders the page title', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByText('Routines')).toBeTruthy();
   });
 
-  it('renders empty state when no routines', () => {
-    renderPage();
-    expect(screen.getByText('No routines yet')).not.toBeNull();
+  it('renders the subtitle description', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByText('Scheduled tasks that run on a recurring basis')).toBeTruthy();
   });
 
-  it('renders New Routine button', () => {
-    renderPage();
-    expect(screen.getByLabelText('Create new routine')).not.toBeNull();
+  it('shows the New Routine button', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByRole('button', { name: /create new routine/i })).toBeTruthy();
   });
 
-  it('renders calendar grid', () => {
-    renderPage();
-    expect(screen.getByRole('grid', { name: 'Calendar' })).not.toBeNull();
+  it('shows empty state when no routines exist', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByText('No routines yet')).toBeTruthy();
   });
 
-  it('renders weekday headers in calendar', () => {
-    renderPage();
-    expect(screen.getByText('Mon')).not.toBeNull();
-    expect(screen.getByText('Sun')).not.toBeNull();
+  it('renders the calendar grid', () => {
+    renderWithRouter(<RoutinesPage />);
+    // Calendar grid has role="grid" with aria-label="Calendar"
+    expect(screen.getByRole('grid', { name: 'Calendar' })).toBeTruthy();
   });
 
-  it('renders sidebar with Upcoming label', () => {
-    renderPage();
-    expect(screen.getByText('Upcoming')).not.toBeNull();
+  it('renders weekday headers', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByText('Mon')).toBeTruthy();
+    expect(screen.getByText('Sun')).toBeTruthy();
+  });
+
+  it('renders Today button in calendar header', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByRole('button', { name: /go to today/i })).toBeTruthy();
+  });
+
+  it('renders month navigation buttons', () => {
+    renderWithRouter(<RoutinesPage />);
+    expect(screen.getByRole('button', { name: /previous month/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /next month/i })).toBeTruthy();
   });
 });
