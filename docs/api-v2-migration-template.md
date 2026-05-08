@@ -61,10 +61,10 @@ curl http://localhost:9100/v2/sessions
 Example:
 ```bash
 # v1 — tenantId was optional
-curl -X POST http://localhost:9100/v1/sessions -d '{"workDir": "/tmp"}'
+curl -X POST http://localhost:9100/v1/sessions -d '{"workDir": "/home/user/project"}'
 
 # v2 — tenantId is required
-curl -X POST http://localhost:9100/v2/sessions -d '{"workDir": "/tmp", "tenantId": "acme"}'
+curl -X POST http://localhost:9100/v2/sessions -d '{"workDir": "/home/user/project", "tenantId": "acme"}'
 ```
 -->
 

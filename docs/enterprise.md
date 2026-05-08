@@ -253,7 +253,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 
 | Variable | Default | Description |
 |---|---|---|
-| `AEGIS_ALLOWED_WORKDIRS` | _(home, /tmp, cwd)_ | JSON array of allowed session working directories |
+| `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
 
 #### Hooks
 
