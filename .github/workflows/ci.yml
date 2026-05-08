@@ -83,22 +83,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            sdk-related:
+              - 'openapi.yaml'
+              - 'src/routes/**'
+              - 'src/schemas/**'
+              - 'packages/client/**'
+              - 'packages/python-client/**'
+              - '.github/workflows/ci.yml'
       - uses: actions/setup-node@v6
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         with:
           node-version: '22'
           cache: npm
       - uses: actions/setup-python@v6
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: packages/python-client/pyproject.toml
       - name: Install dependencies
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         run: npm ci
       - name: Check generated OpenAPI contract
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         run: npm run openapi:check
       - name: Check generated TypeScript SDK
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         run: npm run sdk:ts:check
       - name: Check generated Python SDK
+        if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         run: npm run sdk:py:check
   test:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
