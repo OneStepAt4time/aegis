@@ -27,6 +27,7 @@ describe('Metrics and usage data (Issue #40)', () => {
       expect(m.sessions).toEqual({
         total_created: 0, currently_active: 0, completed: 0,
         failed: 0, avg_duration_sec: 0, avg_messages_per_session: 0,
+        infra_failed: 0,
       });
     });
 
