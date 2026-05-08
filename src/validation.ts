@@ -704,7 +704,7 @@ function isUnderOrEqual(childPath: string, parentPath: string): boolean {
  *  2. Resolve to absolute path and resolve symlinks via fs.realpath().
  *  3. Verify the resolved path is under an allowed directory:
  *     - If allowedWorkDirs is configured, use that list.
- *     - Otherwise, use default safe dirs (home, /tmp, cwd).
+ *     - Otherwise, use default safe dirs (home, cwd).
  *  Returns the resolved real path on success, or an error object on failure. */
 export async function validateWorkDir(
   workDir: string,
