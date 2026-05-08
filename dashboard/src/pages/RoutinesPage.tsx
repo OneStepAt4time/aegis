@@ -37,7 +37,44 @@ export default function RoutinesPage() {
     // Phase 2: Open create routine modal
   }, []);
 
-  // Empty state — no routines yet
+  // Calendar + content (shared between empty and populated states)
+  const calendarContent = (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Calendar takes 2 columns */}
+      <div className="lg:col-span-2">
+        <CalendarGrid
+          routines={routines}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
+      </div>
+
+      {/* Sidebar: routines list */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          {selectedDate ? `Routines for selected date` : 'Upcoming'}
+        </h2>
+        {routines.length === 0 ? (
+          <EmptyState
+            icon={<Calendar className="w-8 h-8" />}
+            title="No routines yet"
+            description="Create a routine to schedule recurring tasks on a calendar."
+          />
+        ) : (
+          routines.map((routine) => (
+            <RoutineCard
+              key={routine.id}
+              routine={routine}
+              onTogglePause={handleTogglePause}
+              onTriggerNow={handleTriggerNow}
+              onDelete={handleDelete}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   if (!loading && routines.length === 0) {
     return (
       <div className="p-6 space-y-6">
@@ -57,34 +94,12 @@ export default function RoutinesPage() {
             New Routine
           </button>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Calendar takes 2 columns */}
-          <div className="lg:col-span-2">
-            <CalendarGrid
-              routines={routines}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-            />
-          </div>
-
-          {/* Sidebar: routines list */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-              {selectedDate ? `Routines for selected date` : 'Upcoming'}
-            </h2>
-            <EmptyState
-              icon={<Calendar className="w-8 h-8" />}
-              title="No routines yet"
-              description="Create a routine to schedule recurring tasks on a calendar."
-            />
-          </div>
-        </div>
+        {calendarContent}
       </div>
     );
   }
 
-  // Populated state — routines exist
+  // Populated state
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -103,33 +118,7 @@ export default function RoutinesPage() {
           New Routine
         </button>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <div className="lg:col-span-2">
-          <CalendarGrid
-            routines={routines}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-          />
-        </div>
-
-        {/* Sidebar: routine cards */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            {selectedDate ? 'Routines for selected date' : 'All routines'}
-          </h2>
-          {routines.map((routine) => (
-            <RoutineCard
-              key={routine.id}
-              routine={routine}
-              onTogglePause={handleTogglePause}
-              onTriggerNow={handleTriggerNow}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      </div>
+      {calendarContent}
     </div>
   );
 }
