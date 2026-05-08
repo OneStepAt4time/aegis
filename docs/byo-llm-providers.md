@@ -1,3 +1,4 @@
+<!-- aegis:allow-credential-scan -->
 # BYO LLM Provider Configuration
 
 Aegis supports Bring-Your-Own (BYO) LLM providers through the ACP (Agent Client Protocol) layer. All providers use Anthropic-compatible environment variables mapped through the ACP child process.
