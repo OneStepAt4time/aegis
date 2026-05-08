@@ -80,6 +80,18 @@ jobs:
             \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
             \ PRs require the approved-minor-bump label before CI can pass.');\n"
   sdk-drift:
+    # Only run when files that affect SDK generation change.
+    # Saves CI minutes on unrelated PRs.
+    if: >
+      github.event_name == 'push' || (
+        github.event_name == 'pull_request' && (
+          contains(github.event.pull_request.changed_files, 'openapi.yaml') ||
+          contains(github.event.pull_request.changed_files, 'src/routes/') ||
+          contains(github.event.pull_request.changed_files, 'src/schemas/') ||
+          contains(github.event.pull_request.changed_files, 'packages/client/') ||
+          contains(github.event.pull_request.changed_files, 'packages/python-client/')
+        )
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
