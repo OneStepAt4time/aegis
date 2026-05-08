@@ -60,8 +60,11 @@ describe('CalendarGrid', () => {
     render(<CalendarGrid {...defaultProps} onSelectDate={onSelectDate} />);
     // Click on any day button in current month
     const dayButtons = screen.getAllByRole('button').filter(
-      (btn) => btn.textContent && /^\d+$/.test(btn.textContent.trim()) && !btn.disabled
-    );
+      (btn) => {
+        const el = btn as HTMLButtonElement;
+        return el.textContent != null && /^\d+$/.test(el.textContent.trim()) && !el.disabled;
+      }
+    ) as HTMLButtonElement[];
     if (dayButtons.length > 0) {
       fireEvent.click(dayButtons[0]);
       expect(onSelectDate).toHaveBeenCalledTimes(1);
