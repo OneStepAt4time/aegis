@@ -15,7 +15,7 @@ export default function ActivityPage() {
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Activity</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Live Activity</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)] dark:text-slate-400 flex items-center gap-2">
             {t('activity.subtitle')}
             <LiveStatusIndicator />
@@ -36,7 +36,7 @@ export default function ActivityPage() {
           <div className="hidden xl:flex xl:flex-col xl:relative">
             {/* The glass rail — subtle, runs full height */}
             <div
-              className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-gray-200 dark:border-white/[0.06]"
+              className="sticky top-0 flex flex-col h-[calc(100vh-140px)] pl-6 border-l border-[var(--color-void-lighter)]"
               style={{ background: 'transparent' }}
             >
               <LiveAuditStream maxItems={30} />

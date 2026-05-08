@@ -131,7 +131,7 @@ export default function PipelineDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{pipeline.name}</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pipeline.name}</h1>
           <PipelineStatusBadge status={pipeline.status} />
         </div>
         <div className="text-xs text-[var(--color-text-muted)]">
