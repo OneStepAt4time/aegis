@@ -8,16 +8,23 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
+
+// When installed as a dependency (npm install @onestepat4time/aegis), there is
+// no package-lock.json in the installed location. The checks below are only
+// meaningful in the source/development checkout. Skip entirely for published
+// package installs to avoid false failures in CI dry-run and downstream consumers.
 const lockPath = path.join(root, 'package-lock.json');
+if (!fs.existsSync(lockPath)) {
+  // Not a source checkout — skip integrity checks.
+  console.log('ℹ️  postinstall-verify: skipping (installed package, not source checkout)');
+  process.exit(0);
+}
+
 const integrityPath = path.join(root, 'node_modules', '.package-lock.json');
 
 let errors = 0;
 
 // 1. Check lockfile exists in node_modules (npm install creates this)
-if (!fs.existsSync(lockPath)) {
-  console.error('❌ postinstall-verify: package-lock.json missing');
-  errors++;
-}
 if (!fs.existsSync(integrityPath)) {
   console.error('❌ postinstall-verify: node_modules/.package-lock.json missing — install may be incomplete');
   errors++;
