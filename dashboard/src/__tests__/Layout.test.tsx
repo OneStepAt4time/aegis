@@ -490,10 +490,10 @@ describe('Layout sidebar', () => {
     expect(screen.queryByText('New Session')).toBeNull();
     expect(screen.queryByText('Audit Trail')).toBeNull();
 
-    // Count nav links (10 main in nav: 4 workspace + 5 operations + 1 admin)
+    // Count nav links (11 main in nav: 4 workspace + 6 operations + 1 admin)
     const nav = document.querySelector('nav[aria-label="Main navigation"]');
     const links = nav?.querySelectorAll('a');
-    expect(links?.length).toBe(10);
+    expect(links?.length).toBe(11);
   });
 
   it('Settings nav link is rendered in sidebar footer', () => {
