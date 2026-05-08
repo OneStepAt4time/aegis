@@ -235,9 +235,11 @@ Config file: `~/.aegis/config.json`
   "host": "127.0.0.1",
   "port": 9100,
   "authToken": "your-secret-token",
-  "allowedWorkDirs": ["~/projects", "/tmp"]
+  "allowedWorkDirs": ["~/projects", "~/workspace"]
 }
 ```
+
+> **Security note:** System temp dirs (`/tmp`, `/var/tmp`) are **not** in the default safe directories list. If you need to use a temp directory as a workDir, add it explicitly to `allowedWorkDirs`.
 
 Environment variables override config values. Prefix with `AEGIS_`:
 - `AEGIS_HOST`, `AEGIS_PORT`, `AEGIS_AUTH_TOKEN`, `AEGIS_STATE_DIR`

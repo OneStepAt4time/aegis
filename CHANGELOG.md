@@ -49,6 +49,7 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 
 ### Fixed
 
+- **workDir security hardening** — `/tmp`, `/var/tmp`, and `os.tmpdir()` removed from default safe directories; use `allowedWorkDirs` to re-enable if needed ([#2948](https://github.com/OneStepAt4time/aegis/pull/2948), closes [#2945](https://github.com/OneStepAt4time/aegis/issues/2945))
 - **ACP crash recovery** — implement `session/load` for restoring sessions after ACP process crashes (ACP-065) ([#2744](https://github.com/OneStepAt4time/aegis/pull/2744))
 - **Hardcoded demo data removal** — removed demo sessions from SessionTable ([#2900](https://github.com/OneStepAt4time/aegis/pull/2900))
 - **CI scripts/ in Docker** — include `scripts/` directory in Docker image and npm package for postinstall verification ([#2901](https://github.com/OneStepAt4time/aegis/pull/2901))
