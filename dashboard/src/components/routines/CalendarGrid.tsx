@@ -6,19 +6,35 @@
  */
 
 import { useMemo, useCallback, useState } from 'react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  isSameDay,
-  isToday,
-  addMonths,
-  subMonths,
-} from 'date-fns';
+
+// Native Date utilities — replaces date-fns (#2934)
+function format(d: Date, fmt: string): string {
+  const map: Record<string, string> = {
+    'yyyy': String(d.getFullYear()),
+    'MM': String(d.getMonth() + 1).padStart(2, '0'),
+    'dd': String(d.getDate()).padStart(2, '0'),
+    'MMMM': d.toLocaleString('en', { month: 'long' }),
+    'MMM': d.toLocaleString('en', { month: 'short' }),
+  };
+  return fmt.replace(/yyyy|MMMM|MMM|MM|dd/g, (m) => map[m] ?? m);
+}
+function startOfMonth(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), 1); }
+function endOfMonth(d: Date): Date { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+function startOfWeek(d: Date, opts?: { weekStartsOn?: number }): Date { const start = opts?.weekStartsOn ?? 0; const day = d.getDay(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((day - start + 7) % 7)); }
+function endOfWeek(d: Date, opts?: { weekStartsOn?: number }): Date { const start = opts?.weekStartsOn ?? 0; const day = d.getDay(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + ((start + 6 - day + 7) % 7)); }
+function eachDayOfInterval({ start, end }: { start: Date; end: Date }): Date[] {
+  const days: Date[] = [];
+  const current = new Date(start); current.setHours(0, 0, 0, 0);
+  const last = new Date(end); last.setHours(0, 0, 0, 0);
+  while (current <= last) { days.push(new Date(current)); current.setDate(current.getDate() + 1); }
+  return days;
+}
+function isSameMonth(a: Date, b: Date): boolean { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth(); }
+function isSameDay(a: Date, b: Date): boolean { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+function isToday(d: Date): boolean { return isSameDay(d, new Date()); }
+function addMonths(d: Date, n: number): Date { return new Date(d.getFullYear(), d.getMonth() + n, d.getDate()); }
+function subMonths(d: Date, n: number): Date { return addMonths(d, -n); }
+
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface RoutineSchedule {
