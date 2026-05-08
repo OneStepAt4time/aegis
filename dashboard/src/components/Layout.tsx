@@ -14,6 +14,7 @@ import { NewSessionDrawer } from './NewSessionDrawer';
 import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
   Activity,
+  Calendar,
   AlertTriangle,
   BarChart3,
   ChevronLeft,
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/sessions', label: 'Sessions', icon: Terminal },
       { to: '/templates', label: 'Templates', icon: FileText },
       { to: '/pipelines', label: 'Pipelines', icon: Activity },
+      { to: '/routines', label: 'Routines', icon: Calendar },
     ],
   },
   {

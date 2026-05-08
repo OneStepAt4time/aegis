@@ -28,6 +28,7 @@ const PipelinesPage = lazy(() => import('./pages/PipelinesPage'));
 const PipelineDetailPage = lazy(() => import('./pages/PipelineDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
+const RoutinesPage = lazy(() => import('./pages/RoutinesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -189,6 +190,14 @@ export default function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <PipelineDetailPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/routines"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <RoutinesPage />
                 </Suspense>
               }
             />
