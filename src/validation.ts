@@ -638,11 +638,9 @@ export function extractCCVersion(output: string): string | null {
   const match = output.match(/(\d+\.\d+\.\d+)/);
   return match ? match[1] : null;
 }
-
 /** Default safe base directories used when allowedWorkDirs is not configured.
- *  Prevents sessions from running in system-critical directories.
- *  Includes os.tmpdir() to cover platform-specific temp paths
- *  (e.g. macOS /var/folders/... which differs from /tmp). */
+ *  Prevents sessions from running in system-critical or world-writable directories.
+ *  System temp dirs (/tmp, /var/tmp, os.tmpdir()) are intentionally excluded (see #2945). */
 function getDefaultSafeDirs(): string[] {
   // Issue #2945: system temp dirs (/tmp, /var/tmp, os.tmpdir()) are intentionally
   // excluded — they are world-writable and unsuitable as Claude Code work directories.
