@@ -98,7 +98,7 @@ export default function NewSessionPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">New Session</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">New Session</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">Create a new Aegis session</p>
         </div>
       </div>

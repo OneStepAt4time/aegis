@@ -69,7 +69,7 @@ export default function LoginPage() {
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-blue-500" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">Aegis</h1>
+          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Aegis</h1>
           <p className="text-sm text-[var(--color-text-muted)]">
             {oidcAvailable ? 'Sign in with your identity provider to continue' : 'Enter your API token to continue'}
           </p>
