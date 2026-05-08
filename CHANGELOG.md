@@ -36,6 +36,8 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Docker auto-detection** — binds `0.0.0.0` inside Docker containers, `127.0.0.1` everywhere else; explicit `AEGIS_HOST` always overrides ([#2891](https://github.com/OneStepAt4time/aegis/pull/2891))
 - **Rate limit headers on custom 429s** — `X-RateLimit-*` and `Retry-After` headers on all 429 responses, including custom auth-middleware rejections ([#2891](https://github.com/OneStepAt4time/aegis/pull/2891))
 - **Dashboard Activity page in sidebar** — ActivityPage added to sidebar navigation ([#2893](https://github.com/OneStepAt4time/aegis/pull/2893))
+- **Routines page with calendar view** — new `/routines` route with CalendarGrid (monthly view, day highlights, navigation) and RoutineCard (status badges, cron schedule, quick actions); Phase 1 scaffold ([#2929](https://github.com/OneStepAt4time/aegis/pull/2929))
+- **BYO LLM provider matrix tests** — comprehensive ACP provider tests covering OpenAI, Gemini, Mistral, Groq, and OpenRouter models via `claude-agent-acp` ([#2957](https://github.com/OneStepAt4time/aegis/pull/2957), closes [#2662](https://github.com/OneStepAt4time/aegis/issues/2662))
 
 ### Changed
 
@@ -46,6 +48,8 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **OpenAPI spec consolidated and SDKs regenerated** — single source of truth for all ACP endpoints (ACP-066) ([#2737](https://github.com/OneStepAt4time/aegis/pull/2737))
 - **Health check** — `tmux` field removed from health response; diagnostics updated for ACP ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
 - **WebSocket architecture** — terminal streaming now uses ACP process streams instead of tmux `pipe-pane` ([#2745](https://github.com/OneStepAt4time/aegis/pull/2745))
+- **SessionTable refactored** — split monolithic component (1115 → 822 LOC) into focused modules for better maintainability ([#2950](https://github.com/OneStepAt4time/aegis/pull/2950))
+- **Shared useApiData hook** — extracted common data-fetching pattern from dashboard pages into reusable hook ([#2940](https://github.com/OneStepAt4time/aegis/pull/2940))
 
 ### Fixed
 
@@ -57,6 +61,11 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Helm smoke CI fix** — copy `scripts/` before `npm ci` in build stage ([#2918](https://github.com/OneStepAt4time/aegis/pull/2918))
 - **Attest-build-provenance CI bump** — actions/attest-build-provenance v2 → v4 ([#2894](https://github.com/OneStepAt4time/aegis/pull/2894))
 - **SDK drift fixes** — regenerated TypeScript and Python client SDKs for `systemPrompt` field ([#2920](https://github.com/OneStepAt4time/aegis/pull/2920), [#2924](https://github.com/OneStepAt4time/aegis/pull/2924))
+- **Analytics infra failure tracking** — `infra_failed` failures tracked separately from session failures with `adjustedFailureRate` metric ([#2952](https://github.com/OneStepAt4time/aegis/pull/2952))
+- **AuditPage a11y** — replaced hardcoded colors with CSS variables for dark/light theme compatibility ([#2937](https://github.com/OneStepAt4time/aegis/pull/2937))
+- **SessionHistoryPage heading hierarchy** — corrected `h2` to `h1` for proper document outline ([#2938](https://github.com/OneStepAt4time/aegis/pull/2938))
+- **CI postinstall-verify** — skip verification in published package installs to avoid failures in consumer environments ([#2942](https://github.com/OneStepAt4time/aegis/pull/2942))
+- **Stale docblock** — removed incorrect JSDoc in `validateWorkDir` ([#2949](https://github.com/OneStepAt4time/aegis/pull/2949))
 
 ### Documentation
 
@@ -71,12 +80,16 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **systemPrompt + CI/PR panel docs** — documented per-session system prompt parameter and CI/PR integration panel ([#2923](https://github.com/OneStepAt4time/aegis/pull/2923))
 - **Reserved MCP name docs** — noted `workspace` as reserved in CC 2.1.128+ ([#2847](https://github.com/OneStepAt4time/aegis/pull/2847))
 - **Version endpoint docs** — documented `GET /v1/version` and fixed stale `/pane` references ([#2877](https://github.com/OneStepAt4time/aegis/pull/2877))
+- **Routines page docs** — documented `/routines` route and sidebar entry in dashboard features ([#2943](https://github.com/OneStepAt4time/aegis/pull/2943))
+- **workDir security docs** — documented system temp dir rejection and `allowedWorkDirs` escape hatch ([#2951](https://github.com/OneStepAt4time/aegis/pull/2951))
+- **infra_failed metrics docs** — documented `infra_failed` counter and `adjustedFailureRate` calculation ([#2953](https://github.com/OneStepAt4time/aegis/pull/2953))
 
 ### Dependencies
 
 - Bump `react` and `react-dom` to 19.2.6 ([#2922](https://github.com/OneStepAt4time/aegis/pull/2922))
 - Bump `ip-address` to 10.2.0 and `express-rate-limit` to 8.5.1 ([#2921](https://github.com/OneStepAt4time/aegis/pull/2921))
 - Consolidated dependency bumps + `.gitleaksignore` cleanup ([#2919](https://github.com/OneStepAt4time/aegis/pull/2919))
+- Added `date-fns ^4.1.0` for dashboard date formatting ([#2929](https://github.com/OneStepAt4time/aegis/pull/2929))
 
 ### Internal
 
@@ -88,6 +101,15 @@ These changes are part of the Phase 3.5 ACP backend migration ([#2574](https://g
 - Add ACP pause/intervention persistence — `PostgresAcpPauseInterventionStore` for durable pause, intervention, completion, resume, idempotency, and recovery state; extend `AcpSessionService` with pause/resume/intervention policy reconciliation ([#2686](https://github.com/OneStepAt4time/aegis/pull/2686))
 - Add `AcpChildProcess` supervision boundary — typed child process spawn, startup errors, raw stream forwarding, exit/error events, graceful shutdown with escalation, and BYO/custom model environment passthrough ([#2687](https://github.com/OneStepAt4time/aegis/pull/2687))
 - Add `AcpJsonRpcClient` over ACP child-process stdio — namespaced request IDs, request correlation, timeouts, cancellation, child-exit handling, NDJSON and `Content-Length` framed JSON-RPC parsing ([#2688](https://github.com/OneStepAt4time/aegis/pull/2688))
+
+### Performance
+
+- **Dashboard bundle: formatDate** — eliminated `date-fns` dependency from critical path, reducing `formatDate` bundle from 349 kB → 0.4 kB ([#2944](https://github.com/OneStepAt4time/aegis/pull/2944))
+- **Lazy-loaded session detail tabs** — code-split `SessionDetailPage` tabs to reduce initial load from 141 kB → 85 kB ([#2936](https://github.com/OneStepAt4time/aegis/pull/2936))
+
+### CI
+
+- **Auto-sync SDKs on develop push** — CI workflow automatically regenerates and commits TypeScript/Python SDKs when OpenAPI spec changes ([#2941](https://github.com/OneStepAt4time/aegis/pull/2941))
 - Add ACP event mapper — converts raw ACP JSON-RPC notifications, inbound requests, prompt completions, and error responses into `AcpEventStore`-ready Aegis domain events (message/thinking deltas, tool lifecycle, approval requests, usage updates, turn completion, session info) ([#2689](https://github.com/OneStepAt4time/aegis/pull/2689))
 - Add ACP fs client methods — `fs/read_text_file` and `fs/write_text_file` with workdir boundary enforcement, path traversal protection, and typed error responses; adds `respond()`/`respondWithError()` to `AcpJsonRpcClient` for inbound request replies ([#2690](https://github.com/OneStepAt4time/aegis/pull/2690))
 - Add `list()` and `listSessions()` to `AcpSessionStore` with scope enforcement, optional status filtering, and pagination — implemented across memory, file, and Postgres stores ([#2692](https://github.com/OneStepAt4time/aegis/pull/2692))
