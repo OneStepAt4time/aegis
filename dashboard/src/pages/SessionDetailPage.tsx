@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import type { AuditRecord, ParsedEntry } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,17 +26,31 @@ import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
-import { OperatorTimeline } from '../components/session/OperatorTimeline';
-import { StreamTab } from '../components/session/StreamTab';
-import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
+// import { OperatorTimeline } from '../components/session/OperatorTimeline';
+const OperatorTimeline = lazy(() => import('../components/session/OperatorTimeline').then(m => ({ default: m.OperatorTimeline })));
+// import { StreamTab } from '../components/session/StreamTab';
+const StreamTab = lazy(() => import('../components/session/StreamTab').then(m => ({ default: m.StreamTab })));
+// import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
+const SessionMetricsPanel = lazy(() => import('../components/session/SessionMetricsPanel').then(m => ({ default: m.SessionMetricsPanel })));
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
-import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
+// import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
+const AuditTrailPanel = lazy(() => import('../components/session/AuditTrailPanel').then(m => ({ default: m.AuditTrailPanel })));
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
-import { PRStatusPanel } from '../components/session/PRStatusPanel';
-import { DiffViewer } from '../components/session/DiffViewer';
+// import { PRStatusPanel } from '../components/session/PRStatusPanel';
+const PRStatusPanel = lazy(() => import('../components/session/PRStatusPanel').then(m => ({ default: m.PRStatusPanel })));
+// import { DiffViewer } from '../components/session/DiffViewer';
+const DiffViewer = lazy(() => import('../components/session/DiffViewer').then(m => ({ default: m.DiffViewer })));
+
+function TabLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+    </div>
+  );
+}
 import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
 import SaveTemplateModal from '../components/SaveTemplateModal';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
@@ -689,7 +703,11 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <StreamTab sessionId={s.id} isDriver={isDriver} />
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <StreamTab sessionId={s.id} isDriver={isDriver} />
+
+                  </Suspense>
                 </motion.div>
               )}
 
@@ -706,7 +724,11 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <SessionMetricsPanel sessionId={s.id} />
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <SessionMetricsPanel sessionId={s.id} />
+
+                  </Suspense>
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>
@@ -726,7 +748,11 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
+
+                  </Suspense>
                 </motion.div>
               )}
 
@@ -743,12 +769,16 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <OperatorTimeline
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <OperatorTimeline
                     sessionId={s.id}
                     events={timelineEvents}
                     isLoading={timelineLoading}
                     config={{ relativeTime: true, autoScroll: true }}
                   />
+
+                  </Suspense>
                   {timelineError && (
                     <div className="absolute bottom-2 left-2 right-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
                       {timelineError}
@@ -777,10 +807,14 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="p-4"
                 >
-                  <PRStatusPanel
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <PRStatusPanel
                     entries={prEntries}
                     isLoading={prLoading}
                   />
+
+                  </Suspense>
                 </motion.div>
               )}
 
@@ -797,10 +831,14 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="p-4"
                 >
-                  <DiffViewer
+                  <Suspense fallback={<TabLoadingFallback />}>
+
+                    <DiffViewer
                     entries={prEntries}
                     isLoading={prLoading}
                   />
+
+                  </Suspense>
                 </motion.div>
               )}
 
