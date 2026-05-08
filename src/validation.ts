@@ -644,17 +644,13 @@ export function extractCCVersion(output: string): string | null {
  *  Includes os.tmpdir() to cover platform-specific temp paths
  *  (e.g. macOS /var/folders/... which differs from /tmp). */
 function getDefaultSafeDirs(): string[] {
-  const dirs = [
+  // Issue #2945: system temp dirs (/tmp, /var/tmp, os.tmpdir()) are intentionally
+  // excluded — they are world-writable and unsuitable as Claude Code work directories.
+  // If temp dir access is needed, configure allowedWorkDirs explicitly.
+  return [
     os.homedir(),
-    '/tmp',
-    '/var/tmp',
     process.cwd(),
   ];
-  const osTmp = os.tmpdir();
-  if (!dirs.includes(osTmp)) {
-    dirs.push(osTmp);
-  }
-  return dirs;
 }
 
 /** Returns true when any path segment resolves to "..".

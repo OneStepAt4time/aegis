@@ -34,7 +34,7 @@ async function sameCanonicalPath(a: string, b: string): Promise<boolean> {
   return samePath(leftReal, rightReal);
 }
 
-const tmpBase = path.join(os.tmpdir(), 'aegis-test-435');
+const tmpBase = path.join(process.cwd(), 'aegis-test-435-tmp');
 
 describe('validateWorkDir — Issue #435', () => {
   beforeEach(async () => {
@@ -92,17 +92,21 @@ describe('validateWorkDir — Issue #435', () => {
   // Valid paths that should be accepted
   // -------------------------------------------------------------------------
   describe('accepts legitimate paths', () => {
-    it('accepts an existing tmp subdirectory', async () => {
-      const dir = path.join(tmpBase, 'project');
+    it('accepts a subdirectory of cwd', async () => {
+      const dir = path.join(process.cwd(), 'test-tmp-project-435');
       await fs.mkdir(dir, { recursive: true });
-      const result = await validateWorkDir(dir);
-      expect(typeof result).toBe('string');
-      expect(await sameCanonicalPath(result as string, dir)).toBe(true);
+      try {
+        const result = await validateWorkDir(dir);
+        expect(typeof result).toBe('string');
+        expect(await sameCanonicalPath(result as string, dir)).toBe(true);
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+      }
     });
 
-    it('accepts /tmp itself', async () => {
+    it('rejects /tmp — system temp dir (Issue #2945)', async () => {
       const result = await validateWorkDir('/tmp');
-      expect(typeof result).toBe('string');
+      expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
 
     it('accepts the current working directory', async () => {
@@ -143,7 +147,7 @@ describe('validateWorkDir — Issue #435', () => {
   // -------------------------------------------------------------------------
   describe('rejects non-existent paths', () => {
     it('rejects a path that does not exist', async () => {
-      const result = await validateWorkDir('/tmp/this-path-definitely-does-not-exist-abc123');
+      const result = await validateWorkDir(path.join(os.homedir(), 'this-path-definitely-does-not-exist-abc123'));
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
       if (typeof result === 'object') {
         expect(result.error).toContain('does not exist');
@@ -177,9 +181,9 @@ describe('validateWorkDir — Issue #435', () => {
       expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
 
-    it('accepts /tmp (in default safe dirs)', async () => {
+    it('rejects /tmp — system temp dir (Issue #2945)', async () => {
       const result = await validateWorkDir('/tmp');
-      expect(typeof result).toBe('string');
+      expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
   });
 
@@ -276,10 +280,10 @@ describe('validateWorkDir — Issue #435', () => {
   // Type validation
   // -------------------------------------------------------------------------
   describe('type validation', () => {
-    it('rejects empty allowlist as default (uses safe dirs)', async () => {
-      // Empty array triggers default safe dirs behavior
+    it('rejects /tmp with default safe dirs (Issue #2945)', async () => {
+      // Empty array triggers default safe dirs behavior (homedir + cwd only)
       const result = await validateWorkDir('/tmp');
-      expect(typeof result).toBe('string');
+      expect(isError(result, 'INVALID_WORKDIR')).toBe(true);
     });
   });
 });
