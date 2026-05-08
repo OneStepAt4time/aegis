@@ -5,17 +5,13 @@
  * Uses real API data where available, clean empty states where data is pending backend work.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { Plus, Loader2, BarChart3 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from 'recharts';
+
+const OverviewCostChart = lazy(() =>
+  import('../components/overview/OverviewCostChart').then((m) => ({ default: m.OverviewCostChart }))
+);
+
 import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import SessionTable from '../components/overview/SessionTable';
 import CreateSessionModal from '../components/CreateSessionModal';
@@ -48,29 +44,6 @@ function formatTokenCount(n: number): string {
   return String(n);
 }
 
-/** Chart tooltip matching the CCMeter terminal aesthetic. */
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
-      {payload.map((entry, i) => (
-        <div key={i} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
-            {typeof entry.value === 'number' && entry.name?.toLowerCase().includes('cost')
-              ? formatCurrency(entry.value)
-              : String(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export default function OverviewPage() {
   const t = useT();
@@ -266,24 +239,9 @@ export default function OverviewPage() {
         <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Daily cost chart">
           <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Cost / Day</h3>
           {analytics && analytics.costTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220} minWidth={1} minHeight={1}>
-              <BarChart data={analytics.costTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
-                />
-                <YAxis
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="cost" name="Daily Cost" fill="var(--color-accent-cyan)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<div className="h-[220px] animate-pulse rounded bg-[var(--color-void-lighter)]/20" />}>
+              <OverviewCostChart data={analytics.costTrends} />
+            </Suspense>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-sm text-[var(--color-text-muted)]">
               No cost data available yet

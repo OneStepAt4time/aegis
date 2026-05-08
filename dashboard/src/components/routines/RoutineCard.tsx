@@ -6,7 +6,22 @@
  */
 
 import { Play, Pause, Zap, Trash2, Clock, Repeat } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+// Native relative time helper (replaces date-fns, #2934)
+function formatRelative(date: Date): string {
+  const now = Date.now();
+  const diff = date.getTime() - now;
+  const absDiff = Math.abs(diff);
+  const suffix = diff > 0 ? 'from now' : 'ago';
+
+  const minutes = Math.floor(absDiff / 60_000);
+  const hours = Math.floor(absDiff / 3_600_000);
+  const days = Math.floor(absDiff / 86_400_000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ${suffix}`;
+  if (hours < 24) return `${hours}h ${suffix}`;
+  return `${days}d ${suffix}`;
+}
 import type { RoutineSchedule } from './CalendarGrid';
 
 interface RoutineCardProps {
@@ -27,7 +42,7 @@ export default function RoutineCard({
   const isActive = routine.status === 'active';
   const nextRunLabel = (() => {
     try {
-      return formatDistanceToNow(new Date(routine.nextRunAt), { addSuffix: true });
+      return formatRelative(new Date(routine.nextRunAt));
     } catch {
       return 'N/A';
     }
