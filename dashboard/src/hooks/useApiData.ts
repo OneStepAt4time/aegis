@@ -13,8 +13,6 @@ import { useToastStore } from '../store/useToastStore';
 interface UseApiDataOptions {
   /** Polling interval in ms (default: 10000). Set to 0 to disable. */
   pollingMs?: number;
-  /** SSE-aware: skip polling when SSE is connected (default: false) */
-  _sseAware?: boolean;
   /** Whether to fetch on mount (default: true) */
   fetchOnMount?: boolean;
   /** Custom error message prefix for toasts */
@@ -44,7 +42,6 @@ export function useApiData<T>(
 ): UseApiDataReturn<T> {
   const {
     pollingMs = 10_000,
-    _sseAware = false,
     fetchOnMount = true,
     errorPrefix = 'Failed to fetch data',
     rateLimitCode = 429,
