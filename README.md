@@ -340,6 +340,7 @@ Aegis ships with a built-in dashboard at `http://localhost:9100/dashboard/` — 
 - Session search, filter by date range, CSV export
 - Metric cards with sparkline mini-charts
 - Consistent empty states across all pages
+- Routines page with calendar-style view for scheduled tasks (Phase 1 — UI scaffold)
 - Toast notifications for user feedback
 
 ```bash
