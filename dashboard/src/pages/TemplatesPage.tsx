@@ -171,6 +171,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={() => void fetchTemplates(true)}
+            aria-label="Refresh templates"
             disabled={refreshing}
             className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -180,6 +181,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={handleCreate}
+            aria-label="Create new template"
             className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -200,6 +202,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={() => void fetchTemplates()}
+            aria-label="Retry loading templates"
             className="mt-4 rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/10"
           >
             Retry
@@ -215,6 +218,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={handleCreate}
+            aria-label="Create your first template"
             className="mt-4 flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -262,6 +266,7 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => void handleUseTemplate(template)}
+                    aria-label={`Use template ${template.name}`}
                     disabled={usingId === template.id}
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -275,6 +280,7 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => handleEdit(template)}
+                    aria-label={`Edit template ${template.name}`}
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -283,6 +289,7 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => void handleDuplicate(template)}
+                    aria-label={`Duplicate template ${template.name}`}
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                     title="Duplicate template"
                   >
@@ -292,6 +299,7 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => setDeleteTarget({ id: template.id, name: template.name })}
+                    aria-label={`Delete template ${template.name}`}
                     disabled={deletingId === template.id}
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >

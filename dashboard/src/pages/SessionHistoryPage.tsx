@@ -399,6 +399,7 @@ export default function SessionHistoryPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => { void fetchData(); }}
+            aria-label="Refresh session history"
             disabled={loading}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
@@ -560,6 +561,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => handleExport()}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
+                aria-label="Export selected sessions as CSV"
               >
                 <Icon name="Download" size={12} />
                 Export
@@ -567,6 +569,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setConfirmDeleteOpen(true)}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
+                aria-label="Kill selected sessions"
               >
                 <Trash2 className="h-3 w-3" />
                 Kill
@@ -574,6 +577,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={handleShareLink}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
+                aria-label="Copy shareable link"
               >
                 <Share2 className="h-3 w-3" />
                 Share link
@@ -581,6 +585,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setSelectedIds(new Set())}
                 className="ml-auto flex min-h-[44px] items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                aria-label="Clear selection"
               >
                 <X className="h-3 w-3" />
                 Clear
@@ -727,6 +732,7 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || loading}
+                aria-label="Previous page"
                 className="inline-flex min-h-[44px] items-center gap-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
               >
                 <ChevronLeft className="h-3 w-3" /> Prev
@@ -736,6 +742,7 @@ export default function SessionHistoryPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages || loading}
                 className="inline-flex min-h-[44px] items-center gap-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
+                aria-label="Next page"
               >
                 Next <ChevronRight className="h-3 w-3" />
               </button>
