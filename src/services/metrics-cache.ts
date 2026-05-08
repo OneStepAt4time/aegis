@@ -60,6 +60,7 @@ interface CacheFile {
   totalAutoApprovals: number;
   totalSessionsCreated: number;
   totalSessionsFailed: number;
+  totalSessionsInfraFailed: number;
   savedAt: number;
 }
 
@@ -123,6 +124,7 @@ export class MetricsCache {
   private totalAutoApprovals = 0;
   private totalSessionsCreated = 0;
   private totalSessionsFailed = 0;
+  private totalSessionsInfraFailed = 0;
 
   private dirty = false;
   private unsub: (() => void) | null = null;
@@ -216,11 +218,15 @@ export class MetricsCache {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    const realFailures = this.totalSessionsFailed - this.totalSessionsInfraFailed;
+    const realTotal = this.totalSessionsCreated - this.totalSessionsInfraFailed;
     const errorRates: AnalyticsErrorRates = {
       totalSessions: this.totalSessionsCreated,
       failedSessions: this.totalSessionsFailed,
       failureRate: this.totalSessionsCreated > 0
         ? this.totalSessionsFailed / this.totalSessionsCreated : 0,
+      infraFailures: this.totalSessionsInfraFailed,
+      adjustedFailureRate: realTotal > 0 ? realFailures / realTotal : 0,
       permissionPrompts: this.totalPermissionPrompts,
       approvals: this.totalApprovals,
       autoApprovals: this.totalAutoApprovals,
@@ -268,6 +274,7 @@ export class MetricsCache {
     const global = this.metrics.getGlobalMetrics(activeCount);
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
+    this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
   }
 
   /** Full recomputation from live MetricsCollector + SessionManager. */
@@ -283,6 +290,7 @@ export class MetricsCache {
     this.totalAutoApprovals = 0;
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
+    this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
 
     for (const session of allSessions) {
       this.accumulateSession(session);
@@ -371,6 +379,7 @@ export class MetricsCache {
       totalAutoApprovals: this.totalAutoApprovals,
       totalSessionsCreated: this.totalSessionsCreated,
       totalSessionsFailed: this.totalSessionsFailed,
+      totalSessionsInfraFailed: this.totalSessionsInfraFailed,
       savedAt: Date.now(),
     };
     await this.backend.save(data);

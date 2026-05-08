@@ -40,6 +40,7 @@ export interface GlobalMetrics {
   sessionsCreated: number;
   sessionsCompleted: number;
   sessionsFailed: number;
+  sessionsInfraFailed: number;
   totalMessages: number;
   totalToolCalls: number;
   autoApprovals: number;
@@ -94,6 +95,7 @@ export class MetricsCollector {
     sessionsCreated: 0,
     sessionsCompleted: 0,
     sessionsFailed: 0,
+    sessionsInfraFailed: 0,
     totalMessages: 0,
     totalToolCalls: 0,
     autoApprovals: 0,
@@ -182,6 +184,12 @@ export class MetricsCollector {
   sessionFailed(sessionId: string): void {
     this.global.sessionsFailed++;
     sessionsFailedTotal.inc();
+    this.finalizeSessionDuration(sessionId);
+  }
+
+  /** Mark session as infrastructure failure (CC never started / no messages). Issue #2947. */
+  sessionInfraFailed(sessionId: string): void {
+    this.global.sessionsInfraFailed++;
     this.finalizeSessionDuration(sessionId);
   }
 
@@ -394,6 +402,7 @@ export class MetricsCollector {
         currently_active: activeSessionCount,
         completed: this.global.sessionsCompleted,
         failed: this.global.sessionsFailed,
+        infra_failed: this.global.sessionsInfraFailed,
         avg_duration_sec: avgDuration,
         avg_messages_per_session: avgMessages,
       },

@@ -320,6 +320,7 @@ export const GlobalMetricsSchema: z.ZodType<GlobalMetrics> = z.object({
     failed: z.number(),
     avg_duration_sec: z.number(),
     avg_messages_per_session: z.number(),
+    infra_failed: z.number(),
   }),
   auto_approvals: z.number(),
   webhooks_sent: z.number(),

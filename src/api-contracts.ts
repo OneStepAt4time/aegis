@@ -168,6 +168,7 @@ export interface GlobalMetrics {
     failed: number;
     avg_duration_sec: number;
     avg_messages_per_session: number;
+    infra_failed: number;
   };
   auto_approvals: number;
   webhooks_sent: number;
@@ -396,6 +397,10 @@ export interface AnalyticsErrorRates {
   totalSessions: number;
   failedSessions: number;
   failureRate: number;
+  /** Sessions that failed without any CC activity (infrastructure failure, not code failure). */
+  infraFailures: number;
+  /** Failure rate excluding infrastructure failures (0 messages exchanged). */
+  adjustedFailureRate: number;
   permissionPrompts: number;
   approvals: number;
   autoApprovals: number;
