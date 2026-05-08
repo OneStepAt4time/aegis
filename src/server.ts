@@ -688,6 +688,8 @@ async function reapZombieSessions(): Promise<void> {
     try {
       eventBus.cleanupSession(session.id);
       await sessions.killSession(session.id);
+      // Issue #2947: mark zombie-reaped sessions as infra failures
+      metrics.sessionInfraFailed(session.id);
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       await channels.sessionEnded({
         event: 'session.ended',
