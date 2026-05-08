@@ -275,7 +275,6 @@ export class MetricsCache {
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
     this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
-    this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
   }
 
   /** Full recomputation from live MetricsCollector + SessionManager. */

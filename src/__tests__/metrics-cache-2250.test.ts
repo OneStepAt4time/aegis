@@ -520,7 +520,7 @@ describe('MetricsCache (Issue #2250)', () => {
         totalAutoApprovals: 0,
         totalSessionsCreated: 1,
         totalSessionsFailed: 0,
-          totalSessionsInfraFailed: 0,
+        totalSessionsInfraFailed: 0,
         savedAt: Date.now(),
       };
       await b.save(data);
