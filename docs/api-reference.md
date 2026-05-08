@@ -2376,10 +2376,15 @@ curl http://localhost:9100/v1/analytics/summary \
   "costTrends": [{ "date": "2026-04-22", "cost": 24.50, "sessions": 42 }],
   "topApiKeys": [{ "keyId": "ak_abc123", "keyName": "ci-bot", "sessions": 30, "messages": 500, "estimatedCostUsd": 18.20 }],
   "durationTrends": [{ "date": "2026-04-22", "avgDurationSec": 245, "count": 38 }],
-  "errorRates": { "totalSessions": 500, "failedSessions": 12, "failureRate": 0.024, "permissionPrompts": 85, "approvals": 72, "autoApprovals": 45 },
+  "errorRates": { "totalSessions": 500, "failedSessions": 12, "failureRate": 0.024, "infraFailures": 57, "adjustedFailureRate": 0.028, "permissionPrompts": 85, "approvals": 72, "autoApprovals": 45 },
   "generatedAt": "2026-04-22T12:00:00.000Z"
 }
 ```
+
+| Field | Description |
+|-------|-------------|
+| `errorRates.infraFailures` | Sessions that failed without any CC activity (e.g., tmux downtime, zombie sessions). Not counted in `adjustedFailureRate`. |
+| `errorRates.adjustedFailureRate` | Failure rate excluding infrastructure failures: `(failedSessions - infraFailures) / (totalSessions - infraFailures)`. |
 
 ---
 
@@ -2510,6 +2515,33 @@ curl http://localhost:9100/v1/metrics \
 ```
 
 **Response:** Global metrics object with session counts, token totals, and cost estimates.
+
+```json
+{
+  "uptime": 86400,
+  "sessions": {
+    "total_created": 150,
+    "currently_active": 3,
+    "completed": 120,
+    "failed": 12,
+    "infra_failed": 5,
+    "avg_duration_sec": 245,
+    "avg_messages_per_session": 18.3
+  },
+  "auto_approvals": 45,
+  "webhooks_sent": 200,
+  "webhooks_failed": 1,
+  "screenshots_taken": 0,
+  "pipelines_created": 2,
+  "batches_created": 1,
+  "prompt_delivery": { "sent": 500, "delivered": 498, "failed": 2 },
+  "token_usage": { "totalInputTokens": 5000000, "totalOutputTokens": 1200000, "totalCacheCreationTokens": 800000, "totalCacheReadTokens": 400000, "estimatedCostUsd": 98.50 }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `sessions.infra_failed` | Sessions that failed without any Claude Code activity (infrastructure failure, not code failure). Excluded from `adjustedFailureRate` in analytics. |
 
 ---
 
