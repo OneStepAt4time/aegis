@@ -301,6 +301,10 @@ those arguments as untrusted command surfaces, not benign display strings.
   `repoName`) to narrow formats instead of escaping arbitrary text.
 - Reject `workDir` values containing path traversal segments (`..`) or prompt
   injection markers rather than silently rewriting them.
+- Reject system temp directories (`/tmp`, `/var/tmp`, `os.tmpdir()`) by default;
+  deployers can re-enable specific directories via `allowedWorkDirs` config ([#2948](https://github.com/OneStepAt4time/aegis/pull/2948)).
+- Resolve `allowedWorkDirs` entries via `realpath` so symlink targets are validated
+  consistently.
 
 ### 4. Orchestration
 
@@ -377,7 +381,7 @@ See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and
 |---|---|
 | `memory-bridge.ts` | Scoped memory API — attach notes and context to sessions |
 | `memory-routes.ts` | REST endpoints for memory CRUD (`/v1/memory/*`) |
-| `metrics.ts` | Token usage tracking, cost estimation, and session statistics |
+| `metrics.ts` | Token usage tracking, cost estimation, session statistics, and `infra_failed` counter for infrastructure-level failures (distinct from session failures). Exposes `adjustedFailureRate` metric that excludes infra failures from the session health calculation ([#2952](https://github.com/OneStepAt4time/aegis/pull/2952)) |
 | `screenshot.ts` | Captures URL screenshots via Playwright |
 
 ### 10. Hooks
