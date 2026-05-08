@@ -43,3 +43,16 @@ session ownership, audit attribution, and tenant boundaries.
 Security patches are released through the active preview line. We recommend upgrading to the latest published preview immediately.
 
 Security hotfixes may target `main` directly with maintainer approval, but normal releases follow `develop` → `release/<version>` → `main` → `v*` tag. Public publishing is performed only by the tag-triggered release workflow after its preflight, SBOM, checksum, Sigstore, npm, PyPI, and Helm gates pass.
+
+## Compliance Documentation
+
+For SOC 2 Type II audit preparation, GDPR data mapping, and incident response, see:
+
+- **[`docs/compliance/`](docs/compliance/)** — Compliance documentation hub
+  - [SOC 2 CC Mapping](docs/compliance/soc2-cc-mapping.md) — Trust Services Criteria mapped to Aegis features
+  - [SOC 2 Evidence Checklist](docs/compliance/soc2-evidence-checklist.md) — Audit evidence collection checklist
+  - [Data Retention Policy](docs/compliance/data-retention-policy.md) — Retention schedules and DSAR handling
+  - [DPA Template](docs/compliance/dpa-template.md) — Data Processing Agreement template for enterprise customers
+  - [Incident Response](docs/compliance/incident-response.md) — Security incident response runbook
+- **[`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)** — High-level SOC 2 + GDPR + HIPAA readiness overview
+- **[`docs/SECURITY_QUESTIONNAIRE.md`](docs/SECURITY_QUESTIONNAIRE.md)** — Pre-filled vendor security questionnaire
