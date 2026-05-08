@@ -236,6 +236,7 @@ export default function AuthKeysPage() {
         <button
           type="button"
           onClick={() => void fetchKeys(true)}
+          aria-label="Refresh auth keys"
           disabled={refreshing}
           className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -272,6 +273,7 @@ export default function AuthKeysPage() {
             <button
               type="submit"
               disabled={creating || !name.trim()}
+              aria-label="Create new auth key"
               className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="h-4 w-4" />
@@ -295,6 +297,7 @@ export default function AuthKeysPage() {
                     setSecretVisible(false);
                   }}
                   className="text-xs font-medium text-emerald-200/80 transition-colors hover:text-emerald-200"
+                  aria-label="Dismiss created key"
                 >
                   Dismiss
                 </button>
@@ -324,6 +327,7 @@ export default function AuthKeysPage() {
                   type="button"
                   onClick={() => setSecretVisible((current) => !current)}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                  aria-label="Toggle secret visibility"
                 >
                   {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   {secretVisible ? 'Hide secret' : 'Reveal secret'}
@@ -332,6 +336,7 @@ export default function AuthKeysPage() {
                   type="button"
                   onClick={() => void handleCopySecret()}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                  aria-label="Copy secret to clipboard"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   Copy secret
@@ -392,6 +397,7 @@ export default function AuthKeysPage() {
                       type="button"
                       onClick={() => void handleRevoke(key.id, key.name)}
                       disabled={revokingId === key.id}
+                      aria-label={`Revoke auth key ${key.name}`}
                        className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

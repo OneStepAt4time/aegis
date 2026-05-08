@@ -103,7 +103,7 @@ describe('AuthKeysPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Key Name'), { target: { value: 'ops-primary' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Auth Key' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new auth key' }));
 
     await waitFor(() => {
       expect(mockCreateAuthKey).toHaveBeenCalledWith('ops-primary');
@@ -113,7 +113,7 @@ describe('AuthKeysPage', () => {
       expect(screen.getAllByText('create').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reveal secret' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle secret visibility' }));
 
     expect(screen.getByText('aegis_super_secret_key_1234567890')).toBeDefined();
     expect(mockGetAuthKeys).toHaveBeenCalledTimes(2);
@@ -145,7 +145,7 @@ describe('AuthKeysPage', () => {
       expect(screen.getByText('ops-primary')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+    fireEvent.click(screen.getByRole('button', { name: /Revoke auth key/ }));
 
     // Confirm in the dialog — scope query to the dialog to avoid ambiguity
     await waitFor(() => {
