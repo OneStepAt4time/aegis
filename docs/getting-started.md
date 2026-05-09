@@ -18,8 +18,12 @@ Install once, bootstrap `.aegis/config.yaml`, then start Aegis with the primary 
 ```bash
 npm install -g @onestepat4time/aegis
 ag init
-ag
 ```
+
+> **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and generates a new auth token. Restart the server to apply changes. Use `ag init --force` to skip the confirmation prompt.
+
+```bash
+ag
 
 > The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary.
 
@@ -357,4 +361,4 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
 | `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 ag` |
 | Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
-| No output from `/read` | Wait for transcript entries, or check session events via SSE: `curl http://localhost:9100/v1/sessions/:id/events` |
+| No output from `/read` | Wait for transcript entries, or check session events via SSE (see Section 5 for SSE token setup) |
