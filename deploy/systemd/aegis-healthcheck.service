@@ -1,0 +1,11 @@
+# /etc/systemd/system/aegis-healthcheck.service
+# Runs the Aegis health check script.
+# Triggered by aegis-healthcheck.timer every 60 seconds.
+
+[Unit]
+Description=Aegis health check probe
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/aegis-healthcheck.sh
+EnvironmentFile=-/etc/aegis/aegis.env

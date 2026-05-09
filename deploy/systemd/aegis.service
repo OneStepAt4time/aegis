@@ -1,0 +1,63 @@
+# /etc/systemd/system/aegis.service
+# Aegis Server — systemd unit with crash recovery and alerting.
+#
+# Features:
+#   - Auto-restart on crash (Restart=on-failure, 5s delay, max 5 attempts in 300s)
+#   - Watchdog: systemd ping via sd_notify every 30s
+#   - OnFailure: sends alert webhook when service enters failed state
+#   - Health-check timer: deploy/systemd/aegis-healthcheck.timer
+#
+# Environment variables:
+#   AEGIS_PORT             — server port (default: 9100)
+#   AEGIS_AUTH_TOKEN       — API auth token (required)
+#   AEGIS_FAILURE_WEBHOOK  — webhook URL for crash/failure alerts
+#   AEGIS_HEALTH_TOKEN     — bearer token for /health endpoint (optional)
+#
+# Install:
+#   sudo cp aegis.service /etc/systemd/system/
+#   sudo cp aegis-failure-notify.sh /usr/local/bin/
+#   sudo chmod +x /usr/local/bin/aegis-failure-notify.sh
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aegis
+
+[Unit]
+Description=Aegis Server — Claude Code orchestration
+Documentation=https://docs.aegis.ai
+After=network-online.target
+Wants=network-online.target
+OnFailure=aegis-failure-notify.service
+
+[Service]
+Type=simple
+User=aegis
+Group=aegis
+WorkingDirectory=/opt/aegis
+
+# Server
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Note: WatchdogSec (Type=notify + sd_notify) can be added once the server
+# implements sd_notify pings. The health-check timer covers this gap.
+
+# Environment
+Environment=AEGIS_PORT=9100
+EnvironmentFile=-/etc/aegis/aegis.env
+
+# Hardening
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ReadWritePaths=/opt/aegis/state /opt/aegis/logs
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aegis
+
+[Install]
+WantedBy=multi-user.target

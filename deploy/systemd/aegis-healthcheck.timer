@@ -1,0 +1,19 @@
+# /etc/systemd/system/aegis-healthcheck.timer
+# Periodic health check for Aegis — pings /health every 60 seconds.
+#
+# Install:
+#   sudo cp aegis-healthcheck.timer /etc/systemd/system/
+#   sudo cp aegis-healthcheck.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aegis-healthcheck.timer
+
+[Unit]
+Description=Periodic Aegis health check
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

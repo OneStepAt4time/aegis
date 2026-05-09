@@ -1,0 +1,14 @@
+# /etc/systemd/system/aegis-failure-notify.service
+# Fires the failure notification script when Aegis enters failed state.
+#
+# This is triggered by OnFailure= in aegis.service.
+# Do not enable/start manually — systemd activates it on failure.
+
+[Unit]
+Description=Send Aegis failure alert
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/aegis-failure-notify.sh
+EnvironmentFile=-/etc/aegis/aegis.env
