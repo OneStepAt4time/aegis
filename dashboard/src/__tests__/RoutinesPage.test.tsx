@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../i18n/context';
 import RoutinesPage from '../pages/RoutinesPage';
 
 // Mock useAuthStore so ProtectedRoute doesn't redirect
@@ -16,7 +17,13 @@ vi.mock('../store/useAuthStore', () => ({
 }));
 
 function renderWithRouter(ui: React.ReactElement) {
-  return render(<MemoryRouter>{ui}</MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <I18nProvider>
+        {ui}
+      </I18nProvider>
+    </MemoryRouter>,
+  );
 }
 
 describe('RoutinesPage', () => {
@@ -32,7 +39,7 @@ describe('RoutinesPage', () => {
 
   it('shows the New Routine button', () => {
     renderWithRouter(<RoutinesPage />);
-    expect(screen.getByRole('button', { name: /create new routine/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /new routine/i })).toBeTruthy();
   });
 
   it('shows empty state when no routines exist', () => {
