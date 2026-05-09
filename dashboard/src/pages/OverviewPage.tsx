@@ -22,6 +22,7 @@ import { ModelDistributionBar } from '../components/analytics/ModelDistributionB
 import { EfficiencyGauge } from '../components/analytics/EfficiencyGauge';
 import { useSessionRealtimeUpdates } from '../hooks/useSessionRealtimeUpdates';
 import { useT } from '../i18n/context';
+import { SessionHealthBanner } from '../components/shared/SessionHealthBanner';
 import { useStore } from '../store/useStore';
 import { getAnalyticsSummary } from '../api/client';
 import { formatCurrency, formatNumber } from '../utils/formatNumber';
@@ -180,6 +181,9 @@ export default function OverviewPage() {
           New Session
         </button>
       </div>
+
+      {/* Session Health Alert */}
+      <SessionHealthBanner errorRates={analytics?.errorRates} loading={analyticsLoading} />
 
       {/* Zone A: Heatmap Cards (4-column) — needs daily token breakdown from backend */}
       <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
