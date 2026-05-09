@@ -123,6 +123,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   // Issue #1412: Prometheus metrics scrape endpoint
   // Note: /metrics is a standard Prometheus path, not a v1 API path, so no legacy alias
   app.get('/metrics', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin')) return;
     try {
       const promMetrics = await promRegistry.metrics();
       return reply
@@ -166,7 +167,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #89 L14: Webhook dead letter queue
-  registerWithLegacy(app, 'get', '/v1/webhooks/dead-letter', async (_req: FastifyRequest, _reply: FastifyReply) => {
+  registerWithLegacy(app, 'get', '/v1/webhooks/dead-letter', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin')) return;
     for (const ch of channels.getChannels()) {
       if (ch.name === 'webhook' && typeof ch.getDeadLetterQueue === 'function') {
         return ch.getDeadLetterQueue();
@@ -176,7 +178,8 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #89 L15: Per-channel health reporting
-  registerWithLegacy(app, 'get', '/v1/channels/health', async (_req: FastifyRequest, _reply: FastifyReply) => {
+  registerWithLegacy(app, 'get', '/v1/channels/health', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return channels.getChannels().map(ch => {
       const health = ch.getHealth?.();
       if (health) return health;

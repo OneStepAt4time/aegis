@@ -1,7 +1,7 @@
 # Alerting Recommendations
 
 Recommended alert rules for Aegis deployments. These complement the built-in
-AlertManager (see [alerting.md](./alerting.md)) with metrics-based alerts for
+AlertManager (see [alerting.md](./ALERTING.md)) with metrics-based alerts for
 Prometheus, Datadog, or any observability platform scraping the `/metrics`
 endpoint.
 

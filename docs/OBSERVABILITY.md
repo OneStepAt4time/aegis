@@ -308,7 +308,7 @@ See [ALERTING.md](./ALERTING.md) for recommended alert rules for session count,
 error rates, and cost thresholds.
 
 Aegis includes a built-in AlertManager that fires webhook notifications when
-failure thresholds are exceeded. See [alerting.md](./alerting.md) for the
+failure thresholds are exceeded. See [alerting.md](./ALERTING.md) for the
 built-in alerting configuration.
 
 ### Prometheus Alert Rules
