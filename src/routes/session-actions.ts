@@ -24,6 +24,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   const {
     sessions, auth, quotas, config, metrics, monitor, eventBus, channels,
     toolRegistry, getAuditLogger, validateWorkDir,
+    acpBackend,
   } = ctx;
 
   // Send message (with delivery verification — Issue #1)
@@ -51,7 +52,9 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       }
     }
     try {
-      const result = await sessions.sendMessage(sessionId, text);
+      const result = acpBackend && config.acpEnabled
+        ? await acpBackend.sendPrompt(sessionId, text, { tenantId: (req as any).tenantId ?? 'system', ownerKeyId: (req as any).authKeyId ?? 'master' })
+        : await sessions.sendMessage(sessionId, text);
       // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.
       // Previously we called getStallInfo BEFORE send, capturing a stale state
       // (session was temporarily quiet but became active after message delivery).
@@ -257,7 +260,9 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const { command } = parsed.data;
     try {
       const cmd = command.startsWith('/') ? command : `/${command}`;
-      await sessions.sendMessage(session.id, cmd);
+      const cmdResult = acpBackend && config.acpEnabled
+        ? await acpBackend.sendPrompt(session.id, cmd, { tenantId: (req as any).tenantId ?? 'system', ownerKeyId: (req as any).authKeyId ?? 'master' })
+        : await sessions.sendMessage(session.id, cmd);
       return { ok: true };
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
