@@ -621,7 +621,7 @@ export class AcpBackend {
       const response = await runtime.client.request<AcpBackendSessionResult>('session/load', {
         sessionId: acpAgentSessionId,
         cwd,
-        ...(mcpServers ? { mcpServers } : {}),
+        mcpServers: mcpServers ?? [],
         _meta: this.buildAegisMetadata(session.id, backendRunId),
       });
       const attachment = attachmentFromResult(response.result, backendRunId);
@@ -770,7 +770,7 @@ export class AcpBackend {
   ): AcpJsonObject {
     return {
       cwd,
-      ...(mcpServers ? { mcpServers } : {}),
+      mcpServers: mcpServers ?? [],
       _meta: {
         ...this.buildAegisMetadata(durableSessionId, backendRunId),
         ...(systemPrompt ? { systemPrompt } : {}),
