@@ -63,7 +63,7 @@ CLI            ────┘                       │
 
 ### Strengths
 
-- Clean layering: [src/server.ts](../../src/server.ts) → [src/routes/](../../src/routes/) → [src/services/](../../src/services/) → [src/platform/](../../src/platform/)/[src/tmux.ts](../../src/tmux.ts).
+- Clean layering: [src/server.ts](../../src/server.ts) → [src/routes/](../../src/routes/) → [src/services/](../../src/services/) → [src/platform/](../../src/platform/)/ACP runtime.
 - DI via [src/container.ts](../../src/container.ts) with lifecycle + dependency ordering.
 - Serialized tmux CLI queue with 10s default timeout prevents hung commands from blocking.
 - Hook-driven discovery (push) with polling fallback (pull).
