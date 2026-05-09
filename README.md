@@ -165,8 +165,6 @@ All endpoints under `/v1/`.
 | `GET` | `/v1/templates/:id` | Get template |
 | `PUT` | `/v1/templates/:id` | Update template |
 | `DELETE` | `/v1/templates/:id` | Delete template |
-| `POST` | `/v1/dev/route-task` | Route task to model tier |
-| `GET` | `/v1/dev/model-tiers` | List model tiers |
 | `GET` | `/v1/diagnostics` | Server diagnostics |
 
 <details>
@@ -174,7 +172,6 @@ All endpoints under `/v1/`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/v1/sessions/:id/pane` | Raw terminal capture |
 | `GET` | `/v1/sessions/:id/health` | Health check with actionable hints |
 | `GET` | `/v1/sessions/:id/summary` | Condensed transcript summary |
 | `GET` | `/v1/sessions/:id/transcript/cursor` | Cursor-based transcript replay |
