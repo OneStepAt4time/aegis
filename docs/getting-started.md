@@ -172,7 +172,7 @@ Next steps:
 
 Save the `id` — you'll need it for follow-up commands.
 
-> **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME`, `/tmp`, and the current working directory. To restrict sessions to specific directories, set `allowedWorkDirs` in `.aegis/config.yaml` (or `aegis.config.json`). Changes are hot-reloaded without restart.
+> **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME` and the server's current working directory. System temp dirs (`/tmp`, `/var/tmp`) are intentionally excluded for security. To allow additional directories, set `allowedWorkDirs` in `.aegis/config.yaml` (or `aegis.config.json`). Changes are hot-reloaded without restart.
 
 ## 5. Monitor Progress
 
