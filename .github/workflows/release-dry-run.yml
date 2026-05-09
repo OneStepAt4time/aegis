@@ -72,14 +72,20 @@ jobs:
           TARGET_BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
           if [[ "${TARGET_BRANCH}" == release/* ]]; then
             RELEASE_AS="${TARGET_BRANCH#release/}"
-            npx --yes release-please release-pr \
-              --dry-run \
-              --token="${GITHUB_TOKEN}" \
-              --repo-url="${GITHUB_REPOSITORY}" \
-              --target-branch="${TARGET_BRANCH}" \
-              --release-as="${RELEASE_AS}" \
-              --config-file=release-please-config.json \
-              --manifest-file=.release-please-manifest.json
+            # Only run release-please if the branch name is a valid semver.
+            # Promotion branches like release/promote-develop-to-main are not.
+            if [[ "${RELEASE_AS}" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              npx --yes release-please release-pr \
+                --dry-run \
+                --token="${GITHUB_TOKEN}" \
+                --repo-url="${GITHUB_REPOSITORY}" \
+                --target-branch="${TARGET_BRANCH}" \
+                --release-as="${RELEASE_AS}" \
+                --config-file=release-please-config.json \
+                --manifest-file=.release-please-manifest.json
+            else
+              echo "Skipping release-please dry-run: branch '${TARGET_BRANCH}' is not a semver release branch."
+            fi
           fi
           AEGIS_REQUIRE_DASHBOARD_COPY=true npm run build
 
