@@ -62,7 +62,7 @@ export const OkResponseSchema = z.object({
   ok: z.boolean(),
 });
 
-const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill', 'audit']);
+const ApiKeyPermissionSchema = z.enum(['create', 'send', 'approve', 'reject', 'kill']);
 
 export const AuthKeySummarySchema: z.ZodType<AuthKeySummary> = z.object({
   id: z.string(),
