@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ServiceHealth } from '../../container.js';
@@ -158,8 +158,12 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     if (!this.started) {
       throw new Error('FileAcpLocalStorageProfile: start() must be called before use');
     }
+    // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
     const content = `${JSON.stringify(serializeState(this.state), null, 2)}\n`;
-    this.writeChain = this.writeChain.then(() => writeFile(this.config.filePath, content, 'utf8'));
+    const tmpFile = `${this.config.filePath}.tmp.${process.pid}`;
+    this.writeChain = this.writeChain.then(
+      () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
+    );
     await this.writeChain;
   }
 }
