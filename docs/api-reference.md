@@ -3590,4 +3590,4 @@ tenantWorkdirs:
 
 Cross-tenant violations return `403 Forbidden` with audit trail.
 
-See [ADR-0025](./adr/0025-tenant-aware-authorization-model.md) for the design decision.
+See [ADR-0025](./adr/0025-tenant-authz-model.md) for the design decision.

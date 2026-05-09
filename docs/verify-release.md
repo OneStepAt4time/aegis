@@ -203,7 +203,7 @@ git show --show-signature <release-commit-sha>
 If you find a release that appears tampered with:
 
 1. **Do not install it**
-2. Check the [security policy](../../SECURITY.md)
+2. Check the [security policy](../SECURITY.md)
 3. Report to: `security@onestepat4time.com`
 4. Or file a private security advisory on GitHub
 

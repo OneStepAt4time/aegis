@@ -117,9 +117,9 @@ Or via `.mcp.json`:
 
 Without a global install, use `"command": "npx"` with `["--package=@onestepat4time/aegis", "ag", "mcp"]` instead.
 
-**36 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `acp_send_prompt`, `acp_respond_approval`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
+**34 tools** — `create_session`, `send_message`, `get_transcript`, `approve_permission`, `acp_send_prompt`, `acp_respond_approval`, `batch_create_sessions`, `create_pipeline`, `state_set`, and more.
 
-**4 resources** — `aegis://sessions`, `aegis://sessions/{id}/transcript`, `aegis://sessions/{id}/pane`, `aegis://health`
+**3 resources** — `aegis://sessions`, `aegis://sessions/{id}/transcript`, `aegis://health`
 
 **3 prompts** — `implement_issue`, `review_pr`, `debug_session`
 
@@ -564,7 +564,7 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 - **[External Deployment Guide](EXTERNAL_DEPLOYMENT_GUIDE.md)** — Step-by-step for external teams
 - **[API Reference](docs/api-reference.md)** — Complete REST API documentation
 - **[ACP Major Cutover Release Plan](docs/acp-major-cutover-release-plan.md)** — Phase 3.5 breaking-release governance
-- **[MCP Tools](docs/mcp-tools.md)** — 36 MCP tools and 3 prompts
+- **[MCP Tools](docs/mcp-tools.md)** — 34 MCP tools and 3 prompts
 - **[Advanced Features](docs/advanced.md)** — Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](docs/enterprise.md)** — Auth, rate limiting, security, production
 - **[Enterprise Technical Review](docs/enterprise/index.md)** — Deep architecture, security, observability, and roadmap analysis
