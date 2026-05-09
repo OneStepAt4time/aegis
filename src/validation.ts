@@ -750,6 +750,12 @@ export async function validateWorkDir(
     return { error: 'workDir is not in the allowed directories list', code: 'INVALID_WORKDIR' };
   }
 
+  // Step 5: Ensure workDir is a directory, not a file.
+  const resolvedStat = await fs.stat(realPath);
+  if (!resolvedStat.isDirectory()) {
+    return { error: `workDir must be a directory, not a file: ${resolved}`, code: 'INVALID_WORKDIR' };
+  }
+
   return realPath;
 }
 
