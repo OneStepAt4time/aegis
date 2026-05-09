@@ -142,7 +142,7 @@ All endpoints under `/v1/`.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/v1/health` | Server health & uptime |
-| `POST` | `/v1/sessions` | Create (or reuse) a session |
+| `POST` | `/v1/sessions` | Create a session (reuse if `workDir` matches an idle session) |
 | `GET` | `/v1/sessions` | List sessions |
 | `GET` | `/v1/sessions/:id` | Session details |
 | `GET` | `/v1/sessions/:id/read` | Parsed transcript |
