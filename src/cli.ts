@@ -180,10 +180,12 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   }
 
   writeLine(io.stdout);
+  // Issue #2996: Include auth header in curl output when auth is configured.
+  const curlAuth = authToken ? ` -H "Authorization: Bearer ${authToken}"` : '';
   writeLine(io.stdout, '  Next steps:');
-  writeLine(io.stdout, `    Status:   curl ${baseUrl}/v1/sessions/${sessionId}/health`);
-  writeLine(io.stdout, `    Read:     curl ${baseUrl}/v1/sessions/${sessionId}/read`);
-  writeLine(io.stdout, `    Kill:     curl -X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
+  writeLine(io.stdout, `    Status:   curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/health`);
+  writeLine(io.stdout, `    Read:     curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/read`);
+  writeLine(io.stdout, `    Kill:     curl -X DELETE${curlAuth} ${baseUrl}/v1/sessions/${sessionId}`);
   return 0;
 }
 
