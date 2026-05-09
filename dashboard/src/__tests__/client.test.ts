@@ -215,6 +215,7 @@ describe('getSessionStatusCounts', () => {
       settings: 0,
       error: 0,
       rate_limit: 0,
+      pending: 0,
       unknown: 0,
     });
 

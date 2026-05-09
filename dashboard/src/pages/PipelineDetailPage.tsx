@@ -20,7 +20,7 @@ const MAX_POLL_INTERVAL_MS = 60_000;
 const VALID_UI_STATES: ReadonlySet<string> = new Set([
   'idle', 'working', 'compacting', 'context_warning',
   'waiting_for_input', 'permission_prompt', 'plan_mode',
-  'ask_question', 'bash_approval', 'settings', 'error', 'unknown',
+  'ask_question', 'bash_approval', 'settings', 'error', 'pending', 'unknown',
 ] as const);
 
 /**

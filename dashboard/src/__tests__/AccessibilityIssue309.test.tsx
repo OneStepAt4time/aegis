@@ -121,6 +121,7 @@ describe('Issue 309 accessibility fixes', () => {
       bash_approval: 0,
       settings: 0,
       error: 0,
+      pending: 0,
       unknown: 0,
     });
   });

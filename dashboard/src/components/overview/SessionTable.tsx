@@ -52,7 +52,8 @@ const EMPTY_COUNTS: SessionStatusCounts = {
   settings: 0,
   error: 0,
   rate_limit: 0,
-  unknown: 0,
+  pending: 0,
+    unknown: 0,
 };
 const STATUS_FILTERS: SessionStatusFilter[] = [
   'all',

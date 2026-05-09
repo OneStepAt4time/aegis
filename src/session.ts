@@ -34,7 +34,7 @@ import { startSessionSpan, spanError, spanOk } from './tracing.js';
 export type UIState =
   | 'idle' | 'working' | 'compacting' | 'context_warning'
   | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
-  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'unknown';
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown';
 
 /** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
@@ -692,7 +692,7 @@ export class SessionManager {
       claudeSessionId: freshSessionId || undefined,
       byteOffset: 0,
       monitorOffset: 0,
-      status: 'unknown',
+      status: 'pending',
       createdAt: Date.now(),
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
