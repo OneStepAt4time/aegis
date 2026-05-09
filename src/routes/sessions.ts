@@ -451,7 +451,12 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       metrics.promptSent(promptDelivery.delivered);
     }
 
-    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
+    // Issue #3068: Warn when ACP is disabled — sessions are created but no agent runs
+    const acpWarning = prompt && !ctx.config.acpEnabled && promptDelivery && !promptDelivery.delivered
+      ? 'Session created but prompt not delivered: ACP is disabled. Set AEGIS_ACP_ENABLED=true or add "acpEnabled": true to config to enable Claude Code sessions.'
+      : undefined;
+
+    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery, ...(acpWarning ? { warning: acpWarning } : {}) });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {

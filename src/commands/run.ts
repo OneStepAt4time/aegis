@@ -68,6 +68,7 @@ async function ensureConfig(configPath: string): Promise<string | undefined> {
     authToken: token,
     baseUrl: 'http://127.0.0.1:9100',
     dashboardEnabled: true,
+    acpEnabled: true,  // Issue #3068: Enable ACP by default so sessions actually run
   };
 
   const content = serializeConfigFile(config, configPath);
