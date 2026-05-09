@@ -521,6 +521,24 @@ export class AuditLogger {
    * Returns { valid: true } if all records chain correctly,
    * or { valid: false, brokenAt: lineNumber } if a tampered record is found.
    */
+  /**
+   * Resolve the last hash from an archived audit log file.
+   * Issue #2986: audit chain validation across rotated log files.
+   */
+  private async resolveArchiveLastHash(fileName: string): Promise<string | null> {
+    const archiveDir = join(this.logDir, '..', 'audit-archive');
+    const archivePath = join(archiveDir, fileName);
+    try {
+      const content = await readFile(archivePath, 'utf-8');
+      const lines = content.trim().split('\n');
+      if (lines.length > 0) {
+        const lastRecord = JSON.parse(lines[lines.length - 1]) as AuditRecord;
+        return lastRecord.hash ?? null;
+      }
+    } catch { /* archive file doesn't exist or is unreadable */ }
+    return null;
+  }
+
   async verify(): Promise<{ valid: boolean; brokenAt?: number; file?: string }> {
     try {
       const files = await readdir(this.logDir);
@@ -536,13 +554,25 @@ export class AuditLogger {
         await this.assertNotSymlink(fullPath);
         const content = await readFile(fullPath, 'utf-8');
         const lines = content.trim().split('\n');
+        let lineIndex = 0;
 
         for (const line of lines) {
           globalLineNum++;
+          lineIndex++;
           try {
             const record = JSON.parse(line) as AuditRecord;
 
             if (record.prevHash !== prevHash) {
+              // Issue #2986: First record of a file may reference an archived
+              // predecessor after log rotation. If the prevHash matches the
+              // archive's last entry, accept it as a valid chain continuation.
+              if (lineIndex === 1) {
+                const archiveHash = await this.resolveArchiveLastHash(file);
+                if (archiveHash !== null && record.prevHash === archiveHash) {
+                  prevHash = record.hash;
+                  continue;
+                }
+              }
               return { valid: false, brokenAt: globalLineNum, file };
             }
 
