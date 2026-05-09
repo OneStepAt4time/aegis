@@ -387,7 +387,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
               finalPrompt = lines.join('\n');
             }
           }
-          promptDelivery = await sessions.sendInitialPrompt(existing.id, finalPrompt);
+          promptDelivery = acpBackend && ctx.config.acpEnabled
+          ? await acpBackend.sendPrompt(existing.id, finalPrompt, { tenantId: req.tenantId ?? 'system', ownerKeyId: req.authKeyId ?? 'master' })
+          : await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
         return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
@@ -448,7 +450,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           finalPrompt = lines.join('\n');
         }
       }
-      promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
+      promptDelivery = acpBackend && ctx.config.acpEnabled
+        ? await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? 'system', ownerKeyId: req.authKeyId ?? 'master' })
+        : await sessions.sendInitialPrompt(session.id, finalPrompt);
       metrics.promptSent(promptDelivery.delivered);
     }
 

@@ -363,6 +363,53 @@ export class AcpBackend {
     return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
   }
 
+
+  /**
+   * Issue #3093: Direct prompt delivery to ACP runtime.
+   * Bypasses the action queue for immediate prompt delivery during session creation
+   * and send_message API calls. Returns {delivered, attempts} matching the session.ts stub contract.
+   */
+  async sendPrompt(
+    sessionId: string,
+    text: string,
+    scope: AcpSessionScope
+  ): Promise<{ delivered: boolean; attempts: number; error?: string }> {
+    const runtime = this.runtimes.get(sessionId);
+    if (!runtime) {
+      return { delivered: false, attempts: 0, error: 'no_acp_runtime' };
+    }
+
+    // Issue #2805: Reject concurrent prompts — CC blocks on background terminals
+    const existing = this.inFlightPrompts.get(sessionId);
+    if (existing) {
+      throw new AcpBackendLifecycleError(
+        `Session ${sessionId} already has a prompt in-flight. ` +
+        'Claude Code blocks on background terminals — wait for the current prompt to complete or cancel it.'
+      );
+    }
+
+    const abort = new AbortController();
+    this.inFlightPrompts.set(sessionId, abort);
+
+    try {
+      const session = await this.sessionService.getSession(sessionId, scope);
+      const acpSessionId = session.acpAgentSessionId;
+      if (!acpSessionId) {
+        return { delivered: false, attempts: 0, error: 'no_agent_session' };
+      }
+
+      await runtime.client.request<AcpJsonValue>('session/prompt', {
+        sessionId: acpSessionId,
+        prompt: [{ type: 'text', text }],
+      });
+      return { delivered: true, attempts: 1 };
+    } catch (err) {
+      return { delivered: false, attempts: 1, error: (err as Error).message };
+    } finally {
+      this.inFlightPrompts.delete(sessionId);
+    }
+  }
+
   async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
     await this.sessionService.getSession(input.sessionId, scope);
