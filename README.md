@@ -146,7 +146,7 @@ All endpoints under `/v1/`.
 | `GET` | `/v1/sessions` | List sessions |
 | `GET` | `/v1/sessions/:id` | Session details |
 | `GET` | `/v1/sessions/:id/read` | Parsed transcript |
-| `GET` | `/v1/sessions/:id/events` | SSE event stream |
+| `GET` | `/v1/sessions/:id/events` | SSE event stream *(requires `sse_`-prefixed token)* |
 | `POST` | `/v1/sessions/:id/send` | Send a message |
 | `POST` | `/v1/sessions/:id/approve` | Approve permission |
 | `POST` | `/v1/sessions/:id/reject` | Reject permission |
@@ -187,6 +187,7 @@ All endpoints under `/v1/`.
 
 | State | Meaning | Action |
 |-------|---------|--------|
+| `unknown` | Agent not yet responding | Wait a moment, then poll again |
 | `working` | Actively generating | Wait or poll `/read` |
 | `idle` | Waiting for input | Send via `/send` |
 | `permission_prompt` | Awaiting approval | `/approve` or `/reject` |
