@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useT } from '../i18n/context';
 import { Calendar, Plus } from 'lucide-react';
 import EmptyState from '../components/shared/EmptyState';
 import { CalendarGrid } from '../components/routines';
@@ -15,6 +16,7 @@ import RoutineCard from '../components/routines/RoutineCard';
 import type { RoutineSchedule } from '../components/routines/CalendarGrid';
 
 export default function RoutinesPage() {
+  const t = useT();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Phase 1: No backend yet — routines will come from API in Phase 2
@@ -52,13 +54,13 @@ export default function RoutinesPage() {
       {/* Sidebar: routines list */}
       <div className="space-y-4">
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {selectedDate ? `Routines for selected date` : 'Upcoming'}
+          {selectedDate ? t('routines.forDate') : t('routines.upcoming')}
         </h2>
         {routines.length === 0 ? (
           <EmptyState
             icon={<Calendar className="w-8 h-8" />}
-            title="No routines yet"
-            description="Create a routine to schedule recurring tasks on a calendar."
+            title={t("routines.emptyTitle")}
+            description={t("routines.emptyDescription")}
           />
         ) : (
           routines.map((routine) => (
@@ -80,9 +82,9 @@ export default function RoutinesPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Routines</h1>
+            <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
             <p className="text-sm text-[var(--color-text-muted)] mt-1">
-              Scheduled tasks that run on a recurring basis
+              {t('routines.subtitle')}
             </p>
           </div>
           <button
@@ -104,9 +106,9 @@ export default function RoutinesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Routines</h1>
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
-            {routines.length} scheduled task{routines.length !== 1 ? 's' : ''}
+            {t('routines.count', { count: routines.length })}
           </p>
         </div>
         <button

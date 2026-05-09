@@ -283,6 +283,17 @@ export const en = {
     stopped: 'Stopped',
   },
   
+  routines: {
+    title: 'Routines',
+    subtitle: 'Scheduled tasks that run on a recurring basis',
+    upcoming: 'Upcoming',
+    forDate: 'Routines for selected date',
+    emptyTitle: 'No routines yet',
+    emptyDescription: 'Create a routine to schedule recurring tasks on a calendar.',
+    newRoutine: 'New Routine',
+    count: '{count} scheduled tasks',
+  },
+  
   errors: {
     notFound: 'Page not found',
     notFoundDescription: 'The page you are looking for does not exist',

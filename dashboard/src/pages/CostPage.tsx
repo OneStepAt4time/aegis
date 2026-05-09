@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useT } from '../i18n/context';
 import { DollarSign, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
 import { SkeletonStatCard, SkeletonCard } from '../components/shared/Skeleton';
@@ -60,6 +61,7 @@ function CustomTooltip({ active, payload, label }: {
 
 export default function CostPage() {
   const t = useT();
+  const navigate = useNavigate();
   const [costData, setCostData] = useState<AnalyticsCostsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -340,7 +342,7 @@ export default function CostPage() {
               Configure daily and monthly spending caps in{' '}
               <button
                 type="button"
-                onClick={() => window.location.hash = '#budget'}
+                onClick={() => navigate('/settings#budget')}
                 className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
               >
                 Settings

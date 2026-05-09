@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../i18n/context';
 import RoutinesPage from '../pages/RoutinesPage';
 
 // Mock useAuthStore so ProtectedRoute doesn't redirect
@@ -16,7 +17,7 @@ vi.mock('../store/useAuthStore', () => ({
 }));
 
 function renderWithRouter(ui: React.ReactElement) {
-  return render(<MemoryRouter>{ui}</MemoryRouter>);
+  return render(<I18nProvider><MemoryRouter>{ui}</MemoryRouter></I18nProvider>);
 }
 
 describe('RoutinesPage', () => {

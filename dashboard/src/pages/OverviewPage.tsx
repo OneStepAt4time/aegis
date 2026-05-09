@@ -107,7 +107,7 @@ export default function OverviewPage() {
   const avgCostPerDay = activeDays > 0 ? totalCost / activeDays : 0;
 
   // Build KPI items
-  function buildKPIItems(): KPIItem[] {
+  function buildKPIItems(analytics: AnalyticsSummary): KPIItem[] {
     return [
       {
         id: 'cost',
@@ -140,12 +140,12 @@ export default function OverviewPage() {
         id: 'errors',
         label: 'Error Rate',
         value: totalSessions > 0
-          ? `${((analytics!.errorRates.failedSessions / totalSessions) * 100).toFixed(1)}%`
+          ? `${((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)}%`
           : '0%',
-        color: totalSessions > 0 && (analytics!.errorRates.failedSessions / totalSessions) > 0.05
+        color: totalSessions > 0 && (analytics.errorRates.failedSessions / totalSessions) > 0.05
           ? 'cost'
           : 'efficiency',
-        trend: totalSessions > 0 && (analytics!.errorRates.failedSessions / totalSessions) > 0.05
+        trend: totalSessions > 0 && (analytics.errorRates.failedSessions / totalSessions) > 0.05
           ? 'up'
           : 'flat',
       },
@@ -191,7 +191,7 @@ export default function OverviewPage() {
 
       {/* Zone B: KPI Banner */}
       {!analyticsLoading && analytics && (
-        <KPIBanner items={buildKPIItems()} />
+        <KPIBanner items={buildKPIItems(analytics)} />
       )}
       {analyticsLoading && (
         <div className="flex items-center justify-center py-4" role="status" aria-busy="true">

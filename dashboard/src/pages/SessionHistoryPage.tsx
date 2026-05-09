@@ -298,13 +298,70 @@ export default function SessionHistoryPage() {
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
-  const handleExport = () => {
-    const toExport = selectedIds.size > 0
-      ? sortedRecords.filter((r) => selectedIds.has(r.id))
-      : records;
-    const csv = generateSessionHistoryCSV(toExport);
-    const date = new Date().toISOString().slice(0, 10);
-    downloadCSV(csv, `aegis-sessions-${date}.csv`);
+  const handleExport = async () => {
+    try {
+      const toExport = selectedIds.size > 0
+        ? sortedRecords.filter((r) => selectedIds.has(r.id))
+        : await exportAllRecords();
+      const csv = generateSessionHistoryCSV(toExport);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCSV(csv, `aegis-sessions-${date}.csv`);
+    } catch {
+      addToast('error', 'Export failed', 'Could not export session history');
+    }
+  };
+
+  /** Fetch all records matching current filters (all pages) for CSV export. */
+  const exportAllRecords = async (): Promise<SessionHistoryRecord[]> => {
+    const allRecords: SessionHistoryRecord[] = [];
+    let currentPage = 1;
+    const batchSize = 100;
+    let hasMore = true;
+    while (hasMore) {
+      const data = await fetchSessionHistory({
+        ...buildExportParams(),
+        page: currentPage,
+        limit: batchSize,
+      });
+      allRecords.push(...data.records);
+      hasMore = allRecords.length < data.pagination.total;
+      currentPage++;
+    }
+    return allRecords;
+  };
+
+  /** Build filter params for export (mirrors fetchData filter logic). */
+  const buildExportParams = (): Omit<FetchSessionHistoryParams, 'page' | 'limit' | 'signal'> => {
+    const params: Omit<FetchSessionHistoryParams, 'page' | 'limit' | 'signal'> = {};
+    if (filterOwner) params.ownerKeyId = filterOwner;
+    if (filterStatus) params.status = filterStatus as FetchSessionHistoryParams['status'];
+    if (filterSearch) params.nameSearch = filterSearch;
+    const now = Date.now();
+    if (filterDateRange === '1h') {
+      params.createdAfter = Math.floor((now - 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === 'today') {
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      params.createdAfter = Math.floor(startOfDay.getTime() / 1000);
+    } else if (filterDateRange === 'yesterday') {
+      const startOfYesterday = new Date(); startOfYesterday.setHours(0, 0, 0, 0); startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      const endOfYesterday = new Date(startOfYesterday); endOfYesterday.setHours(23, 59, 59, 999);
+      params.createdAfter = Math.floor(startOfYesterday.getTime() / 1000);
+      params.createdBefore = Math.floor(endOfYesterday.getTime() / 1000);
+    } else if (filterDateRange === '7d') {
+      params.createdAfter = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === '30d') {
+      params.createdAfter = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+    } else if (filterDateRange === 'month') {
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      params.createdAfter = Math.floor(startOfMonth.getTime() / 1000);
+    } else if (filterDateRange === 'custom' && customDateFrom) {
+      params.createdAfter = Math.floor(new Date(customDateFrom).getTime() / 1000);
+      if (customDateTo) params.createdBefore = Math.floor(new Date(customDateTo).getTime() / 1000) + 86400;
+    }
+    if (filterSort === 'newest') { params.sortBy = 'createdAt'; params.sortOrder = 'desc'; }
+    else if (filterSort === 'oldest') { params.sortBy = 'createdAt'; params.sortOrder = 'asc'; }
+    else if (filterSort === 'status') { params.sortBy = 'status'; params.sortOrder = 'asc'; }
+    return params;
   };
 
   const handleShareLink = () => {

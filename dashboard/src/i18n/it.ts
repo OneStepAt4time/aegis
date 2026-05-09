@@ -286,6 +286,17 @@ export const it = {
     stopped: 'Fermato',
   },
 
+  routines: {
+    title: 'Routine',
+    subtitle: 'Attività pianificate eseguite su base ricorrente',
+    upcoming: 'Prossime',
+    forDate: 'Routine per la data selezionata',
+    emptyTitle: 'Nessuna routine',
+    emptyDescription: 'Crea una routine per pianificare attività ricorrenti su un calendario.',
+    newRoutine: 'Nuova Routine',
+    count: '{count} attività pianificate',
+  },
+
   errors: {
     notFound: 'Pagina non trovata',
     notFoundDescription: 'La pagina che cerchi non esiste',
