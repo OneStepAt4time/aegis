@@ -104,14 +104,15 @@ Navigate the dashboard faster using keyboard shortcuts:
 
 | Shortcut | Action |
 |----------|-------|
-| `?` | Toggle help modal |
-| `Ctrl+K` | Toggle keyboard shortcuts help |
+| `?` (Shift+/) | Show keyboard shortcuts |
+| `Ctrl+K` (or `⌘K`) | Focus search |
+| `Ctrl+N` (or `⌘N`) | New session |
 | `G` then `O` | Go to Overview |
 | `G` then `S` | Go to Sessions |
 | `G` then `P` | Go to Pipelines |
 | `G` then `A` | Go to Audit |
 | `G` then `U` | Go to Users |
-| `Escape` | Close modal |
+| `Escape` | Close modal / cancel |
 
 The dashboard displays the shortcut hint in the sidebar footer.
 
