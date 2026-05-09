@@ -51,7 +51,7 @@ curl -X POST http://localhost:9100/v1/memory \
 #### Read a memory entry
 
 ```bash
-curl http://localhost:9100/v1/memory/project/analysis-result \
+curl http://localhost:9100/v1/memory/project%2Fanalysis-result \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -70,7 +70,7 @@ curl "http://localhost:9100/v1/memory?prefix=project/" \
 #### Delete a memory entry
 
 ```bash
-curl -X DELETE http://localhost:9100/v1/memory/project/analysis-result \
+curl -X DELETE http://localhost:9100/v1/memory/project%2Fanalysis-result \
   -H "Authorization: Bearer <token>"
 ```
 
