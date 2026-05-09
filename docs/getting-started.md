@@ -229,6 +229,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions
 ```
 
 Supports pagination: `?page=1&limit=20&status=active`. Invalid values (e.g. `page=-1`, `limit=999`) return `400`.
+\n> **Note:** The `name` field is a display label only — it does not affect session reuse. Sessions are reused automatically when `workDir` matches an existing idle session (see Session Reuse in the README).
 
 ## 10. Set Up MCP Integration
 
