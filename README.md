@@ -31,18 +31,21 @@
 ## Quick Start
 
 ```bash
-# Install, bootstrap, and start
+# Install
 npm install -g @onestepat4time/aegis
+
+# Zero-to-session in one command (bootstraps config, starts server, creates session)
+ag run "Build a login page with email/password fields." --cwd /path/to/project
+
+# Or step by step
 ag init
 ag
+ag create "Build a login page with email/password fields." --cwd /path/to/project
 
 # Scaffold a repo-local starter
 ag init --list-templates
 ag init --from-template code-reviewer
 ag doctor
-
-# Create a session
-ag create "Build a login page with email/password fields." --cwd /path/to/project
 ```
 
 > **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.

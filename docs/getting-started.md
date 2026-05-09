@@ -122,6 +122,38 @@ The dashboard displays the shortcut hint in the sidebar footer.
 
 ## 4. Create Your First Session
 
+### One-command mode (`ag run`)
+
+Skip all the setup — `ag run` bootstraps config, starts the server, creates a session, and streams output to your terminal:
+
+```bash
+ag run "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project
+```
+
+```text
+🚀 ag run: Analyze this project...
+⏳ Server not running — starting...
+⏳ Waiting for server...
+✅ Server started
+✅ Session: run-analyze-this-proj- (ff3aafbb)
+📊 Dashboard: http://127.0.0.1:9100
+
+📡 Streaming session output (Ctrl+C to stop)...
+
+👤 Analyze this project...
+🤖 I'll analyze the project structure...
+```
+
+| Flag | Description |
+|------|-------------|
+| `--cwd <path>` | Working directory (default: current directory) |
+| `--port <number>` | Server port override |
+| `--no-stream` | Don't stream output; print curl commands instead |
+
+If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
+
+### Step-by-step (`ag create`)
+
 ```bash
 ag create "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project
 ```
