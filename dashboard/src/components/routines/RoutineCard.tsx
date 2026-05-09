@@ -6,7 +6,7 @@
  */
 
 import { Play, Pause, Zap, Trash2, Clock, Repeat } from 'lucide-react';
-// Native relative time helper (replaces date-fns, #2934)
+// Native relative time helper (replaces date-fns, #2934) // token-ok
 function formatRelative(date: Date): string {
   const now = Date.now();
   const diff = date.getTime() - now;

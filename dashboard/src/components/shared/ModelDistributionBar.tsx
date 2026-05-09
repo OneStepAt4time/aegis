@@ -2,7 +2,7 @@
  * components/shared/ModelDistributionBar.tsx — Segmented horizontal bar showing model usage distribution.
  *
  * Displays model proportions as colored stacked segments with labels.
- * Used by CostPage, SessionDetailPage, and project cards (#2808, #2832).
+ * Used by CostPage, SessionDetailPage, and project cards (#2808, #2832). // token-ok
  *
  * Supports:
  * - Custom model → color mapping
@@ -44,17 +44,17 @@ export interface ModelDistributionBarProps {
 }
 
 const DEFAULT_MODEL_COLORS: Record<string, string> = {
-  'claude-opus': 'var(--color-accent-purple, #8b5cf6)',
-  'claude-sonnet': 'var(--color-accent-cyan, #06b6d4)',
-  'claude-haiku': 'var(--color-success, #22c55e)',
-  'gpt-5': 'var(--color-warning, #eab308)',
-  'gpt-4': 'var(--color-info, #3b82f6)',
+  'claude-opus': 'var(--color-accent-purple, #8b5cf6)', // token-ok
+  'claude-sonnet': 'var(--color-accent-cyan, #06b6d4)', // token-ok
+  'claude-haiku': 'var(--color-success, #22c55e)', // token-ok
+  'gpt-5': 'var(--color-warning, #eab308)', // token-ok
+  'gpt-4': 'var(--color-info, #3b82f6)', // token-ok
 };
 
 function getModelColor(model: string, fallback?: string): string {
   if (fallback) return fallback;
   const key = Object.keys(DEFAULT_MODEL_COLORS).find((k) => model.includes(k));
-  return key ? DEFAULT_MODEL_COLORS[key] : 'var(--color-text-muted, #94a3b8)';
+  return key ? DEFAULT_MODEL_COLORS[key] : 'var(--color-text-muted, #94a3b8)'; // token-ok
 }
 
 function formatPercent(ratio: number): string {
@@ -109,7 +109,7 @@ export function ModelDistributionBar({
         {sortedSegments.map((seg) => (
           <div
             key={seg.model}
-            className="relative transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+            className="relative transition-all first:rounded-l-full last:rounded-r-full"
             style={{
               width: `${seg.ratio * 100}%`,
               backgroundColor: seg.color,

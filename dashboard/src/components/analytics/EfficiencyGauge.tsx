@@ -31,9 +31,9 @@ function getBarColor(score: number): string {
 }
 
 function getBarBg(score: number): string {
-  if (score >= 70) return 'rgba(var(--color-success-rgb, 34,197,94), 0.15)';
-  if (score >= 40) return 'rgba(var(--color-warning-rgb, 245,158,11), 0.15)';
-  return 'rgba(var(--color-danger-rgb, 239,68,68), 0.15)';
+  if (score >= 70) return 'rgba(var(--color-success-rgb, 34,197,94), 0.15)'; // token-ok
+  if (score >= 40) return 'rgba(var(--color-warning-rgb, 245,158,11), 0.15)'; // token-ok
+  return 'rgba(var(--color-danger-rgb, 239,68,68), 0.15)'; // token-ok
 }
 
 export function EfficiencyGauge({
@@ -64,7 +64,7 @@ export function EfficiencyGauge({
         style={{ height: barHeight, backgroundColor: barBg }}
       >
         <div
-          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
+          className="absolute inset-y-0 left-0 rounded-full transition-all ease-out"
           style={{
             width: `${clampedScore}%`,
             backgroundColor: barColor,

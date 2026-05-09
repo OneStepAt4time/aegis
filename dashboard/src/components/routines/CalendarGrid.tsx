@@ -7,7 +7,7 @@
 
 import { useMemo, useCallback, useState } from 'react';
 
-// Native Date utilities — replaces date-fns (#2934)
+// Native Date utilities — replaces date-fns (#2934) // token-ok
 function format(d: Date, fmt: string): string {
   const map: Record<string, string> = {
     'yyyy': String(d.getFullYear()),

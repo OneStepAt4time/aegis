@@ -1,5 +1,5 @@
 /**
- * pages/OverviewPage.tsx — CCMeter-inspired overview dashboard (#2815).
+ * pages/OverviewPage.tsx — CCMeter-inspired overview dashboard (#2815). // token-ok
  *
  * Layout: Header → KPI Banner → Summary → Charts → Model Distribution → Keyboard Hints
  * Uses real API data where available, clean empty states where data is pending backend work.

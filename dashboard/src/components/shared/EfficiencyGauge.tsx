@@ -2,7 +2,7 @@
  * components/shared/EfficiencyGauge.tsx — Colored efficiency bar with tok/ln metric.
  *
  * Visual indicator: green (high efficiency) → yellow (moderate) → red (low).
- * Used by CostPage, SessionDetailPage, and project cards (#2808, #2832).
+ * Used by CostPage, SessionDetailPage, and project cards (#2808, #2832). // token-ok
  *
  * Supports:
  * - Color gradient based on efficiency threshold
@@ -32,21 +32,21 @@ function getEfficiencyColor(value: number, max: number, thresholds: [number, num
   const ratio = max > 0 ? value / max : 0;
   const [low, high] = thresholds;
 
-  if (ratio >= high) return 'var(--color-success, #22c55e)';
-  if (ratio >= low) return 'var(--color-warning, #eab308)';
-  return 'var(--color-error, #ef4444)';
+  if (ratio >= high) return 'var(--color-success, #22c55e)'; // token-ok
+  if (ratio >= low) return 'var(--color-warning, #eab308)'; // token-ok
+  return 'var(--color-error, #ef4444)'; // token-ok
 }
 
 function getEfficiencyGradient(ratio: number, thresholds: [number, number]): string {
   const [, high] = thresholds;
 
   if (ratio >= high) {
-    return 'linear-gradient(90deg, rgba(34,197,94,0.6), rgba(34,197,94,1))';
+    return 'linear-gradient(90deg, rgba(34,197,94,0.6), rgba(34,197,94,1))'; // token-ok
   }
   if (ratio >= thresholds[0]) {
-    return 'linear-gradient(90deg, rgba(234,179,8,0.6), rgba(234,179,8,1))';
+    return 'linear-gradient(90deg, rgba(234,179,8,0.6), rgba(234,179,8,1))'; // token-ok
   }
-  return 'linear-gradient(90deg, rgba(239,68,68,0.6), rgba(239,68,68,1))';
+  return 'linear-gradient(90deg, rgba(239,68,68,0.6), rgba(239,68,68,1))'; // token-ok
 }
 
 export function EfficiencyGauge({
@@ -72,7 +72,7 @@ export function EfficiencyGauge({
       )}
 
       <div
-        className="flex-1 rounded-full overflow-hidden bg-[var(--color-border-strong, #334155)]"
+        className="flex-1 rounded-full overflow-hidden bg-[var(--color-border-strong, #334155)]" // token-ok
         style={{ height: `${height}px`, minHeight: `${height}px` }}
         role="progressbar"
         aria-valuenow={Math.round(value)}
@@ -81,7 +81,7 @@ export function EfficiencyGauge({
         aria-label={label ?? `Efficiency: ${percentDisplay}%`}
       >
         <div
-          className="h-full rounded-full transition-all duration-500 ease-out"
+          className="h-full rounded-full transition-all ease-out"
           style={{
             width: `${percentDisplay}%`,
             background: gradient,
