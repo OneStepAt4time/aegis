@@ -291,7 +291,7 @@ function buildInitComparisonConfig(
   if (!hasGeneratedToken) {
     return config;
   }
-  return { ...config, clientAuthToken: '__generated__' };
+  return { ...config, authToken: '__generated__' };
 }
 
 function formatPromptDefault(defaultValue: string): string {
