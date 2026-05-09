@@ -694,10 +694,10 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `workDir` | string | **yes** | Absolute path to working directory (must exist) |
+| `workDir` | string | **yes** | Absolute path to an existing directory (file paths are rejected) |
 | `name` | string | no | Session name (max 200 chars; defaults to auto-generated) |
 | `label` | string | no | Alias for `name` (backward compat; `name` takes precedence) |
-| `prompt` | string | no | Initial prompt to send after boot (max 100k chars) |
+| `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided) |
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
 | `model` | string | no | Model name for analytics grouping (max 200 chars) |
@@ -721,9 +721,11 @@ curl -X POST http://localhost:9100/v1/sessions \
   "workDir": "/home/user/my-project",
   "status": "working",
   "createdAt": 1712650800000,
-  "promptDelivery": { "delivered": true, "attempts": 1 }
+  "promptDelivery": { "delivered": false, "attempts": 0 }
 }
 ```
+
+> **Note:** `promptDelivery.delivered` is `false` when ACP is disabled — no backend process is spawned to handle the prompt. Enable ACP via `AEGIS_ACP_ENABLED=true` or `"acpEnabled": true` in config.
 
 **Response (`200 OK`):** Returned when reusing an existing idle session (`reused: true`).
 
@@ -731,7 +733,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 | Status | Code | Condition |
 |--------|------|-----------|
-| 400 | — | Invalid request body, missing `workDir`, env denylist rejection |
+| 400 | — | Invalid request body, missing `workDir`, file path as `workDir`, empty `prompt`, env denylist rejection |
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
@@ -2646,6 +2648,10 @@ GET /v1/channels/health
 
 Returns health status for all connected channels (Telegram, Slack, Email, webhooks).
 
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
 ```bash
 curl http://localhost:9100/v1/channels/health \
   -H "Authorization: Bearer $TOKEN"
@@ -3138,6 +3144,10 @@ GET /v1/webhooks/dead-letter
 ```
 
 Lists failed webhook deliveries across all channels for inspection and retry.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl http://localhost:9100/v1/webhooks/dead-letter \
