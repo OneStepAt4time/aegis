@@ -192,6 +192,8 @@ All endpoints under `/v1/`.
 | `permission_prompt` | Awaiting approval | `/approve` or `/reject` |
 | `asking` | Claude asked a question | Read `/read`, respond `/send` |
 | `stalled` | No output for >5 min | Nudge `/send` or `DELETE` |
+| `unknown` | Initial state, not yet connected | Wait a moment and re-poll |
+| `error` | Session crashed | Check diagnostics, recreate |
 
 </details>
 
