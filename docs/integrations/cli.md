@@ -21,11 +21,12 @@ Create `.aegis/config.yaml` with an API token, preferred base URL, optional BYO-
 ```bash
 ag init
 ag init --yes            # Non-interactive defaults for CI
+ag init --yes --force     # Overwrite existing config in non-interactive mode
 ag init --list-templates
 ag init --from-template code-reviewer
 ```
 
-The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite.
+The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite. In `--yes` mode, existing config is preserved by default — use `--force` (or `-f`) to allow overwriting.
 
 `ag init` also exposes the built-in starter gallery for Claude Code helpers:
 
