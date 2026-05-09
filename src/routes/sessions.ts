@@ -28,15 +28,16 @@ const execFileAsync = promisify(execFile);
 // #1393: claudeCommand must not contain shell metacharacters
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
 
+const SAFE_NAME_RE = /^[a-zA-Z0-9_ ./@\-=]{1,200}$/;
 /** Build the create-session schema with config-driven env denylist. */
 function buildCreateSessionSchema(ctx: RouteContext) {
   const extraDenylist = ctx.config.envDenylist ?? [];
   const adminAllowlist = ctx.config.envAdminAllowlist ?? [];
   return z.object({
     workDir: z.string().min(1),
-    name: z.string().max(200).optional(),
+    name: z.string().max(200).regex(SAFE_NAME_RE).optional(),
     /** Alias for `name`; accepted for backward compatibility with dashboard/CLI callers. */
-    label: z.string().max(200).optional(),
+    label: z.string().max(200).regex(SAFE_NAME_RE).optional(),
     prompt: z.string().min(1).max(100_000).optional(),
     prd: z.string().max(100_000).optional(),
     resumeSessionId: z.string().uuid().optional(),
