@@ -610,6 +610,7 @@ async function loadState(filePath: string): Promise<LocalState> {
     return deserializeState(JSON.parse(await readFile(filePath, 'utf8')));
   } catch (error) {
     if (isNodeError(error) && error.code === 'ENOENT') return createEmptyState();
+    if (error instanceof SyntaxError) return createEmptyState();
     throw error;
   }
 }
