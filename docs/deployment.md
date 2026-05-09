@@ -98,6 +98,40 @@ sudo systemctl enable aegis
 sudo systemctl start aegis
 ```
 
+### Crash Alerting (systemd)
+
+Aegis includes systemd alerting for bare-metal/VM deployments. When the server
+exhausts restart attempts or fails health checks, a webhook notification is sent.
+
+**Setup:**
+
+```bash
+# Copy unit files and scripts
+sudo cp deploy/systemd/aegis.service /etc/systemd/system/
+sudo cp deploy/systemd/aegis-failure-notify.* /etc/systemd/system/
+sudo cp deploy/systemd/aegis-healthcheck.* /etc/systemd/system/
+sudo cp deploy/systemd/aegis-failure-notify.sh /usr/local/bin/
+sudo cp deploy/systemd/aegis-healthcheck.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/aegis-failure-notify.sh /usr/local/bin/aegis-healthcheck.sh
+
+# Configure webhook URL (required for alerts)
+sudo mkdir -p /etc/aegis
+echo 'AEGIS_FAILURE_WEBHOOK=https://discord.com/api/webhooks/YOUR_WEBHOOK' | sudo tee /etc/aegis/aegis.env
+sudo chmod 600 /etc/aegis/aegis.env
+
+# Enable
+sudo systemctl daemon-reload
+sudo systemctl enable --now aegis aegis-healthcheck.timer
+```
+
+| Component | Trigger | Purpose |
+|-----------|---------|--------|
+| `aegis-failure-notify.service` | systemd `OnFailure` | Alert when restart attempts exhausted |
+| `aegis-healthcheck.timer` | Every 60s | Ping `/health`, alert on failure |
+
+Set `AEGIS_FAILURE_WEBHOOK` in `/etc/aegis/aegis.env` to a Discord, Slack, or
+generic webhook URL. If unset, notifications are silently skipped.
+
 ### Docker Auto-Detection
 
 When running inside a Docker container, Aegis automatically detects the
