@@ -84,6 +84,12 @@ See the [OIDC Configuration](#configuration) table below for all environment var
 
 For **dashboard SSO**, also set `AEGIS_OIDC_CLIENT_SECRET`. The dashboard will redirect to your IdP for login. See the [Dashboard Guide — OIDC SSO](dashboard.md#oidc-sso-configuration) for full setup.
 
+> **Tip:** If you set up auth, export the token for the curl examples below:
+> ```bash
+> export TOKEN=your-secret-token
+> ```
+> All examples from section 5 onward use `$TOKEN` for brevity. No-auth setups can omit the `-H "Authorization: Bearer $TOKEN"` headers.
+
 </details>
 
 ## 2. Open the Dashboard
@@ -122,9 +128,9 @@ ag create "Analyze this project. List the main technologies, directory structure
    ID: a1b2c3d4
 
 Next steps:
-  Status:   curl http://127.0.0.1:9100/v1/sessions/a1b2c3d4/health
-  Read:     curl http://127.0.0.1:9100/v1/sessions/a1b2c3d4/read
-  Kill:     curl -X DELETE http://127.0.0.1:9100/v1/sessions/a1b2c3d4
+  Status:   curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9100/v1/sessions/a1b2c3d4/health
+  Read:     curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9100/v1/sessions/a1b2c3d4/read
+  Kill:     curl -X DELETE -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9100/v1/sessions/a1b2c3d4
 ```
 
 Save the `id` — you'll need it for follow-up commands.
@@ -136,19 +142,26 @@ Save the `id` — you'll need it for follow-up commands.
 Watch the session in the dashboard, or poll the API:
 
 ```bash
-curl http://localhost:9100/v1/sessions/a1b2c3d4
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4
 ```
 
-For real-time updates, use the SSE event stream:
+> **Tip:** Set `TOKEN` once and reuse it: `TOKEN=your-secret-token` (or `TOKEN=$(cat .aegis/config.yaml | grep authToken | cut -d' ' -f2)`).
+
+For real-time updates, use the SSE event stream (requires an SSE token — see [SSE Auth](#configuration)):
 
 ```bash
-curl -N http://localhost:9100/v1/events
+# Step 1: Get an SSE token
+SSE_TOKEN=$(curl -s -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/auth/sse-token | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])")
+
+# Step 2: Connect to the stream
+curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 ```
 
 ## 6. Send a Follow-Up
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text": "Now create a detailed plan to fix the issues you found."}'
 ```
@@ -156,7 +169,7 @@ curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
 ## 7. Read the Results
 
 ```bash
-curl http://localhost:9100/v1/sessions/a1b2c3d4/read
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/read
 ```
 
 This returns the parsed transcript — Claude Code's full response in structured JSON.
@@ -167,10 +180,10 @@ When Claude Code asks for approval (e.g., to run a shell command or write a file
 
 ```bash
 # Approve
-curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/approve
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/approve
 
 # Reject
-curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/reject
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/reject
 ```
 
 You can also set `permissionMode` when creating a session to control approval behavior:
@@ -191,16 +204,19 @@ Aegis is designed for parallel orchestration. Each session runs as an independen
 ```bash
 # Backend fix
 curl -X POST http://localhost:9100/v1/sessions \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "backend", "workDir": "/path/to/backend", "prompt": "Fix failing API tests"}'
 
 # Frontend improvement
 curl -X POST http://localhost:9100/v1/sessions \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "frontend", "workDir": "/path/to/frontend", "prompt": "Add loading states to all API calls"}'
 
 # Documentation
 curl -X POST http://localhost:9100/v1/sessions \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "docs", "workDir": "/path/to/project", "prompt": "Update README with the new API endpoints"}'
 ```
@@ -208,7 +224,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 List all sessions:
 
 ```bash
-curl http://localhost:9100/v1/sessions
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions
 ```
 
 Supports pagination: `?page=1&limit=20&status=active`. Invalid values (e.g. `page=-1`, `limit=999`) return `400`.
@@ -221,7 +237,7 @@ Connect Aegis to Claude Code for native tool access:
 claude mcp add aegis -- ag mcp
 ```
 
-This registers 34 MCP tools (session management, ACP control, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools.
+This registers 34 MCP tools (session management, ACP control, transcript reading, pipeline orchestration, etc.). Restart Claude Code to load the tools. MCP tool calls are authenticated automatically via the Aegis MCP server.
 
 For the full MCP tools reference, see [MCP Tools](./mcp-tools.md).
 
