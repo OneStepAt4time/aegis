@@ -298,13 +298,47 @@ export default function SessionHistoryPage() {
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
-  const handleExport = () => {
-    const toExport = selectedIds.size > 0
-      ? sortedRecords.filter((r) => selectedIds.has(r.id))
-      : records;
-    const csv = generateSessionHistoryCSV(toExport);
-    const date = new Date().toISOString().slice(0, 10);
-    downloadCSV(csv, `aegis-sessions-${date}.csv`);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (exporting) return;
+
+    // If specific rows are selected, export just those
+    if (selectedIds.size > 0) {
+      const toExport = sortedRecords.filter((r) => selectedIds.has(r.id));
+      const csv = generateSessionHistoryCSV(toExport);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCSV(csv, `aegis-sessions-${date}.csv`);
+      return;
+    }
+
+    // No selection — export all matching records (not just current page)
+    setExporting(true);
+    try {
+      const params: FetchSessionHistoryParams = { limit: 9999 };
+      if (filterOwner) params.ownerKeyId = filterOwner;
+      if (filterStatus) params.status = filterStatus as FetchSessionHistoryParams['status'];
+      if (filterSearch) params.nameSearch = filterSearch;
+      if (filterSort === 'newest') { params.sortBy = 'createdAt'; params.sortOrder = 'desc'; }
+      else if (filterSort === 'oldest') { params.sortBy = 'createdAt'; params.sortOrder = 'asc'; }
+      else if (filterSort === 'status') { params.sortBy = 'status'; params.sortOrder = 'asc'; }
+      // Apply same date filters as the page
+      const now = Date.now();
+      if (filterDateRange === '1h') params.createdAfter = Math.floor((now - 60 * 60 * 1000) / 1000);
+      else if (filterDateRange === 'today') { const d = new Date(); d.setHours(0,0,0,0); params.createdAfter = Math.floor(d.getTime() / 1000); }
+      else if (filterDateRange === '7d') params.createdAfter = Math.floor((now - 7*24*60*60*1000) / 1000);
+      else if (filterDateRange === '30d') params.createdAfter = Math.floor((now - 30*24*60*60*1000) / 1000);
+
+      const data = await fetchSessionHistory(params);
+      const csv = generateSessionHistoryCSV(data.records);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCSV(csv, `aegis-sessions-${date}.csv`);
+      addToast('success', 'Export complete', `${data.records.length} session${data.records.length === 1 ? '' : 's'} exported`);
+    } catch (e) {
+      addToast('error', 'Export failed', e instanceof Error ? e.message : undefined);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleShareLink = () => {
@@ -408,12 +442,13 @@ export default function SessionHistoryPage() {
           </button>
           {records.length > 0 && (
             <button
-              onClick={() => handleExport()}
-              className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
+              onClick={() => void handleExport()}
+              disabled={exporting}
+              className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Export session history as CSV"
             >
               <Download className="h-3.5 w-3.5" />
-              Export CSV
+              {exporting ? 'Exporting…' : 'Export CSV'}
             </button>
           )}
         </div>
@@ -559,12 +594,13 @@ export default function SessionHistoryPage() {
             <div className="flex items-center gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-4 py-2.5">
               <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{selectedIds.size} selected</span>
               <button
-                onClick={() => handleExport()}
-                className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
+                onClick={() => void handleExport()}
+                disabled={exporting}
+                className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Export selected sessions as CSV"
               >
                 <Icon name="Download" size={12} />
-                Export
+                {exporting ? 'Exporting…' : 'Export'}
               </button>
               <button
                 onClick={() => setConfirmDeleteOpen(true)}
