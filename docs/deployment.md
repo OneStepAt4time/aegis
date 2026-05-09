@@ -159,19 +159,11 @@ volumes:
 
 ### Helm (Kubernetes / k3s)
 
-The chart source lives in `deploy/helm/aegis`, and release tags publish a Helm repo at:
-
-```text
-https://onestepat4time.github.io/aegis/helm
-```
-
-Install or upgrade Aegis with:
+The chart source lives in `deploy/helm/aegis`. Install or upgrade Aegis with:
 
 ```bash
-helm repo add aegis https://onestepat4time.github.io/aegis/helm
-helm repo update
-
-helm upgrade --install aegis aegis/aegis \
+# Build the chart from source (published Helm repo coming soon)
+helm upgrade --install aegis ./deploy/helm/aegis \
   --namespace aegis \
   --create-namespace
 ```

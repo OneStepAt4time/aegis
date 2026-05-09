@@ -859,13 +859,13 @@ Claude Code hook event endpoint. Set `AEGIS_HOOK_SECRET_HEADER_ONLY=true` to enf
 curl -X POST http://localhost:9100/v1/memory \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"key": "project-context", "value": "Using Fastify v5", "ttlMs": 3600000}'
+  -d '{"key": "project/context", "value": "Using Fastify v5", "ttlSeconds": 3600}'
 ```
 
 **Request body:**
 - `key` **(required)** — memory key (string)
 - `value` **(required)** — memory value
-- `ttlMs` — time-to-live in milliseconds (optional)
+- `ttlSeconds` — time-to-live in milliseconds (optional)
 
 **Response `200`:**
 ```json
@@ -887,15 +887,15 @@ curl http://localhost:9100/v1/memory \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 
 # Filter by prefix
-curl "http://localhost:9100/v1/memory?prefix=project-" \
+curl "http://localhost:9100/v1/memory?prefix=project/" \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
 **Response `200`:**
 ```json
 [
-  {"key": "project-context", "value": "Using Fastify v5", "ttlMs": 3600000},
-  {"key": "project-version", "value": "2.1.0", "ttlMs": null}
+  {"key": "project/context", "value": "Using Fastify v5", "ttlSeconds": 3600},
+  {"key": "project/version", "value": "2.1.0", "ttlSeconds": null}
 ]
 ```
 
@@ -904,13 +904,13 @@ curl "http://localhost:9100/v1/memory?prefix=project-" \
 ### Get memory entry
 
 ```bash
-curl http://localhost:9100/v1/memory/project-context \
+curl http://localhost:9100/v1/memory/project%2Fcontext \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
 **Response `200`:**
 ```json
-{"key": "project-context", "value": "Using Fastify v5", "ttlMs": 3600000}
+{"key": "project/context", "value": "Using Fastify v5", "ttlSeconds": 3600}
 ```
 
 **Response `404`** — key not found:
@@ -923,7 +923,7 @@ curl http://localhost:9100/v1/memory/project-context \
 ### Delete memory entry
 
 ```bash
-curl -X DELETE http://localhost:9100/v1/memory/project-context \
+curl -X DELETE http://localhost:9100/v1/memory/project%2Fcontext \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 

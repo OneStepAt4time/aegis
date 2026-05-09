@@ -3,8 +3,7 @@
 > Source of truth for every color, spacing, radius, motion, and shadow used
 > in the Aegis dashboard. Enforced by a grep gate wired into `npm run gate`.
 
-Status: **Phase 1 foundation** — issue
-[dashboard-perfection #016](../../.claude/epics/dashboard-perfection/016.md).
+Status: **Phase 1 foundation** — design tokens epic.
 
 ## Why
 
@@ -141,7 +140,7 @@ The command rewrites the allowlist with every currently-violating file.
 
 ## Related
 
-- Issue [016](../../.claude/epics/dashboard-perfection/016.md) — the epic-level
+- Issue #016 (design tokens epic) — the epic-level
   plan for primitives, Storybook, and visual regression.
 - `dashboard/src/index.css` — CSS layer (colors, helper classes, noise
   overlay, nav indicators).

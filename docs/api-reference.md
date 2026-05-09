@@ -2965,7 +2965,7 @@ Writes a memory entry with optional TTL.
 curl -X POST http://localhost:9100/v1/memory \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"key": "project-context", "value": "Using Fastify v5", "ttlSeconds": 3600}'
+  -d '{"key": "project/context", "value": "Using Fastify v5", "ttlSeconds": 3600}'
 ```
 
 **Request body:**
@@ -2996,11 +2996,13 @@ GET /v1/memory/:key
 Reads a memory entry by key.
 
 ```bash
-curl http://localhost:9100/v1/memory/project-context \
+curl http://localhost:9100/v1/memory/project%2Fcontext \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** `{ "entry": { "key": "project-context", "value": "Using Fastify v5", "ttl": 3600 } }`
+> **Note:** Keys containing `/` must be URL-encoded (`%2F`) in GET and DELETE paths. Alternatively, use `GET /v1/memory?prefix=project/` to list and find entries.
+
+**Response:** `{ "entry": { "key": "project/context", "value": "Using Fastify v5", "ttlSeconds": 3600 } }`
 
 **Errors:**
 
@@ -3019,7 +3021,7 @@ GET /v1/memory
 Lists all entries, optionally filtered by prefix.
 
 ```bash
-curl "http://localhost:9100/v1/memory?prefix=project-" \
+curl "http://localhost:9100/v1/memory?prefix=project/" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -3042,7 +3044,7 @@ DELETE /v1/memory/:key
 Deletes a memory entry by key.
 
 ```bash
-curl -X DELETE http://localhost:9100/v1/memory/project-context \
+curl -X DELETE http://localhost:9100/v1/memory/project%2Fcontext \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -3590,4 +3592,4 @@ tenantWorkdirs:
 
 Cross-tenant violations return `403 Forbidden` with audit trail.
 
-See [ADR-0025](./adr/0025-tenant-aware-authorization-model.md) for the design decision.
+See [ADR-0025](./adr/0025-tenant-authz-model.md) for the design decision.
