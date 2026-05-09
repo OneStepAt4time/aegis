@@ -42,6 +42,35 @@ ag init --from-template docs-writer
 ag doctor
 ```
 
+### `ag run "prompt"` — Zero-to-Session
+
+Bootstrap config, start the server, create a session, and stream output — all in one command.
+
+```bash
+ag run "Build a REST API for managing tasks" --cwd .
+ag run "Fix the auth bug"                     # Uses current directory
+ag run "Refactor the utils" --no-stream       # Print curl commands instead of streaming
+ag run "Debug the tests" --port 3000          # Custom server port
+```
+
+**What it does:**
+
+1. Checks server health — is it running?
+2. If not: bootstraps config (if none exists) → starts server in background → waits up to 15s
+3. Creates a session with the prompt and working directory
+4. Streams session output to your terminal with role icons (`👤` user, `🤖` assistant)
+5. Prints the dashboard URL for follow-up monitoring
+
+If the server is already running, skips straight to session creation. Existing config is never overwritten (respects `--force` behavior from `ag init`).
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--cwd <path>` | Working directory (default: current directory) |
+| `--port <number>` | Server port override |
+| `--no-stream` | Don't stream output; print curl commands instead |
+
 ### `ag` — Start Server
 
 Start the Aegis HTTP server (port 9100).
@@ -185,6 +214,7 @@ ag                     Start HTTP server
 ag init                Bootstrap .aegis/config.yaml
 ag init --list-templates
 ag init --from-template code-reviewer
+ag run "prompt"        Zero-to-session (bootstrap + start + create + stream)
 ag doctor              Validate starter scaffolds
 ag --port 3000         Custom port
 ag mcp                 Start MCP server
