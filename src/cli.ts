@@ -170,9 +170,12 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
       body: JSON.stringify({ text: brief }),
     });
 
+    // Issue #3059: Don't show scary warning when agent hasn't started yet
     const result = await res.json() as { delivered?: boolean; attempts?: number };
     if (result.delivered) {
       writeLine(io.stdout, `  ✅ Brief delivered (attempt ${result.attempts})`);
+    } else if ((result.attempts ?? 0) === 0) {
+      writeLine(io.stdout, `  ✅ Brief queued — agent will pick up shortly`);
     } else {
       writeLine(io.stdout, `  ⚠️  Brief sent but delivery not confirmed after ${result.attempts} attempts`);
     }
