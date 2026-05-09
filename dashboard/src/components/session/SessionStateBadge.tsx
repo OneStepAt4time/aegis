@@ -23,6 +23,7 @@ export type SessionBadgeStatus =
   | 'error'
   | 'compacting'
   | 'offline'
+  | 'pending'
   | 'unknown';
 
 export interface SessionStateBadgeProps {
@@ -40,6 +41,7 @@ const STATUS_TO_DOT: Record<SessionBadgeStatus, StatusDotVariant> = {
   error: 'error',
   compacting: 'compacting',
   offline: 'unknown',
+  pending: 'idle',
   unknown: 'unknown',
 };
 
@@ -51,6 +53,7 @@ const STATUS_LABEL: Record<SessionBadgeStatus, string> = {
   error: 'Error',
   compacting: 'Compacting',
   offline: 'Offline',
+  pending: 'Pending',
   unknown: 'Unknown',
 };
 

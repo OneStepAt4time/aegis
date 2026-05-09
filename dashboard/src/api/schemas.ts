@@ -39,6 +39,7 @@ const UIState = z.enum([
   'bash_approval',
   'settings',
   'error',
+  'pending',
   'unknown',
 ]);
 

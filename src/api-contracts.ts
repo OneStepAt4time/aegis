@@ -20,6 +20,7 @@ export type UIState =
   | 'settings'
   | 'error'
   | 'rate_limit'
+  | 'pending'
   | 'unknown';
 
 export type SessionStatusFilter = 'all' | UIState;

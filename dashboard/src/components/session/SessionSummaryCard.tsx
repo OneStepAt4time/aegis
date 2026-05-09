@@ -15,6 +15,7 @@ const STATUS_LABELS: Record<UIState, string> = {
   compacting: 'Compacting',
   context_warning: 'Context warning',
   waiting_for_input: 'Waiting for input',
+  pending: 'Pending',
   unknown: 'Unknown',
 };
 

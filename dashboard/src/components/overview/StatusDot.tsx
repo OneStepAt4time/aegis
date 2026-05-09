@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<UIState, string> = {
   compacting: 'var(--color-warning)',
   context_warning: 'var(--color-warning)',
   waiting_for_input: 'var(--color-warning)',
+  pending: '#888',
   unknown: '#666',
 };
 
@@ -51,6 +52,7 @@ const STATUS_LABELS: Record<UIState, string> = {
   compacting: 'Compacting',
   context_warning: 'Context warning',
   waiting_for_input: 'Waiting for input',
+  pending: 'Pending',
   unknown: 'Unknown',
 };
 
