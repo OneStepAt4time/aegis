@@ -48,7 +48,7 @@ const counts: SessionStatusCounts = {
   error: 0,
   rate_limit: 0,
   pending: 0,
-      unknown: 0,
+    unknown: 0,
 };
 
 const sessions: SessionInfo[] = [

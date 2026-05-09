@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<UIState, string> = {
   compacting: 'var(--color-warning)',
   context_warning: 'var(--color-warning)',
   waiting_for_input: 'var(--color-warning)',
-  pending: '#888',
+  pending: '#f0ad4e',  // amber — visually distinct from unknown gray
   unknown: '#666',
 };
 
