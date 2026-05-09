@@ -132,6 +132,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   const authToken = await resolveAuthToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const curlAuthHeader = authToken ? '-H "Authorization: Bearer $TOKEN" ' : '';
 
   let sessionId: string;
   try {
@@ -181,9 +182,9 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout);
   writeLine(io.stdout, '  Next steps:');
-  writeLine(io.stdout, `    Status:   curl ${baseUrl}/v1/sessions/${sessionId}/health`);
-  writeLine(io.stdout, `    Read:     curl ${baseUrl}/v1/sessions/${sessionId}/read`);
-  writeLine(io.stdout, `    Kill:     curl -X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
+  writeLine(io.stdout, `    Status:   curl ${curlAuthHeader}${baseUrl}/v1/sessions/${sessionId}/health`);
+  writeLine(io.stdout, `    Read:     curl ${curlAuthHeader}${baseUrl}/v1/sessions/${sessionId}/read`);
+  writeLine(io.stdout, `    Kill:     curl ${curlAuthHeader}-X DELETE ${baseUrl}/v1/sessions/${sessionId}`);
   return 0;
 }
 
