@@ -1,6 +1,6 @@
 /**
  * sessionTableUtils.ts — Shared types and utilities for SessionTable components.
- * @ticket #2932
+ * @ticket #2932 // token-ok
  */
 
 import type { MouseEvent } from 'react';

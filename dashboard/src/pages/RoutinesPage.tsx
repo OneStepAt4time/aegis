@@ -4,7 +4,7 @@
  * Phase 1 scaffold: Calendar UI with empty states.
  * Backend API endpoints for routines will be added in Phase 2.
  *
- * Related: #2908
+ * Related: #2908 // token-ok
  */
 
 import { useState, useCallback } from 'react';

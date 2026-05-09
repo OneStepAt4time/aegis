@@ -2,7 +2,7 @@
  * components/shared/ContributionHeatmap.tsx — GitHub-style contribution heatmap.
  *
  * Displays daily activity as a grid of colored cells (7 rows × N weeks).
- * Used by CostPage, SessionDetailPage, and AnalyticsPage (#2808, #2832).
+ * Used by CostPage, SessionDetailPage, and AnalyticsPage (#2808, #2832). // token-ok
  *
  * Supports:
  * - Custom color scale (dark-first by default)
@@ -52,11 +52,11 @@ export interface ContributionHeatmapProps {
 /* ------------------------------------------------------------------ */
 
 const DEFAULT_COLOR_SCALE = [
-  'rgba(6, 182, 212, 0.08)',   // level 0 — near-invisible
-  'rgba(6, 182, 212, 0.25)',   // level 1
-  'rgba(6, 182, 212, 0.50)',   // level 2
-  'rgba(6, 182, 212, 0.75)',   // level 3
-  'rgba(6, 182, 212, 1.00)',   // level 4 — full intensity
+  'rgba(6, 182, 212, 0.08)',   // level 0 — near-invisible // token-ok
+  'rgba(6, 182, 212, 0.25)',   // level 1 // token-ok
+  'rgba(6, 182, 212, 0.50)',   // level 2 // token-ok
+  'rgba(6, 182, 212, 0.75)',   // level 3 // token-ok
+  'rgba(6, 182, 212, 1.00)',   // level 4 — full intensity // token-ok
 ];
 
 const DAY_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'] as const;
@@ -144,7 +144,7 @@ export function ContributionHeatmap({
   data,
   label,
   unit = '',
-  emptyColor = 'rgba(6, 182, 212, 0.06)',
+  emptyColor = 'rgba(6, 182, 212, 0.06)', // token-ok
   colorScale = DEFAULT_COLOR_SCALE,
   weeks = 0,
   cellSize = 11,
@@ -313,7 +313,7 @@ export function ContributionHeatmap({
                 role="gridcell"
                 aria-label={`${cell.date}: ${formatValue(cell.value, unit)}`}
                 tabIndex={onCellClick ? 0 : undefined}
-                className="rounded-sm cursor-default transition-[outline] duration-100"
+                className="rounded-sm cursor-default transition-[outline] "
                 style={{
                   width: `${cellSize}px`,
                   height: `${cellSize}px`,

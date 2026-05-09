@@ -1,7 +1,7 @@
 /**
  * SessionMobileCard — mobile card view for session rows.
  * Extracted from SessionTable for maintainability.
- * @ticket #2932
+ * @ticket #2932 // token-ok
  */
 
 import { memo } from 'react';

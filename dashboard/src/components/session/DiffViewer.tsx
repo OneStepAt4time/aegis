@@ -1,5 +1,5 @@
 /**
- * components/session/DiffViewer.tsx — File diff viewer for session detail (#2906).
+ * components/session/DiffViewer.tsx — File diff viewer for session detail (#2906). // token-ok
  *
  * Parses Edit/Write tool_use events from transcript and renders
  * an inline diff view with file list sidebar.

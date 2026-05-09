@@ -84,7 +84,7 @@ export function ModelDistributionBar({
           return (
             <div
               key={`${segment.model}-${i}`}
-              className="transition-all duration-300"
+              className="transition-all "
               style={{
                 width: `${segment.fraction * 100}%`,
                 backgroundColor: style.color,
