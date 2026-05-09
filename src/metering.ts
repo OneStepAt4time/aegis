@@ -6,7 +6,7 @@
  * usage, then provides aggregation endpoints for billing integration.
  */
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { SessionEventBus } from './events.js';
@@ -192,7 +192,10 @@ export class MeteringService {
       records: this.records,
       nextId: this.nextId,
     };
-    await writeFile(this.dataFile, JSON.stringify(data), 'utf-8');
+    // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
+    const tmpFile = `${this.dataFile}.tmp.${process.pid}`;
+    await writeFile(tmpFile, JSON.stringify(data), 'utf-8');
+    await rename(tmpFile, this.dataFile);
   }
 
   /** Subscribe to session lifecycle events for automatic recording. Starts periodic prune timer. */

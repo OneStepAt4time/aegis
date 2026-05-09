@@ -108,7 +108,10 @@ async function neutralizeOneFile(filePath: string, bpPath: string, targetMode: s
     // Patch
     if (!settings.permissions) settings.permissions = {};
     settings.permissions.defaultMode = targetMode;
-    await writeFile(filePath, JSON.stringify(settings, null, 2) + '\n');
+    // Issue #3045: atomic write to prevent truncation
+    const tmpFile = `${filePath}.tmp.${process.pid}`;
+    await writeFile(tmpFile, JSON.stringify(settings, null, 2) + '\n');
+    await rename(tmpFile, filePath);
 
     console.log(`Permission guard: neutralized bypassPermissions in ${filePath} (backup: ${bpPath})`);
     return true;

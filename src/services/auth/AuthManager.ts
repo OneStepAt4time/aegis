@@ -8,7 +8,7 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import { timingSafeStringEqual } from '../../crypto-utils.js';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { authStoreSchema } from '../../validation.js';
 import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -221,8 +221,11 @@ export class AuthManager {
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });
     }
+    // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
     const data = { ...this.store, graceKeys: this.graceKeys };
-    await writeFile(this.keysFile, JSON.stringify(data, null, 2), { mode: 0o600 });
+    const tmpFile = `${this.keysFile}.tmp.${process.pid}`;
+    await writeFile(tmpFile, JSON.stringify(data, null, 2), { mode: 0o600 });
+    await rename(tmpFile, this.keysFile);
     await secureFilePermissions(this.keysFile);
   }
 
