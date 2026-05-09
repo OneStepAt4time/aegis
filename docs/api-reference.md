@@ -854,7 +854,7 @@ curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
 |-----------|------|---------|-------------|
 | `page` | integer | 1 | Page number |
 | `limit` | integer | 50 | Items per page (max 200) |
-| `status` | string | — | Filter: `active`, `killed`, `unknown` |
+| `status` | string | — | Filter: any UIState value (e.g. `active`, `pending`, `killed`, `unknown`) |
 | `ownerKeyId` | string | — | Filter by owner API key |
 
 | Role | Required |
@@ -937,7 +937,7 @@ curl http://localhost:9100/v1/sessions/abc123/read \
 }
 ```
 
-> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `unknown`.
+> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `unknown`.
 
 ---
 
