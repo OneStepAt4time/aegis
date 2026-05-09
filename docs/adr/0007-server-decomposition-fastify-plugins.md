@@ -16,7 +16,7 @@ The server handles authentication, session management, pipeline orchestration, a
 
 ## Decision
 
-Decompose `server.ts` into Fastify plugins using the [8-plugin architecture plan](./docs/architecture.md#server-decomposition):
+Decompose `server.ts` into Fastify plugins using the [8-plugin architecture plan](../architecture.md#server-decomposition):
 
 ```
 src/server.ts          → ~50 lines (plugin registration only)

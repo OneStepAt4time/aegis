@@ -400,4 +400,4 @@ Do **not** report security issues in public GitHub issues.
 - [SECURITY.md](../SECURITY.md) — full security policy
 - [Deployment Guide](deployment.md) — production deployment
 - [API Rate Limiting](api-rate-limiting.md) — rate limit configuration
-- [Webhook Retry](webhook-retry.md) — webhook delivery with retry
+- [Webhook Retry](api-reference.md#dead-letter-queue) — webhook delivery with retry
