@@ -9,12 +9,14 @@
 
 import { useState, useCallback } from 'react';
 import { Calendar, Plus } from 'lucide-react';
+import { useT } from '../i18n/context';
 import EmptyState from '../components/shared/EmptyState';
 import { CalendarGrid } from '../components/routines';
 import RoutineCard from '../components/routines/RoutineCard';
 import type { RoutineSchedule } from '../components/routines/CalendarGrid';
 
 export default function RoutinesPage() {
+  const t = useT();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Phase 1: No backend yet — routines will come from API in Phase 2
@@ -52,13 +54,13 @@ export default function RoutinesPage() {
       {/* Sidebar: routines list */}
       <div className="space-y-4">
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-          {selectedDate ? `Routines for selected date` : 'Upcoming'}
+          {selectedDate ? t('routines.routinesForDate') : t('routines.upcoming')}
         </h2>
         {routines.length === 0 ? (
           <EmptyState
             icon={<Calendar className="w-8 h-8" />}
-            title="No routines yet"
-            description="Create a routine to schedule recurring tasks on a calendar."
+            title={t('routines.emptyTitle')}
+            description={t('routines.emptyDescription')}
           />
         ) : (
           routines.map((routine) => (
@@ -80,18 +82,18 @@ export default function RoutinesPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Routines</h1>
+            <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
             <p className="text-sm text-[var(--color-text-muted)] mt-1">
-              Scheduled tasks that run on a recurring basis
+              {t('routines.subtitle')}
             </p>
           </div>
           <button
             onClick={handleCreate}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--color-bg)]"
-            aria-label="Create new routine"
+            aria-label={t('routines.createNew')}
           >
             <Plus className="w-4 h-4" />
-            New Routine
+            {t('routines.createNew')}
           </button>
         </div>
         {calendarContent}
@@ -104,18 +106,18 @@ export default function RoutinesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Routines</h1>
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
-            {routines.length} scheduled task{routines.length !== 1 ? 's' : ''}
+            {t('routines.taskCount', { count: routines.length })}
           </p>
         </div>
         <button
           onClick={handleCreate}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[var(--color-bg)]"
-          aria-label="Create new routine"
+          aria-label={t('routines.createNew')}
         >
           <Plus className="w-4 h-4" />
-          New Routine
+          {t('routines.createNew')}
         </button>
       </div>
       {calendarContent}

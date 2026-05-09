@@ -233,6 +233,17 @@ export const en = {
     },
   },
   
+  routines: {
+    title: 'Routines',
+    subtitle: 'Scheduled tasks that run on a recurring basis',
+    createNew: 'New Routine',
+    upcoming: 'Upcoming',
+    routinesForDate: 'Routines for selected date',
+    emptyTitle: 'No routines yet',
+    emptyDescription: 'Create a routine to schedule recurring tasks on a calendar.',
+    taskCount: '{count} scheduled task(s)',
+  },
+
   login: {
     title: 'Sign In',
     subtitle: 'Enter your API token to continue',

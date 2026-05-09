@@ -236,6 +236,17 @@ export const it = {
     },
   },
 
+  routines: {
+    title: 'Routine',
+    subtitle: 'Attività pianificate ricorrenti',
+    createNew: 'Nuova Routine',
+    upcoming: 'In arrivo',
+    routinesForDate: 'Routine per la data selezionata',
+    emptyTitle: 'Nessuna routine ancora',
+    emptyDescription: 'Crea una routine per pianificare attività ricorrenti su un calendario.',
+    taskCount: '{count} attività pianificata/e',
+  },
+
   login: {
     title: 'Accedi',
     subtitle: 'Inserisci il tuo token API per continuare',
