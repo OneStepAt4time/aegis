@@ -37,7 +37,7 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     name: z.string().max(200).optional(),
     /** Alias for `name`; accepted for backward compatibility with dashboard/CLI callers. */
     label: z.string().max(200).optional(),
-    prompt: z.string().max(100_000).optional(),
+    prompt: z.string().min(1).max(100_000).optional(),
     prd: z.string().max(100_000).optional(),
     resumeSessionId: z.string().uuid().optional(),
     claudeCommand: z.string().max(500).regex(SAFE_COMMAND_RE).optional(),
