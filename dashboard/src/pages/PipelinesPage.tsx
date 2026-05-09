@@ -1,7 +1,7 @@
 /**
  * pages/PipelinesPage.tsx — Pipeline list with metrics and create action.
  *
- * Demo data removed — shows only real API data. (#2811)
+ * Demo data removed — shows only real API data. (#2811) // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';

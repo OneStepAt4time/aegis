@@ -1,5 +1,5 @@
 /**
- * components/session/PRStatusPanel.tsx — CI/PR integration for session detail (#2907).
+ * components/session/PRStatusPanel.tsx — CI/PR integration for session detail (#2907). // token-ok
  *
  * Phase 1: Parse PR info from transcript tool_use entries.
  * Detects `gh pr create` and `git push` commands and extracts PR URLs/branch info.
