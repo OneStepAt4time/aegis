@@ -523,9 +523,9 @@ curl -sf http://localhost:9100/v1/metrics | \
 
 | Channel | Best for |
 |---------|---------|
-| [Email](docs/integrations/notifications.md#email-smtp) | On-call ops (stall/dead alerts) |
-| [Slack](docs/integrations/notifications.md#slack) | Team channel (session events) |
-| [Webhook](docs/integrations/notifications.md#webhooks) | PagerDuty, Grafana, custom pipelines |
+| [Email](integrations/notifications.md#email-smtp) | On-call ops (stall/dead alerts) |
+| [Slack](integrations/notifications.md#slack) | Team channel (session events) |
+| [Webhook](integrations/notifications.md#webhooks) | PagerDuty, Grafana, custom pipelines |
 
 **Key events to alert on:**
 
