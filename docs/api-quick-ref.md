@@ -225,4 +225,4 @@ See [API Rate Limiting](api-rate-limiting.md) for full documentation.
 - [API Examples](api-examples.md) — curl examples for all 59 endpoints
 - [Authentication](api-reference.md#authentication) — auth setup
 - [Rate Limiting](api-rate-limiting.md) — rate limits and headers
-- [Webhook Retry](webhook-retry.md) — webhook delivery with retry
+- [Webhook Retry](api-reference.md#dead-letter-queue) — webhook delivery with retry

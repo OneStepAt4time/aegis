@@ -238,4 +238,4 @@ Outbound webhooks have **separate** rate limiting from API request limits. When 
 2. After 3 failed attempts, the delivery is moved to the **dead letter queue**
 3. View failed deliveries: `GET /v1/webhooks/dead-letter`
 
-See [Webhook Retry Logic](webhook-retry.md) for full details.
+See [Webhook Retry Logic](api-reference.md#dead-letter-queue) for full details.

@@ -196,6 +196,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
   });
 
   app.get<{ Querystring: { page?: string; limit?: string; status?: string; project?: string } }>('/v1/sessions', async (req, reply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const parsed = sessionsListQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
