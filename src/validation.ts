@@ -826,6 +826,7 @@ export const configFileSchema = z.object({
     generalMax: z.number().int().positive().optional(),
     timeWindowSec: z.number().int().positive().optional(),
   }).optional(),
+  acpEnabled: z.boolean().optional(),
 });
 
 
