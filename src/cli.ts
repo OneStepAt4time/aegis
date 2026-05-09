@@ -197,6 +197,7 @@ function printHelp(io: CliIO): void {
     ag                     Start the server (port 9100)
     ag init                Bootstrap .aegis/config.yaml
     ag init --yes          Non-interactive bootstrap for CI
+    ag init --force          Overwrite existing config (use with caution)
     ag init --list-templates
     ag init --from-template code-reviewer
     ag doctor              Validate starter templates here or run local diagnostics

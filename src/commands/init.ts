@@ -542,6 +542,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   // --- Config bootstrap path ---
 
   const yes = args.includes('--yes') || args.includes('-y');
+  const force = args.includes("--force") || args.includes("-f");
   const configPath = resolveInitConfigPath(args);
   const displayConfigPath = formatConfigPath(configPath);
   const commandPrefix = commandPrefixForConfig(configPath);
@@ -557,6 +558,17 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const stateDir = currentConfig.stateDir;
   await mkdir(stateDir, { recursive: true });
   writeLine(io.stdout, `  ✅ State directory: ${stateDir}`);
+
+  // Issue #3028: Warn when config already exists
+  if (existingConfigText !== null && !force) {
+    writeLine(io.stdout, `  ⚠️  ${displayConfigPath} already exists.`);
+    if (existingToken) {
+      writeLine(io.stdout, `  ⚠️  Existing auth token will be preserved.`);
+    }
+    if (yes) {
+      writeLine(io.stdout, `  ℹ️  Use --force to overwrite in non-interactive mode.`);
+    }
+  }
 
   if (existingConfigText !== null && existingConfig === null && yes) {
     writeLine(
@@ -620,8 +632,8 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const needsWrite = existingConfigText === null || existingConfig === null || desiredComparison !== existingComparison;
 
   if (existingConfigText !== null && needsWrite) {
-    if (yes) {
-      writeLine(io.stdout, `  ℹ️  Left ${displayConfigPath} unchanged because --yes never overwrites existing files.`);
+    if (yes && !force) {
+      writeLine(io.stdout, `  ℹ️  Left ${displayConfigPath} unchanged because --yes never overwrites (use --force to override) existing files.`);
       printInitSummary(io, {
         authToken: existingToken,
         baseUrl: existingConfig?.baseUrl ? normalizeBaseUrl(existingConfig.baseUrl) : baseUrl,
