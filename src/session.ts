@@ -843,8 +843,11 @@ export class SessionManager {
    *  Returns true if the last assistant message has text content only (no tool_use). */
 
   /** Send initial prompt (ACP stub — prompts sent via JSON-RPC). */
+  // Issue #2995: Return honest delivery status when ACP is disabled.
+  // In ACP mode, prompts are delivered through the ACP backend during session
+  // creation — this stub is only reached when acpEnabled is false.
   async sendInitialPrompt(_id: string, _prompt: string): Promise<{ delivered: boolean; attempts: number }> {
-    return { delivered: true, attempts: 1 };
+    return { delivered: false, attempts: 0 };
   }
 
   /** Find an idle session by workDir (ACP mode: state-based lookup with acquisition).
