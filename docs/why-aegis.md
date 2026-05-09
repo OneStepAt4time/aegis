@@ -109,3 +109,77 @@ See [Getting Started](./getting-started.md) for the full walkthrough.
 - [Deployment Guide](./deployment.md) — production deployment, Docker, TLS, monitoring
 - [Enterprise Guide](./enterprise.md) — security hardening and compliance
 - [API Reference](./api-reference.md) — 60+ REST endpoints with examples
+
+---
+
+## Claude Code Feature Requests That Aegis Already Solves
+
+> Source: Scanned 50+ open issues on `anthropics/claude-code` (May 2026)
+
+Claude Code explicitly leaves orchestration to the ecosystem. The agent handles the REPL, permissions, tools, and IDE integration. Session management, APIs, dashboards, multi-agent coordination, and cost tracking — that's Aegis.
+
+Every Claude Code user who asks "how do I manage multiple sessions?" or "where's my cost dashboard?" is a potential Aegis user. Here's what they're asking for and what we already ship:
+
+### Named, Resumable Sessions
+
+**[CC #57393](https://github.com/anthropics/claude-code/issues/57393)** — Named sessions for `--resume`
+
+```bash
+# Create a named session
+curl -X POST http://localhost:9100/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name": "auth-refactor", "workDir": "/home/user/project", "prompt": "Refactor the auth module"}'
+
+# Reuse by workDir — idle sessions auto-reuse, no duplicates
+```
+
+### Session Metadata (`createdAt`, status, health)
+
+**[CC #57524](https://github.com/anthropics/claude-code/issues/57524)** — `list_sessions` should expose `startedAt`
+
+Every Aegis session response includes `id`, `displayName`, `status`, `workDir`, `createdAt`, `parentId`, and more. Per-session health, metrics, and latency endpoints available.
+
+### Lifecycle Hooks
+
+**[CC #57523](https://github.com/anthropics/claude-code/issues/57523)** — PreToolUse/output hooks for SendUserMessage
+
+Aegis receives Claude Code's HTTP hooks and exposes them as SSE streams and a dashboard:
+
+- `PreToolUse` / `PostToolUse` — tool execution lifecycle
+- `PermissionRequest` — approval needed
+- `Stop` / `StopFailure` — session ended
+- `Notification` — informational events
+
+### Expanded Usage Analytics
+
+**[CC #57407](https://github.com/anthropics/claude-code/issues/57407)** — Expand `/usage` analytics
+
+| Endpoint | What it gives you |
+|----------|-------------------|
+| `GET /v1/analytics/summary` | Aggregated sessions, tokens, costs, daily trends |
+| `GET /v1/analytics/costs` | Per-model cost breakdown with daily trends |
+| `GET /v1/analytics/tokens` | Token usage with per-model distribution |
+| `GET /v1/analytics/rate-limits` | Rate-limit / quota usage with session forecast |
+| `GET /v1/metrics` | Prometheus-compatible metrics |
+| `GET /v1/sessions/{id}/metrics` | Per-session message counts, tool calls, approvals |
+| `GET /v1/sessions/{id}/latency` | Per-session latency measurements |
+
+### Visual Dashboard
+
+Claude Code has no built-in dashboard. Aegis ships one at `/dashboard/` — real-time session overview, live transcripts, audit log, cost tracking, keyboard shortcuts, mobile-responsive.
+
+### Feature Gaps We Could Fill
+
+| CC Issue | Request | Effort | Why it matters |
+|----------|---------|--------|---------------|
+| [#57496](https://github.com/anthropics/claude-code/issues/57496) | MCP server reload without restart | Medium | Hot-reload is a DX win |
+| [#57387](https://github.com/anthropics/claude-code/issues/57387) | Live tunnel from local CLI to claude.ai | High | Remote access is our lane |
+| [#57519](https://github.com/anthropics/claude-code/issues/57519) | `OnSystemReminder` hook event | Low | Trivial to add |
+| [#57512](https://github.com/anthropics/claude-code/issues/57512) | `spawn_task` auto-add worktrees to .gitignore | Low | Natural session lifecycle fit |
+
+### Recommended Actions
+
+1. **Blog post:** "10 Claude Code Feature Requests Solved by Aegis" — directly address the CC community
+2. **awesome-claude-code listing** — get Aegis listed in community resources
+3. **ACP Registry listing** — ensure discoverability (see issue #3018)
+4. **MCP hot-reload** — implement CC #57496 for immediate differentiation
