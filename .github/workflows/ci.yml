@@ -71,14 +71,35 @@ jobs:
       - name: Enforce approved minor bump label for feat PRs
         uses: actions/github-script@v9
         with:
-          script: "const pr = context.payload.pull_request;\nif (!pr) {\n  core.info('Not\
-            \ a pull request event; skipping gate.');\n  return;\n}\n\nconst title =\
-            \ pr.title || '';\nconst isFeat = /^feat(\\(.+\\))?!?:\\s/i.test(title);\n\
-            if (!isFeat) {\n  core.info(`PR title is not feat:* (${title}); gate passed.`);\n\
-            \  return;\n}\n\nconst labels = (pr.labels || []).map(label => label.name);\n\
-            if (labels.includes('approved-minor-bump')) {\n  core.info('approved-minor-bump\
-            \ label present; feat gate passed.');\n  return;\n}\n\ncore.setFailed('feat:\
-            \ PRs require the approved-minor-bump label before CI can pass.');\n"
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.info('Not a pull request event; skipping gate.');
+              return;
+            }
+
+            const title = pr.title || '';
+            const isFeat = /^feat(\(.+\))?!?:\s/i.test(title);
+            if (!isFeat) {
+              core.info(`PR title is not feat:* (${title}); gate passed.`);
+              return;
+            }
+
+            // Fetch live labels from the API instead of using the frozen payload.
+            // This ensures re-runs pick up labels added after the initial push.
+            const { data: livePr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+            const labels = (livePr.labels || []).map(label => label.name);
+
+            if (labels.includes('approved-minor-bump')) {
+              core.info('approved-minor-bump label present; feat gate passed.');
+              return;
+            }
+
+            core.setFailed('feat: PRs require the approved-minor-bump label before CI can pass.');
   sdk-drift:
     runs-on: ubuntu-latest
     steps:
