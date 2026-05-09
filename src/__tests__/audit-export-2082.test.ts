@@ -60,7 +60,7 @@ describe('Audit Export API (#2082)', () => {
         ),
         hasPermission: vi.fn(
           (_keyId: string | null | undefined, permission: string) =>
-            permission === 'audit',
+            false,
         ),
       },
       getAuditLogger: () => auditLogger,
