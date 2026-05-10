@@ -59,7 +59,7 @@ function buildCreateSessionSchema(ctx: RouteContext) {
 const batchDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).max(100).optional(),
   status: z.enum([
-    'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
+    'pending', 'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
     'permission_prompt', 'plan_mode', 'ask_question', 'bash_approval',
     'settings', 'error', 'rate_limit', 'unknown',
   ]).optional(),
