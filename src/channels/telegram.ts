@@ -252,6 +252,51 @@ function formatSubAgentTree(text: string): string | null {
  * Handles: **bold**, `code`, ```blocks```, [links](url), tables
  * Must be called BEFORE wrapping in blockquote/pre tags.
  */
+/** Allowlisted URI schemes for md2html() link hrefs. Prevents tg://, javascript:, data:, etc. */
+const ALLOWED_HREF_SCHEMES = ['http:', 'https:', '#:', 'mailto:'];
+
+function sanitizeHref(href: string): string {
+  const trimmed = href.trim();
+  // Allow relative/anchor links (no colon before slash/hash)
+  if (trimmed.startsWith('#') || trimmed.startsWith('/')) return esc(trimmed);
+  const scheme = trimmed.split(':')[0]?.toLowerCase() + ':';
+  if (ALLOWED_HREF_SCHEMES.includes(scheme)) return esc(trimmed);
+  // Block everything else — show the link text but drop the dangerous href
+  return '#';
+}
+
+/** Strip control chars, RTL overrides, and truncate topic names for Telegram forum topics. */
+function sanitizeTopicName(name: string): string {
+  return name
+    // Strip control characters (C0, C1, RTL overrides LRE/RLE/LRO/RLO/PDF)
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200E-\u200F\u202A-\u202E]/g, '')
+    // Collapse whitespace
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64);
+}
+
+/** Max callback_data length per Telegram Bot API (64 bytes). */
+const MAX_CALLBACK_DATA_LENGTH = 64;
+
+function safeCallbackData(data: string): string {
+  if (Buffer.byteLength(data, 'utf-8') <= MAX_CALLBACK_DATA_LENGTH) return data;
+  // Truncate value portion to fit within 64 bytes
+  const prefix = data.substring(0, data.lastIndexOf(':') + 1);
+  const value = data.substring(prefix.length);
+  // Binary search for max value length that fits
+  let lo = 0, hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (Buffer.byteLength(prefix + value.slice(0, mid), 'utf-8') <= MAX_CALLBACK_DATA_LENGTH) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return prefix + value.slice(0, lo);
+}
+
 function md2html(md: string): string {
   let result = '';
   const lines = md.split('\n');
@@ -322,7 +367,7 @@ function md2html(md: string): string {
     processed = processed.replace(/(?<!\w)_([^_]+?)_(?!\w)/g, '<i>$1</i>');
 
     // Links: [text](url)
-    processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => '<a href="' + sanitizeHref(href) + '">' + text + '</a>');
 
     // List bullets
     processed = processed.replace(/^(\s*)[-*]\s+/, '$1• ');
@@ -816,7 +861,7 @@ export class TelegramChannel implements Channel {
   }
 
   async onSessionCreated(payload: SessionEventPayload): Promise<void> {
-    const topicName = `🤖 ${payload.session.name}`;
+        const topicName = sanitizeTopicName(`🤖 ${payload.session.name}`);
     const result = (await this.tgApi('createForumTopic', {
       chat_id: this.config.groupChatId,
       name: topicName,
@@ -1043,14 +1088,14 @@ export class TelegramChannel implements Channel {
           for (const opt of options) {
             buttons.push({
               text: opt.label,
-              callback_data: `cb_option:${payload.session.id}:${opt.value}`,
+              callback_data: safeCallbackData(`cb_option:${payload.session.id}:${opt.value}`),
             });
           }
         } else {
           // Fallback: generic approve/reject
           buttons.push(
-            { text: '✅ Approve', callback_data: `perm_approve:${payload.session.id}` },
-            { text: '❌ Reject', callback_data: `perm_reject:${payload.session.id}` },
+            { text: '✅ Approve', callback_data: safeCallbackData(`perm_approve:${payload.session.id}`) },
+            { text: '❌ Reject', callback_data: safeCallbackData(`perm_reject:${payload.session.id}`) },
           );
         }
 
@@ -1083,18 +1128,18 @@ export class TelegramChannel implements Channel {
           for (const opt of options) {
             buttons.push({
               text: opt.label,
-              callback_data: `cb_option:${payload.session.id}:${opt.value}`,
+              callback_data: safeCallbackData(`cb_option:${payload.session.id}:${opt.value}`),
             });
           }
           // Always add Skip for questions
           if (buttons.length < 4) {
-            buttons.push({ text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` });
+            buttons.push({ text: '🤷 Skip', callback_data: safeCallbackData(`cb_skip:${payload.session.id}`) });
           }
         } else {
           buttons.push(
-            { text: '✅ Yes', callback_data: `cb_yes:${payload.session.id}` },
-            { text: '❌ No', callback_data: `cb_no:${payload.session.id}` },
-            { text: '🤷 Skip', callback_data: `cb_skip:${payload.session.id}` },
+            { text: '✅ Yes', callback_data: safeCallbackData(`cb_yes:${payload.session.id}`) },
+            { text: '❌ No', callback_data: safeCallbackData(`cb_no:${payload.session.id}`) },
+            { text: '🤷 Skip', callback_data: safeCallbackData(`cb_skip:${payload.session.id}`) },
           );
         }
 
@@ -1122,9 +1167,9 @@ export class TelegramChannel implements Channel {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: '▶ Execute', callback_data: `plan_exec:${payload.session.id}` },
-                { text: '⚡ Execute All', callback_data: `plan_exec_all:${payload.session.id}` },
-                { text: '❌ Cancel', callback_data: `plan_cancel:${payload.session.id}` },
+                { text: '▶ Execute', callback_data: safeCallbackData(`plan_exec:${payload.session.id}`) },
+                { text: '⚡ Execute All', callback_data: safeCallbackData(`plan_exec_all:${payload.session.id}`) },
+                { text: '❌ Cancel', callback_data: safeCallbackData(`plan_cancel:${payload.session.id}`) },
               ],
             ],
           },
