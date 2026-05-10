@@ -1437,6 +1437,13 @@ async function main(): Promise<void> {
     });
   }
 
+  // Issue #3076: Redirect root / to /dashboard/ when dashboard is available
+  if (dashboardAvailable) {
+    app.get('/', async (_req, reply) => {
+      return reply.redirect('/dashboard/');
+    });
+  }
+
   // SPA fallback for dashboard routes (Issue #105)
   app.setNotFoundHandler(async (req, reply) => {
     if (dashboardAvailable && (req.url === "/dashboard" || req.url?.startsWith("/dashboard/") || req.url?.startsWith("/dashboard?"))) {
