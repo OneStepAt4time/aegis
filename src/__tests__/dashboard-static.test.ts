@@ -215,9 +215,10 @@ describe('Dashboard static serving (Issue #105)', () => {
 
   describe('8. Dashboard CSP policy', () => {
     it('should allow npm registry update checks in connect-src', async () => {
-      const serverPath = join(process.cwd(), 'src', 'server.ts');
-      const serverContent = await readFile(serverPath, 'utf-8');
-      expect(serverContent).toContain("connect-src 'self' ws: wss: https://registry.npmjs.org");
+      // #3154: CSP moved to plugins/dashboard-static.ts
+      const pluginPath = join(process.cwd(), 'src', 'plugins', 'dashboard-static.ts');
+      const pluginContent = await readFile(pluginPath, 'utf-8');
+      expect(pluginContent).toContain("connect-src 'self' ws: wss: https://registry.npmjs.org");
     });
   });
 });
