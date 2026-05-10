@@ -18,6 +18,7 @@ import {
   requestHasPermission,
   withOwnership,
   withSessionOwnership,
+  requireSessionOwnership,
 } from './context.js';
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
@@ -228,8 +229,13 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
 
   // Kill session
   // Issue #2461: Extracted to variable so POST aliases reuse the same handler.
-  const killHandler = withSessionOwnership(ctx, async (req, reply, session) => {
+  // Issue #3082: Check permission BEFORE ownership — viewer without kill
+  // permission should see "missing kill permission", not tenant/owner error.
+  const killHandler = async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requirePermission(auth, req, reply, 'kill')) return;
+    const id = (req.params as { id: string }).id;
+    const session = requireSessionOwnership(ctx, id, req, reply, 'kill');
+    if (!session) return;
     try {
       await sessions.killSession(session.id);
       // Issue #2067: record session as failed before cleanup
@@ -243,7 +249,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
-  }, 'kill');
+  };
 
   registerWithLegacy(app, 'delete', '/v1/sessions/:id', killHandler);
 
