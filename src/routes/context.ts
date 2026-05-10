@@ -259,7 +259,8 @@ export function requireSessionOwnership(
   if (callerTenantId && callerTenantId !== SYSTEM_TENANT && session.tenantId !== callerTenantId) {
     const audit = getAuditLogger();
     if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.action.denied', `Cross-tenant ${actionLabel} denied on session ${sessionId} (tenant: ${session.tenantId})`, sessionId, callerTenantId);
-    reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });
+    // Issue #3071: Return 404 instead of 403 to prevent session ID enumeration
+    reply.status(404).send({ error: 'Session not found' });
     return null;
   }
 
