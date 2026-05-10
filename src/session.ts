@@ -34,7 +34,8 @@ import { startSessionSpan, spanError, spanOk } from './tracing.js';
 export type UIState =
   | 'idle' | 'working' | 'compacting' | 'context_warning'
   | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
-  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown';
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown'
+  | 'killed' | 'completed' | 'crashed';
 
 /** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
@@ -564,6 +565,8 @@ export class SessionManager {
     /** Issue #1944: Tenant ID inherited from the creating API key. */
     tenantId?: string;
     /** Issue #2535: Model name supplied at creation time (e.g. "claude-sonnet-4-6"). */
+    /** Issue #3135: Override initial status when creating from ACP result. */
+    initialStatus?: UIState;
     model?: string;
   }): Promise<SessionInfo> {
     const id = opts.id ?? crypto.randomUUID();
@@ -692,7 +695,7 @@ export class SessionManager {
       claudeSessionId: freshSessionId || undefined,
       byteOffset: 0,
       monitorOffset: 0,
-      status: 'pending',
+      status: opts.initialStatus ?? 'pending',
       createdAt: Date.now(),
       lastActivity: Date.now(),
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
@@ -1294,7 +1297,9 @@ export class SessionManager {
       // #405: Clean up all tracking maps (pollTimers, pendingPermissions, pendingQuestions, parsedEntriesCache)
       this.cleanupSession(id);
 
-      delete this.state.sessions[id];
+      // Issue #3137: Mark session as killed instead of deleting from storage
+      session.status = 'killed';
+      session.lastActivity = Date.now();
       this.invalidateSessionsListCache();
       // #357: Cancel any pending debounced save before doing an immediate save
       if (this.saveDebounceTimer !== null) {

@@ -21,6 +21,9 @@ export type UIState =
   | 'error'
   | 'rate_limit'
   | 'pending'
+  | 'killed'
+  | 'completed'
+  | 'crashed'
   | 'unknown';
 
 export type SessionStatusFilter = 'all' | UIState;

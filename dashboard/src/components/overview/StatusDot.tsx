@@ -20,6 +20,9 @@ const STATUS_COLORS: Record<UIState, string> = {
   waiting_for_input: 'var(--color-warning)',
   pending: '#f0ad4e',  // amber — visually distinct from unknown gray
   unknown: '#666',
+  killed: '#888',
+  completed: '#4CAF50',
+  crashed: '#F44336',
 };
 
 const HEALTH_COLORS: Record<SessionHealthState, string> = {
@@ -54,6 +57,9 @@ const STATUS_LABELS: Record<UIState, string> = {
   waiting_for_input: 'Waiting for input',
   pending: 'Pending',
   unknown: 'Unknown',
+  killed: 'Killed',
+  completed: 'Completed',
+  crashed: 'Crashed',
 };
 
 const HEALTH_LABELS: Record<SessionHealthState, string> = {

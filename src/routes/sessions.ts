@@ -372,7 +372,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
 
     // Issue #607: Check for an existing idle session with the same workDir
-    const existing = await sessions.findIdleSessionByWorkDir(safeWorkDir);
+    // Issue #3135: Skip reuse in ACP mode — ACP manages its own session lifecycle
+    const existing = acpBackend && ctx.config.acpEnabled ? null : await sessions.findIdleSessionByWorkDir(safeWorkDir);
     if (existing) {
       try {
         let promptDelivery: { delivered: boolean; attempts: number } | undefined;
@@ -418,6 +419,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
       try {
         session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+        // Issue #3135: Sync ACP session status to local session state
+        // The ACP backend tracks agent status independently; mirror it here.
+        const acpToUIState: Record<string, import('../session.js').UIState> = { idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
+        const mappedStatus = acpToUIState[acpResult.session.status];
+        if (mappedStatus) {
+          session.status = mappedStatus;
+          session.lastActivity = Date.now();
+        }
       } catch (e) {
         await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }).catch(() => {});
         throw e;
