@@ -396,7 +396,7 @@ function setupAuth(authManager: AuthManager): void {
     if (urlPath === '/v1/auth/device/authorize' || urlPath === '/v1/auth/device/token') return;
     // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
     if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
-    if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
+    if (urlPath === '/' || urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
     // Issue #3092: manifest.json must be public for PWA install.
     if (urlPath === '/manifest.json') return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
