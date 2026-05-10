@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { SessionManager } from './session.js';
+import { resolveClaudeAgentAcpBinary } from './services/acp/binary-resolver.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from './monitor.js';
 import { JsonlWatcher } from './jsonl-watcher.js';
 import {
@@ -830,6 +831,24 @@ async function handleConfigReload(source: string): Promise<void> {
 async function main(): Promise<void> {
   // Load configuration
   config = await loadConfig();
+
+  // Issue #3132: Auto-detect ACP binary when acpEnabled=true (default).
+  // If no AEGIS_ACP_ENABLED env var was set and the binary isn't found,
+  // disable ACP so sessions fall back to in-memory mode with clear warnings.
+  if (config.acpEnabled && !process.env.AEGIS_ACP_ENABLED) {
+    try {
+      resolveClaudeAgentAcpBinary();
+    } catch {
+      config.acpEnabled = false;
+      logger.warn({
+        component: 'server',
+        operation: 'acp_auto_detect',
+        errorCode: 'ACP_BINARY_NOT_FOUND',
+        attributes: { hint: 'Install @agentclientprotocol/claude-agent-acp or set AEGIS_ACP_ENABLED=false' },
+      });
+    }
+  }
+
   dashboardTokenSessions = new DashboardSessionStore();
   dashboardOidc = await createDashboardOidcManagerFromEnv(config);
 
