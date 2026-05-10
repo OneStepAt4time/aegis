@@ -305,7 +305,7 @@ Or use a config file (`.aegis/config.yaml` is the preferred bootstrap path, and 
 ```yaml
 baseUrl: http://127.0.0.1:9100
 dashboardEnabled: true
-clientAuthToken: your-token
+authToken: your-token
 memoryBridge:
   enabled: true
 ```
