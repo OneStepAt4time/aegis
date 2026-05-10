@@ -312,9 +312,22 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'whoami') {
     return handleWhoami(argv.slice(1), io);
-
   }
 
+  if (argv[0] === 'run') {
+    return handleRun(argv.slice(1), io);
+  }
+
+  // Issue #3079: Reject single-word args that look like unknown commands.
+  // Known subcommands are handled above; single-word non-flag args are likely
+  // typos (e.g. "ag status", "ag health") rather than intentional prompts.
+  // Multi-word args or quoted strings are treated as prompts (backward compat).
+  if (argv.length === 1 && !argv[0].startsWith('-') && !argv[0].includes(' ')) {
+    writeLine(io.stderr, `Unknown command: "${argv[0]}". Run ag --help for usage.`);
+    return 1;
+  }
+
+  // Multi-word bare args or explicit create: treat as prompt
   if (argv.length === 1 && !argv[0].startsWith('-')) {
     return handleCreate(argv, io);
   }
