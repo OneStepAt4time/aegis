@@ -26,8 +26,7 @@ import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
-// import { OperatorTimeline } from '../components/session/OperatorTimeline';
-const OperatorTimeline = lazy(() => import('../components/session/OperatorTimeline').then(m => ({ default: m.OperatorTimeline })));
+const SessionTimelineView = lazy(() => import('../components/session/SessionTimelineView').then(m => ({ default: m.SessionTimelineView })));
 // import { StreamTab } from '../components/session/StreamTab';
 const StreamTab = lazy(() => import('../components/session/StreamTab').then(m => ({ default: m.StreamTab })));
 // import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
@@ -771,11 +770,9 @@ export default function SessionDetailPage() {
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
 
-                    <OperatorTimeline
-                    sessionId={s.id}
+                    <SessionTimelineView
                     events={timelineEvents}
                     isLoading={timelineLoading}
-                    config={{ relativeTime: true, autoScroll: true }}
                   />
 
                   </Suspense>
