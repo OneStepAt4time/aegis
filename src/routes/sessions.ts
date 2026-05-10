@@ -470,7 +470,9 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       ? 'Session created but prompt not delivered: ACP is disabled. Set AEGIS_ACP_ENABLED=true or add "acpEnabled": true to config to enable Claude Code sessions.'
       : undefined;
 
-    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery, ...(acpWarning ? { warning: acpWarning } : {}) });
+    // Issue #3134: Include 'name' alias for backward compat (API consumers expect 'name')
+    const sessionResponse = redactSession(session as unknown as Record<string, unknown>);
+    return reply.status(201).send({ ...sessionResponse, name: sessionResponse.displayName ?? sessionResponse.name, promptDelivery, ...(acpWarning ? { warning: acpWarning } : {}) });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
