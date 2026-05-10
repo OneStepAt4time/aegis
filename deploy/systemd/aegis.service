@@ -35,10 +35,12 @@ WorkingDirectory=/opt/aegis
 
 # Server
 ExecStart=/usr/bin/node dist/server.js
+# Wait for health endpoint to respond (max 15s) before marking service as active
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:${AEGIS_PORT:-9100}/health && exit 0; sleep 1; done; echo "WARN: health endpoint not responding after 15s"' 
 Restart=on-failure
 RestartSec=5
 StartLimitIntervalSec=300
-StartLimitBurst=5
+StartLimitBurst=10
 
 # Note: WatchdogSec (Type=notify + sd_notify) can be added once the server
 # implements sd_notify pings. The health-check timer covers this gap.
