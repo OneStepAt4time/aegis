@@ -40,10 +40,20 @@ function copyPlatformExecutionEnv(
     return;
   }
 
-  for (const key of ['PATH', 'TMPDIR', 'TEMP', 'TMP']) {
+  // Core execution env
+  for (const key of ['PATH', 'TMPDIR', 'TEMP', 'TMP', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE']) {
     const value = source[key];
     if (value !== undefined) {
       target[key] = value;
+    }
+  }
+
+  // Issue #3135: Pass through Anthropic/Claude env vars so the ACP child
+  // process can authenticate. Without these, claude-agent-acp cannot find
+  // API keys or credentials and silently fails.
+  for (const key of Object.keys(source)) {
+    if (key.startsWith('ANTHROPIC_') || key.startsWith('CLAUDE_')) {
+      target[key] = source[key];
     }
   }
 }
