@@ -397,6 +397,8 @@ function setupAuth(authManager: AuthManager): void {
     // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
     if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
+    // Issue #3092: manifest.json must be public for PWA install.
+    if (urlPath === '/manifest.json') return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
@@ -1441,6 +1443,21 @@ async function main(): Promise<void> {
   if (dashboardAvailable) {
     app.get('/', async (_req, reply) => {
       return reply.redirect('/dashboard/');
+    });
+  }
+
+  // Issue #3092: Serve manifest.json at root for PWA install (no auth required).
+  if (dashboardAvailable) {
+    app.get('/manifest.json', async (_req, reply) => {
+      const manifestPath = path.join(dashboardRoot, 'manifest.json');
+      try {
+        const data = await fs.readFile(manifestPath, 'utf-8');
+        reply.header('Content-Type', 'application/manifest+json');
+        reply.header('Cache-Control', 'public, max-age=3600');
+        return reply.send(data);
+      } catch {
+        return reply.status(404).send({ error: 'manifest.json not found' });
+      }
     });
   }
 
