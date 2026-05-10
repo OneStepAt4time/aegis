@@ -233,6 +233,96 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   // Issue #2461: /stream alias for /events SSE
   registerWithLegacy(app, 'get', '/v1/sessions/:id/stream', sessionEventsHandler);
 
+
+  // Issue #3114: Session export — download full transcript as JSONL or Markdown
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/export', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    const query = req.query as { format?: string };
+    const format = query.format ?? 'jsonl';
+
+    if (format !== 'jsonl' && format !== 'markdown') {
+      return reply.status(400).send({ error: `Invalid format: ${format}. Supported: jsonl, markdown` });
+    }
+
+    // Read full transcript
+    const sessionId = (req.params as { id: string }).id;
+    const transcript = await sessions.readTranscript(sessionId, 1, 100_000);
+    const entries = transcript.messages;
+
+    if (entries.length === 0) {
+      return reply.status(404).send({ error: 'No transcript data available for this session' });
+    }
+
+    if (format === 'jsonl') {
+      // NDJSON — one JSON object per line
+      const lines = entries.map(e => JSON.stringify({
+        role: e.role,
+        contentType: e.contentType,
+        text: e.text,
+        ...(e.toolName ? { toolName: e.toolName } : {}),
+        ...(e.toolUseId ? { toolUseId: e.toolUseId } : {}),
+        ...(e.timestamp ? { timestamp: e.timestamp } : {}),
+      }));
+      return reply
+        .header('Content-Type', 'application/x-ndjson')
+        .header('Content-Disposition', `attachment; filename="session-${session.id}.jsonl"`)
+        .send(lines.join('\n'));
+    }
+
+    // Markdown format
+    const mdParts: string[] = [
+      `# Session Export: ${session.displayName || session.id}`,
+      ``,
+      `> Exported: ${new Date().toISOString()}`,
+      `> Session ID: ${session.id}`,
+      `> Status: ${session.status}`,
+      ``,
+      `---`,
+      ``,
+    ];
+
+    for (const entry of entries) {
+      if (entry.contentType === 'tool_use') {
+        mdParts.push(`### 🔧 Tool: ${entry.toolName || 'unknown'}`);
+        mdParts.push('');
+        mdParts.push(`<details>`);
+        mdParts.push(`<summary>${entry.text || entry.toolName || 'Tool call'}</summary>`);
+        mdParts.push('');
+      } else if (entry.contentType === 'tool_result' || entry.contentType === 'tool_error') {
+        const isError = entry.contentType === 'tool_error';
+        if (isError) {
+          mdParts.push(`> ⚠️ Tool error: ${entry.text?.slice(0, 200) || 'unknown error'}`);
+        } else {
+          mdParts.push(entry.text?.slice(0, 2000) || '');
+        }
+        mdParts.push('');
+        mdParts.push(`</details>`);
+        mdParts.push('');
+      } else if (entry.contentType === 'thinking') {
+        mdParts.push(`### 💭 Thinking`);
+        mdParts.push('');
+        mdParts.push(entry.text || '');
+        mdParts.push('');
+      } else if (entry.contentType === 'permission_request') {
+        mdParts.push(`### 🔐 Permission Request`);
+        mdParts.push('');
+        mdParts.push(`> ${entry.text || 'Permission requested'}`);
+        mdParts.push('');
+      } else {
+        // Regular text message
+        const roleLabel = entry.role === 'user' ? '👤 User' : entry.role === 'system' ? '⚙️ System' : '🤖 Assistant';
+        mdParts.push(`### ${roleLabel}`);
+        mdParts.push('');
+        mdParts.push(entry.text || '');
+        mdParts.push('');
+      }
+    }
+
+    return reply
+      .header('Content-Type', 'text/markdown; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="session-${session.id}.md"`)
+      .send(mdParts.join('\n'));
+  }));
+
   // ── Claude Code Hook Endpoints (Issue #161) ─────────────────────
   // Permission hook — validates body with withValidation, looks up session manually
   // (Claude Code calls this directly, not through API user auth)
