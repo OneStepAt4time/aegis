@@ -759,8 +759,7 @@ curl http://localhost:9100/v1/sessions/abc123 \
 
 | Status | Condition |
 |--------|-----------|
-| 403 | Not the session owner |
-| 404 | Session not found |
+| 404 | Session not found (or unauthorized — 404 is returned for both to prevent ID enumeration) |
 
 ---
 
