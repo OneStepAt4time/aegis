@@ -882,6 +882,9 @@ async function main(): Promise<void> {
     sessions.setEncryptionKey(config.authToken);
   }
 
+  // Issue #3143: Wire ACP event store into session transcript reader
+  sessions.setAcpEventStore(acpLocalProfile.eventStore);
+
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {
     const persistPath = config.memoryBridge.persistPath ?? path.join(config.stateDir, 'memory.json');
