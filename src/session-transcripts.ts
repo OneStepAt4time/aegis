@@ -15,9 +15,13 @@ import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 import type { UIState } from './session.js';
 
-/** Stub: detect UI state from terminal pane text (ACP mode). */
-function detectUIState(_paneText: string): UIState {
-  return 'idle';
+/** Stub: detect UI state from terminal pane text (ACP mode).
+ * Issue #3081: In ACP mode there is no tmux pane to read, so we cannot
+ * detect the actual UI state. Return the session's current status instead
+ * of hardcoding 'idle', which was overwriting 'pending' on fresh sessions.
+ */
+function detectUIState(currentStatus: UIState): UIState {
+  return currentStatus;
 }
 
 
@@ -58,10 +62,10 @@ export class SessionTranscripts {
     interactiveContent: string | null;
   }> {
     // Detect UI state from terminal (stub: ACP mode)
-    const paneText = '';
-    const status = detectUIState(paneText);
-    const statusText = parseStatusLine(paneText);
-    const interactive = extractInteractiveContent(paneText);
+    // Issue #3081: Pass current status so stub preserves it
+    const status = detectUIState(session.status);
+    const statusText = parseStatusLine('');
+    const interactive = extractInteractiveContent('');
 
     session.status = status;
     session.lastActivity = Date.now();
@@ -117,10 +121,10 @@ export class SessionTranscripts {
     interactiveContent: string | null;
   }> {
     // Detect UI state from terminal (stub: ACP mode)
-    const paneText = '';
-    const status = detectUIState(paneText);
-    const statusText = parseStatusLine(paneText);
-    const interactive = extractInteractiveContent(paneText);
+    // Issue #3081: Pass current status so stub preserves it
+    const status = detectUIState(session.status);
+    const statusText = parseStatusLine('');
+    const interactive = extractInteractiveContent('');
 
     session.status = status;
 
