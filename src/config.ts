@@ -221,7 +221,7 @@ const defaults: Config = {
   stateStore: 'file',
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
-  acpEnabled: false,
+  acpEnabled: true,
 };
 
 /** Parse CLI args for --config flag */
