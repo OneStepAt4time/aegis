@@ -92,6 +92,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/sessions/{id}/read` | Bearer | Read recent messages |
 | `GET` | `/v1/sessions/{id}/transcript` | Bearer | Paginated transcript |
 | `GET` | `/v1/sessions/{id}/transcript/cursor` | Bearer | Cursor-based transcript replay |
+| `GET` | `/v1/sessions/{id}/export` | Bearer | Download transcript as JSONL/Markdown |
 | `GET` | `/v1/sessions/{id}/summary` | Bearer | AI-generated session summary |
 | `GET` | `/v1/sessions/{id}/metrics` | Bearer | Per-session metrics (tokens, duration) |
 | `GET` | `/v1/sessions/{id}/latency` | Bearer | Latency percentiles (p50/p95/p99) |

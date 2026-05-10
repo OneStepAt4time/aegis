@@ -1009,6 +1009,76 @@ curl "http://localhost:9100/v1/sessions/abc123/transcript/cursor?limit=50&role=u
 
 ---
 
+### Export Session Transcript
+
+```
+GET /v1/sessions/:id/export
+```
+
+Download the full session transcript as JSONL (NDJSON) or Markdown.
+
+```bash
+# JSONL format (default)
+curl "http://localhost:9100/v1/sessions/abc123/export?format=jsonl" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o session.jsonl
+
+# Markdown format
+curl "http://localhost:9100/v1/sessions/abc123/export?format=markdown" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o session.md
+```
+
+**Query parameters:**
+
+| Parameter | Type   | Default | Description                          |
+|-----------|--------|---------|--------------------------------------|
+| `format`  | string | `jsonl` | Export format: `jsonl` or `markdown` |
+
+**JSONL response:** Each line is a JSON object with the transcript entry:
+
+```json
+{"role":"user","contentType":"text","text":"Hello","timestamp":"2026-05-10T15:00:00Z"}
+{"role":"assistant","contentType":"text","text":"Hi there!","timestamp":"2026-05-10T15:00:01Z"}
+```
+
+JSONL fields per entry:
+
+| Field          | Description                       |
+|----------------|-----------------------------------|
+| `role`         | Message role (user/assistant)     |
+| `contentType`  | Content type (text/tool_use/etc.) |
+| `text`         | Message content                   |
+| `toolName`     | Tool name (tool_use entries only) |
+| `toolUseId`    | Tool use ID (if applicable)       |
+| `timestamp`    | ISO 8601 timestamp                |
+
+**Markdown response:** Readable export with section headers, tool calls in collapsible `<details>` blocks, thinking blocks (💭), and error callouts (⚠️).
+
+```markdown
+# Session Export: my-session
+
+> Exported: 2026-05-10T15:50:00Z
+> Session ID: abc-123
+
+---
+
+### 👤 User
+Hello, how are you?
+
+### 🤖 Assistant
+I am doing well, thanks!
+```
+
+**Errors:**
+
+| Status | Condition                              |
+|--------|----------------------------------------|
+| 400    | Unsupported format (not jsonl/markdown) |
+| 404    | Session not found or no transcript data |
+
+---
+
 ### Per-Session Metrics
 
 ```
