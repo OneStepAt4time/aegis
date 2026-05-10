@@ -370,6 +370,14 @@ jobs:
             echo "::notice::Helm gh-pages preflight created a local commit only; no push was performed."
           fi
 
+      - name: Upload Helm chart artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart
+          path: release-preflight/chart-artifacts/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
   # Gate: verify the tag does not already exist on the remote.
   # Prevents accidental re-publish or tag overwrite (M4).
   check-tag-freshness:
@@ -803,6 +811,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: azure/setup-helm@v5
+      - uses: actions/download-artifact@v8
+        with:
+          name: helm-chart
+          path: chart-artifacts
       - name: Publish Helm repo contents
         id: publish
         shell: bash
@@ -840,14 +852,14 @@ jobs:
           PY
           }
 
-          rm -rf chart-artifacts pages-repo
-          mkdir -p chart-artifacts
+          rm -rf pages-repo
 
+          # Helm chart artifact was built by release-preflight and downloaded above.
           helm lint deploy/helm/aegis
-          helm package deploy/helm/aegis \
-            --destination chart-artifacts \
-            --version "${TAG_VERSION}" \
-            --app-version "${TAG_VERSION}"
+          if [ ! -f chart-artifacts/*.tgz ]; then
+            echo "::error::Helm chart artifact not found in chart-artifacts/."
+            exit 1
+          fi
 
           if ! git clone --no-tags "${AUTHENTICATED_REMOTE_URL}" pages-repo >clone.log 2>&1; then
             echo "::error::Failed to clone ${GITHUB_REPOSITORY} for Helm pages publish."
