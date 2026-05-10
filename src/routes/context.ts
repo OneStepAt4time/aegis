@@ -311,6 +311,10 @@ export function redactSession(session: Record<string, unknown>): Record<string, 
   if (activeSubagents instanceof Set) {
     (redacted as Record<string, unknown>).activeSubagents = [...activeSubagents];
   }
+  // Issue #3134: Add 'name' alias for backward compat (API consumers expect 'name')
+  if (redacted.displayName !== undefined && redacted.name === undefined) {
+    (redacted as Record<string, unknown>).name = redacted.displayName;
+  }
   return redacted;
 }
 
