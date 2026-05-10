@@ -583,6 +583,9 @@ function setupAuth(authManager: AuthManager): void {
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
     // #1640: Guard with simple truthiness check — auditLogger can be undefined
+    // #3072: Reset auth-fail counter on successful auth so prior typos are forgiven
+    rateLimiter.resetAuthFailures(clientIp);
+
     if (auditLogger) {
       void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
     }

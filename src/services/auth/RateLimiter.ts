@@ -160,6 +160,12 @@ export class RateLimiter {
     }
   }
 
+  /** #3072: Reset auth-fail counter on successful auth from this IP.
+   * Prevents a user who typos once from being locked out after correcting. */
+  resetAuthFailures(ip: string): void {
+    this.authFailLimits.delete(ip);
+  }
+
   pruneAuthFailLimits(): void {
     const cutoff = Date.now() - AUTH_FAIL_WINDOW_MS;
     for (const [ip, bucket] of this.authFailLimits) {
