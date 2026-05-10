@@ -129,7 +129,7 @@ export default function PipelineDetailPage() {
       </nav>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pipeline.name}</h1>
           <PipelineStatusBadge status={pipeline.status} />

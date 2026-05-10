@@ -65,7 +65,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-void)]">
-      <div className="w-full max-w-sm rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-8">
+      <div className="w-full max-w-sm rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-4 sm:p-8">
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-blue-500" />

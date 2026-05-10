@@ -9,6 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import { Calendar, Plus } from 'lucide-react';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useT } from '../i18n/context';
 import EmptyState from '../components/shared/EmptyState';
 import { CalendarGrid } from '../components/routines';
@@ -79,8 +80,9 @@ export default function RoutinesPage() {
 
   if (!loading && routines.length === 0) {
     return (
+      <ErrorBoundary>
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
             <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -98,13 +100,15 @@ export default function RoutinesPage() {
         </div>
         {calendarContent}
       </div>
+      </ErrorBoundary>
     );
   }
 
   // Populated state
   return (
+    <ErrorBoundary>
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{t('routines.title')}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -122,5 +126,6 @@ export default function RoutinesPage() {
       </div>
       {calendarContent}
     </div>
+    </ErrorBoundary>
   );
 }
