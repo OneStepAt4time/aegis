@@ -1471,7 +1471,7 @@ export class TelegramChannel implements Channel {
       try {
         const updates = (await this.tgApi('getUpdates', {
           offset: this.pollOffset,
-          timeout: 10,
+          timeout: 5,
           allowed_updates: ['message', 'callback_query'],
         })) as Array<{ update_id: number; message?: unknown; callback_query?: unknown }>;
 
