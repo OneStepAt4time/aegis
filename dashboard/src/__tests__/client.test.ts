@@ -217,6 +217,9 @@ describe('getSessionStatusCounts', () => {
       rate_limit: 0,
       pending: 0,
       unknown: 0,
+      killed: 0,
+      completed: 0,
+      crashed: 0,
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

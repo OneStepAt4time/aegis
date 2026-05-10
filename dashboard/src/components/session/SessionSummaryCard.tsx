@@ -17,6 +17,9 @@ const STATUS_LABELS: Record<UIState, string> = {
   waiting_for_input: 'Waiting for input',
   pending: 'Pending',
   unknown: 'Unknown',
+  killed: 'Killed',
+  completed: 'Completed',
+  crashed: 'Crashed',
 };
 
 interface SessionSummaryCardProps {

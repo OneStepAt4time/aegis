@@ -41,6 +41,9 @@ const UIState = z.enum([
   'error',
   'pending',
   'unknown',
+  'killed',
+  'completed',
+  'crashed',
 ]);
 
 const NodePlatformSchema = z.enum([

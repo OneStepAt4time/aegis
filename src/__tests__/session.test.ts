@@ -373,7 +373,8 @@ describe('SessionManager.killSession()', () => {
 
     expect(manager.getSession(session.id)).not.toBeNull();
     await manager.killSession(session.id);
-    expect(manager.getSession(session.id)).toBeNull();
+    // Issue #3137: killSession now marks as killed instead of deleting
+    expect(manager.getSession(session.id)?.status).toBe("killed");
   });
 
   it('does not call restoreSettings when settingsPatched is false', async () => {

@@ -339,6 +339,9 @@ export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
     rate_limit: 0,
     pending: 0,
     unknown: 0,
+    killed: 0,
+    completed: 0,
+    crashed: 0,
   };
 
   SESSION_STATUS_VALUES.forEach((status) => {
