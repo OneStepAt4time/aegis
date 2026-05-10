@@ -1,6 +1,6 @@
 # Advanced Features
 
-Aegis provides orchestration primitives beyond basic session management. This guide covers the Memory Bridge, Model Router, Session Templates, Verification Protocol, and Diagnostics.
+Aegis provides orchestration primitives beyond basic session management. This guide covers the Memory Bridge, Session Export, Session Templates, Verification Protocol, Pipeline Orchestration, and Diagnostics.
 
 For OpenAI-compatible model routing via Claude Code (`ANTHROPIC_BASE_URL` + custom models), see [BYO LLM](./byo-llm.md).
 
@@ -152,6 +152,120 @@ curl -X POST http://localhost:9100/v1/sessions \
     "memoryKeys": ["auth/audit-results"]
   }'
 ```
+
+---
+
+## Session Export
+
+Download the full session transcript as JSONL (NDJSON) or Markdown. Useful for archiving, sharing results, or feeding session context into other tools.
+
+### Quick Example
+
+```bash
+# Export as JSONL (default)
+curl "http://localhost:9100/v1/sessions/abc123/export" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o session.jsonl
+
+# Export as readable Markdown
+curl "http://localhost:9100/v1/sessions/abc123/export?format=markdown" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o session.md
+```
+
+### Formats
+
+| Format | Query param | Content type | Best for |
+|--------|------------|-------------|----------|
+| JSONL | `?format=jsonl` (default) | `application/x-ndjson` | Programmatic processing, piping to jq, feeding into other tools |
+| Markdown | `?format=markdown` | `text/markdown` | Human review, sharing, pasting into docs |
+
+### JSONL Output
+
+Each line is a JSON object:
+
+```json
+{"role":"user","contentType":"text","text":"Fix the auth bug","timestamp":"2026-05-10T15:00:00Z"}
+{"role":"assistant","contentType":"thinking","text":"Let me analyze the auth flow...","timestamp":"2026-05-10T15:00:01Z"}
+{"role":"assistant","contentType":"tool_use","text":"cat src/auth.ts","toolName":"Bash","timestamp":"2026-05-10T15:00:02Z"}
+{"role":"assistant","contentType":"text","text":"Found the issue — missing token expiry check.","timestamp":"2026-05-10T15:00:05Z"}
+```
+
+Fields per entry:
+
+| Field | Always present | Description |
+|-------|---------------|-------------|
+| `role` | ✅ | `user` or `assistant` |
+| `contentType` | ✅ | `text`, `thinking`, `tool_use`, `tool_result`, `tool_error` |
+| `text` | ✅ | Message content (truncated to 2000 chars in markdown) |
+| `toolName` | tool calls only | Name of the invoked tool (e.g. `Bash`, `Read`) |
+| `toolUseId` | tool calls only | Unique ID for the tool invocation |
+| `timestamp` | ✅ | ISO 8601 timestamp |
+
+### Markdown Output
+
+Renders a human-readable document:
+
+```markdown
+# Session Export: fix-auth-bug
+
+> Exported: 2026-05-10T15:30:00Z
+> Session ID: abc123
+> Status: idle
+
+---
+
+👤 **User:** Fix the auth bug
+
+🤖 **Assistant:** Let me analyze the auth flow...
+
+### 🔧 Tool: Bash
+<details>
+<summary>cat src/auth.ts</summary>
+
+...file contents...
+</details>
+
+🤖 **Assistant:** Found the issue — missing token expiry check.
+```
+
+### Use Cases
+
+**Archive completed sessions:**
+```bash
+# Export all completed sessions
+for sid in $(curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9100/v1/sessions?status=idle&limit=100" | \
+  jq -r '.sessions[].id'); do
+  curl -s -H "Authorization: Bearer $TOKEN" \
+    "http://localhost:9100/v1/sessions/$sid/export?format=jsonl" \
+    -o "archives/$sid.jsonl"
+done
+```
+
+**Share session results as a readable doc:**
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9100/v1/sessions/$SID/export?format=markdown" \
+  -o result.md
+```
+
+**Pipe JSONL into jq for analysis:**
+```bash
+# Count tool calls per tool name
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9100/v1/sessions/$SID/export" | \
+  jq -r '.toolName' | sort | uniq -c | sort -rn
+```
+
+### Errors
+
+| Status | Condition |
+|--------|----------|
+| `401` | Missing or invalid auth token |
+| `403` | Not the session owner |
+| `404` | Session not found or no transcript data available |
+| `400` | Invalid format (must be `jsonl` or `markdown`) |
 
 ---
 
