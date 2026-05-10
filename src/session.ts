@@ -458,7 +458,11 @@ export class SessionManager {
     }, 2);
   }
 
-  /** #1644: Set the AES-256-GCM key derived from the master auth token. */
+  /** Issue #3143: Wire ACP event store into transcript reader. */
+  setAcpEventStore(store: import("./services/acp/event-store.js").AcpEventStore): void {
+    this.transcripts.setAcpEventStore(store);
+  }
+
   setEncryptionKey(masterToken: string): void {
     if (!masterToken) return;
     // scryptSync is synchronous — called once at startup, acceptable cost.

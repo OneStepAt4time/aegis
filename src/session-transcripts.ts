@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.js';
 import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { computeProjectHash } from './path-utils.js';
+import type { AcpEventStore } from './services/acp/event-store.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 import type { UIState } from './session.js';
@@ -46,9 +47,15 @@ export class SessionTranscripts {
   private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
   private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
 
+  private acpEventStore: AcpEventStore | null = null;
   constructor(
     private config: Config,
   ) {}
+
+  /** Issue #3143: Inject ACP event store for reading ACP session transcripts. */
+  setAcpEventStore(store: AcpEventStore): void {
+    this.acpEventStore = store;
+  }
 
   /**
    * Read new messages from a session with UI state detection.
@@ -99,6 +106,14 @@ export class SessionTranscripts {
         session.byteOffset = result.newOffset;
       } catch {
         // File may not exist yet
+      }
+    } else if (this.acpEventStore) {
+      // Issue #3143: Fall back to ACP event store for ACP sessions.
+      // ACP sessions don't produce JSONL files — transcript data is in the event store.
+      try {
+        messages = await this.readFromAcpEvents(session);
+      } catch {
+        // ACP event read failed — return empty
       }
     }
 
@@ -304,6 +319,127 @@ export class SessionTranscripts {
     };
   }
 
+  /** Issue #3143: Read messages from ACP event store for ACP sessions.
+   *  Converts ACP events to ParsedEntry format compatible with JSONL-based reads. */
+  private async readFromAcpEvents(session: SessionInfo): Promise<ParsedEntry[]> {
+    if (!this.acpEventStore) return [];
+
+    const scope = {
+      tenantId: session.tenantId ?? 'default',
+      ownerKeyId: session.ownerKeyId ?? '',
+    };
+
+    const events = await this.acpEventStore.list({
+      sessionId: session.id,
+      ...scope,
+      limit: 10_000,
+    });
+
+    if (events.length === 0) return [];
+
+    const entries: ParsedEntry[] = [];
+    // Accumulate consecutive same-type delta events into single entries (like JSONL)
+    let pendingMessageText = '';
+    let pendingThinkingText = '';
+    let lastMessageId: string | undefined;
+    let lastDeltaType: 'message' | 'thinking' | null = null;
+
+    const flushPending = (): void => {
+      if (pendingThinkingText) {
+        entries.push({
+          role: 'assistant',
+          contentType: 'thinking',
+          text: pendingThinkingText.trim(),
+        });
+        pendingThinkingText = '';
+      }
+      if (pendingMessageText) {
+        entries.push({
+          role: 'assistant',
+          contentType: 'text',
+          text: pendingMessageText.trim(),
+        });
+        pendingMessageText = '';
+      }
+    };
+
+    for (const event of events) {
+      const payload = event.payload as Record<string, unknown> | null;
+      if (!payload) continue;
+
+      switch (event.eventType) {
+        case 'message.delta': {
+          const messageId = typeof payload.messageId === 'string' ? payload.messageId : undefined;
+          // Flush when switching from thinking to message, or messageId changes
+          if (lastDeltaType === 'thinking' || (messageId && messageId !== lastMessageId && lastMessageId !== undefined)) {
+            flushPending();
+          }
+          lastMessageId = messageId;
+          lastDeltaType = 'message';
+          const text = typeof payload.text === 'string' ? payload.text : '';
+          if (text) pendingMessageText += text;
+          break;
+        }
+        case 'thinking.delta': {
+          // Flush when switching from message to thinking
+          if (lastDeltaType === 'message') {
+            flushPending();
+          }
+          lastDeltaType = 'thinking';
+          const text = typeof payload.text === 'string' ? payload.text : '';
+          if (text) pendingThinkingText += text;
+          break;
+        }
+        case 'tool.started': {
+          flushPending();
+          const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : undefined;
+          const title = typeof payload.title === 'string' ? payload.title : 'unknown';
+          entries.push({
+            role: 'assistant',
+            contentType: 'tool_use',
+            text: title,
+            toolName: title,
+            toolUseId: toolCallId,
+          });
+          break;
+        }
+        case 'tool.completed': {
+          const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : undefined;
+          const isError = payload.isError === true || payload.status === 'error';
+          const outputText = typeof payload.output === 'string'
+            ? payload.output
+            : payload.output != null ? JSON.stringify(payload.output) : '';
+          entries.push({
+            role: 'assistant',
+            contentType: isError ? 'tool_error' : 'tool_result',
+            text: outputText.slice(0, 500),
+            toolUseId: toolCallId,
+          });
+          break;
+        }
+        case 'approval.requested': {
+          flushPending();
+          const toolCall = typeof payload.toolCall === 'object' && payload.toolCall !== null
+            ? payload.toolCall as Record<string, unknown>
+            : null;
+          const toolTitle = toolCall && typeof toolCall.title === 'string' ? toolCall.title : 'Permission request';
+          entries.push({
+            role: 'system',
+            contentType: 'permission_request',
+            text: toolTitle,
+          });
+          break;
+        }
+        default:
+          // Skip session.updated, usage.updated, turn.completed, etc.
+          break;
+      }
+    }
+
+    flushPending();
+    return entries;
+  }
+
   /** Remove cached entries for a session (e.g. on session kill). */
   clearCache(sessionId: string): void {
     this.parsedEntriesCache.delete(sessionId);
@@ -312,7 +448,17 @@ export class SessionTranscripts {
   /** #357: Get all parsed entries for a session, using a cache to avoid full reparse.
    *  Reads only the delta from the last cached offset. */
   private async getCachedEntries(session: SessionInfo): Promise<ParsedEntry[]> {
-    if (!session.jsonlPath || !existsSync(session.jsonlPath)) return [];
+    if (!session.jsonlPath || !existsSync(session.jsonlPath)) {
+      // Issue #3143: Fall back to ACP event store for ACP sessions.
+      if (this.acpEventStore) {
+        try {
+          return await this.readFromAcpEvents(session);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    }
     const cached = this.parsedEntriesCache.get(session.id);
     try {
       const fromOffset = cached ? cached.offset : 0;
