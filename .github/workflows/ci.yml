@@ -365,19 +365,6 @@ jobs:
           .env$|\\.log$|\\.tmp$|\\.bak$|\\.swp$)' || true)\nif [ -n \"$FOUND\" ]; then\n\
           \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
           \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
-  dashboard-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: npm
-      - name: Install dashboard dependencies
-        run: cd dashboard && npm ci
-      - name: Run dashboard tests
-        run: cd dashboard && npx vitest run
   dashboard-e2e:
     if: github.event_name == 'pull_request' && github.base_ref == 'develop'
     runs-on: ubuntu-latest

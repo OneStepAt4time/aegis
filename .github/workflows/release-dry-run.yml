@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - develop
       - 'release/**'
     paths:
       - '.github/workflows/release*.yml'
@@ -20,7 +19,6 @@ on:
       - 'charts/aegis/**'
   pull_request:
     branches:
-      - develop
       - 'release/**'
     paths:
       - '.github/workflows/release*.yml'
