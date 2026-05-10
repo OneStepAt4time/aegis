@@ -759,8 +759,7 @@ curl http://localhost:9100/v1/sessions/abc123 \
 
 | Status | Condition |
 |--------|-----------|
-| 403 | Not the session owner |
-| 404 | Session not found |
+| 404 | Session not found (or unauthorized — 404 is returned for both to prevent ID enumeration) |
 
 ---
 
@@ -937,7 +936,9 @@ curl http://localhost:9100/v1/sessions/abc123/read \
 }
 ```
 
-> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `unknown`.
+> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `killed`, `completed`, `crashed`, `unknown`.
+>
+> **Terminal states:** `killed` (session was stopped via API), `completed` (session finished normally), `crashed` (session terminated unexpectedly). Terminal sessions return 404 on kill attempts and are retained for audit.
 
 ---
 
@@ -1320,7 +1321,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/escape \
 DELETE /v1/sessions/:id
 ```
 
-Terminates the Claude Code process and cleans up all resources.
+Terminates the Claude Code process and marks the session as `killed`. The session record is retained (status = `killed`) for audit purposes. Killing an already-terminated session (`killed`, `completed`, `crashed`) returns `404`.
 
 **Aliases:** `POST /v1/sessions/:id/kill`, `POST /v1/sessions/:id/terminate`, `POST /v1/sessions/:id/stop` — all identical.
 
@@ -1330,6 +1331,10 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123 \
 ```
 
 **Response:** `{ "ok": true }`
+
+| Status | Error |
+|--------|-------|
+| `404` | `Session already terminated` — session is in a terminal state (`killed`, `completed`, `crashed`) |
 
 ---
 

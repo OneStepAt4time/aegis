@@ -194,10 +194,13 @@ All endpoints under `/v1/`.
 | `idle` | Waiting for input | Send via `/send` |
 | `permission_prompt` | Awaiting approval | `/approve` or `/reject` |
 | `asking` | Claude asked a question | Read `/read`, respond `/send` |
-| `stalled` | No output for >5 min | Nudge `/send` or `DELETE` |
 | `pending` | Initial state, connecting to ACP runtime | Wait a moment and re-poll |
+| `error` | Session error | Check diagnostics, recreate |
+| `rate_limit` | Rate limited by provider | Wait and retry |
+| `killed` | Stopped via API (terminal) | Session retained for audit |
+| `completed` | Finished normally (terminal) | Session retained for audit |
+| `crashed` | Terminated unexpectedly (terminal) | Check diagnostics |
 | `unknown` | Failed to determine state | Check diagnostics |
-| `error` | Session crashed | Check diagnostics, recreate |
 
 </details>
 
