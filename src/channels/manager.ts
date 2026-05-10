@@ -123,6 +123,10 @@ export class ChannelManager {
         if (ch.filter && !ch.filter(payload.event)) { span.end(); return; }
         await call(ch);
         // Success — reset failure count (channel may have been in cooldown)
+        const prevHealth = this.health.get(ch.name);
+        if (prevHealth && prevHealth.failCount > 0) {
+          console.log(`Channel ${ch.name} recovered after ${prevHealth.failCount} failures`);
+        }
         this.health.set(ch.name, { failCount: 0, disabledUntil: 0 });
         spanOk(span);
       } catch (e) {
