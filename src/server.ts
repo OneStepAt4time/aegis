@@ -95,6 +95,7 @@ import {
   registerTerminalRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
+  registerManifestRoutes,
   type RouteContext,
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
@@ -397,6 +398,8 @@ function setupAuth(authManager: AuthManager): void {
     // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
     if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
     if (urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
+    // Issue #3092: manifest.json at root path must be public for PWA install.
+    if (urlPath === '/manifest.json') return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
     // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
@@ -1435,6 +1438,12 @@ async function main(): Promise<void> {
         }
       },
     });
+  }
+
+  // Issue #3092: Serve manifest.json at root path for PWA compatibility.
+  // Browsers require the manifest to be accessible without authentication.
+  if (dashboardAvailable) {
+    registerManifestRoutes(app, dashboardRoot);
   }
 
   // SPA fallback for dashboard routes (Issue #105)
