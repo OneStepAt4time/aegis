@@ -388,6 +388,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 <button
                   type="button"
                   onClick={() => removeBatchRow(i)}
+                  aria-label="Remove row"
                   disabled={batchRows.length <= 1}
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
