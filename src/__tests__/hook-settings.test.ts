@@ -284,6 +284,46 @@ describe('writeHookSettingsFile — Issue #339 merge', () => {
       if (existsSync(filePath)) unlinkSync(filePath);
     }
   });
+  it('should inject worktree.baseRef="head" (Issue #3155)', async () => {
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'worktree-baseref', 'test-secret-123');
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      expect(parsed.worktree).toBeDefined();
+      const worktree = parsed.worktree as Record<string, unknown>;
+      expect(worktree.baseRef).toBe('head');
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
+  it('should preserve existing worktree settings and override baseRef (Issue #3155)', async () => {
+    const projectSettings = {
+      worktree: { baseRef: 'fresh' as const, customKey: 'preserved' },
+    };
+    writeFileSync(settingsPath, JSON.stringify(projectSettings, null, 2));
+
+    const filePath = await writeHookSettingsFile('http://localhost:9100', 'worktree-merge', 'test-secret-123', workDir);
+
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+
+      expect(parsed.worktree).toBeDefined();
+      const worktree = parsed.worktree as Record<string, unknown>;
+      // baseRef forced to "head"
+      expect(worktree.baseRef).toBe('head');
+      // other worktree settings preserved
+      expect(worktree.customKey).toBe('preserved');
+    } finally {
+      if (existsSync(filePath)) unlinkSync(filePath);
+    }
+  });
+
 
   it('should preserve env vars when settings.local.json starts with UTF-8 BOM', async () => {
     const projectSettings = {
