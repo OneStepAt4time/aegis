@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Run Trivy filesystem scan (root)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -34,7 +34,7 @@ jobs:
           cache: true
 
       - name: Run Trivy filesystem scan (dashboard)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: 'fs'
           scan-ref: 'dashboard'
@@ -47,7 +47,7 @@ jobs:
       # since these are CI-only deps, not shipped in production artifacts.
       # Track fixes in #2771.
       - name: Run Trivy scan (GitHub Actions — advisory only)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: 'fs'
           scan-ref: '.github/actions'
@@ -56,7 +56,7 @@ jobs:
           cache: true
 
       - name: Generate SBOM (SPDX)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: 'fs'
           scan-ref: '.'

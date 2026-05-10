@@ -13,9 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: .github/actions/auto-label/package-lock.json
       - name: Install action dependencies
         working-directory: .github/actions/auto-label
         run: npm ci
