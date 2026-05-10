@@ -17,6 +17,7 @@ import fastifyStatic from '@fastify/static';
 import fs from 'node:fs/promises';
 import { statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { logger } from '../logger.js';
 
@@ -94,6 +95,8 @@ export async function registerDashboardStatic(
   app: FastifyInstance,
   options: DashboardStaticOptions = {}
 ): Promise<boolean> {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
   const dashboardRoot = path.join(__dirname, '..', 'dashboard');
   const dashboardEnabled = options.enabled !== false;
   let dashboardAvailable = false;
