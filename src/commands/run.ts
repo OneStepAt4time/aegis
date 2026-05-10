@@ -208,11 +208,20 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, '  ⏳ Waiting for server...');
     const started = await waitForServer(baseUrl, authToken, 15_000);
     if (!started) {
-      writeLine(io.stderr, '  ❌ Server failed to start within 15 seconds.');
-      writeLine(io.stderr, '     Try starting manually: ag');
-      return 1;
+      // Issue #3067: Race condition — an existing Aegis server may be on the port
+      // but was in a crash loop when we first checked. Retry health check once
+      // more before giving up — the existing server may have recovered.
+      writeLine(io.stdout, '  ⏳ Retrying health check (existing server may have recovered)...');
+      if (await isServerHealthy(baseUrl, authToken)) {
+        writeLine(io.stdout, '  ✅ Connected to existing server');
+      } else {
+        writeLine(io.stderr, '  ❌ Server failed to start within 15 seconds.');
+        writeLine(io.stderr, '     Try starting manually: ag');
+        return 1;
+      }
+    } else {
+      writeLine(io.stdout, '  ✅ Server started');
     }
-    writeLine(io.stdout, '  ✅ Server started');
   }
 
   // Create session
