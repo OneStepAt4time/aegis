@@ -206,6 +206,15 @@ export async function writeHookSettingsFile(baseUrl: string, sessionId: string, 
   ((combined as Record<string, unknown>).env = (combined.env || {}) as Record<string, string>);
   ((combined.env || {}) as Record<string, string>)["MCP_CONNECTION_NONBLOCKING"] = "true";
 
+  // Issue #3155: Force worktree.baseRef to "head" so CC worktrees branch from
+  // local HEAD (not origin/<default>). Prevents silent data loss when Aegis
+  // creates worktrees with unpushed commits. CC 2.1.133 changed the default
+  // to "fresh" (origin/<default>).
+  (combined as Record<string, unknown>).worktree = {
+    ...((combined.worktree || {}) as Record<string, unknown>),
+    baseRef: "head",
+  };
+
   // Issue #648: Use unpredictable directory name and restrictive permissions
   // to prevent symlink attacks and information disclosure in /tmp.
   const suffix = randomBytes(4).toString('hex');
