@@ -962,6 +962,15 @@ export function createDefaultAcpBackendClient(
     ...options.childProcessOptions,
     cwd: context.cwd,
   });
+  // Issue #3135: Forward ACP child process stderr for debugging.
+  // Without this, errors from claude-agent-acp (API key issues, crashes)
+  // are silently discarded, making diagnosis impossible.
+  child.on('stderr', (event) => {
+    const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
+    if (text) {
+      console.error(`[ACP stderr:${context.durableSessionId.slice(0, 8)}] ${text}`);
+    }
+  });
   return new AcpJsonRpcClient({
     ...options.jsonRpcClientOptions,
     child,
