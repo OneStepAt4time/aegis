@@ -77,6 +77,7 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
     }
 
     recordAuthFailure(): void {}
+    resetAuthFailures(): void {}
     pruneAuthFailLimits(): void {}
     pruneIpRateLimits(): void {}
     dispose(): void {}
