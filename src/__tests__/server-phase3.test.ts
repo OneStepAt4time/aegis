@@ -38,6 +38,7 @@ const rateLimiterSpies = {
   checkIpRateLimitUnauth: vi.fn<(ip: string) => boolean>(() => false),
   checkAuthFailRateLimit: vi.fn<(ip: string) => boolean>(() => false),
   recordAuthFailure: vi.fn<(ip: string) => void>(),
+  resetAuthFailures: vi.fn<(ip: string) => void>(),
   pruneAuthFailLimits: vi.fn<() => void>(),
   pruneIpRateLimits: vi.fn<() => void>(),
   dispose: vi.fn<() => void>(),
@@ -53,6 +54,7 @@ vi.mock('../services/auth/RateLimiter.js', () => ({
     checkIpRateLimitUnauth = rateLimiterSpies.checkIpRateLimitUnauth;
     checkAuthFailRateLimit = rateLimiterSpies.checkAuthFailRateLimit;
     recordAuthFailure = rateLimiterSpies.recordAuthFailure;
+    resetAuthFailures = rateLimiterSpies.resetAuthFailures;
     pruneAuthFailLimits = rateLimiterSpies.pruneAuthFailLimits;
     pruneIpRateLimits = rateLimiterSpies.pruneIpRateLimits;
     dispose = rateLimiterSpies.dispose;
