@@ -3,7 +3,7 @@
  * Unknown CLI commands should error instead of silently creating sessions.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, type Mock } from 'vitest';
 import { runCli } from '../cli.js';
 
 function mockIO() {
@@ -19,7 +19,8 @@ describe('CLI unknown command rejection (#3079)', () => {
     const io = mockIO();
     const code = await runCli(['status'], io);
     expect(code).toBe(1);
-    const stderr = (io.stderr as { write: vi.Mock }).write.mock.calls.map((c: string[]) => c.join('')).join('');
+    const stderrWrite = io.stderr.write as unknown as Mock;
+    const stderr = stderrWrite.mock.calls.map((c: string[]) => c.join('')).join('');
     expect(stderr).toContain('Unknown command: "status"');
   });
 
