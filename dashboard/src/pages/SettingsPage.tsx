@@ -171,7 +171,7 @@ export default function SettingsPage() {
         </div>
         <div className="space-y-4">
           {/* Dark / Light toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Theme</p>
               <p className="text-xs text-[var(--color-text-muted)]">Switch between dark and light mode</p>
@@ -186,7 +186,7 @@ export default function SettingsPage() {
 
           {/* Light sub-theme picker — shown only in light mode */}
           {isLight && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-[var(--color-text-primary)]">Light variant</p>
                 <p className="text-xs text-[var(--color-text-muted)]">Choose a light-mode sub-theme</p>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
           )}
 
           {/* Auto theme toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Auto theme</p>
               <p className="text-xs text-[var(--color-text-muted)]">Follow system <code className="font-mono text-[11px]">prefers-color-scheme</code></p>
@@ -225,7 +225,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Default page size */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Default page size</p>
               <p className="text-xs text-[var(--color-text-muted)]">Rows per page in session history</p>
@@ -244,7 +244,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Reading font toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Reading font</p>
               <p className="text-xs text-[var(--color-text-muted)]">Choose a body font for readability</p>
@@ -268,7 +268,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Locale picker */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Language & Region</p>
               <p className="text-xs text-[var(--color-text-muted)]">Set display language and regional formats</p>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
           <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Auto-Refresh</h3>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Enable auto-refresh</p>
               <p className="text-xs text-[var(--color-text-muted)]">Automatically update dashboard data</p>
@@ -308,7 +308,7 @@ export default function SettingsPage() {
             />
           </div>
           {settings.autoRefresh && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-[var(--color-text-primary)]">Refresh interval</p>
                 <p className="text-xs text-[var(--color-text-muted)]">How often to poll for updates</p>
@@ -337,7 +337,7 @@ export default function SettingsPage() {
           <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Budget & Cost Alerts</h3>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-[var(--color-text-primary)]">Enable budget alerts</p>
               <p className="text-xs text-[var(--color-text-muted)]">Warning at 80% of cap</p>
@@ -351,7 +351,7 @@ export default function SettingsPage() {
 
           {settings.budgetAlertEnabled && (
             <>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-[var(--color-text-primary)]">Daily spending cap</p>
                   <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per day</p>
@@ -370,7 +370,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-[var(--color-text-primary)]">Monthly spending cap</p>
                   <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per month</p>
@@ -389,7 +389,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-[var(--color-text-primary)]">Hard stop at 100%</p>
                   <p className="text-xs text-[var(--color-text-muted)]">Block new sessions when cap reached</p>
