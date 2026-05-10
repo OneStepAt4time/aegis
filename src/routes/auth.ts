@@ -87,8 +87,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const { name, rateLimit, ttlDays, role = 'viewer', permissions, tenantId } = data;
-    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
-    return reply.status(201).send(result);
+    try {
+      const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
+      return reply.status(201).send(result);
+    } catch (err: any) {
+      if (err.code === 'DUPLICATE_KEY_NAME') return reply.status(409).send({ error: err.message });
+      throw err;
+    }
   }));
 
   registerWithLegacy(app, 'get', '/v1/auth/keys', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -195,8 +200,13 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
     if (!requireRole(auth, req, reply, 'admin')) return;
     const { name, rateLimit, ttlDays, role = 'viewer', permissions, tenantId } = data;
-    const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
-    return reply.status(201).send(result);
+    try {
+      const result = await auth.createKey(name, rateLimit, ttlDays, role, permissions, tenantId);
+      return reply.status(201).send(result);
+    } catch (err: any) {
+      if (err.code === 'DUPLICATE_KEY_NAME') return reply.status(409).send({ error: err.message });
+      throw err;
+    }
   }));
 
   registerWithLegacy(app, 'delete', '/v1/keys/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {

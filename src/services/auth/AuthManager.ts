@@ -255,6 +255,15 @@ export class AuthManager {
       ? SYSTEM_TENANT
       : tenantId ?? this.defaultTenantId;
 
+    // Issue #3073: Reject duplicate key names within the same tenant.
+    const duplicate = this.store.keys.find(k => k.name === name && k.tenantId === resolvedTenantId);
+    if (duplicate) {
+      const err = new Error(`An API key with the name "${name}" already exists for this tenant`);
+      (err as any).code = 'DUPLICATE_KEY_NAME';
+      (err as any).statusCode = 409;
+      throw err;
+    }
+
     const apiKey: ApiKey = {
       id,
       name,
