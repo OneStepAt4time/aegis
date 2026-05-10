@@ -353,7 +353,7 @@ See [`packages/python-client/`](../packages/python-client/) for source and the f
 - **[MCP Tools Reference](./mcp-tools.md)** — Full documentation for all 34 MCP tools
 - **[API Reference](./api-reference.md)** — Complete REST API documentation
 - **[Verifying Releases](./verify-release.md)** — SHA verification, npm integrity, Sigstore attestations, version policy
-- **[Advanced Features](./advanced.md)** — Pipelines, Memory Bridge, templates
+- **[Advanced Features](./advanced.md)** — Session Export, Pipelines, Memory Bridge, templates
 - **[Enterprise Deployment](./enterprise.md)** — Auth, rate limiting, production setup
 - **[ACP Migration Guide](./acp-migration-guide.md)** — Upgrading from `aegis-bridge`
 - **[TypeDoc API](https://onestepat4time.github.io/aegis/)** — Auto-generated TypeScript reference
