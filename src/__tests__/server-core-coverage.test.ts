@@ -440,9 +440,13 @@ describe('server core coverage integration', () => {
     expect(batchDelete.statusCode).toBe(200);
 
     const deleted = await authed({ method: 'DELETE', url: `/v1/sessions/${sessionId}` });
-    expect([403, 404]).toContain(deleted.statusCode);
+    // Issue #3137: Killed sessions are now marked as terminal, not deleted.
+    // Second kill should 404 (already terminated).
+    expect(deleted.statusCode).toBe(404);
 
-    const missing = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}` });
-    expect(missing.statusCode).toBe(404);
+    // Session persists in killed state for inspection
+    const killedSession = await authed({ method: 'GET', url: `/v1/sessions/${sessionId}` });
+    expect(killedSession.statusCode).toBe(200);
+    expect((killedSession.json() as Record<string, unknown>).status).toBe('killed');
   });
 });

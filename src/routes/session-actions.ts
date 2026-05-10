@@ -236,6 +236,11 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     const id = (req.params as { id: string }).id;
     const session = requireSessionOwnership(ctx, id, req, reply, 'kill');
     if (!session) return;
+    // Issue #3137: Reject kill for already-terminated sessions
+    const terminalStates = new Set(['killed', 'completed', 'crashed']);
+    if (terminalStates.has(session.status)) {
+      return reply.status(404).send({ error: 'Session already terminated', status: session.status });
+    }
     try {
       await sessions.killSession(session.id);
       // Issue #2067: record session as failed before cleanup
