@@ -9,10 +9,13 @@
 
 import type {
   Channel,
+  ChannelHealthStatus,
   SessionEventPayload,
   InboundHandler,
 } from './types.js';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 
 import {
   esc,
@@ -593,6 +596,83 @@ function formatProgressCard(progress: SessionProgress): string {
   return parts.join('\n');
 }
 
+
+// ── Topic Map Persistence ──────────────────────────────────────────────────
+
+/**
+ * Persists the session→topic mapping to disk so it survives server restarts.
+ * Issue #3168: Without persistence, the topic map is lost on every restart,
+ * causing all event deliveries to silently fail (no topic to send to).
+ */
+class TopicPersistence {
+  private readonly filePath: string;
+
+  constructor(stateDir?: string) {
+    const dir = stateDir ?? join(homedir(), '.aegis');
+    this.filePath = join(dir, 'telegram-topics.json');
+  }
+
+  save(topics: Map<string, SessionTopic>): void {
+    const entries: Array<{
+      sessionId: string;
+      topicId: number;
+      displayName: string;
+      endedAt: number | null;
+    }> = [];
+    for (const [, t] of topics) {
+      // Don't persist topics that are being deleted
+      if (t.deleting) continue;
+      entries.push({
+        sessionId: t.sessionId,
+        topicId: t.topicId,
+        displayName: t.displayName,
+        endedAt: t.endedAt,
+      });
+    }
+    try {
+      const dir = join(this.filePath, '..');
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const tmp = this.filePath + '.tmp';
+      writeFileSync(tmp, JSON.stringify({ version: 1, topics: entries }), 'utf-8');
+      // Atomic rename
+      renameSync(tmp, this.filePath);
+    } catch (e) {
+      console.error('Telegram: failed to persist topic map:', e);
+    }
+  }
+
+  load(): Map<string, SessionTopic> {
+    const result = new Map<string, SessionTopic>();
+    try {
+      if (!existsSync(this.filePath)) return result;
+      const data = JSON.parse(readFileSync(this.filePath, 'utf-8'));
+      if (!data?.topics || !Array.isArray(data.topics)) return result;
+      for (const t of data.topics) {
+        if (!t.sessionId || !t.topicId) continue;
+        result.set(t.sessionId, {
+          sessionId: t.sessionId,
+          topicId: t.topicId,
+          displayName: t.displayName || t.sessionId.slice(0, 8),
+          endedAt: t.endedAt ?? null,
+          cleanupScheduledAt: null,
+          deleting: false,
+        });
+      }
+    } catch (e) {
+      console.error('Telegram: failed to load topic map:', e);
+    }
+    return result;
+  }
+
+  clear(): void {
+    try {
+      if (existsSync(this.filePath)) {
+        unlinkSync(this.filePath);
+      }
+    } catch { /* non-critical */ }
+  }
+}
+
 // ── Telegram Channel ────────────────────────────────────────────────────────
 
 export class TelegramChannel implements Channel {
@@ -633,12 +713,27 @@ export class TelegramChannel implements Channel {
   private lastUserMessage = new Map<string, string>();
 
 
-  constructor(private config: TelegramChannelConfig) {
+  // Issue #3169: Health tracking for getHealth()
+  private lastSuccessAt: number | null = null;
+  private lastErrorAt: number | null = null;
+  private lastErrorMessage: string | null = null;
+  private deliveryFailCount = 0;
+
+  // Issue #3168: Topic persistence
+  private readonly topicPersistence: TopicPersistence;
+
+  constructor(private config: TelegramChannelConfig, stateDir?: string) {
     const configuredTtlMs = config.topicTtlMs ?? TelegramChannel.DEFAULT_TOPIC_TTL_MS;
     this.topicTtlMs = Number.isFinite(configuredTtlMs)
       ? Math.max(0, configuredTtlMs)
       : TelegramChannel.DEFAULT_TOPIC_TTL_MS;
     this.topicAutoDelete = config.topicAutoDelete ?? true;
+    this.topicPersistence = new TopicPersistence(stateDir);
+    // Restore persisted topics on construction
+    this.topics = this.topicPersistence.load();
+    if (this.topics.size > 0) {
+      console.log(`Telegram: restored ${this.topics.size} topic mappings from disk`);
+    }
   }
 
   /** Call Telegram Bot API with retry on 429. Instance method so it can access rateLimitUntil. */
@@ -758,6 +853,9 @@ export class TelegramChannel implements Channel {
       payload.session.id,
       formatSessionCreated(payload.session.name, payload.session.workDir, payload.session.id, payload.meta),
     );
+
+    this.trackSuccess();
+    this.topicPersistence.save(this.topics);
 
     // Issue #46: Replay any messages that arrived before topic was created
     const buffered = this.preTopicBuffer.get(payload.session.id);
@@ -1130,6 +1228,7 @@ export class TelegramChannel implements Channel {
     try {
       const result = (await this.tgApi('sendMessage', body)) as { message_id: number };
       this.lastSent.set(sessionId, Date.now());
+      this.trackSuccess();
       return result.message_id;
     } catch {
       // Fallback: strip HTML + buttons, send plain
@@ -1146,9 +1245,11 @@ export class TelegramChannel implements Channel {
           disable_web_page_preview: true,
         })) as { message_id: number };
         this.lastSent.set(sessionId, Date.now());
+        this.trackSuccess();
         return result.message_id;
       } catch (e) {
         console.error(`Telegram: failed to send styled to topic ${topic.topicId}:`, this.redactError(e));
+        this.trackFailure(e);
         return null;
       }
     }
@@ -1236,6 +1337,7 @@ export class TelegramChannel implements Channel {
       })) as { message_id: number };
       this.lastSent.set(sessionId, Date.now());
       this.decrementInFlight(sessionId);
+      this.trackSuccess();
       return result.message_id;
     } catch {
       // Fallback: strip HTML, send plain
@@ -1253,10 +1355,12 @@ export class TelegramChannel implements Channel {
         })) as { message_id: number };
         this.lastSent.set(sessionId, Date.now());
         this.decrementInFlight(sessionId);
+        this.trackSuccess();
         return result.message_id;
       } catch (e) {
         console.error(`Telegram: failed to send to topic ${topic.topicId}:`, this.redactError(e));
         this.decrementInFlight(sessionId);
+        this.trackFailure(e);
         return null;
       }
     }
@@ -1440,9 +1544,11 @@ export class TelegramChannel implements Channel {
 
       await this.tgApi('deleteForumTopic', body);
       this.topics.delete(sessionId);
+      this.topicPersistence.save(this.topics);
     } catch (e) {
       if (this.isIgnorableTopicDeleteError(e)) {
         this.topics.delete(sessionId);
+        this.topicPersistence.save(this.topics);
       } else {
         console.error(`Telegram: failed to cleanup topic for session ${sessionId}:`, this.redactError(e));
         topic.deleting = false;
@@ -1463,6 +1569,35 @@ export class TelegramChannel implements Channel {
     return /not found|message thread|topic.*(?:closed|deleted)|forum topic/i.test(message);
   }
 
+
+
+  // ── Health Reporting ──────────────────────────────────────────────────────
+
+  /** Issue #3169: Report actual channel health including delivery state. */
+  getHealth(): ChannelHealthStatus {
+    return {
+      channel: this.name,
+      healthy: this.lastErrorAt === null || (this.lastSuccessAt !== null && this.lastSuccessAt > this.lastErrorAt),
+      lastSuccess: this.lastSuccessAt,
+      lastError: this.lastErrorMessage,
+      pendingCount: this.messageQueue.size,
+    };
+  }
+
+  /** Track successful delivery for health reporting. */
+  private trackSuccess(): void {
+    this.lastSuccessAt = Date.now();
+    this.deliveryFailCount = 0;
+  }
+
+  /** Track delivery failure for health reporting. */
+  private trackFailure(error: unknown): void {
+    this.lastErrorAt = Date.now();
+    this.lastErrorMessage = this.redactError(error) instanceof Error
+      ? (this.redactError(error) as Error).message
+      : String(this.redactError(error));
+    this.deliveryFailCount++;
+  }
 
   // ── Bidirectional polling ─────────────────────────────────────────────────
 
