@@ -992,7 +992,7 @@ export class TelegramChannel implements Channel {
             const truncated = truncate(thinking, 800);
             await this.queueMessage(
               payload.session.id,
-              `\U0001f4ad _${esc(truncated)}_`,
+              `💭 ${italic(esc(truncated))}`,
               'low',
             );
           }
@@ -1012,7 +1012,7 @@ export class TelegramChannel implements Channel {
           const toolDetail = truncate(detail, 600);
           await this.queueMessage(
             payload.session.id,
-            '\U0001f527 `' + esc(tool.label) + '`\n```\n' + esc(toolDetail) + '\n```',
+            '🔧 ' + code(tool.label) + '\n<pre>' + esc(toolDetail) + '</pre>',
             'low',
           );
         }
