@@ -961,7 +961,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-  await container.start(['sessionManager', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
+  await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
