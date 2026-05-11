@@ -77,7 +77,7 @@ describe('strictRBAC enforcement (Issue #3208)', () => {
       const auth = mockAuth(false);
       const req = mockReq();
       const reply = mockReply();
-      const result = requirePermission(auth, req, reply, 'sessions:create');
+      const result = requirePermission(auth, req, reply, 'create');
       expect(result).toBe(true);
     });
 
@@ -86,7 +86,7 @@ describe('strictRBAC enforcement (Issue #3208)', () => {
       const auth = mockAuth(false);
       const req = mockReq();
       const reply = mockReply();
-      const result = requirePermission(auth, req, reply, 'sessions:create');
+      const result = requirePermission(auth, req, reply, 'create');
       expect(result).toBe(false);
       expect(reply.status).toHaveBeenCalledWith(401);
     });
