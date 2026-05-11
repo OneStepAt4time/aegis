@@ -27,6 +27,8 @@ import { formatDateShort } from '../utils/formatDate';
 import { ChartFrame } from '../components/shared/ChartFrame';
 import { getAnalyticsCosts } from '../api/client';
 import type { AnalyticsCostsResponse } from '../types';
+import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
+import { SpendSummary } from '../components/cost/SpendSummary';
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
@@ -57,6 +59,28 @@ function CustomTooltip({ active, payload, label }: {
       ))}
     </div>
   );
+}
+
+
+interface BudgetSettings {
+  budgetDailyCapUsd: number;
+  budgetMonthlyCapUsd: number;
+  budgetAlertEnabled: boolean;
+}
+
+function getBudgetSettings(): BudgetSettings {
+  try {
+    const raw = localStorage.getItem('aegis-dashboard-settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        budgetDailyCapUsd: parsed.budgetDailyCapUsd ?? 0,
+        budgetMonthlyCapUsd: parsed.budgetMonthlyCapUsd ?? 0,
+        budgetAlertEnabled: parsed.budgetAlertEnabled ?? false,
+      };
+    }
+  } catch { /* ignore parse errors */ }
+  return { budgetDailyCapUsd: 0, budgetMonthlyCapUsd: 0, budgetAlertEnabled: false };
 }
 
 export default function CostPage() {
@@ -332,26 +356,59 @@ export default function CostPage() {
         </div>
       )}
 
-      {/* Budget warning */}
-      <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Budget alerts">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-sm font-medium text-amber-200">Budget Alerts</h4>
-            <p className="mt-1 text-xs text-amber-300/80">
-              Configure daily and monthly spending caps in{' '}
-              <button
-                type="button"
-                onClick={() => navigate('/settings#budget')}
-                className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
-              >
-                Settings
-              </button>
-              {' '}to receive warnings at 80% and optional hard stops at 100%.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Budget progress & spending summary */}
+      {(() => {
+        const budget = getBudgetSettings();
+        if (!budget.budgetAlertEnabled) {
+          return (
+            <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Budget alerts">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-amber-200">Budget Alerts</h4>
+                  <p className="mt-1 text-xs text-amber-300/80">
+                    Configure daily and monthly spending caps in{' '}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/settings#budget')}
+                      className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
+                    >
+                      Settings
+                    </button>
+                    {' '}to receive warnings at 80% and optional hard stops at 100%.
+                  </p>
+                </div>
+              </div>
+            </section>
+          );
+        }
+
+        const today = new Date();
+        const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const todayStr = `${monthPrefix}-${String(today.getDate()).padStart(2, '0')}`;
+        const todaySpend = dailyData.find(d => d.date === todayStr)?.estimatedCostUsd ?? 0;
+        const monthSpend = dailyData.filter(d => d.date.startsWith(monthPrefix)).reduce((s, d) => s + d.estimatedCostUsd, 0);
+
+        return (
+          <>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <BudgetProgressBar
+                currentSpend={todaySpend}
+                cap={budget.budgetDailyCapUsd}
+                label="Daily"
+                period="today"
+              />
+              <BudgetProgressBar
+                currentSpend={monthSpend}
+                cap={budget.budgetMonthlyCapUsd}
+                label="Monthly"
+                period={`${today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
+              />
+            </div>
+            <SpendSummary dailyTrends={dailyData} />
+          </>
+        );
+      })()}
     </div>
   );
 }
