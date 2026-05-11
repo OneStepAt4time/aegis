@@ -93,17 +93,21 @@ export function BudgetProgressBar({ currentSpend, cap, label, period }: BudgetPr
         </span>
       </div>
 
-      {/* Progress track */}
-      <div className="h-3 min-h-[44px] w-full overflow-hidden rounded-full bg-[var(--color-void-lighter)]">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${SEVERITY_BG[severity]}`}
-          style={{ width: `${clampedPct}%` }}
-          role="progressbar"
-          aria-valuenow={displayPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`${label} budget usage: ${displayPct}%`}
-        />
+      {/* Touch target wrapper with progressbar role on the full-range track */}
+      <div
+        className="min-h-[44px] flex items-center"
+        role="progressbar"
+        aria-valuenow={displayPct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${label} budget usage: ${displayPct}%`}
+      >
+        <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-void-lighter)]">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${SEVERITY_BG[severity]}`}
+            style={{ width: `${clampedPct}%` }}
+          />
+        </div>
       </div>
     </div>
   );

@@ -45,7 +45,9 @@ function linearRegression(points: Array<{ x: number; y: number }>): { slope: num
   const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
   const sumXX = points.reduce((s, p) => s + p.x * p.x, 0);
 
-  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const denominator = n * sumXX - sumX * sumX;
+  if (denominator === 0) return { slope: 0, intercept: sumY / n };
+  const slope = (n * sumXY - sumX * sumY) / denominator;
   const intercept = (sumY - slope * sumX) / n;
   return { slope, intercept };
 }
@@ -81,7 +83,7 @@ function buildChartData(dailyTrends: ForecastChartProps['dailyTrends']): ChartPo
   if (dailyTrends.length >= 2) {
     const lastIdx = dailyTrends.length - 1;
     const lastDate = new Date(dailyTrends[lastIdx].date + 'T00:00:00Z');
-    const lastDay = lastDate.getUTCDate();
+    const lastDay = lastDate.getDate();
 
     // Add the last actual point as projection start for continuity
     chartData[lastIdx].projected = dailyTrends[lastIdx].estimatedCostUsd;

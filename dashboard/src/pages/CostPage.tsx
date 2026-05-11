@@ -71,13 +71,13 @@ interface BudgetSettings {
 
 function getBudgetSettings(): BudgetSettings {
   try {
-    const raw = localStorage.getItem('aegis-dashboard-settings');
+    const raw = localStorage.getItem('aegis:settings');
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
-        budgetDailyCapUsd: parsed.budgetDailyCapUsd ?? 0,
-        budgetMonthlyCapUsd: parsed.budgetMonthlyCapUsd ?? 0,
-        budgetAlertEnabled: parsed.budgetAlertEnabled ?? false,
+        budgetDailyCapUsd: Number(parsed.budgetDailyCapUsd) || 0,
+        budgetMonthlyCapUsd: Number(parsed.budgetMonthlyCapUsd) || 0,
+        budgetAlertEnabled: Boolean(parsed.budgetAlertEnabled),
       };
     }
   } catch { /* ignore parse errors */ }

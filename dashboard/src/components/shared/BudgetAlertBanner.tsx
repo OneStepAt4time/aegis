@@ -42,6 +42,15 @@ const DISMISS_KEY = 'aegis:budget-alert-dismissed';
 
 export function BudgetAlertBanner() {
   const [alert, setAlert] = useState<AlertState | null>(null);
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+
+  // Read dismissal state once on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(DISMISS_KEY);
+      if (stored) setDismissedAt(Number(stored));
+    } catch { /* ignore */ }
+  }, []);
 
   const checkBudget = useCallback(async () => {
     const settings = getBudgetSettings();
@@ -103,16 +112,12 @@ export function BudgetAlertBanner() {
     return () => clearInterval(interval);
   }, [checkBudget]);
 
-  if (!alert || alert.level === 'warning') {
-    // Check if dismissed
-    const dismissed = sessionStorage.getItem(DISMISS_KEY);
-    if (dismissed && !alert?.level?.includes('critical')) {
-      const dismissedAt = Number(dismissed);
-      if (Date.now() - dismissedAt < 30 * 60 * 1000) return null; // 30 min dismiss
-    }
-  }
-
   if (!alert) return null;
+
+  // Critical alerts cannot be dismissed; warnings dismiss for 30 min
+  if (alert.level === 'warning' && dismissedAt) {
+    if (Date.now() - dismissedAt < 30 * 60 * 1000) return null;
+  }
 
   const isCritical = alert.level === 'critical';
 
