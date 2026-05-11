@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import SessionHistoryPage from '../pages/SessionHistoryPage';
@@ -21,7 +22,9 @@ vi.mock('react-router-dom', async () => {
 function renderPage(initialPath = '/') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
+      <I18nProvider>
       <SessionHistoryPage />
+    </I18nProvider>
     </MemoryRouter>,
   );
 }

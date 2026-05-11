@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import NewSessionPage from '../pages/NewSessionPage';
@@ -38,7 +39,9 @@ function getField(name: string) {
 async function renderPage(): Promise<void> {
   render(
     <MemoryRouter>
+      <I18nProvider>
       <NewSessionPage />
+    </I18nProvider>
     </MemoryRouter>,
   );
   await waitFor(() => {

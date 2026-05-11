@@ -28,12 +28,14 @@ import { useToastStore } from '../store/useToastStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import TemplateModal from '../components/TemplateModal';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { useT } from '../i18n/context';
 
 const REFRESH_INTERVAL_MS = 15_000;
 
 export default function TemplatesPage() {
   const navigate = useNavigate();
-  const addToast = useToastStore((t) => t.addToast);
+  const addToast = useToastStore((t_store) => t_store.addToast);
+  const t = useT();
 
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,10 +65,10 @@ export default function TemplatesPage() {
       setTemplates(data);
       setError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load templates';
+      const message = err instanceof Error ? err.message : t('templates.fetchErrorToast');
       setError(sanitizeErrorMessage(err));
       if (!silent) {
-        addToast('error', 'Failed to load templates', message);
+        addToast('error', t('templates.fetchErrorToast'), message);
       }
     } finally {
       if (silent) {
@@ -75,7 +77,7 @@ export default function TemplatesPage() {
         setLoading(false);
       }
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   useEffect(() => {
     void fetchTemplates();
@@ -101,10 +103,10 @@ export default function TemplatesPage() {
     setDeletingId(id);
     try {
       await deleteTemplate(id);
-      setTemplates((current) => current.filter((t) => t.id !== id));
-      addToast('success', 'Template deleted');
+      setTemplates((current) => current.filter((t_item) => t_item.id !== id));
+      addToast('success', t('templates.deleteToast'));
     } catch (err) {
-      addToast('error', 'Failed to delete template', sanitizeErrorMessage(err));
+      addToast('error', t('templates.deleteErrorToast'), sanitizeErrorMessage(err));
     } finally {
       setDeletingId(null);
       setDeleteTarget(null);
@@ -125,10 +127,10 @@ export default function TemplatesPage() {
         autoApprove: template.autoApprove,
         memoryKeys: template.memoryKeys,
       });
-      addToast('success', 'Session created from template', `"${template.name}" → ${session.id}`);
+      addToast('success', t('templates.useSessionToast'), `"${template.name}" → ${session.id}`);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
-      addToast('error', 'Failed to create session', sanitizeErrorMessage(err));
+      addToast('error', t('templates.useErrorToast'), sanitizeErrorMessage(err));
     } finally {
       setUsingId(null);
     }
@@ -148,10 +150,10 @@ export default function TemplatesPage() {
         autoApprove: template.autoApprove,
         memoryKeys: template.memoryKeys,
       });
-      addToast('success', 'Template duplicated', `"${template.name}" duplicated`);
+      addToast('success', t('templates.duplicateToast'), `"${template.name}" duplicated`);
       void fetchTemplates(true);
     } catch (err) {
-      addToast('error', 'Failed to duplicate template', sanitizeErrorMessage(err));
+      addToast('error', t('templates.duplicateErrorToast'), sanitizeErrorMessage(err));
     }
   }
 
@@ -162,30 +164,30 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Templates</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('templates.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Create reusable session configurations to standardize agent launches.
+            {t('templates.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => void fetchTemplates(true)}
-            aria-label="Refresh templates"
+            aria-label={t('templates.refresh')}
             disabled={refreshing}
             className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('templates.refresh')}
           </button>
           <button
             type="button"
             onClick={handleCreate}
-            aria-label="Create new template"
+            aria-label={t('templates.createNew')}
             className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             <Plus className="h-3.5 w-3.5" />
-            Create Template
+            {t('templates.createNew')}
           </button>
         </div>
       </div>
@@ -193,36 +195,36 @@ export default function TemplatesPage() {
       {/* Content */}
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center text-sm text-[var(--color-text-muted)]" role="status" aria-busy="true">
-          <div className="animate-pulse">Loading templates…</div>
+          <div className="animate-pulse">{t('templates.loading')}</div>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200" role="alert">
-          <p className="font-medium">Unable to load templates</p>
+          <p className="font-medium">{t('templates.loadErrorTitle')}</p>
           <p className="mt-1 text-amber-200/80">{error}</p>
           <button
             type="button"
             onClick={() => void fetchTemplates()}
-            aria-label="Retry loading templates"
+            aria-label={t('common.retry')}
             className="mt-4 rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/10"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       ) : templates.length === 0 ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--color-void-lighter)] bg-[var(--color-void)] px-6 text-center" role="status">
           <FileText className="h-8 w-8 text-[var(--color-text-muted)]" />
-          <p className="mt-4 text-sm font-medium text-[var(--color-text-primary)]">No templates yet</p>
+          <p className="mt-4 text-sm font-medium text-[var(--color-text-primary)]">{t('templates.emptyTitle')}</p>
           <p className="mt-1 max-w-md text-sm text-[var(--color-text-muted)]">
-            Create a template to define reusable session configurations for common workflows.
+            {t('templates.emptyDescription')}
           </p>
           <button
             type="button"
             onClick={handleCreate}
-            aria-label="Create your first template"
+            aria-label={t('templates.createFirst')}
             className="mt-4 flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             <Plus className="h-3.5 w-3.5" />
-            Create your first template
+            {t('templates.createFirst')}
           </button>
         </div>
       ) : (
@@ -249,14 +251,14 @@ export default function TemplatesPage() {
                   )}
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
                     <span>
-                      Created {new Date(template.createdAt).toLocaleDateString()}
+                      {t('templates.createdLabel')} {new Date(template.createdAt).toLocaleDateString()}
                     </span>
                     <span className="font-mono truncate max-w-[260px]" title={template.workDir}>
                       {template.workDir}
                     </span>
                     {template.prompt && (
                       <span className="truncate max-w-[200px]" title={template.prompt}>
-                        Prompt: {template.prompt.slice(0, 50)}{template.prompt.length > 50 ? '…' : ''}
+                        {t('templates.promptLabel')} {template.prompt.slice(0, 50)}{template.prompt.length > 50 ? '…' : ''}
                       </span>
                     )}
                   </div>
@@ -275,7 +277,7 @@ export default function TemplatesPage() {
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                    {usingId === template.id ? 'Starting…' : 'Use'}
+                    {usingId === template.id ? t('templates.starting') : t('templates.use')}
                   </button>
                   <button
                     type="button"
@@ -284,27 +286,27 @@ export default function TemplatesPage() {
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    {t('templates.edit')}
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleDuplicate(template)}
                     aria-label={`Duplicate template ${template.name}`}
                     className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
-                    title="Duplicate template"
+                    title={t('templates.duplicate')}
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Duplicate
+                    {t('templates.duplicate')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteTarget({ id: template.id, name: template.name })}
                     aria-label={`Delete template ${template.name}`}
                     disabled={deletingId === template.id}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-red-500/20 bg-red-500/05 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    {deletingId === template.id ? 'Deleting…' : 'Delete'}
+                    {deletingId === template.id ? t('templates.deleting') : t('templates.deleteButton')}
                   </button>
                 </div>
               </div>
@@ -324,9 +326,9 @@ export default function TemplatesPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Delete Template"
-        message={deleteTarget ? `Delete template "${deleteTarget.name}"? This cannot be undone.` : ''}
-        confirmLabel="Delete"
+        title={t('templates.deleteDialogTitle')}
+        message={deleteTarget ? t('templates.deleteDialogMessage', { name: deleteTarget.name }) : ''}
+        confirmLabel={t('templates.deleteButton')}
         variant="danger"
         onConfirm={() => {
           if (deleteTarget) {

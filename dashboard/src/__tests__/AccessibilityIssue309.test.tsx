@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SessionTable from '../components/overview/SessionTable';
@@ -152,9 +153,11 @@ describe('Issue 309 accessibility fixes', () => {
   it('renders a labeled session message input', () => {
     render(
       <MemoryRouter initialEntries={['/sessions/session-1']}>
+        <I18nProvider>
         <Routes>
           <Route path="/sessions/:id" element={<SessionDetailPage />} />
         </Routes>
+        </I18nProvider>
       </MemoryRouter>,
     );
 
