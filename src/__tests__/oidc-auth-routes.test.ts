@@ -96,6 +96,7 @@ function makeConfig(): Config {
     envDenylist: [],
     envAdminAllowlist: [],
     enforceSessionOwnership: true,
+      strictRBAC: false,
     sseIdleMs: 1,
     sseClientTimeoutMs: 1,
     hookTimeoutMs: 1,

@@ -105,6 +105,7 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
     envDenylist: [],
     envAdminAllowlist: [],
     enforceSessionOwnership: true,
+      strictRBAC: false,
     sseIdleMs: 60000,
     sseClientTimeoutMs: 300000,
     hookTimeoutMs: 10000,

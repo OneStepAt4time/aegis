@@ -97,7 +97,7 @@ import {
   registerOpenApiRoute,
   type RouteContext,
 } from './routes/index.js';
-import { makePayload as makePayloadFromCtx } from './routes/context.js';
+import { makePayload as makePayloadFromCtx, setRouteConfig } from './routes/context.js';
 import { registerDeviceAuthRoutes } from './routes/device-auth.js';
 import {
   createDashboardOidcManagerFromEnv,
@@ -1055,6 +1055,19 @@ async function main(): Promise<void> {
     eventStore: acpLocalProfile?.eventStore ?? undefined,
     terminalBridge: acpTerminalBridge ?? undefined,
   };
+  // Issue #3208: Set config ref for strictRBAC enforcement in route guards
+  setRouteConfig(config);
+
+  // Issue #3208: Warn when auth is disabled and RBAC-guarded routes are active
+  if (!auth.authEnabled && !config.strictRBAC) {
+    logger.warn({
+      component: 'server',
+      operation: 'rbac_warning',
+      errorCode: 'RBAC_DISABLED_NO_AUTH',
+      attributes: { message: 'Auth is disabled and strictRBAC is false — all RBAC guards are bypassed. Set AEGIS_STRICT_RBAC=true for production.' },
+    });
+  }
+
   registerHealthRoutes(app, routeCtx);
   registerAuthRoutes(app, routeCtx);
   registerOidcAuthRoutes(app, routeCtx);

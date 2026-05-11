@@ -211,6 +211,7 @@ async function buildTestServer(): Promise<{
     envDenylist: [],
     envAdminAllowlist: [],
     enforceSessionOwnership: true,
+      strictRBAC: false,
     sseIdleMs: 60_000,
     sseClientTimeoutMs: 300_000,
     hookTimeoutMs: 10_000,
