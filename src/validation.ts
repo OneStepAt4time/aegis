@@ -25,6 +25,14 @@ export const authKeySchema = z.object({
   tenantId: z.string().min(1).optional(),
 }).strict();
 
+/** PATCH /v1/auth/keys/:id — update key role/name/permissions (#3207) */
+export const updateKeySchema = z.object({
+  name: z.string().min(1).optional(),
+  role: z.enum(['admin', 'operator', 'viewer']).optional(),
+  permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).nullable().optional(),
+}).strict();
+
+
 /** Maximum length for user-supplied prompts/commands (Issue #411). */
 export const MAX_INPUT_LENGTH = 10_000;
 
