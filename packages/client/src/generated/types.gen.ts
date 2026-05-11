@@ -479,6 +479,49 @@ export type RevokeApiKeyResponses = {
 
 export type RevokeApiKeyResponse = RevokeApiKeyResponses[keyof RevokeApiKeyResponses];
 
+export type PatchV1AuthKeysIdData = {
+    body: {
+        name?: string;
+        role?: 'admin' | 'operator' | 'viewer';
+        permissions?: Array<'create' | 'send' | 'approve' | 'reject' | 'kill'> | null;
+    };
+    path: {
+        /**
+         * Key ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/auth/keys/{id}';
+};
+
+export type PatchV1AuthKeysIdErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Conflict: self-demotion guard or duplicate name
+     */
+    409: unknown;
+};
+
+export type PatchV1AuthKeysIdResponses = {
+    /**
+     * Success
+     */
+    200: {
+        id: string;
+        key: string;
+        name: string;
+        expiresAt: number | null;
+        role: 'admin' | 'operator' | 'viewer';
+        permissions: Array<'create' | 'send' | 'approve' | 'reject' | 'kill'>;
+    };
+};
+
+export type PatchV1AuthKeysIdResponse = PatchV1AuthKeysIdResponses[keyof PatchV1AuthKeysIdResponses];
+
 export type CreateSseTokenData = {
     body?: never;
     path?: never;
