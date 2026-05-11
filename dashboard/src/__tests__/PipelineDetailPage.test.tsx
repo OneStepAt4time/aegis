@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PipelineDetailPage from '../pages/PipelineDetailPage';
@@ -41,9 +42,11 @@ const mockPipeline: PipelineInfo = {
 function renderPage(id = 'pipe-1'): void {
   render(
     <MemoryRouter initialEntries={[`/pipelines/${id}`]}>
+      <I18nProvider>
       <Routes>
         <Route path="/pipelines/:id" element={<PipelineDetailPage />} />
       </Routes>
+      </I18nProvider>
     </MemoryRouter>,
   );
 }

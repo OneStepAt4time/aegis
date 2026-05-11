@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, Navigate } from 'react-router-dom';
 import AuthKeysPage from '../pages/AuthKeysPage';
@@ -38,13 +39,15 @@ describe('AuthKeysPage', () => {
   function renderPage(initialPath: string = '/auth/keys'): void {
     render(
       <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route
-            path="/users"
-            element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
-          />
-          <Route path="/auth/keys" element={<AuthKeysPage />} />
-        </Routes>
+        <I18nProvider>
+          <Routes>
+            <Route
+              path="/users"
+              element={<Navigate to="/auth/keys" replace state={{ usersRedirect: true }} />}
+            />
+            <Route path="/auth/keys" element={<AuthKeysPage />} />
+          </Routes>
+        </I18nProvider>
       </MemoryRouter>,
     );
   }
@@ -103,7 +106,7 @@ describe('AuthKeysPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Key Name'), { target: { value: 'ops-primary' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create new auth key' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Auth Key' }));
 
     await waitFor(() => {
       expect(mockCreateAuthKey).toHaveBeenCalledWith('ops-primary');

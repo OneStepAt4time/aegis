@@ -1,3 +1,7 @@
+/**
+ * pages/SessionDetailPage.tsx — Session detail with live terminal, tabs, and controls.
+ */
+
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import type { AuditRecord, ParsedEntry } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -27,21 +31,21 @@ import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
 const SessionTimelineView = lazy(() => import('../components/session/SessionTimelineView').then(m => ({ default: m.SessionTimelineView })));
-// import { StreamTab } from '../components/session/StreamTab';
 const StreamTab = lazy(() => import('../components/session/StreamTab').then(m => ({ default: m.StreamTab })));
-// import { SessionMetricsPanel } from '../components/session/SessionMetricsPanel';
 const SessionMetricsPanel = lazy(() => import('../components/session/SessionMetricsPanel').then(m => ({ default: m.SessionMetricsPanel })));
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
-// import { AuditTrailPanel } from '../components/session/AuditTrailPanel';
 const AuditTrailPanel = lazy(() => import('../components/session/AuditTrailPanel').then(m => ({ default: m.AuditTrailPanel })));
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
 import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
-// import { PRStatusPanel } from '../components/session/PRStatusPanel';
 const PRStatusPanel = lazy(() => import('../components/session/PRStatusPanel').then(m => ({ default: m.PRStatusPanel })));
-// import { DiffViewer } from '../components/session/DiffViewer';
 const DiffViewer = lazy(() => import('../components/session/DiffViewer').then(m => ({ default: m.DiffViewer })));
+import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
+import SaveTemplateModal from '../components/SaveTemplateModal';
+import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { getSessionMessages } from '../api/client';
+import { useT } from '../i18n/context';
 
 function TabLoadingFallback() {
   return (
@@ -50,10 +54,6 @@ function TabLoadingFallback() {
     </div>
   );
 }
-import { PermissionPromptSheet } from '../components/session/PermissionPromptSheet';
-import SaveTemplateModal from '../components/SaveTemplateModal';
-import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
-import { getSessionMessages } from '../api/client';
 
 interface ScreenshotState {
   image: string;
@@ -63,26 +63,27 @@ interface ScreenshotState {
 
 type TabId = 'stream' | 'metrics' | 'audit' | 'timeline' | 'pr' | 'diff';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'stream', label: 'Stream' },
-  { id: 'metrics', label: 'Metrics' },
-  { id: 'audit', label: 'Audit' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'pr', label: 'PR' },
-  { id: 'diff', label: 'Diff' },
-];
-
 const COMMON_SLASH_COMMANDS = ['/clear', '/compact', '/cost', '/config'] as const;
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const t = useT();
   const [activeTab, setActiveTab] = useState<TabId>('stream');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const {
     session, health, notFound, loading,
     latency, latencyLoading,
   } = useSessionPolling(id ?? '');
+
+  const TABS: { id: TabId; label: string }[] = [
+    { id: 'stream', label: t('sessionDetail.stream') },
+    { id: 'metrics', label: t('sessionDetail.metrics') },
+    { id: 'audit', label: t('sessionDetail.audit') },
+    { id: 'timeline', label: t('sessionDetail.timeline') },
+    { id: 'pr', label: t('sessionDetail.pr') },
+    { id: 'diff', label: t('sessionDetail.diff') },
+  ];
 
   const {
     intervention,
@@ -126,9 +127,6 @@ export default function SessionDetailPage() {
 
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
-  // Issue 06.3: ↑/↓ cycles through recently sent messages. History is
-  // per-session-page-mount (not persisted) — chat history and redrive
-  // both make a persistent log undesirable.
   const sendHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
   const [selectedSlashCommand, setSelectedSlashCommand] = useState<string>(COMMON_SLASH_COMMANDS[0]);
@@ -138,12 +136,10 @@ export default function SessionDetailPage() {
   const [capturingScreenshot, setCapturingScreenshot] = useState(false);
   const [screenshotUnsupported, setScreenshotUnsupported] = useState(false);
   const [screenshot, setScreenshot] = useState<ScreenshotState | null>(null);
-  // Full-bleed terminal mode
   const [fullBleed, setFullBleed] = useState(false);
   const fullBleedRef = useRef(false);
   fullBleedRef.current = fullBleed;
   const [mobileFooterHeight, setMobileFooterHeight] = useState(0);
-  // Audit trail state
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
@@ -155,7 +151,7 @@ export default function SessionDetailPage() {
   const sendingRef = useRef(false);
   const handleSendRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const handleInterruptRef = useRef<() => void>(() => {});
-  const addToast = useToastStore((t) => t.addToast);
+  const addToast = useToastStore((t_store) => t_store.addToast);
 
   function getVisibleMessageInput(): HTMLInputElement | null {
     const candidates = [desktopMsgInputRef.current, mobileMsgInputRef.current].filter(
@@ -164,14 +160,11 @@ export default function SessionDetailPage() {
     return candidates.find((input) => input.offsetParent !== null) ?? candidates[0] ?? null;
   }
 
-  // Register global shortcuts unconditionally so hook order never changes
-  // across loading/notFound/session renders.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
 
-      // Ctrl/Cmd+Enter: submit message (only when message input is focused)
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         if (document.activeElement === getVisibleMessageInput()) {
           e.preventDefault();
@@ -180,14 +173,12 @@ export default function SessionDetailPage() {
         return;
       }
 
-      // F key: toggle full-bleed terminal mode (only when not typing)
       if (e.key === 'f' && !isTyping) {
         e.preventDefault();
         setFullBleed((v) => !v);
         return;
       }
 
-      // Escape: exit full-bleed first; then interrupt
       if (e.key === 'Escape' && !isTyping) {
         if (fullBleedRef.current) {
           e.preventDefault();
@@ -199,7 +190,6 @@ export default function SessionDetailPage() {
         return;
       }
 
-      // / key: focus message input (skip if user is already typing)
       if (e.key === '/' && !isTyping) {
         e.preventDefault();
         getVisibleMessageInput()?.focus();
@@ -227,7 +217,6 @@ export default function SessionDetailPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch audit trail when audit tab is active
   useEffect(() => {
     if (activeTab !== 'audit' || !id) return;
 
@@ -251,7 +240,6 @@ export default function SessionDetailPage() {
     return () => { cancelled = true; };
   }, [activeTab, id]);
 
-  // Fetch transcript for PR parsing when PR tab is active
   useEffect(() => {
     if (activeTab !== 'pr' || !id) return;
 
@@ -276,7 +264,6 @@ export default function SessionDetailPage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6 p-4 sm:p-6 animate-pulse">
-        {/* Header skeleton */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-5 w-48 rounded bg-[var(--color-void-lighter)]" />
@@ -287,7 +274,6 @@ export default function SessionDetailPage() {
             <div className="h-4 w-24 rounded bg-[var(--color-void-lighter)]" />
           </div>
         </div>
-        {/* Tabs skeleton */}
         <div className="flex gap-2 border-b border-[var(--color-void-lighter)] pb-2">
           <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
           <div className="h-8 w-20 rounded bg-[var(--color-void-lighter)]" />
@@ -302,7 +288,7 @@ export default function SessionDetailPage() {
     return (
       <div className="min-h-screen bg-[var(--color-void)] flex flex-col items-center justify-center text-[var(--color-text-muted)] overscroll-contain">
         <div className="text-6xl mb-4">404</div>
-        <div className="text-lg mb-6 text-[var(--color-text-primary)]">Session not found</div>
+        <div className="text-lg mb-6 text-[var(--color-text-primary)]">{t('sessionDetail.notFound')}</div>
       </div>
     );
   }
@@ -315,7 +301,7 @@ export default function SessionDetailPage() {
     h.status === 'ask_question'
       ? {
           toolUseId: 'pending-question',
-          content: 'Claude is waiting for your answer. Reply below to continue.',
+          content: t('sessionDetail.pendingQuestionContent'),
           options: null,
           since: s.lastActivity,
         }
@@ -324,31 +310,31 @@ export default function SessionDetailPage() {
 
   function handleApprove() {
     approve(s.id).catch((e: unknown) =>
-      addToast('error', 'Approve failed', e instanceof Error ? e.message : undefined),
+      addToast('error', t('sessionDetail.approveFailed'), e instanceof Error ? e.message : undefined),
     );
   }
   function handleReject() {
     reject(s.id).catch((e: unknown) =>
-      addToast('error', 'Reject failed', e instanceof Error ? e.message : undefined),
+      addToast('error', t('sessionDetail.rejectFailed'), e instanceof Error ? e.message : undefined),
     );
   }
   function handleInterrupt() {
     interrupt(s.id).catch((e: unknown) =>
-      addToast('error', 'Interrupt failed', e instanceof Error ? e.message : undefined),
+      addToast('error', t('sessionDetail.interruptFailed'), e instanceof Error ? e.message : undefined),
     );
   }
   async function handleFork() {
     try {
       const forked = await forkSession(s.id, { name: undefined });
-      addToast('success', 'Session forked', `New session ${forked.id.slice(0, 8)} created`);
+      addToast('success', t('sessionDetail.forkedToast'), t('sessionDetail.forkedToastDescription', { id: forked.id.slice(0, 8) }));
       navigate(`/sessions/${forked.id}`);
     } catch (e: unknown) {
-      addToast('error', 'Fork failed', e instanceof Error ? e.message : undefined);
+      addToast('error', t('sessionDetail.forkFailed'), e instanceof Error ? e.message : undefined);
     }
   }
   function handleEscape() {
     escape(s.id).catch((e: unknown) =>
-      addToast('error', 'Escape failed', e instanceof Error ? e.message : undefined),
+      addToast('error', t('sessionDetail.escapeFailed'), e instanceof Error ? e.message : undefined),
     );
   }
   function handleKillRequest() {
@@ -360,7 +346,7 @@ export default function SessionDetailPage() {
       await killSession(s.id);
       navigate('/');
     } catch (e: unknown) {
-      addToast('error', 'Failed to kill session', e instanceof Error ? e.message : undefined);
+      addToast('error', t('sessionDetail.failedKill'), e instanceof Error ? e.message : undefined);
     }
   }
 
@@ -374,7 +360,7 @@ export default function SessionDetailPage() {
         mimeType: result.mimeType,
         capturedAt: Date.now(),
       });
-      addToast('success', 'Screenshot captured');
+      addToast('success', t('sessionDetail.screenshotCaptured'));
     } catch (e: unknown) {
       const maybeStatus = typeof e === 'object' && e !== null && 'statusCode' in e
         ? (e as { statusCode?: number }).statusCode
@@ -382,9 +368,9 @@ export default function SessionDetailPage() {
 
       if (maybeStatus === 501) {
         setScreenshotUnsupported(true);
-        addToast('warning', 'Screenshot unavailable', 'Playwright is not installed on the server.');
+        addToast('warning', t('sessionDetail.screenshotUnavailable'), t('sessionDetail.screenshotUnavailableDescription'));
       } else {
-        addToast('error', 'Screenshot failed', e instanceof Error ? e.message : undefined);
+        addToast('error', t('sessionDetail.screenshotFailed'), e instanceof Error ? e.message : undefined);
       }
     } finally {
       setCapturingScreenshot(false);
@@ -400,16 +386,12 @@ export default function SessionDetailPage() {
     try {
       await sendMessage(s.id, text);
       setMsgInput('');
-      // Record for ↑-history recall (issue 06.3). De-dup against the tail
-      // so spamming the same message doesn't flood the history.
       const hist = sendHistoryRef.current;
       if (hist[hist.length - 1] !== text) hist.push(text);
-      // Keep the last 50 only — cheap guard against memory growth on very
-      // long sessions.
       if (hist.length > 50) hist.shift();
       historyIndexRef.current = -1;
     } catch (e: unknown) {
-      addToast('error', 'Failed to send message', e instanceof Error ? e.message : undefined);
+      addToast('error', t('sessionDetail.sendFailed'), e instanceof Error ? e.message : undefined);
     } finally {
       setSending(false);
       sendingRef.current = false;
@@ -429,7 +411,7 @@ export default function SessionDetailPage() {
       await sendCommand(s.id, selectedSlashCommand);
       setMsgInput('');
     } catch (e: unknown) {
-      addToast('error', 'Failed to send slash command', e instanceof Error ? e.message : undefined);
+      addToast('error', t('sessionDetail.sendSlashFailed'), e instanceof Error ? e.message : undefined);
     } finally {
       setSlashSending(false);
     }
@@ -446,9 +428,6 @@ export default function SessionDetailPage() {
       handleSend();
       return;
     }
-    // Issue 06.3: ↑/↓ to cycle through send history when the input is
-    // empty or already showing a history entry. If the user has typed
-    // something original, leave the arrow keys alone (caret movement).
     const hist = sendHistoryRef.current;
     if (hist.length === 0) return;
     const usingHistory =
@@ -476,7 +455,6 @@ export default function SessionDetailPage() {
     }
   }
 
-  // Global keyboard shortcuts (uses refs to avoid re-registering on every state change)
   handleSendRef.current = handleSend;
   handleInterruptRef.current = handleInterrupt;
 
@@ -522,7 +500,7 @@ export default function SessionDetailPage() {
           className={buttonClass}
           title="Insert selected slash command into the message input"
         >
-          Insert Slash
+          {t('sessionDetail.insertSlash')}
         </button>
 
         <button
@@ -532,7 +510,7 @@ export default function SessionDetailPage() {
           className={accentButtonClass}
           title="Send selected slash command immediately"
         >
-          {slashSending ? 'Sending Slash…' : 'Run Slash'}
+          {slashSending ? t('sessionDetail.sendingSlash') : t('sessionDetail.runSlash')}
         </button>
 
         {!screenshotUnsupported && (
@@ -543,7 +521,7 @@ export default function SessionDetailPage() {
             className={buttonClass}
             title="Capture screenshot"
           >
-            {capturingScreenshot ? 'Capturing…' : 'Screenshot'}
+            {capturingScreenshot ? t('sessionDetail.capturing') : t('sessionDetail.screenshot')}
           </button>
         )}
 
@@ -552,20 +530,20 @@ export default function SessionDetailPage() {
             <button
               type="button"
               onClick={handleInterrupt}
-              aria-label="Interrupt session with Ctrl+C"
+              aria-label={t('sessionDetail.interrupt')}
               className={buttonClass}
               title="Interrupt (Ctrl+C)"
             >
-              Interrupt
+              {t('sessionDetail.interrupt')}
             </button>
             <button
               type="button"
               onClick={handleEscape}
-              aria-label="Send Escape to session"
+              aria-label={t('sessionDetail.escape')}
               className={buttonClass}
               title="Send Escape"
             >
-              Escape
+              {t('sessionDetail.escape')}
             </button>
           </>
         )}
@@ -703,9 +681,7 @@ export default function SessionDetailPage() {
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <StreamTab sessionId={s.id} isDriver={isDriver} />
-
                   </Suspense>
                 </motion.div>
               )}
@@ -724,9 +700,7 @@ export default function SessionDetailPage() {
                   className="overflow-auto p-3 sm:p-4"
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <SessionMetricsPanel sessionId={s.id} />
-
                   </Suspense>
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
@@ -748,9 +722,7 @@ export default function SessionDetailPage() {
                   className="overflow-auto p-3 sm:p-4"
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
-
                   </Suspense>
                 </motion.div>
               )}
@@ -769,12 +741,10 @@ export default function SessionDetailPage() {
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <SessionTimelineView
                     events={timelineEvents}
                     isLoading={timelineLoading}
                   />
-
                   </Suspense>
                   {timelineError && (
                     <div className="absolute bottom-2 left-2 right-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
@@ -784,7 +754,7 @@ export default function SessionDetailPage() {
                         onClick={clearTimelineError}
                         className="ml-2 underline"
                       >
-                        Dismiss
+                        {t('sessionDetail.dismiss')}
                       </button>
                     </div>
                   )}
@@ -805,12 +775,10 @@ export default function SessionDetailPage() {
                   className="p-4"
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <PRStatusPanel
                     entries={prEntries}
                     isLoading={prLoading}
                   />
-
                   </Suspense>
                 </motion.div>
               )}
@@ -829,20 +797,17 @@ export default function SessionDetailPage() {
                   className="p-4"
                 >
                   <Suspense fallback={<TabLoadingFallback />}>
-
                     <DiffViewer
                     entries={prEntries}
                     isLoading={prLoading}
                   />
-
                   </Suspense>
                 </motion.div>
               )}
-
             </AnimatePresence>
           </div>
 
-          {/* Desktop session composer — docked below the terminal panel */}
+          {/* Desktop session composer */}
           <div className="hidden rounded-b-lg border border-t-0 border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:block animate-bento-reveal">
             {pendingQuestion && (
               <PendingQuestionCard
@@ -852,7 +817,6 @@ export default function SessionDetailPage() {
             )}
 
             <div className={`flex items-center gap-3 ${pendingQuestion ? 'mt-4' : ''}`}>
-              {/* Composer toolbar icons */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -908,7 +872,7 @@ export default function SessionDetailPage() {
                 value={msgInput}
                 onChange={(e) => setMsgInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Send a message to Claude…"
+                placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
                 className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus:outline-none disabled:opacity-50"
               />
@@ -924,11 +888,10 @@ export default function SessionDetailPage() {
               </button>
             </div>
 
-            {/* Coach hint — Issue 003f: shown for first-minute sessions (first-minute coach) */}
             {s.createdAt && (Date.now() - s.createdAt < 60_000) && !msgInput && (
               <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">
                 <kbd className="rounded border border-[var(--color-void-lighter)] px-1 font-mono text-[10px]">⌘↵</kbd>{' '}
-                to send · Try:{' '}
+                {t('sessionDetail.toSend')} · {t('sessionDetail.tryLabel')}{' '}
                 <button
                   type="button"
                   className="text-[var(--color-accent-cyan)] hover:underline"
@@ -962,7 +925,7 @@ export default function SessionDetailPage() {
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                  Latest screenshot
+                  {t('sessionDetail.latestScreenshot')}
                 </h3>
                 <span className="text-[11px] text-[var(--color-text-muted)]">
                   {new Date(screenshot.capturedAt).toLocaleTimeString()}
@@ -1010,21 +973,21 @@ export default function SessionDetailPage() {
                 onClick={handleInterrupt}
                 className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
-                Interrupt
+                {t('sessionDetail.interrupt')}
               </button>
               <button
                 type="button"
                 onClick={handleEscape}
                 className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
-                Escape
+                {t('sessionDetail.escape')}
               </button>
               <button
                 type="button"
                 onClick={handleKillRequest}
                 className="min-h-[48px] rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)]/20 px-3 py-3 text-sm font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg)]/35"
               >
-                Kill
+                {t('sessionDetail.killLabel')}
               </button>
             </div>
           )}
@@ -1041,7 +1004,7 @@ export default function SessionDetailPage() {
                 value={msgInput}
                 onChange={(e) => setMsgInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Send a message to Claude…"
+                placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
                 className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
               />
@@ -1063,12 +1026,12 @@ export default function SessionDetailPage() {
                 onClick={() => setMobileToolsOpen((current) => !current)}
                 className="min-h-[44px] rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
               >
-                {mobileToolsOpen ? 'Hide tools' : 'More tools'}
+                {mobileToolsOpen ? t('sessionDetail.hideTools') : t('sessionDetail.moreTools')}
               </button>
               <span className="text-xs text-[var(--color-text-muted)]">
                 {needsApproval
-                  ? 'Approve, reject, escape, and kill stay pinned above.'
-                  : 'Quick actions stay within thumb reach.'}
+                  ? t('sessionDetail.approvalPinned')
+                  : t('sessionDetail.quickActionsPinned')}
               </span>
             </div>
 
@@ -1083,9 +1046,9 @@ export default function SessionDetailPage() {
 
       <ConfirmDialog
         open={killConfirmOpen}
-        title="Kill session?"
-        message="This will stop the Claude Code session and close the terminal."
-        confirmLabel="Kill"
+        title={t('sessionDetail.killSessionTitle')}
+        message={t('sessionDetail.killSessionMessage')}
+        confirmLabel={t('sessionDetail.killLabel')}
         variant="danger"
         onConfirm={() => {
           void handleKill();

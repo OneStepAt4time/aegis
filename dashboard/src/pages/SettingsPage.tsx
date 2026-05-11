@@ -8,6 +8,7 @@ import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
 import { useLocale } from '../i18n/context';
+import { useT } from '../i18n/context';
 
 const STORAGE_KEY = 'aegis-dashboard-settings';
 
@@ -44,18 +45,6 @@ function saveSettings(s: Settings) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
   } catch {}
 }
-
-const LIGHT_VARIANTS: { value: Exclude<Theme, 'dark' | 'auto'>; label: string; description: string }[] = [
-  { value: 'light', label: 'Default', description: 'Cool slate white' },
-  { value: 'light-paper', label: 'Paper', description: 'Warm sepia tone' },
-  { value: 'light-aaa', label: 'AAA', description: 'Max contrast (7:1+)' },
-];
-
-const READING_FONTS: { value: ReadingFont; label: string; description: string }[] = [
-  { value: 'default', label: 'Default', description: 'DM Sans' },
-  { value: 'hyperlegible', label: 'Hyperlegible', description: 'Atkinson Hyperlegible' },
-  { value: 'dyslexia', label: 'Dyslexia', description: 'OpenDyslexic' },
-];
 
 const LOCALES: { value: string; label: string; flag: string }[] = [
   { value: 'en-US', label: 'English (US)', flag: '🇺🇸' },
@@ -127,6 +116,19 @@ export default function SettingsPage() {
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
   const { readingFont, setReadingFont } = useReadingFont();
   const { locale, setLocale } = useLocale();
+  const t = useT();
+
+  const LIGHT_VARIANTS: { value: Exclude<Theme, 'dark' | 'auto'>; label: string; description: string }[] = [
+    { value: 'light', label: t('settings.display.variantDefault'), description: t('settings.display.variantDefaultDescription') },
+    { value: 'light-paper', label: t('settings.display.variantPaper'), description: t('settings.display.variantPaperDescription') },
+    { value: 'light-aaa', label: t('settings.display.variantAaa'), description: t('settings.display.variantAaaDescription') },
+  ];
+
+  const READING_FONTS: { value: ReadingFont; label: string; description: string }[] = [
+    { value: 'default', label: t('settings.display.fontDefault'), description: t('settings.display.fontDefaultDescription') },
+    { value: 'hyperlegible', label: t('settings.display.fontHyperlegible'), description: t('settings.display.fontHyperlegibleDescription') },
+    { value: 'dyslexia', label: t('settings.display.fontDyslexia'), description: t('settings.display.fontDyslexiaDescription') },
+  ];
 
   useEffect(() => {
     try {
@@ -148,8 +150,8 @@ export default function SettingsPage() {
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Settings</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Dashboard preferences</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('settings.title')}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('settings.subtitle')}</p>
         </div>
       </div>
 
@@ -157,7 +159,7 @@ export default function SettingsPage() {
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium">Settings could not be saved</p>
+            <p className="font-medium">{t('settings.saveErrorTitle')}</p>
             <p className="mt-1 text-amber-200/80">{saveError}</p>
           </div>
         </div>
@@ -167,20 +169,20 @@ export default function SettingsPage() {
       <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <Monitor className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Display</h3>
+          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">{t('settings.display.title')}</h3>
         </div>
         <div className="space-y-4">
           {/* Dark / Light toggle */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Theme</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Switch between dark and light mode</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.theme')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.themeDescription')}</p>
             </div>
             <button
               onClick={toggleTheme}
               className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
-              {resolvedTheme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+              {resolvedTheme === 'dark' ? t('settings.display.themeDark') : t('settings.display.themeLight')}
             </button>
           </div>
 
@@ -188,8 +190,8 @@ export default function SettingsPage() {
           {isLight && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-[var(--color-text-primary)]">Light variant</p>
-                <p className="text-xs text-[var(--color-text-muted)]">Choose a light-mode sub-theme</p>
+                <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.lightVariant')}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.lightVariantDescription')}</p>
               </div>
               <div className="flex gap-1.5">
                 {LIGHT_VARIANTS.map(({ value, label, description }) => (
@@ -213,25 +215,25 @@ export default function SettingsPage() {
           {/* Auto theme toggle */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Auto theme</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Follow system <code className="font-mono text-[11px]">prefers-color-scheme</code></p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.autoTheme')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.autoThemeDescription')}</p>
             </div>
             <TouchTargetCheckbox
               id="auto-theme-toggle"
               checked={theme === 'auto'}
               onCheckedChange={(checked) => setTheme(checked ? 'auto' : resolvedTheme)}
-              label="Auto theme"
+              label={t('settings.display.autoTheme')}
             />
           </div>
 
           {/* Default page size */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Default page size</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Rows per page in session history</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.defaultPageSize')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.defaultPageSizeDescription')}</p>
             </div>
             <select
-              aria-label="Default page size"
+              aria-label={t('settings.display.defaultPageSize')}
               value={settings.defaultPageSize}
               onChange={(e) => update('defaultPageSize', Number(e.target.value))}
               className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
@@ -246,8 +248,8 @@ export default function SettingsPage() {
           {/* Reading font toggle */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Reading font</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Choose a body font for readability</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.readingFont')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.readingFontDescription')}</p>
             </div>
             <div className="flex gap-1.5">
               {READING_FONTS.map(({ value, label, description }) => (
@@ -270,11 +272,11 @@ export default function SettingsPage() {
           {/* Locale picker */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Language & Region</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Set display language and regional formats</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.locale')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.localeDescription')}</p>
             </div>
             <select
-              aria-label="Language and region"
+              aria-label={t('settings.display.locale')}
               value={locale}
               onChange={(e) => setLocale(e.target.value)}
               className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
@@ -293,37 +295,37 @@ export default function SettingsPage() {
       <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <Bell className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Auto-Refresh</h3>
+          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">{t('settings.autoRefresh.title')}</h3>
         </div>
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Enable auto-refresh</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Automatically update dashboard data</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.autoRefresh.enable')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.autoRefresh.enableDescription')}</p>
             </div>
             <SettingsSwitch
               checked={settings.autoRefresh}
-              label="Enable auto-refresh"
+              label={t('settings.autoRefresh.enable')}
               onClick={() => update('autoRefresh', !settings.autoRefresh)}
             />
           </div>
           {settings.autoRefresh && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-[var(--color-text-primary)]">Refresh interval</p>
-                <p className="text-xs text-[var(--color-text-muted)]">How often to poll for updates</p>
+                <p className="text-sm text-[var(--color-text-primary)]">{t('settings.autoRefresh.interval')}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">{t('settings.autoRefresh.intervalDescription')}</p>
               </div>
               <select
-                aria-label="Refresh interval"
+                aria-label={t('settings.autoRefresh.interval')}
                 value={settings.refreshIntervalSec}
                 onChange={(e) => update('refreshIntervalSec', Number(e.target.value))}
                 className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
               >
-                <option value={10}>10 seconds</option>
-                <option value={30}>30 seconds</option>
-                <option value={60}>1 minute</option>
-                <option value={120}>2 minutes</option>
-                <option value={300}>5 minutes</option>
+                <option value={10}>{t('settings.autoRefresh.interval10s')}</option>
+                <option value={30}>{t('settings.autoRefresh.interval30s')}</option>
+                <option value={60}>{t('settings.autoRefresh.interval1m')}</option>
+                <option value={120}>{t('settings.autoRefresh.interval2m')}</option>
+                <option value={300}>{t('settings.autoRefresh.interval5m')}</option>
               </select>
             </div>
           )}
@@ -334,17 +336,17 @@ export default function SettingsPage() {
       <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" id="budget">
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Budget & Cost Alerts</h3>
+          <h3 className="text-lg font-medium text-[var(--color-text-primary)]">{t('settings.budget.title')}</h3>
         </div>
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-[var(--color-text-primary)]">Enable budget alerts</p>
-              <p className="text-xs text-[var(--color-text-muted)]">Warning at 80% of cap</p>
+              <p className="text-sm text-[var(--color-text-primary)]">{t('settings.budget.enableAlerts')}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{t('settings.budget.enableAlertsDescription')}</p>
             </div>
             <SettingsSwitch
               checked={settings.budgetAlertEnabled}
-              label="Enable budget alerts"
+              label={t('settings.budget.enableAlerts')}
               onClick={() => update('budgetAlertEnabled', !settings.budgetAlertEnabled)}
             />
           </div>
@@ -353,13 +355,13 @@ export default function SettingsPage() {
             <>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-[var(--color-text-primary)]">Daily spending cap</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per day</p>
+                  <p className="text-sm text-[var(--color-text-primary)]">{t('settings.budget.dailyCap')}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{t('settings.budget.dailyCapDescription')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-[var(--color-text-muted)]">$</span>
                   <input
-                    aria-label="Daily spending cap"
+                    aria-label={t('settings.budget.dailyCap')}
                     type="number"
                     min="1"
                     step="10"
@@ -372,13 +374,13 @@ export default function SettingsPage() {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-[var(--color-text-primary)]">Monthly spending cap</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">Maximum USD per month</p>
+                  <p className="text-sm text-[var(--color-text-primary)]">{t('settings.budget.monthlyCap')}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{t('settings.budget.monthlyCapDescription')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-[var(--color-text-muted)]">$</span>
                   <input
-                    aria-label="Monthly spending cap"
+                    aria-label={t('settings.budget.monthlyCap')}
                     type="number"
                     min="1"
                     step="100"
@@ -391,14 +393,14 @@ export default function SettingsPage() {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-[var(--color-text-primary)]">Hard stop at 100%</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">Block new sessions when cap reached</p>
+                  <p className="text-sm text-[var(--color-text-primary)]">{t('settings.budget.hardStop')}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{t('settings.budget.hardStopDescription')}</p>
                 </div>
                 <TouchTargetCheckbox
                   id="budget-hard-stop"
                   checked={settings.budgetHardStopEnabled}
                   onCheckedChange={(checked) => update('budgetHardStopEnabled', checked)}
-                  label="Hard stop at 100%"
+                  label={t('settings.budget.hardStop')}
                 />
               </div>
             </>

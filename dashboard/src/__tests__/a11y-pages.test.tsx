@@ -465,13 +465,15 @@ describe('a11y: page landmarks and ARIA', () => {
     it('steps table has aria-label after loading', async () => {
       render(
         <MemoryRouter initialEntries={['/pipelines/test-pipeline-id']}>
+          <I18nProvider>
           <Routes>
             <Route path="/pipelines/:id" element={<PipelineDetailPage />} />
           </Routes>
+          </I18nProvider>
         </MemoryRouter>,
       );
       await waitFor(() => {
-        const table = document.querySelector('table[aria-label="Pipeline steps"]');
+        const table = document.querySelector('table[aria-label="Steps"]');
         expect(table).not.toBeNull();
       }, { timeout: 3000 });
     });
@@ -479,9 +481,11 @@ describe('a11y: page landmarks and ARIA', () => {
     it('renders a page-level h1 after loading', async () => {
       render(
         <MemoryRouter initialEntries={['/pipelines/test-pipeline-id']}>
+          <I18nProvider>
           <Routes>
             <Route path="/pipelines/:id" element={<PipelineDetailPage />} />
           </Routes>
+          </I18nProvider>
         </MemoryRouter>,
       );
       await waitFor(() => {

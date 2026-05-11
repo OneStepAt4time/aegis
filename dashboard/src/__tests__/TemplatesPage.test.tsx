@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { act } from 'react';
 import TemplatesPage from '../pages/TemplatesPage';
+import { I18nProvider } from '../i18n/context';
 import * as client from '../api/client';
 import type { SessionTemplate } from '../types';
 
@@ -50,7 +51,9 @@ const mockTemplates: SessionTemplate[] = [
 function renderPage() {
   return render(
     <BrowserRouter>
+      <I18nProvider>
       <TemplatesPage />
+    </I18nProvider>
     </BrowserRouter>,
   );
 }
