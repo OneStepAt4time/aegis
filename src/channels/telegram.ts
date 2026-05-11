@@ -838,6 +838,20 @@ export class TelegramChannel implements Channel {
     this.onInbound = onInbound;
     this.polling = true;
     this.startTopicCleanupSweep();
+    // Pre-flight: clear stale pending updates to avoid 409 Conflict
+    try {
+      const stale = (await this.tgApi('getUpdates', {
+        offset: -1,
+        timeout: 0,
+        allowed_updates: ['message', 'callback_query'],
+      })) as Array<{ update_id: number }>;
+      if (Array.isArray(stale) && stale.length > 0) {
+        this.pollOffset = stale[stale.length - 1].update_id + 1;
+        console.log(`Telegram pre-flight: cleared ${stale.length} stale update(s), offset now ${this.pollOffset}`);
+      }
+    } catch {
+      // Pre-flight failure is non-fatal — the poll loop will retry
+    }
     this.pollLoopPromise = this.pollLoop(); // store promise for graceful shutdown
     console.log(`Telegram channel: polling started, group ${this.config.groupChatId}`);
   }
