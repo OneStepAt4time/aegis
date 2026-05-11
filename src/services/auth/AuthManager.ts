@@ -320,6 +320,39 @@ export class AuthManager {
     return { ...rest, permissions: [...key.permissions] };
   }
 
+  /** Issue #3207: Update key role/name/permissions. */
+  async updateKey(
+    id: string,
+    updates: { name?: string; role?: import('./types.js').ApiKeyRole; permissions?: import('./permissions.js').ApiKeyPermission[] | null },
+  ): Promise<Omit<ApiKey, 'hash'> | null> {
+    const key = this.store.keys.find(k => k.id === id);
+    if (!key) return null;
+
+    if (updates.name !== undefined) key.name = updates.name;
+    if (updates.role !== undefined) {
+      key.role = updates.role;
+      // When role changes without explicit permissions, reset to role defaults
+      if (updates.permissions === undefined) {
+        key.permissions = permissionsForRole(key.role);
+      }
+    }
+    if (updates.permissions !== undefined) {
+      // null means "reset to role defaults"
+      key.permissions = updates.permissions === null
+        ? permissionsForRole(key.role)
+        : [...updates.permissions];
+    }
+
+    await this.save();
+
+    if (this.audit) {
+      void this.audit.log('system', 'key.update', `Key updated: ${key.name} (${id}) - role=${key.role}, permissions=[${key.permissions.join(',')}]`, undefined);
+    }
+
+    const { hash: _, ...rest } = key;
+    return { ...rest, permissions: [...key.permissions] };
+  }
+
   /** Revoke a key by ID. */
   async revokeKey(id: string): Promise<boolean> {
     const idx = this.store.keys.findIndex(k => k.id === id);

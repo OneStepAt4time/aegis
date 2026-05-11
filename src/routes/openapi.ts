@@ -19,6 +19,7 @@ import {
 } from '../openapi.js';
 import {
   authKeySchema,
+  updateKeySchema,
   sendMessageSchema,
   commandSchema,
   screenshotSchema,
@@ -269,6 +270,7 @@ const okJsonResponse = (schema: z.ZodType) => ({
 const notFoundResponse = { description: 'Not found' };
 const unauthorizedResponse = { description: 'Unauthorized — Bearer token required' };
 const forbiddenResponse = { description: 'Forbidden: insufficient role' };
+const conflictResponse = { description: 'Conflict: self-demotion guard or duplicate name' };
 
 // ── Registration ────────────────────────────────────────────────────
 
@@ -848,6 +850,16 @@ export function registerOpenApiSpec(): void {
     tags: ['Auth'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Key ID', schema: z.string() }],
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
+  });
+
+  registerOpenApiPath({
+    method: 'patch',
+    path: '/v1/auth/keys/{id}',
+    summary: 'Update API key role, name, or permissions',
+    tags: ['Auth'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Key ID', schema: z.string() }],
+    requestBody: { content: { 'application/json': { schema: updateKeySchema } } },
+    responses: { '200': okJsonResponse(createdAuthKeySchema), '404': notFoundResponse, '409': conflictResponse },
   });
 
   registerOpenApiPath({

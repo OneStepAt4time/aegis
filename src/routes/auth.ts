@@ -4,7 +4,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { authKeySchema } from '../validation.js';
+import { authKeySchema, updateKeySchema } from '../validation.js';
 import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { type RouteContext, requireRole, registerWithLegacy, withValidation } from './context.js';
@@ -114,6 +114,41 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!revoked) return reply.status(404).send({ error: 'Key not found' });
     return { ok: true };
   });
+
+  // Issue #3207: Update key role/name/permissions
+  registerWithLegacy(app, 'patch', '/v1/auth/keys/:id', withValidation(updateKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+    if (!auth.authEnabled) return reply.status(403).send({ error: 'Auth is not enabled' });
+    if (!requireRole(auth, req, reply, 'admin')) return;
+    const keyId = (req.params as { id: string }).id;
+    const existing = auth.getKey(keyId);
+    if (!existing) return reply.status(404).send({ error: 'Key not found' });
+    if (req.tenantId !== SYSTEM_TENANT && existing.tenantId !== req.tenantId) {
+      return reply.status(404).send({ error: 'Key not found' });
+    }
+
+    // Self-demotion guard: admin cannot demote themselves if they are the last admin
+    if (data.role && data.role !== 'admin' && existing.role === 'admin') {
+      const requestingKeyId = req.authKeyId;
+      if (requestingKeyId === keyId) {
+        const adminCount = auth.listKeys().filter(k => k.role === 'admin').length;
+        if (adminCount <= 1) {
+          return reply.status(409).send({ error: 'Cannot demote the last admin key' });
+        }
+      }
+    }
+
+    // Name uniqueness check
+    if (data.name && data.name !== existing.name) {
+      const nameExists = auth.listKeys().some(k => k.name === data.name && k.id !== keyId);
+      if (nameExists) {
+        return reply.status(409).send({ error: 'Key name already in use' });
+      }
+    }
+
+    const updated = await auth.updateKey(keyId, data);
+    if (!updated) return reply.status(404).send({ error: 'Key not found' });
+    return reply.status(200).send(updated);
+  }));
 
   // Issue #1403: Rotate API key
   registerWithLegacy(app, 'post', '/v1/auth/keys/:id/rotate', withValidation(rotateKeySchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
