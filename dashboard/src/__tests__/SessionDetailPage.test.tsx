@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SessionDetailPage from '../pages/SessionDetailPage';
@@ -57,9 +58,11 @@ vi.mock('../components/session/SessionSummaryCard', () => ({
 function renderPage(): void {
   render(
     <MemoryRouter initialEntries={['/sessions/session-1']}>
-      <Routes>
-        <Route path="/sessions/:id" element={<SessionDetailPage />} />
-      </Routes>
+      <I18nProvider>
+        <Routes>
+          <Route path="/sessions/:id" element={<SessionDetailPage />} />
+        </Routes>
+      </I18nProvider>
     </MemoryRouter>,
   );
 }

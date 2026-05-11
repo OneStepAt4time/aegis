@@ -29,6 +29,29 @@ AEGIS_TG_GROUP_ID=-1001234567890
 AEGIS_TG_ALLOWED_USERS=user1,user2  # optional
 ```
 
+### Verbose Mode
+
+Enable verbose mode to forward full Claude Code output (thinking, tool calls, code) to Telegram:
+
+```bash
+AEGIS_TG_VERBOSE=true
+```
+
+Or in `aegis.config.json`:
+
+```json
+{
+  "tgVerbose": true
+}
+```
+
+| Event | Without verbose | With verbose |
+|-------|----------------|-------------|
+| `message.thinking` | Silent | 💭 *thinking text* (truncated 800 chars) |
+| `message.tool_use` | Progress tracking only | 🔧 `tool.label` + code block (truncated 600 chars) |
+| `message.assistant` | Forwarded | Forwarded (unchanged) |
+| `message.user` | Forwarded | Forwarded (unchanged) |
+
 ### Events
 
 - `session.created` — new session started

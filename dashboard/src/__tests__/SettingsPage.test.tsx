@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { I18nProvider } from '../i18n/context';
 import { fireEvent, render, screen } from '@testing-library/react';
 import SettingsPage from '../pages/SettingsPage';
 
@@ -26,7 +27,7 @@ describe('SettingsPage', () => {
   });
 
   function renderPage(): void {
-    render(<SettingsPage />);
+    render(<I18nProvider><SettingsPage /></I18nProvider>);
   }
 
   it('renders the settings page with header and sections', () => {

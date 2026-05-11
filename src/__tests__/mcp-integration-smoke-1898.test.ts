@@ -191,6 +191,7 @@ async function buildTestServer(): Promise<{
     tgAllowedUsers: [],
     tgTopicTtlMs: 24 * 60 * 60 * 1000,
     tgTopicAutoDelete: true,
+    tgVerbose: false,
     tgTopicTTLHours: 0,
     webhooks: [],
     defaultSessionEnv: {},

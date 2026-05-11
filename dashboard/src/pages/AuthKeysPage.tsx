@@ -1,3 +1,7 @@
+/**
+ * pages/AuthKeysPage.tsx — API key management with create, reveal, and revoke.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
@@ -24,6 +28,7 @@ import { CopyButton } from '../components/shared/CopyButton';
 import { SkeletonTable } from '../components/shared/Skeleton';
 import EmptyState from '../components/shared/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { useT } from '../i18n/context';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
@@ -44,9 +49,9 @@ function maskKey(key: string): string {
   return `${key.slice(0, 8)}${'•'.repeat(Math.max(8, key.length - 12))}${key.slice(-4)}`;
 }
 
-function PermissionBadges({ permissions }: { permissions?: readonly string[] }) {
+function PermissionBadges({ permissions, noPermissionsLabel }: { permissions?: readonly string[]; noPermissionsLabel: string }) {
   if (!permissions || permissions.length === 0) {
-    return <p className="mt-2 text-xs text-[var(--color-text-muted)]">No action permissions</p>;
+    return <p className="mt-2 text-xs text-[var(--color-text-muted)]">{noPermissionsLabel}</p>;
   }
 
   return (
@@ -65,6 +70,7 @@ function PermissionBadges({ permissions }: { permissions?: readonly string[] }) 
 
 export default function AuthKeysPage() {
   const location = useLocation();
+  const t = useT();
   const [keys, setKeys] = useState<AuthKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +97,6 @@ export default function AuthKeysPage() {
     try {
       sessionStorage.setItem(USERS_BANNER_DISMISSED_KEY, '1');
     } catch {
-      // Ignore storage failures — banner will simply reappear on next redirect.
     }
   }
 
@@ -107,19 +112,17 @@ export default function AuthKeysPage() {
       setKeys(data.slice().sort((left, right) => right.createdAt - left.createdAt));
       setError(null);
     } catch (err) {
-      // #1168: Suppress 403 noise - user simply lacks permission
       const statusCode = (err as Error & { statusCode?: number }).statusCode;
       if (statusCode === 403) {
         setKeys([]);
         setError(null);
         return;
       }
-      // Sanitize raw validation errors — don't leak Zod schema details
       const rawMessage = err instanceof Error ? err.message : '';
       const isValidationError = rawMessage.includes('validation failed');
       const userMessage = isValidationError
-        ? 'Could not load auth keys — data format mismatch. Try refreshing or contact your administrator.'
-        : 'Failed to load auth keys';
+        ? t('authKeys.validationError')
+        : t('authKeys.loadError');
       setError(userMessage);
     } finally {
       if (silent) {
@@ -128,7 +131,7 @@ export default function AuthKeysPage() {
         setLoading(false);
       }
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   useEffect(() => {
     fetchKeys();
@@ -158,12 +161,12 @@ export default function AuthKeysPage() {
       setCreatedKey(result);
       setSecretVisible(false);
       setName('');
-      addToast('success', 'Auth key created', 'Store the secret now. It is only shown once.');
+      addToast('success', t('authKeys.createdToast'), t('authKeys.createdToastDescription'));
       await fetchKeys(true);
     } catch (err) {
       addToast(
         'error',
-        'Failed to create auth key',
+        t('authKeys.createFailed'),
         err instanceof Error ? err.message : undefined,
       );
     } finally {
@@ -178,9 +181,9 @@ export default function AuthKeysPage() {
         throw new Error('Clipboard access is unavailable in this browser');
       }
       await navigator.clipboard.writeText(createdKey.key);
-      addToast('success', 'Auth key copied');
+      addToast('success', t('authKeys.copied'));
     } catch (err) {
-      addToast('warning', 'Failed to copy auth key', err instanceof Error ? err.message : undefined);
+      addToast('warning', t('authKeys.copyFailed'), err instanceof Error ? err.message : undefined);
     }
   }
 
@@ -197,9 +200,9 @@ export default function AuthKeysPage() {
         setCreatedKey(null);
         setSecretVisible(false);
       }
-      addToast('success', 'Auth key revoked');
+      addToast('success', t('authKeys.revokedToast'));
     } catch (err) {
-      addToast('error', 'Failed to revoke auth key', err instanceof Error ? err.message : undefined);
+      addToast('error', t('authKeys.revokeFailed'), err instanceof Error ? err.message : undefined);
     } finally {
       setRevokingId(null);
     }
@@ -214,12 +217,12 @@ export default function AuthKeysPage() {
           className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-4 py-3 text-sm text-slate-300"
         >
           <p className="leading-relaxed">
-            Users are API keys in single-tenant mode. SSO-backed user identities arrive with Phase 3.
+            {t('authKeys.usersBannerText')}
           </p>
           <button
             type="button"
             onClick={dismissUsersBanner}
-            aria-label="Dismiss banner"
+            aria-label={t('authKeys.authDismissBanner')}
             className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200"
           >
             <X className="h-3.5 w-3.5" />
@@ -228,20 +231,20 @@ export default function AuthKeysPage() {
       ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Auth Keys</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('authKeys.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Create, review, and revoke dashboard API keys without exposing stored secrets.
+            {t('authKeys.subtitle')}
           </p>
         </div>
         <button
           type="button"
           onClick={() => void fetchKeys(true)}
-          aria-label="Refresh auth keys"
+          aria-label={t('authKeys.refresh')}
           disabled={refreshing}
           className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('authKeys.refresh')}
         </button>
       </div>
 
@@ -249,16 +252,16 @@ export default function AuthKeysPage() {
         <section className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-primary)]">
             <Plus className="h-4 w-4 text-[var(--color-accent-cyan)]" />
-            Create Key
+            {t('authKeys.createKey')}
           </div>
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            New secrets are never persisted in the dashboard and are cleared from view after one minute.
+            {t('authKeys.newSecretsDescription')}
           </p>
 
           <form className="mt-4 space-y-4" onSubmit={handleCreate}>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]" htmlFor="auth-key-name">
-                Key Name
+                {t('authKeys.keyName')}
               </label>
               <input
                 id="auth-key-name"
@@ -273,11 +276,11 @@ export default function AuthKeysPage() {
             <button
               type="submit"
               disabled={creating || !name.trim()}
-              aria-label="Create new auth key"
+              aria-label={t('authKeys.createAuthKey')}
               className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-sm font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="h-4 w-4" />
-              {creating ? 'Creating…' : 'Create Auth Key'}
+              {creating ? t('authKeys.creating') : t('authKeys.createAuthKey')}
             </button>
           </form>
 
@@ -285,9 +288,9 @@ export default function AuthKeysPage() {
             <div className="mt-5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4" role="status">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-emerald-300">Store this key now</h3>
+                  <h3 className="text-sm font-semibold text-emerald-300">{t('authKeys.storeKeyNow')}</h3>
                   <p className="mt-1 text-xs text-emerald-200/80">
-                    This secret is shown once and is hidden by default.
+                    {t('authKeys.secretShownOnce')}
                   </p>
                 </div>
                 <button
@@ -297,27 +300,27 @@ export default function AuthKeysPage() {
                     setSecretVisible(false);
                   }}
                   className="text-xs font-medium text-emerald-200/80 transition-colors hover:text-emerald-200"
-                  aria-label="Dismiss created key"
+                  aria-label={t('authKeys.dismiss')}
                 >
-                  Dismiss
+                  {t('authKeys.dismiss')}
                 </button>
               </div>
 
               <dl className="mt-4 space-y-3 text-sm text-[var(--color-text-primary)]">
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Name</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('authKeys.nameLabel')}</dt>
                   <dd className="mt-1 font-medium text-[var(--color-text-primary)]">{createdKey.name}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Secret</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('authKeys.secretLabel')}</dt>
                   <dd className="mt-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 font-mono text-xs text-[var(--color-accent-cyan)]">
                     {secretVisible ? createdKey.key : maskKey(createdKey.key)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Permissions</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('authKeys.permissionsLabel')}</dt>
                   <dd>
-                    <PermissionBadges permissions={createdKey.permissions} />
+                    <PermissionBadges permissions={createdKey.permissions} noPermissionsLabel={t('authKeys.noPermissions')} />
                   </dd>
                 </div>
               </dl>
@@ -327,19 +330,19 @@ export default function AuthKeysPage() {
                   type="button"
                   onClick={() => setSecretVisible((current) => !current)}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
-                  aria-label="Toggle secret visibility"
+                  aria-label={t('authKeys.authToggleSecret')}
                 >
                   {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  {secretVisible ? 'Hide secret' : 'Reveal secret'}
+                  {secretVisible ? t('authKeys.hideSecret') : t('authKeys.revealSecret')}
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleCopySecret()}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
-                  aria-label="Copy secret to clipboard"
+                  aria-label={t('authKeys.authCopySecret')}
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Copy secret
+                  {t('authKeys.copySecret')}
                 </button>
               </div>
             </div>
@@ -349,9 +352,9 @@ export default function AuthKeysPage() {
         <section className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-5">
           <div className="flex items-center justify-between gap-3 border-b border-[var(--color-void-lighter)] pb-4">
             <div>
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Existing Keys</h3>
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{t('authKeys.existingKeys')}</h3>
               <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                {keys.length} key{keys.length === 1 ? '' : 's'} configured
+                {t('authKeys.keysConfigured', { count: keys.length })}
               </p>
             </div>
           </div>
@@ -365,8 +368,8 @@ export default function AuthKeysPage() {
           ) : keys.length === 0 ? (
             <EmptyState
               icon={<KeyRound className="h-8 w-8" />}
-              title="No auth keys yet"
-              description="Create a key to grant API access without sharing the dashboard bearer token."
+              title={t('authKeys.noAuthKeysYet')}
+              description={t('authKeys.noAuthKeysDescription')}
             />
           ) : (
             <div className="mt-4 space-y-3">
@@ -385,11 +388,11 @@ export default function AuthKeysPage() {
                          </span>
                        </div>
                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                         Created <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
+                         {t('authKeys.created')} <span title={formatCreatedAt(key.createdAt)}>{formatTimeAgo(key.createdAt)}</span>
                        </p>
                        <div className="mt-3">
-                         <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Permissions</p>
-                         <PermissionBadges permissions={key.permissions} />
+                         <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('authKeys.permissionsLabel')}</p>
+                         <PermissionBadges permissions={key.permissions} noPermissionsLabel={t('authKeys.noPermissions')} />
                        </div>
                      </div>
 
@@ -398,10 +401,10 @@ export default function AuthKeysPage() {
                       onClick={() => void handleRevoke(key.id, key.name)}
                       disabled={revokingId === key.id}
                       aria-label={`Revoke auth key ${key.name}`}
-                       className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                       className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-red-500/20 bg-red-500/05 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      {revokingId === key.id ? 'Revoking…' : 'Revoke'}
+                      {revokingId === key.id ? t('authKeys.revoking') : t('authKeys.revoke')}
                     </button>
                   </div>
                 </article>
@@ -413,9 +416,9 @@ export default function AuthKeysPage() {
 
       <ConfirmDialog
         open={revokeConfirm !== null}
-        title="Revoke Auth Key"
-        message={revokeConfirm ? `Revoke auth key "${revokeConfirm.name}"? This cannot be undone.` : ''}
-        confirmLabel="Revoke"
+        title={t('authKeys.revokeDialogTitle')}
+        message={revokeConfirm ? t('authKeys.revokeDialogMessage', { name: revokeConfirm.name }) : ''}
+        confirmLabel={t('authKeys.revoke')}
         variant="danger"
         onConfirm={() => {
           if (revokeConfirm) {

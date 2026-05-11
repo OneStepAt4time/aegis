@@ -29,7 +29,7 @@ Aegis supports multiple API keys with role-based access control:
 
 | Role | Permissions |
 |------|-------------|
-| `viewer` | Read-only access to sessions and metrics |
+| `viewer` | Read-only access to sessions, templates, tools, and metrics |
 | `operator` | Read + write sessions, approve permissions |
 | `admin` | Full access including key management |
 
@@ -278,6 +278,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_EMAIL_SECURE` | `false` | Use TLS/SSL (auto-true for port 465) |
 | `AEGIS_TG_BOT_TOKEN` | _(none)_ | Telegram bot token |
 | `AEGIS_TG_GROUP_ID` | _(none)_ | Telegram group chat ID |
+| `AEGIS_TG_VERBOSE` | `false` | Forward full CC output (thinking, tool calls) to Telegram |
 
 ### Configuration File
 

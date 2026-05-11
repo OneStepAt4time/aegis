@@ -46,6 +46,9 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Dashboard SessionTimelineView** — visual timeline with status dots, line connector, and event filters ([#3149](https://github.com/OneStepAt4time/aegis/pull/3149), closes [#3126](https://github.com/OneStepAt4time/aegis/issues/3126))
 - **`pending` session status** — new sessions start as `pending` instead of `unknown` for clearer lifecycle visibility ([#3061](https://github.com/OneStepAt4time/aegis/pull/3061), closes [#3058](https://github.com/OneStepAt4time/aegis/issues/3058))
 - **Terminal session states** — `killed`, `completed`, and `crashed` added as terminal states; killed sessions are retained (not deleted) ([#3140](https://github.com/OneStepAt4time/aegis/pull/3140))
+- **Dashboard budget progress bars** — budget bars with spend summary in cost page ([#3183](https://github.com/OneStepAt4time/aegis/pull/3183))
+- **Telegram verbose mode** — forward full CC output (thinking, tool calls, code) via `AEGIS_TG_VERBOSE=true` ([#3196](https://github.com/OneStepAt4time/aegis/pull/3196))
+- **Dashboard i18n string extraction** — string extraction for 7 remaining dashboard pages ([#3192](https://github.com/OneStepAt4time/aegis/pull/3192))
 
 ### Changed
 
@@ -118,6 +121,10 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Hooks OOM guard** — guard `build-on-stop.sh` against OOM crashes ([#3172](https://github.com/OneStepAt4time/aegis/pull/3172))
 - **Systemd restart burst** — increase restart burst limit and add health-start check ([#3152](https://github.com/OneStepAt4time/aegis/pull/3152), closes [#3069](https://github.com/OneStepAt4time/aegis/issues/3069))
 - **Dependencies** — bump `hono` to `^4.12.18` resolving 7 Dependabot alerts ([#2969](https://github.com/OneStepAt4time/aegis/pull/2969), [#3048](https://github.com/OneStepAt4time/aegis/pull/3048)); bump `claude-agent-acp` to `0.33.1` ([#3157](https://github.com/OneStepAt4time/aegis/pull/3157))
+- **RBAC guards on templates and tools** — `requireRole()` added to 6 endpoints; viewer-role keys get 403 on write operations ([#3187](https://github.com/OneStepAt4time/aegis/pull/3187), closes [#3185](https://github.com/OneStepAt4time/aegis/issues/3185), [#3186](https://github.com/OneStepAt4time/aegis/issues/3186))
+- **ACP kill-session process reap** — shutdown ACP backend on session kill to reap orphaned CC child processes (~250MB RSS per leak) ([#3191](https://github.com/OneStepAt4time/aegis/pull/3191), closes [#3184](https://github.com/OneStepAt4time/aegis/issues/3184))
+- **Dashboard i18n aria-labels** — aria-labels and title attributes for 3 pages ([#3195](https://github.com/OneStepAt4time/aegis/pull/3195))
+- **Security helpers cleanup** — export security helpers, fix indentation, cache `redactError` ([#3177](https://github.com/OneStepAt4time/aegis/pull/3177))
 
 ### Documentation
 
@@ -150,6 +157,11 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Competitive intel** — CC feature mapping, positioning brief, and competitor analysis ([#3056](https://github.com/OneStepAt4time/aegis/pull/3056))
 - **Architecture update** — added workDir hardening and infra_failed metrics to architecture guide ([#2960](https://github.com/OneStepAt4time/aegis/pull/2960))
 - **Phase 4 activation rules** — added Phase 4 activation rules to CONTRIBUTING.md ([#2962](https://github.com/OneStepAt4time/aegis/pull/2962))
+- **Competitive threat matrix update** — deep dive findings + two-way counter-moves for 5 competitors ([#3176](https://github.com/OneStepAt4time/aegis/pull/3176))
+- **Blog: Why Enterprise-Grade Orchestration Matters** — enterprise positioning blog post ([#3179](https://github.com/OneStepAt4time/aegis/pull/3179))
+- **RBAC role tables** — RBAC role tables added to templates and tools endpoint docs ([#3188](https://github.com/OneStepAt4time/aegis/pull/3188))
+- **RBAC viewer role docs** — updated viewer role description after RBAC guards ([#3193](https://github.com/OneStepAt4time/aegis/pull/3193))
+- **Telegram verbose mode docs** — documented `tgVerbose` config and `AEGIS_TG_VERBOSE` env var ([#3197](https://github.com/OneStepAt4time/aegis/pull/3197))
 
 ### CI
 

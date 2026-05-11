@@ -12,6 +12,7 @@ import { useToastStore } from '../store/useToastStore';
 import { formatTimeAgo } from '../utils/format';
 import PipelineStatusBadge from '../components/pipeline/PipelineStatusBadge';
 import StatusDot from '../components/overview/StatusDot';
+import { useT } from '../i18n/context';
 
 const BASE_POLL_INTERVAL_MS = 3_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -33,11 +34,12 @@ function toUIState(status: string): UIState {
 
 export default function PipelineDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useT();
   const [pipeline, setPipeline] = useState<PipelineInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const sseConnected = useStore((s) => s.sseConnected);
-  const addToast = useToastStore((t) => t.addToast);
+  const addToast = useToastStore((t_store) => t_store.addToast);
 
   const fetchPipeline = useCallback(async (): Promise<boolean> => {
     if (!id) return false;
@@ -50,13 +52,13 @@ export default function PipelineDetailPage() {
       if (e instanceof Error && 'statusCode' in e && (e as Error & { statusCode: number }).statusCode === 404) {
         setNotFound(true);
       } else {
-        addToast('error', 'Failed to fetch pipeline', e instanceof Error ? e.message : undefined);
+        addToast('error', t('pipelines.failedFetch'), e instanceof Error ? e.message : undefined);
       }
       return false;
     } finally {
       setLoading(false);
     }
-  }, [id, addToast]);
+  }, [id, addToast, t]);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -98,7 +100,7 @@ export default function PipelineDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] text-[var(--color-text-muted)] text-sm" role="status" aria-busy="true">
-        <div className="animate-pulse">Loading pipeline…</div>
+        <div className="animate-pulse">{t('pipelines.loadingPipeline')}</div>
       </div>
     );
   }
@@ -107,9 +109,9 @@ export default function PipelineDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-[var(--color-text-muted)]" role="alert">
         <div className="text-6xl mb-4">404</div>
-        <div className="text-lg mb-6 text-[var(--color-text-primary)]">Pipeline not found</div>
+        <div className="text-lg mb-6 text-[var(--color-text-primary)]">{t('pipelines.notFound')}</div>
         <Link to="/pipelines" className="text-sm text-[var(--color-accent-cyan)] hover:underline">
-          ← Back to Pipelines
+          {t('pipelines.backToPipelines')}
         </Link>
       </div>
     );
@@ -118,9 +120,9 @@ export default function PipelineDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
-      <nav className="text-xs text-[var(--color-text-muted)] flex items-center gap-1" aria-label="Pipeline breadcrumb">
+      <nav className="text-xs text-[var(--color-text-muted)] flex items-center gap-1" aria-label={t('pipelines.pipelineBreadcrumb')}>
         <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
-          Pipelines
+          {t('pipelines.title')}
         </Link>
         <span className="text-[var(--color-text-muted)]">/</span>
         <span className="text-[var(--color-text-primary)] truncate max-w-xs">
@@ -135,7 +137,7 @@ export default function PipelineDetailPage() {
           <PipelineStatusBadge status={pipeline.status} />
         </div>
         <div className="text-xs text-[var(--color-text-muted)]">
-          Created {formatTimeAgo(pipeline.createdAt)}
+          {t('pipelines.createdLabel')} {formatTimeAgo(pipeline.createdAt)}
         </div>
       </div>
 
@@ -143,22 +145,22 @@ export default function PipelineDetailPage() {
       <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]">
         <div className="px-4 py-3 border-b border-void-lighter">
           <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Steps ({pipeline.stages.length})
+            {t('pipelines.stepsLabel')} ({pipeline.stages.length})
           </h3>
         </div>
         {pipeline.stages.length === 0 ? (
           <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
-            No steps yet
+            {t('pipelines.noSteps')}
           </div>
         ) : (
-          <div className="overflow-x-auto" tabIndex={0} aria-label="Pipeline steps table">
-          <table className="w-full text-left text-sm" aria-label="Pipeline steps">
+          <div className="overflow-x-auto" tabIndex={0} aria-label={t('pipelines.stepsLabel')}>
+          <table className="w-full text-left text-sm" aria-label={t('pipelines.stepsLabel')}>
             <thead>
               <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
                 <th className="px-4 py-3 font-medium w-16">#</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Session</th>
+                <th className="px-4 py-3 font-medium">{t('pipelines.statusLabel')}</th>
+                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                <th className="px-4 py-3 font-medium">{t('pipelines.sessionLabel')}</th>
               </tr>
             </thead>
             <tbody>

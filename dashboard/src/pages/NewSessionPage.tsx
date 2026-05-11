@@ -10,17 +10,19 @@ import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useRecentDirs } from '../hooks/useRecentDirs';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
-
-const PERMISSION_MODES = [
-  { value: 'default', label: 'Default (prompt)' },
-  { value: 'bypassPermissions', label: 'Bypass Permissions' },
-  { value: 'clipboardOnly', label: 'Clipboard Only' },
-];
+import { useT } from '../i18n/context';
 
 export default function NewSessionPage() {
   const navigate = useNavigate();
-  const addToast = useToastStore((t) => t.addToast);
+  const addToast = useToastStore((t_store) => t_store.addToast);
   const { recent, starred, add: addRecentDir, toggleStar, remove: removeRecentDir } = useRecentDirs();
+  const t = useT();
+
+  const PERMISSION_MODES = [
+    { value: 'default', label: t('newSession.permissionDefault') },
+    { value: 'bypassPermissions', label: t('newSession.permissionBypass') },
+    { value: 'clipboardOnly', label: t('newSession.permissionClipboard') },
+  ];
 
   const [name, setName] = useState('');
   const [workDir, setWorkDir] = useState('');
@@ -29,15 +31,14 @@ export default function NewSessionPage() {
   const [permissionMode, setPermissionMode] = useState('default');
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
-  
 
   useEffect(() => {
     let cancelled = false;
 
     getTemplates()
-      .then((t) => {
+      .then((tpl) => {
         if (!cancelled) {
-          setTemplates(t);
+          setTemplates(tpl);
         }
       })
       .catch(() => {
@@ -54,7 +55,7 @@ export default function NewSessionPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!workDir.trim()) {
-      addToast('error', 'Missing work directory', 'Work directory is required');
+      addToast('error', t('newSession.missingWorkDir'), t('newSession.missingWorkDirDescription'));
       return;
     }
 
@@ -68,15 +69,15 @@ export default function NewSessionPage() {
         permissionMode: permissionMode !== 'default' ? permissionMode : undefined,
       });
       addRecentDir(workDir.trim());
-      addToast('success', 'Session created', session.id);
+      addToast('success', t('newSession.sessionCreated'), session.id);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
-      const msg = sanitizeErrorMessage(err, 'Failed to create session');
-      addToast('error', 'Creation failed', msg);
+      const msg = sanitizeErrorMessage(err, t('newSession.failedCreate'));
+      addToast('error', t('newSession.creationFailed'), msg);
     } finally {
       setLoading(false);
     }
-  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir]);
+  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir, t]);
 
   function applyTemplate(template: SessionTemplate): void {
     setName(template.name);
@@ -93,13 +94,13 @@ export default function NewSessionPage() {
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-          title="Go back"
+          title={t('newSession.goBack')}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">New Session</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Create a new Aegis session</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('newSession.title')}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('newSession.subtitle')}</p>
         </div>
       </div>
 
@@ -107,7 +108,7 @@ export default function NewSessionPage() {
         {/* Work Directory */}
         <div>
           <label htmlFor="workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            Working Directory <span className="text-red-400">*</span>
+            {t('newSession.workDir')} <span className="text-red-400">*</span>
           </label>
           <input
             id="workDir"
@@ -118,7 +119,7 @@ export default function NewSessionPage() {
             required
             className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">Absolute path where the session will run</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.workDirDescription')}</p>
 
           {/* Recent & Starred Directories */}
           {recent.length > 0 && (
@@ -127,7 +128,7 @@ export default function NewSessionPage() {
                 <div>
                   <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 flex items-center gap-1">
                     <Star className="h-3 w-3" />
-                    Starred
+                    {t('newSession.starred')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {starred.map((dir) => (
@@ -148,7 +149,7 @@ export default function NewSessionPage() {
                           type="button"
                           onClick={(e) => { e.stopPropagation(); toggleStar(dir.path); }}
                           className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Unstar"
+                          aria-label={t('newSession.unstar')}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -160,7 +161,7 @@ export default function NewSessionPage() {
               <div>
                 <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Recent
+                  {t('newSession.recent')}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {recent.filter((d) => !d.starred).slice(0, 5).map((dir) => (
@@ -180,7 +181,7 @@ export default function NewSessionPage() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggleStar(dir.path); }}
                         className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Star"
+                        aria-label={t('newSession.star')}
                       >
                         <Star className="h-3 w-3" />
                       </button>
@@ -188,7 +189,7 @@ export default function NewSessionPage() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); removeRecentDir(dir.path); }}
                         className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Remove"
+                        aria-label={t('newSession.remove')}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -203,7 +204,7 @@ export default function NewSessionPage() {
         {/* Session Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            Session Name <span className="text-[var(--color-text-muted)]">(optional)</span>
+            {t('newSession.sessionName')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
           </label>
           <input
             id="name"
@@ -218,7 +219,7 @@ export default function NewSessionPage() {
         {/* Claude Command */}
         <div>
           <label htmlFor="claudeCommand" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
+            {t('newSession.claudeCommand')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
           </label>
           <input
             id="claudeCommand"
@@ -228,13 +229,13 @@ export default function NewSessionPage() {
             placeholder="claude --print"
             className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
           />
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">Default: claude --print</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.claudeCommandDefault')}</p>
         </div>
 
         {/* Initial Prompt */}
         <div>
           <label htmlFor="prompt" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            Initial Prompt <span className="text-[var(--color-text-muted)]">(optional)</span>
+            {t('newSession.initialPrompt')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
           </label>
           <textarea
             id="prompt"
@@ -249,7 +250,7 @@ export default function NewSessionPage() {
         {/* Permission Mode */}
         <div>
           <label htmlFor="permissionMode" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            Permission Mode
+            {t('newSession.permissionMode')}
           </label>
           <select
             id="permissionMode"
@@ -268,7 +269,7 @@ export default function NewSessionPage() {
           <div>
             <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2 flex items-center gap-1.5">
               <FileText className="h-4 w-4" />
-              Start from a template
+              {t('newSession.startFromTemplate')}
             </p>
             <div className="flex flex-wrap gap-2">
               {templates.map((template) => (
@@ -284,7 +285,7 @@ export default function NewSessionPage() {
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">Click a template to pre-fill the form fields above.</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.templateHint')}</p>
           </div>
         )}
 
@@ -296,14 +297,14 @@ export default function NewSessionPage() {
             className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded bg-[var(--color-accent-cyan)] hover:opacity-90 disabled:opacity-50 text-[var(--color-void)] transition-opacity"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {loading ? 'Creating…' : 'Create Session'}
+            {loading ? t('newSession.creating') : t('newSession.createSession')}
           </button>
           <button
             type="button"
             onClick={() => navigate(-1)}
             className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
           >
-            Cancel
+            {t('newSession.cancel')}
           </button>
         </div>
       </form>

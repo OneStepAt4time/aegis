@@ -134,6 +134,7 @@ let lastCleanupWorkDir = '';
 | `AEGIS_TG_GROUP` | `''` | |
 | `AEGIS_TG_ALLOWED_USERS` | `[]` | |
 | `AEGIS_TG_TOPIC_TTL_MS` | `86400000` | |
+| `AEGIS_TG_VERBOSE` | `false` | Forward thinking + tool calls to Telegram |
 | `AEGIS_WEBHOOKS` | `[]` | |
 | `AEGIS_SSE_MAX_CONNECTIONS` | `100` | |
 | `AEGIS_SSE_MAX_PER_IP` | `10` | |

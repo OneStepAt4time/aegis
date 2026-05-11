@@ -36,6 +36,8 @@ export interface TelegramChannelConfig {
   topicAutoDelete?: boolean;
   /** Issue #1911: Outgoing Telegram API fetch timeout in ms (default: 10_000). */
   hookTimeoutMs?: number;
+  /** Forward verbose CC output (thinking, tool calls, code). Default: false. */
+  verbose?: boolean;
 }
 
 interface SessionTopic {
@@ -836,6 +838,20 @@ export class TelegramChannel implements Channel {
     this.onInbound = onInbound;
     this.polling = true;
     this.startTopicCleanupSweep();
+    // Pre-flight: clear stale pending updates to avoid 409 Conflict
+    try {
+      const stale = (await this.tgApi('getUpdates', {
+        offset: -1,
+        timeout: 0,
+        allowed_updates: ['message', 'callback_query'],
+      })) as Array<{ update_id: number }>;
+      if (Array.isArray(stale) && stale.length > 0) {
+        this.pollOffset = stale[stale.length - 1].update_id + 1;
+        console.log(`Telegram pre-flight: cleared ${stale.length} stale update(s), offset now ${this.pollOffset}`);
+      }
+    } catch {
+      // Pre-flight failure is non-fatal — the poll loop will retry
+    }
     this.pollLoopPromise = this.pollLoop(); // store promise for graceful shutdown
     console.log(`Telegram channel: polling started, group ${this.config.groupChatId}`);
   }
@@ -983,10 +999,20 @@ export class TelegramChannel implements Channel {
         break;
       }
 
-      case 'message.thinking':
-        // Completely silent — no thinking noise
+      case 'message.thinking': {
+        if (this.config.verbose) {
+          const thinking = payload.detail?.trim();
+          if (thinking) {
+            const truncated = truncate(thinking, 800);
+            await this.queueMessage(
+              payload.session.id,
+              `💭 ${italic(esc(truncated))}`,
+              'low',
+            );
+          }
+        }
         break;
-
+      }
       case 'message.tool_use': {
         const detail = payload.detail?.trim();
         // Skip empty/whitespace-only tool_use — nothing useful to show
@@ -994,6 +1020,16 @@ export class TelegramChannel implements Channel {
 
         const tool = parseToolUse(detail);
         this.pendingTool.set(payload.session.id, tool);
+
+        // Verbose: show the actual tool call command/input
+        if (this.config.verbose && tool.label) {
+          const toolDetail = truncate(detail, 600);
+          await this.queueMessage(
+            payload.session.id,
+            '🔧 ' + code(tool.label) + '\n<pre>' + esc(toolDetail) + '</pre>',
+            'low',
+          );
+        }
 
         if (progress) {
           switch (tool.category) {

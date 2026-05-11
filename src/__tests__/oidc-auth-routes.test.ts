@@ -76,6 +76,7 @@ function makeConfig(): Config {
     tgAllowedUsers: [],
     tgTopicTtlMs: 1,
     tgTopicAutoDelete: true,
+    tgVerbose: false,
     tgTopicTTLHours: 0,
     webhooks: [],
     defaultSessionEnv: {},

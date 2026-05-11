@@ -14,7 +14,7 @@ import { SSEWriter } from '../sse-writer.js';
 import type { SessionSSEEvent } from '../events.js';
 import {
   type RouteContext,
-  registerWithLegacy, withOwnership, withValidation,
+  registerWithLegacy, requireRole, withOwnership, withValidation,
 } from './context.js';
 
 export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContext): void {
@@ -39,8 +39,9 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     return { sessionId: session.id, tools, totalCalls: tools.reduce((sum, t) => sum + t.count, 0) };
   }));
 
-  // Global tool definitions
-  registerWithLegacy(app, 'get', '/v1/tools', async (_req: FastifyRequest, _reply: FastifyReply) => {
+  // Global tool definitions (#3186: RBAC check — viewer can list tools but needs auth)
+  registerWithLegacy(app, 'get', '/v1/tools', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const definitions = toolRegistry.getToolDefinitions();
     const categories = [...new Set(definitions.map(t => t.category))];
     return { tools: definitions, categories, totalTools: definitions.length };

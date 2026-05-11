@@ -32,27 +32,11 @@ import { generateSessionHistoryCSV, downloadCSV } from '../utils/csv-export';
 import { Icon } from '../components/Icon';
 import { NLFilterBar, type FilterToken } from '../components/shared/NLFilterBar';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { useT } from '../i18n/context';
 
 type DateRange = '1h' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'custom';
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'All statuses' },
-  { value: 'active', label: 'active' },
-  { value: 'killed', label: 'killed' },
-  { value: 'unknown', label: 'unknown' },
-] as const;
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
-
-const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
-  { value: '1h', label: 'Last hour' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'month', label: 'This month' },
-  { value: 'custom', label: 'Custom range' },
-];
 
 function formatTimestamp(ts?: number): string {
   if (ts === undefined) return '—';
@@ -104,6 +88,24 @@ function SkeletonRows({ count }: { count: number }) {
 export default function SessionHistoryPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const t = useT();
+
+  const STATUS_OPTIONS = [
+    { value: '', label: t('sessionHistory.allStatuses') },
+    { value: 'active', label: 'active' },
+    { value: 'killed', label: 'killed' },
+    { value: 'unknown', label: 'unknown' },
+  ] as const;
+
+  const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
+    { value: '1h', label: t('sessionHistory.lastHour') },
+    { value: 'today', label: t('sessionHistory.today') },
+    { value: 'yesterday', label: t('sessionHistory.yesterday') },
+    { value: '7d', label: t('sessionHistory.last7d') },
+    { value: '30d', label: t('sessionHistory.last30d') },
+    { value: 'month', label: t('sessionHistory.thisMonth') },
+    { value: 'custom', label: t('sessionHistory.customRange') },
+  ];
 
   const [records, setRecords] = useState<SessionHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +114,7 @@ export default function SessionHistoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const addToast = useToastStore((t) => t.addToast);
+  const addToast = useToastStore((t_store) => t_store.addToast);
 
   const [page, setPage] = useState(() => Number(searchParams.get('page') ?? 1));
   const [pageSize, setPageSize] = useState(25);
@@ -187,12 +189,12 @@ export default function SessionHistoryPage() {
     setSelectedIds(new Set());
     setConfirmDeleteOpen(false);
     if (failed === 0) {
-      addToast('success', 'Sessions killed', `${success} session${success !== 1 ? 's' : ''} removed`);
+      addToast('success', t('sessionHistory.sessionsKilled'), t('sessionHistory.sessionsKilledDescription', { count: success }));
     } else {
-      addToast('error', 'Partial kill', `${success} killed, ${failed} failed`);
+      addToast('error', t('sessionHistory.partialKill'), t('sessionHistory.partialKillDescription', { success, failed }));
     }
     void fetchData();
-  }, [selectedIds, addToast]);
+  }, [selectedIds, addToast, t]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -259,12 +261,12 @@ export default function SessionHistoryPage() {
         setRecords([]);
         setTotal(0);
       } else {
-        setError(sanitizeErrorMessage(err, 'Failed to load session history'));
+        setError(sanitizeErrorMessage(err, t('sessionHistory.failedLoad')));
       }
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterOwner, filterStatus, filterSearch, filterDateRange, customDateFrom, customDateTo, filterSort]);
+  }, [page, pageSize, filterOwner, filterStatus, filterSearch, filterDateRange, customDateFrom, customDateTo, filterSort, t]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -333,9 +335,9 @@ export default function SessionHistoryPage() {
       const csv = generateSessionHistoryCSV(data.records);
       const date = new Date().toISOString().slice(0, 10);
       downloadCSV(csv, `aegis-sessions-${date}.csv`);
-      addToast('success', 'Export complete', `${data.records.length} session${data.records.length === 1 ? '' : 's'} exported`);
+      addToast('success', t('sessionHistory.exportComplete'), t('sessionHistory.exportCompleteDescription', { count: data.records.length }));
     } catch (e) {
-      addToast('error', 'Export failed', e instanceof Error ? e.message : undefined);
+      addToast('error', t('sessionHistory.exportFailed'), e instanceof Error ? e.message : undefined);
     } finally {
       setExporting(false);
     }
@@ -344,15 +346,15 @@ export default function SessionHistoryPage() {
   const handleShareLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(
-      () => addToast('success', 'Link copied', 'Shareable URL copied to clipboard'),
-      () => addToast('error', 'Copy failed', 'Could not copy URL to clipboard'),
+      () => addToast('success', t('sessionHistory.linkCopied'), t('sessionHistory.linkCopiedDescription')),
+      () => addToast('error', t('sessionHistory.copyFailed'), t('sessionHistory.copyFailedDescription')),
     );
   };
 
   const copySessionId = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(id).then(
-      () => addToast('success', 'Copied', 'Session ID copied to clipboard'),
+      () => addToast('success', t('sessionHistory.copied'), t('sessionHistory.sessionIdCopied')),
       () => {},
     );
   };
@@ -427,28 +429,28 @@ export default function SessionHistoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Session History</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Merged audit and live session lifecycle records</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('sessionHistory.title')}</h1>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('sessionHistory.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { void fetchData(); }}
-            aria-label="Refresh session history"
+            aria-label={t('sessionHistory.refresh')}
             disabled={loading}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('sessionHistory.refresh')}
           </button>
           {records.length > 0 && (
             <button
               onClick={() => void handleExport()}
               disabled={exporting}
               className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Export session history as CSV"
+              aria-label={t('sessionHistory.exportCsv')}
             >
               <Download className="h-3.5 w-3.5" />
-              {exporting ? 'Exporting…' : 'Export CSV'}
+              {exporting ? t('sessionHistory.exporting') : t('sessionHistory.exportCsv')}
             </button>
           )}
         </div>
@@ -457,7 +459,7 @@ export default function SessionHistoryPage() {
       {/* NL Filter Bar */}
       <NLFilterBar
         onFilter={handleNLFilter}
-        placeholder='Try: "failed sessions from yesterday", "active by admin last week"…'
+        placeholder={t('sessionHistory.nlFilterPlaceholder')}
         className="mb-2"
       />
 
@@ -465,33 +467,33 @@ export default function SessionHistoryPage() {
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="search-filter" className="text-xs text-[var(--color-text-muted)]">Search</label>
+            <label htmlFor="search-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.search')}</label>
             <input
               id="search-filter"
               type="text"
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
-              placeholder="Search name or prompt…"
+              placeholder={t('sessionHistory.searchPlaceholder')}
               className="min-h-[44px] w-48 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="owner-filter" className="text-xs text-[var(--color-text-muted)]">Owner key ID</label>
+            <label htmlFor="owner-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.ownerKeyId')}</label>
             <input
               id="owner-filter"
               type="text"
               value={filterOwnerInput}
               onChange={(e) => setFilterOwnerInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
-              placeholder="e.g. admin-main"
+              placeholder={t('sessionHistory.ownerPlaceholder')}
               className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="status-filter" className="text-xs text-[var(--color-text-muted)]">Status</label>
+            <label htmlFor="status-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.status')}</label>
             <select
               id="status-filter"
               value={filterStatusInput}
@@ -505,7 +507,7 @@ export default function SessionHistoryPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="date-filter" className="text-xs text-[var(--color-text-muted)]">Date range</label>
+            <label htmlFor="date-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.dateRange')}</label>
             <select
               id="date-filter"
               value={filterDateRange}
@@ -520,7 +522,7 @@ export default function SessionHistoryPage() {
 
           {filterDateRange === 'custom' && (
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-from" className="text-xs text-[var(--color-text-muted)]">From</label>
+              <label htmlFor="date-from" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.from')}</label>
               <input
                 id="date-from"
                 type="date"
@@ -533,7 +535,7 @@ export default function SessionHistoryPage() {
 
           {filterDateRange === 'custom' && (
             <div className="flex flex-col gap-1">
-              <label htmlFor="date-to" className="text-xs text-[var(--color-text-muted)]">To</label>
+              <label htmlFor="date-to" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.to')}</label>
               <input
                 id="date-to"
                 type="date"
@@ -545,16 +547,16 @@ export default function SessionHistoryPage() {
           )}
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="sort-filter" className="text-xs text-[var(--color-text-muted)]">Sort by</label>
+            <label htmlFor="sort-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.sortBy')}</label>
             <select
               id="sort-filter"
               value={filterSort}
               onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); }}
               className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="status">By status</option>
+              <option value="newest">{t('sessionHistory.newestFirst')}</option>
+              <option value="oldest">{t('sessionHistory.oldestFirst')}</option>
+              <option value="status">{t('sessionHistory.byStatus')}</option>
             </select>
           </div>
 
@@ -562,14 +564,14 @@ export default function SessionHistoryPage() {
             onClick={applyFilters}
             className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
-            Apply
+            {t('sessionHistory.apply')}
           </button>
 
           <button
             onClick={clearFilters}
             className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)]"
           >
-            Clear
+            {t('sessionHistory.clear')}
           </button>
         </div>
       </div>
@@ -577,13 +579,13 @@ export default function SessionHistoryPage() {
       {endpointMissing ? (
         <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
           <History className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-muted)]" />
-          <p className="font-medium text-[var(--color-text-muted)]">Session history endpoint not available yet</p>
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">The /v1/sessions/history endpoint has not been implemented on the server.</p>
+          <p className="font-medium text-[var(--color-text-muted)]">{t('sessionHistory.endpointMissing')}</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('sessionHistory.endpointMissingDescription')}</p>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
-          <p className="font-medium text-red-400">Failed to load session history</p>
+          <p className="font-medium text-red-400">{t('sessionHistory.failedLoad')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
         </div>
       ) : (
@@ -592,64 +594,64 @@ export default function SessionHistoryPage() {
           {/* Bulk action bar */}
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-4 py-2.5">
-              <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{selectedIds.size} selected</span>
+              <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{t('sessionHistory.selected', { count: selectedIds.size })}</span>
               <button
                 onClick={() => void handleExport()}
                 disabled={exporting}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Export selected sessions as CSV"
+                aria-label={t('sessionHistory.export')}
               >
                 <Icon name="Download" size={12} />
-                {exporting ? 'Exporting…' : 'Export'}
+                {exporting ? t('sessionHistory.exporting') : t('sessionHistory.export')}
               </button>
               <button
                 onClick={() => setConfirmDeleteOpen(true)}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
-                aria-label="Kill selected sessions"
+                aria-label={t('sessionHistory.kill')}
               >
                 <Trash2 className="h-3 w-3" />
-                Kill
+                {t('sessionHistory.kill')}
               </button>
               <button
                 onClick={handleShareLink}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
-                aria-label="Copy shareable link"
+                aria-label={t('sessionHistory.shareLink')}
               >
                 <Share2 className="h-3 w-3" />
-                Share link
+                {t('sessionHistory.shareLink')}
               </button>
               <button
                 onClick={() => setSelectedIds(new Set())}
                 className="ml-auto flex min-h-[44px] items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                aria-label="Clear selection"
+                aria-label={t('sessionHistory.clear')}
               >
                 <X className="h-3 w-3" />
-                Clear
+                {t('sessionHistory.clear')}
               </button>
             </div>
           )}
 
-          <div className="overflow-x-auto" tabIndex={0} aria-label="Session history table">
+          <div className="overflow-x-auto" tabIndex={0} aria-label={t('sessionHistory.title')}>
             <table className="min-w-full text-left">
               <thead className="border-b border-[var(--color-void-lighter)] bg-[var(--color-void)]/80">
                 <tr>
                   <th className="px-4 py-3" scope="col">
-                    <span className="sr-only">Select history rows</span>
+                    <span className="sr-only">{t('sessionHistory.selectRows')}</span>
                     <input
-                      aria-label="Select all history rows"
+                      aria-label={t('sessionHistory.selectAllRows')}
                       type="checkbox"
                       checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-cyan-500 focus:ring-cyan-500/30"
                     />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Name</th>
-                  {sortableHeader("Session ID", "id")}
-                  {sortableHeader("Owner", "owner")}
-                  {sortableHeader("Status", "status")}
-                  {sortableHeader("Source", "source")}
-                  {sortableHeader("Created", "createdAt")}
-                  {sortableHeader("Last seen", "lastSeenAt")}
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">{t('sessionHistory.nameColumn')}</th>
+                  {sortableHeader(t('sessionHistory.sessionIdColumn'), "id")}
+                  {sortableHeader(t('sessionHistory.ownerColumn'), "owner")}
+                  {sortableHeader(t('sessionHistory.statusColumn'), "status")}
+                  {sortableHeader(t('sessionHistory.sourceColumn'), "source")}
+                  {sortableHeader(t('sessionHistory.createdColumn'), "createdAt")}
+                  {sortableHeader(t('sessionHistory.lastSeenColumn'), "lastSeenAt")}
                   <th className="w-8" aria-hidden="true" />
                 </tr>
               </thead>
@@ -661,8 +663,8 @@ export default function SessionHistoryPage() {
                     <td colSpan={9} className="px-4 py-16 text-center text-[var(--color-text-muted)]">
                       <EmptyState
                         icon={<SearchX className="h-8 w-8" />}
-                        title="No session history records found"
-                        description="Try adjusting your filters or date range."
+                        title={t('sessionHistory.noRecords')}
+                        description={t('sessionHistory.noRecordsDescription')}
                         action={
                           <button
                             className="mt-4 px-4 py-2 text-sm rounded-lg bg-[var(--color-void-lighter)] hover:bg-[var(--color-void-lighter)] transition-colors"
@@ -672,7 +674,7 @@ export default function SessionHistoryPage() {
                               setFilterDateRange('7d');
                             }}
                           >
-                            Clear all filters
+                            {t('sessionHistory.clearAllFilters')}
                           </button>
                         }
                       />
@@ -746,11 +748,11 @@ export default function SessionHistoryPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-void-lighter)] px-4 py-3">
             <div className="text-xs text-[var(--color-text-muted)]">
-              Showing page {page} of {totalPages} ({total} records)
+              {t('sessionHistory.showingPage', { page, totalPages, total })}
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="history-page-size" className="text-xs text-[var(--color-text-muted)]">Rows</label>
+              <label htmlFor="history-page-size" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.rows')}</label>
               <select
                 id="history-page-size"
                 value={pageSize}
@@ -768,19 +770,19 @@ export default function SessionHistoryPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || loading}
-                aria-label="Previous page"
+                aria-label={t('sessionHistory.prev')}
                 className="inline-flex min-h-[44px] items-center gap-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
               >
-                <ChevronLeft className="h-3 w-3" /> Prev
+                <ChevronLeft className="h-3 w-3" /> {t('sessionHistory.prev')}
               </button>
 
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages || loading}
                 className="inline-flex min-h-[44px] items-center gap-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
-                aria-label="Next page"
+                aria-label={t('sessionHistory.next')}
               >
-                Next <ChevronRight className="h-3 w-3" />
+                {t('sessionHistory.next')} <ChevronRight className="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -791,10 +793,10 @@ export default function SessionHistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-sm rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Kill {selectedIds.size} session{selectedIds.size !== 1 ? 's' : ''}?
+              {t('sessionHistory.killDialogTitle', { count: selectedIds.size })}
             </h3>
             <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-              This will kill the selected sessions. This action cannot be undone.
+              {t('sessionHistory.killDialogDescription')}
             </p>
             <div className="mt-5 flex gap-3">
               <button
@@ -802,14 +804,14 @@ export default function SessionHistoryPage() {
                 disabled={deleting}
                 className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
               >
-                {deleting ? 'Killing…' : `Kill ${selectedIds.size}`}
+                {deleting ? t('sessionHistory.killing') : t('sessionHistory.killCount', { count: selectedIds.size })}
               </button>
               <button
                 onClick={() => setConfirmDeleteOpen(false)}
                 disabled={deleting}
                 className="flex-1 rounded border border-[var(--color-void-lighter)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
               >
-                Cancel
+                {t('modal.cancel')}
               </button>
             </div>
           </div>
