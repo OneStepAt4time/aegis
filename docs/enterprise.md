@@ -29,7 +29,7 @@ Aegis supports multiple API keys with role-based access control:
 
 | Role | Permissions |
 |------|-------------|
-| `viewer` | Read-only access to sessions and metrics |
+| `viewer` | Read-only access to sessions, templates, tools, and metrics |
 | `operator` | Read + write sessions, approve permissions |
 | `admin` | Full access including key management |
 
