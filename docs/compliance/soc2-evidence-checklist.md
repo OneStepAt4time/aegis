@@ -15,7 +15,7 @@
 | 1.1 | API key inventory (hashes, roles, creation dates) | `{stateDir}/keys.json` | Scripted export | Per audit | ✅ Available |
 | 1.2 | Key creation / revocation / rotation events | `{stateDir}/audit/YYYY-MM-DD.jsonl` | Audit log query | Continuous | ✅ Available |
 | 1.3 | Session ownership enforcement config | `aegis.config.ts` — `enforceSessionOwnership` | Config snapshot | Per audit | ✅ Available |
-| 1.4 | RBAC permission matrix | `src/config.ts` — role definitions | Code review | Per release | ✅ Available |
+| 1.4 | RBAC permission matrix | `src/services/auth/permissions.ts` — role definitions; `requireRole()` on all routes | Code review | Per release | ✅ Available |
 | 1.5 | Dashboard auth configuration | Dashboard login flow test | Manual / automated test | Per release | ✅ Available |
 
 ### 2. Authentication Evidence
@@ -41,8 +41,8 @@
 
 | # | Evidence | Source | Collection Method | Frequency | Status |
 |---|----------|--------|-------------------|-----------|--------|
-| 4.1 | Audit log chain integrity proof | `{stateDir}/audit/` — SHA-256 chain | Integrity verification script | Per audit | ✅ Available |
-| 4.2 | Audit log coverage (event types) | `src/audit.ts` — event type enumeration | Code review | Per release | ✅ Available |
+| 4.1 | Audit log chain integrity proof | `{stateDir}/audit/` — HMAC-SHA256 v4 chain with inter-process locking | `ag doctor` verification | Per audit | ✅ Available |
+| 4.2 | Audit log coverage (event types) | `src/audit.ts` — 25+ event types across key, session, permission, driver, terminal, ACP | Code review | Per release | ✅ Available |
 | 4.3 | Token redaction verification | `src/logger.ts` — redaction rules | Test suite | Per release | ✅ Available |
 | 4.4 | Daily rotation verification | Audit file dates | Scripted check | Per audit | ✅ Available |
 
