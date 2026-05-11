@@ -36,6 +36,8 @@ export interface TelegramChannelConfig {
   topicAutoDelete?: boolean;
   /** Issue #1911: Outgoing Telegram API fetch timeout in ms (default: 10_000). */
   hookTimeoutMs?: number;
+  /** Forward verbose CC output (thinking, tool calls, code). Default: false. */
+  verbose?: boolean;
 }
 
 interface SessionTopic {
@@ -983,10 +985,20 @@ export class TelegramChannel implements Channel {
         break;
       }
 
-      case 'message.thinking':
-        // Completely silent — no thinking noise
+      case 'message.thinking': {
+        if (this.config.verbose) {
+          const thinking = payload.detail?.trim();
+          if (thinking) {
+            const truncated = truncate(thinking, 800);
+            await this.queueMessage(
+              payload.session.id,
+              `\U0001f4ad _${esc(truncated)}_`,
+              'low',
+            );
+          }
+        }
         break;
-
+      }
       case 'message.tool_use': {
         const detail = payload.detail?.trim();
         // Skip empty/whitespace-only tool_use — nothing useful to show
@@ -994,6 +1006,16 @@ export class TelegramChannel implements Channel {
 
         const tool = parseToolUse(detail);
         this.pendingTool.set(payload.session.id, tool);
+
+        // Verbose: show the actual tool call command/input
+        if (this.config.verbose && tool.label) {
+          const toolDetail = truncate(detail, 600);
+          await this.queueMessage(
+            payload.session.id,
+            '\U0001f527 `' + esc(tool.label) + '`\n```\n' + esc(toolDetail) + '\n```',
+            'low',
+          );
+        }
 
         if (progress) {
           switch (tool.category) {

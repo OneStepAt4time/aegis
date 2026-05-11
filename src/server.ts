@@ -678,6 +678,7 @@ function registerChannels(cfg: Config): void {
       topicTtlMs: cfg.tgTopicTtlMs,
       topicAutoDelete: cfg.tgTopicAutoDelete,
       hookTimeoutMs: cfg.hookTimeoutMs,
+      verbose: cfg.tgVerbose,
     }));
   }
 
