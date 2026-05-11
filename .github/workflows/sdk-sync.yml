@@ -2,7 +2,7 @@ name: SDK Auto-Sync
 
 # Issue #2939: Keep generated SDKs in sync when OpenAPI sources change.
 # Triggered on push to develop — detects openapi/route/schema changes,
-# regenerates SDKs, and commits them back. The [skip ci] marker prevents
+# regenerates SDKs, and opens a PR. The [skip ci] marker prevents
 # infinite loops.
 
 on:
@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: sdk-sync-${{ github.ref }}
@@ -72,11 +73,26 @@ jobs:
             git diff --stat
           fi
 
-      - name: Commit and push regenerated SDKs
+      - name: Create PR with regenerated SDKs
         if: steps.check-diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          BRANCH="sdk-sync/auto-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add openapi.yaml packages/client/src/generated/ packages/python-client/src/
           git commit -m "chore(sdk): auto-sync generated SDKs [skip ci]"
-          git push origin develop
+          git push origin "$BRANCH"
+          gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "chore(sdk): auto-sync generated SDKs" \
+            --body "Automated SDK regeneration from OpenAPI spec changes.
+
+          This PR was created by the SDK Auto-Sync workflow.
+
+          ---
+          *github-actions[bot]*" \
+            --label "dependencies" || true
