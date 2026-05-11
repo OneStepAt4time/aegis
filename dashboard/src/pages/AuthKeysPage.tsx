@@ -222,7 +222,7 @@ export default function AuthKeysPage() {
           <button
             type="button"
             onClick={dismissUsersBanner}
-            aria-label="Dismiss banner"
+            aria-label={t('authKeys.authDismissBanner')}
             className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200"
           >
             <X className="h-3.5 w-3.5" />
@@ -330,7 +330,7 @@ export default function AuthKeysPage() {
                   type="button"
                   onClick={() => setSecretVisible((current) => !current)}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
-                  aria-label="Toggle secret visibility"
+                  aria-label={t('authKeys.authToggleSecret')}
                 >
                   {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   {secretVisible ? t('authKeys.hideSecret') : t('authKeys.revealSecret')}
@@ -339,7 +339,7 @@ export default function AuthKeysPage() {
                   type="button"
                   onClick={() => void handleCopySecret()}
                   className="flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
-                  aria-label="Copy secret to clipboard"
+                  aria-label={t('authKeys.authCopySecret')}
                 >
                   <Copy className="h-3.5 w-3.5" />
                   {t('authKeys.copySecret')}

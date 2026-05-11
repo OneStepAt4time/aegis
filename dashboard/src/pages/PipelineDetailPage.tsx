@@ -120,7 +120,7 @@ export default function PipelineDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
-      <nav className="text-xs text-[var(--color-text-muted)] flex items-center gap-1" aria-label="Pipeline breadcrumb">
+      <nav className="text-xs text-[var(--color-text-muted)] flex items-center gap-1" aria-label={t('pipelines.pipelineBreadcrumb')}>
         <Link to="/pipelines" className="hover:text-[var(--color-accent-cyan)] transition-colors">
           {t('pipelines.title')}
         </Link>
