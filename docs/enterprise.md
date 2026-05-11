@@ -120,6 +120,28 @@ Query the session's `ownerKeyId` via `GET /v1/sessions/:id`:
 
 
 
+## Strict RBAC Mode
+
+By default, when auth is disabled (no `AEGIS_AUTH_TOKEN`, no API keys), role-based access control checks are bypassed — all endpoints are accessible without authentication. This is fine for single-user local development but risky in production.
+
+Enable strict RBAC to enforce role checks even when auth is disabled:
+
+```bash
+AEGIS_STRICT_RBAC=true AEGIS_AUTH_TOKEN=your-token ag
+```
+
+When enabled:
+- Unauthenticated requests to role-protected endpoints (`requireRole`, `requirePermission`) return **401 Unauthorized** instead of being allowed through
+- This prevents accidental exposure of admin/operator endpoints in production deployments
+- A startup warning is logged when auth is disabled and `strictRBAC` is `false`
+
+| `strictRBAC` | Auth enabled | Behavior |
+|---|---|---|
+| `false` | No | All endpoints open (dev default) |
+| `false` | Yes | Normal RBAC with bearer token |
+| `true` | No | Protected endpoints return 401 |
+| `true` | Yes | Normal RBAC with bearer token |
+
 ## Rate Limiting
 
 Aegis includes built-in rate limiting at multiple levels:
@@ -254,6 +276,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | Variable | Default | Description |
 |---|---|---|
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
+| `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
 
 #### Hooks
 

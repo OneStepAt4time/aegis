@@ -297,6 +297,7 @@ Aegis is configured via environment variables:
 | `AEGIS_PG_POOL_MAX` | `5` | PostgreSQL connection pool max size |
 | `AEGIS_REDIS_URL` | `redis://localhost:6379` | Redis URL (used when `AEGIS_SESSION_STORE=redis`) |
 | `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
+| `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC on protected endpoints even when auth is disabled |
 
 See the [Enterprise Deployment Guide](enterprise.md#configuration-reference) for the complete environment variable reference (rate limiting, OIDC, hooks, notifications, alerting, and more).
 
