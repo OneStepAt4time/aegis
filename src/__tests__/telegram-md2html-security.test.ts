@@ -3,51 +3,17 @@
  *
  * Tests URI scheme allowlist (sanitizeHref), topic name sanitization
  * (sanitizeTopicName), and callback_data length guard (safeCallbackData).
+ *
+ * Helpers are imported from the production module to ensure tests validate
+ * the actual implementation (not inline copies that could drift).
  */
 
 import { describe, it, expect } from 'vitest';
-
-// ── Inline copies of the helpers (they're private in telegram.ts) ──
-
-const ALLOWED_HREF_SCHEMES = ['http:', 'https:', '#:', 'mailto:'];
-
-function esc(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function sanitizeHref(href: string): string {
-  const trimmed = href.trim();
-  if (trimmed.startsWith('#') || trimmed.startsWith('/')) return esc(trimmed);
-  const scheme = trimmed.split(':')[0]?.toLowerCase() + ':';
-  if (ALLOWED_HREF_SCHEMES.includes(scheme)) return esc(trimmed);
-  return '#';
-}
-
-function sanitizeTopicName(name: string): string {
-  return name
-    .replace(/[\u0000-\u001F\u007F-\u009F\u200E-\u200F\u202A-\u202E]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 64);
-}
-
-const MAX_CALLBACK_DATA_LENGTH = 64;
-
-function safeCallbackData(data: string): string {
-  if (Buffer.byteLength(data, 'utf-8') <= MAX_CALLBACK_DATA_LENGTH) return data;
-  const prefix = data.substring(0, data.lastIndexOf(':') + 1);
-  const value = data.substring(prefix.length);
-  let lo = 0, hi = value.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (Buffer.byteLength(prefix + value.slice(0, mid), 'utf-8') <= MAX_CALLBACK_DATA_LENGTH) {
-      lo = mid;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return prefix + value.slice(0, lo);
-}
+import {
+  sanitizeHref,
+  sanitizeTopicName,
+  safeCallbackData,
+} from '../channels/telegram.js';
 
 // ── Tests ──
 
