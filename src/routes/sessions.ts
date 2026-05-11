@@ -291,6 +291,15 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         continue;
       }
       try {
+        // #3184: Shutdown ACP backend (CC child process) before marking session killed.
+        // Without this, the CC process becomes an orphan consuming ~250MB RSS.
+        if (acpBackend && ctx.config.acpEnabled) {
+          await acpBackend.shutdownSession({
+            sessionId: id,
+            tenantId: req.tenantId ?? SYSTEM_TENANT,
+            ownerKeyId: req.authKeyId ?? 'master',
+          }).catch(() => {}); // Best-effort: session may not have ACP runtime
+        }
         await sessions.killSession(id);
         eventBus.emitEnded(id, 'killed');
         void channels.sessionEnded(makePayload(sessions, 'session.ended', id, 'killed'));
