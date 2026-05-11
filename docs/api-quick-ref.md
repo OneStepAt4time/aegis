@@ -137,6 +137,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/auth/keys` | Bearer | Create API key |
 | `GET` | `/v1/auth/keys` | Bearer | List API keys |
 | `DELETE` | `/v1/auth/keys/{id}` | Bearer | Revoke API key |
+| `PATCH` | `/v1/auth/keys/{id}` | Bearer | Update API key role/name/permissions |
 | `POST` | `/v1/auth/keys/{id}/rotate` | Bearer | Rotate API key |
 | `POST` | `/v1/auth/sse-token` | Bearer | Generate SSE auth token (required for SSE endpoints) |
 | `POST` | `/v1/keys` | Bearer | Create API key (alias) |

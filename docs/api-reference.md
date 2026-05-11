@@ -390,6 +390,48 @@ curl -X DELETE http://localhost:9100/v1/auth/keys/key-abc123 \
 
 ---
 
+### Update API Key
+
+```
+PATCH /v1/auth/keys/:id
+```
+
+Updates an API key's role, name, or permissions. **Admin only.**
+
+```bash
+curl -X PATCH http://localhost:9100/v1/auth/keys/key-abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "operator"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | no | New key name (must be unique) |
+| `role` | string | no | New role: `admin`, `operator`, or `viewer` |
+| `permissions` | string[]\|null | no | Explicit permissions array, or `null` to reset to role defaults |
+
+**Behavior:**
+
+- Changing `role` resets permissions to that role's defaults (unless `permissions` is also provided).
+- Setting `permissions` to `null` resets to role defaults.
+- The last admin cannot demote themselves (returns 409).
+- Key names must be unique (returns 409 on conflict).
+
+**Response:** Updated key object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Key not found |
+| 409 | Cannot demote last admin, or key name already in use |
+| 403 | Auth is not enabled |
+
+---
+
 ### Rotate API Key
 
 ```
