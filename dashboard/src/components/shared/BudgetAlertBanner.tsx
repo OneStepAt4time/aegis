@@ -10,32 +10,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatNumber';
-
-interface BudgetSettings {
-  budgetDailyCapUsd: number;
-  budgetMonthlyCapUsd: number;
-  budgetAlertEnabled: boolean;
-}
+import { getBudgetSettings } from '../../utils/budgetSettings';
 
 interface AlertState {
   level: 'warning' | 'critical';
   message: string;
   dismissed: boolean;
-}
-
-function getBudgetSettings(): BudgetSettings {
-  try {
-    const raw = localStorage.getItem('aegis:settings');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        budgetDailyCapUsd: parsed.budgetDailyCapUsd ?? 0,
-        budgetMonthlyCapUsd: parsed.budgetMonthlyCapUsd ?? 0,
-        budgetAlertEnabled: parsed.budgetAlertEnabled ?? false,
-      };
-    }
-  } catch { /* ignore */ }
-  return { budgetDailyCapUsd: 0, budgetMonthlyCapUsd: 0, budgetAlertEnabled: false };
 }
 
 const DISMISS_KEY = 'aegis:budget-alert-dismissed';

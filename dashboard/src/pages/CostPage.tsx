@@ -30,6 +30,7 @@ import type { AnalyticsCostsResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
 import { ForecastChart } from '../components/cost/ForecastChart';
+import { getBudgetSettings, type BudgetSettings } from '../utils/budgetSettings';
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
@@ -62,27 +63,6 @@ function CustomTooltip({ active, payload, label }: {
   );
 }
 
-
-interface BudgetSettings {
-  budgetDailyCapUsd: number;
-  budgetMonthlyCapUsd: number;
-  budgetAlertEnabled: boolean;
-}
-
-function getBudgetSettings(): BudgetSettings {
-  try {
-    const raw = localStorage.getItem('aegis:settings');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        budgetDailyCapUsd: Number(parsed.budgetDailyCapUsd) || 0,
-        budgetMonthlyCapUsd: Number(parsed.budgetMonthlyCapUsd) || 0,
-        budgetAlertEnabled: Boolean(parsed.budgetAlertEnabled),
-      };
-    }
-  } catch { /* ignore parse errors */ }
-  return { budgetDailyCapUsd: 0, budgetMonthlyCapUsd: 0, budgetAlertEnabled: false };
-}
 
 
 interface BudgetOverviewProps {
