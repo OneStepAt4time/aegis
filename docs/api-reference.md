@@ -1285,6 +1285,10 @@ GET /v1/tools
 
 Lists all available MCP tools with their schemas.
 
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
 ```bash
 curl http://localhost:9100/v1/tools \
   -H "Authorization: Bearer $TOKEN"
@@ -2898,6 +2902,10 @@ GET /v1/templates
 
 Lists all registered session templates.
 
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
 ```bash
 curl http://localhost:9100/v1/templates \
   -H "Authorization: Bearer $TOKEN"
@@ -2914,6 +2922,10 @@ POST /v1/templates
 ```
 
 Creates a reusable session template with optional `{{variable}}` substitution. Rate limited: 60 req/min.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
 
 ```bash
 curl -X POST http://localhost:9100/v1/templates \
@@ -2956,6 +2968,10 @@ GET /v1/templates/:id
 
 Returns a single template by ID.
 
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
 ```bash
 curl http://localhost:9100/v1/templates/tpl-abc123 \
   -H "Authorization: Bearer $TOKEN"
@@ -2978,6 +2994,10 @@ PUT /v1/templates/:id
 ```
 
 Partially updates a template. Only include fields to change.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
 
 ```bash
 curl -X PUT http://localhost:9100/v1/templates/tpl-abc123 \
@@ -3005,6 +3025,10 @@ DELETE /v1/templates/:id
 ```
 
 Deletes a template by ID.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
 
 ```bash
 curl -X DELETE http://localhost:9100/v1/templates/tpl-abc123 \
