@@ -255,7 +255,7 @@ function formatSubAgentTree(text: string): string | null {
 /** Allowlisted URI schemes for md2html() link hrefs. Prevents tg://, javascript:, data:, etc. */
 const ALLOWED_HREF_SCHEMES = ['http:', 'https:', '#:', 'mailto:'];
 
-function sanitizeHref(href: string): string {
+export function sanitizeHref(href: string): string {
   const trimmed = href.trim();
   // Allow relative/anchor links (no colon before slash/hash)
   if (trimmed.startsWith('#') || trimmed.startsWith('/')) return esc(trimmed);
@@ -266,7 +266,7 @@ function sanitizeHref(href: string): string {
 }
 
 /** Strip control chars, RTL overrides, and truncate topic names for Telegram forum topics. */
-function sanitizeTopicName(name: string): string {
+export function sanitizeTopicName(name: string): string {
   return name
     // Strip control characters (C0, C1, RTL overrides LRE/RLE/LRO/RLO/PDF)
     .replace(/[\u0000-\u001F\u007F-\u009F\u200E-\u200F\u202A-\u202E]/g, '')
@@ -279,7 +279,7 @@ function sanitizeTopicName(name: string): string {
 /** Max callback_data length per Telegram Bot API (64 bytes). */
 const MAX_CALLBACK_DATA_LENGTH = 64;
 
-function safeCallbackData(data: string): string {
+export function safeCallbackData(data: string): string {
   if (Buffer.byteLength(data, 'utf-8') <= MAX_CALLBACK_DATA_LENGTH) return data;
   // Truncate value portion to fit within 64 bytes
   const prefix = data.substring(0, data.lastIndexOf(':') + 1);
@@ -367,7 +367,7 @@ function md2html(md: string): string {
     processed = processed.replace(/(?<!\w)_([^_]+?)_(?!\w)/g, '<i>$1</i>');
 
     // Links: [text](url)
-        processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => '<a href="' + sanitizeHref(href) + '">' + text + '</a>');
+    processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => '<a href="' + sanitizeHref(href) + '">' + text + '</a>');
 
     // List bullets
     processed = processed.replace(/^(\s*)[-*]\s+/, '$1• ');
@@ -861,7 +861,7 @@ export class TelegramChannel implements Channel {
   }
 
   async onSessionCreated(payload: SessionEventPayload): Promise<void> {
-        const topicName = sanitizeTopicName(`🤖 ${payload.session.name}`);
+    const topicName = sanitizeTopicName(`🤖 ${payload.session.name}`);
     const result = (await this.tgApi('createForumTopic', {
       chat_id: this.config.groupChatId,
       name: topicName,
@@ -1638,9 +1638,10 @@ export class TelegramChannel implements Channel {
   /** Track delivery failure for health reporting. */
   private trackFailure(error: unknown): void {
     this.lastErrorAt = Date.now();
-    this.lastErrorMessage = this.redactError(error) instanceof Error
-      ? (this.redactError(error) as Error).message
-      : String(this.redactError(error));
+    const redacted = this.redactError(error);
+    this.lastErrorMessage = redacted instanceof Error
+      ? (redacted as Error).message
+      : String(redacted);
     this.deliveryFailCount++;
   }
 
