@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import * as templateStore from '../template-store.js';
 import type { RouteContext } from './context.js';
-import { registerWithLegacy, withValidation } from './context.js';
+import { registerWithLegacy, withValidation, requireRole } from './context.js';
 
 // #1393: claudeCommand must not contain shell metacharacters
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
@@ -43,7 +43,7 @@ export function registerTemplateRoutes(
   app: FastifyInstance,
   ctx: RouteContext,
 ): void {
-  const { sessions, validateWorkDir } = ctx;
+  const { sessions, validateWorkDir, auth } = ctx;
 
   const templateRateLimit = {
     max: 60,
@@ -54,6 +54,7 @@ export function registerTemplateRoutes(
   registerWithLegacy(app, 'post', '/v1/templates', {
     config: { rateLimit: templateRateLimit },
     handler: withValidation(createTemplateSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
       const { name, description, sessionId, ...templateData } = data;
 
       const finalData = { ...templateData };
@@ -99,7 +100,8 @@ export function registerTemplateRoutes(
   // GET /v1/templates — List all templates
   registerWithLegacy(app, 'get', '/v1/templates', {
     config: { rateLimit: templateRateLimit },
-    handler: async (_req: FastifyRequest, _reply: FastifyReply) => {
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
       try { return await templateStore.listTemplates(); } catch { return []; }
     },
   });
@@ -108,6 +110,7 @@ export function registerTemplateRoutes(
   registerWithLegacy(app, 'get', '/v1/templates/:id', {
     config: { rateLimit: templateRateLimit },
     handler: async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
       try {
         const template = await templateStore.getTemplate(req.params.id);
         if (!template) return reply.status(404).send({ error: 'Template not found' });
@@ -122,6 +125,7 @@ export function registerTemplateRoutes(
   registerWithLegacy(app, 'put', '/v1/templates/:id', {
     config: { rateLimit: templateRateLimit },
     handler: withValidation(createTemplateSchema.partial(), async (req: FastifyRequest, reply: FastifyReply, data) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
       try {
         const templateId = (req.params as { id: string }).id;
         const template = await templateStore.updateTemplate(templateId, data as Parameters<typeof templateStore.updateTemplate>[1]);
@@ -137,6 +141,7 @@ export function registerTemplateRoutes(
   registerWithLegacy(app, 'delete', '/v1/templates/:id', {
     config: { rateLimit: templateRateLimit },
     handler: async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
       try {
         const deleted = await templateStore.deleteTemplate(req.params.id);
         if (!deleted) return reply.status(404).send({ error: 'Template not found' });
