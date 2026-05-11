@@ -1,6 +1,6 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-10 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus)
+> **Last updated:** 2026-05-11 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
@@ -10,6 +10,8 @@
 The Claude Code orchestration space is **crowded and moving fast**. 8+ competitors with 200×–470× Aegis's star count. The market is bifurcating into **simple developer tools** (win on ease-of-use) and **enterprise platforms** (win on depth and governance). Aegis is an enterprise platform — the moat is real but the **simplicity gap is existential**.
 
 **Bottom line:** We cannot out-feature ruflo (47K ⭐, 98 agents, 314 MCP tools). We cannot out-simplify oh-my-claudecode (33K ⭐, zero-config install). We *can* own the **enterprise orchestration middleware** niche — API-first, compliant, auditable — if we close the install friction gap and ship multi-agent support.
+
+**Strategic window:** 3-6 months. After that, Ruflo's 47K-star community and OMC's 33K-star plugin marketplace distribution will make organic discoverability nearly impossible without paid marketing.
 
 ---
 
@@ -87,6 +89,120 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 
 ---
 
+## New Findings (2026-05-11 Deep Dive)
+
+### oh-my-claudecode — Critical Path
+- **12 features we lack:** autopilot mode, multi-agent team orchestration (plan→PRD→exec→verify→fix), cross-model advisor (/ccg), deep interview (Socratic requirements), skill learning system, smart model routing (30-50% token savings), HUD statusline, magic keyword triggers, persistent verify/fix loops, tmux CLI workers, multi-language docs (7 languages)
+- **Their moat:** plugin marketplace = built-in discovery. "Don't learn Claude Code. Just use OMC." executes our positioning better than we do.
+- **Not direct competitors:** OMC is a Claude Code plugin (dev tool). Aegis is a standalone service (infrastructure). They serve different buyers. Risk is OMC captures devs before they discover Aegis.
+- **Top action:** reduce install to `npm i -g aegis && ag run` (2 commands). Then plugin marketplace listing.
+
+### Ruflo — AI Operating System
+- **20 features we lack:** 100+ agents, 314 MCP tools, 32-plugin system, swarm coordination (hierarchical/mesh/adaptive), self-learning SONA neural patterns, federated agent comms, Rust-based vector engine (HNSW, 150x faster), GOAP goal planner (A*), web UI (flo.ruv.io), 12 background workers, browser automation (Playwright), security audit plugin, WASM sandboxed agents, IoT management, neural trading, cost tracker plugin, ADR management, DDD scaffolding
+- **Their moat:** self-learning compounds — the more you use Ruflo, the smarter it gets. Rust engine is an infrastructure moat. 47K-star gravity.
+- **Their weakness:** zero compliance story. No OIDC, no audit trail, no K8s, no supply-chain security. They're a dev tool, not enterprise infrastructure.
+- **Positioning:** complement, not compete. "Aegis as the API gateway that makes Ruflo-style agents production-safe."
+
+### Full Landscape — Strategic Threats
+- **Simplicity trap:** devs find OMC/OpenACP first, never discover Aegis. Counter: 2-command install + marketplace listing.
+- **Breadth race:** Ruflo covers Aegis's entire feature set + 10x more. Counter: don't compete on breadth, lean into security/compliance/audit.
+- **Convergence:** cc-connect adding our features (lifecycle hooks, auth, custom prompts). Counter: ship enterprise features faster.
+- **Aegis is the ONLY project** with all 6 enterprise pillars: K8s + OIDC + audit trail + OTel + Sigstore + SDKs.
+
+### Recommended Positioning
+> **"Run any AI agent. Ship with confidence."**
+>
+> Aegis = enterprise-safe orchestration middleware. The layer between AI agents and production requirements.
+> Not the AI OS (Ruflo's lane). Not the simplest dev tool (OMC's lane). The middleware that makes AI agents production-grade: secure, auditable, observable, compliant.
+
+---
+
+## Two-Way Comparison: Counter-Moves
+
+For each competitor: what they have that we don't **AND** what we have that they can't easily replicate.
+
+### vs. Ruflo (47K ⭐)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| 100+ specialized agents | REST API (65+ endpoints) | Plugin architecture is CLI/MCP-first, not HTTP. Adding a full REST layer is an architectural rewrite. |
+| 314 MCP tools | OIDC/SSO + RBAC | No identity management concept. Adding enterprise auth requires a completely new auth layer. |
+| 32-plugin ecosystem | Audit trail with hash chain | No tamper-proof logging. Critical for SOC2/GDPR — can't bolt on after the fact. |
+| Self-learning SONA memory | Kubernetes + Helm deployment | Local dev tool, not deployable as infrastructure. Requires architecture change to run as a service. |
+| GOAP goal planner | OpenTelemetry tracing | Custom observability plugin, not OTel-standard. Switching requires rearchitecting the plugin. |
+| Rust vector engine (HNSW) | Sigstore release signing | No supply-chain security. Not on their roadmap. |
+| Federated agent comms | TypeScript + Python SDKs | No client SDKs. Plugin system is the extension point, not programmatic API access. |
+| Web UI (flo.ruv.io) | Session lifecycle (terminal states, crash recovery) | No session persistence model. Agents are ephemeral. |
+| 12 background workers | Billing/metering API | Cost tracker is local-only. No enterprise billing integration path. |
+| Browser automation (Playwright) | SSE event streaming | No real-time streaming for external consumers. |
+
+**Counter-move:** Position Aegis as the production gateway for Ruflo agents. "Use Ruflo to orchestrate, use Aegis to deploy, audit, and govern."
+
+### vs. oh-my-claudecode (33K ⭐)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| Plugin marketplace distribution | Web dashboard | OMC is a Claude Code plugin — it runs inside the terminal. A separate web UI requires a standalone service. |
+| Autopilot mode | REST API (external consumers) | Plugin architecture has no HTTP surface. Can't be called from CI/CD, webhooks, or other services. |
+| Multi-agent team orchestration | MCP server (34 tools) | OMC consumes Claude Code's MCP but doesn't expose one. Becoming an MCP server requires a different architecture. |
+| Skill learning system | Enterprise auth (RBAC, OIDC) | Plugin-based — no concept of multi-user, roles, or SSO. Plugin runs in single-user context. |
+| Smart model routing (30-50% savings) | Audit trail | No persistent audit log. Plugin sessions are ephemeral. |
+| Zero-config install | Kubernetes / Helm | Cannot be deployed as infrastructure. It's a local dev tool. |
+| HUD statusline | SSE event streaming | No real-time event streaming for external consumers. |
+| Multi-language docs (7 languages) | Session templates + pipelines | No concept of reusable templates or pipeline orchestration. |
+| Magic keyword triggers | Session export (JSONL/MD) | No structured transcript export. |
+| Deep interview mode | Billing/metering | No usage metering for enterprise billing. |
+
+**Counter-move:** Match their install simplicity (2 commands) while keeping the API/dashboard enterprise depth. They can't follow us into enterprise — plugin architecture won't allow it.
+
+### vs. cc-connect (8K ⭐)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| 11 chat platforms (WeChat, QQ, DingTalk, LINE, Feishu, Weibo) | MCP server (34 tools) | Go binary with TOML config. No MCP protocol support. |
+| 10+ agent backends | OIDC/SSO + RBAC | Token-only auth. Adding OIDC requires a new auth provider integration. |
+| Natural language cron | Audit trail with hash chain | No tamper-proof logging. |
+| Voice/STT/TTS support | Kubernetes + Helm | Binary distribution, not container-native. |
+| Multi-language (5 languages) | OpenTelemetry tracing | No observability integration. |
+| Web admin UI | TypeScript + Python SDKs | Go binary — no JS/Python client libraries. |
+| | Session lifecycle management | No terminal states or crash recovery. |
+| | Billing/metering API | No usage metering for enterprise. |
+| | Sigstore release signing | No supply-chain security. |
+| | Session export | No structured export. |
+
+**Counter-move:** cc-connect is converging on our features (lifecycle hooks, auth). But they're Go+TOML, not API-first. We win on programmability and enterprise governance. Stay ahead on compliance features.
+
+### vs. OpenACP (346 ⭐)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| 28+ agent backends | Web dashboard (full React) | No web UI. CLI/Telegram-only. |
+| Simplest install (curl \| bash) | OIDC/SSO + RBAC | No enterprise identity management. |
+| Discord + Slack channels | Audit trail | No persistent audit log. |
+| Budget limits per session | Kubernetes / Helm | Not designed as deployable infrastructure. |
+| Skill system (brainstorming, TDD, debugging presets) | OpenTelemetry tracing | No observability standard. |
+| | TypeScript + Python SDKs | No client SDKs. |
+| | Session templates + pipelines | No template or pipeline system. |
+| | Memory Bridge | No cross-session state. |
+| | Sigstore release signing | No supply-chain security. |
+
+**Counter-move:** OpenACP is the highest-threat small competitor — same architecture, broader agents. But they lack the entire enterprise stack. Our window: ship enterprise features faster than they can add them.
+
+### vs. mission-control (4.7K ⭐)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| Multi-gateway support | OIDC/SSO (not just RBAC) | RBAC only. No enterprise SSO integration. |
+| Skills Hub | Audit trail with hash chain | No tamper-proof audit logging. |
+| Quality gates | Kubernetes + Helm | No K8s deployment story. |
+| | OpenTelemetry tracing | Custom monitoring, not OTel. |
+| | Billing/metering API | No usage metering. |
+| | Sigstore release signing | No supply-chain security. |
+| | TypeScript + Python SDKs | No client SDKs. |
+| | Session export | No structured export. |
+
+**Counter-move:** mission-control is the most direct competitor (dashboard + RBAC). Our advantage: OIDC, audit trail, K8s, OTel, SDKs. Keep shipping these faster.
+
 ## Competitor Detail References
 
 | Issue | Competitor | Key takeaway |
@@ -100,4 +216,4 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 
 ---
 
-*Maintained by Scribe 📝 — update on each competitive scan.*
+*Maintained by Scribe 📝 — last deep dive: 2026-05-11. Update on each competitive scan.*
