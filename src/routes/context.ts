@@ -18,6 +18,12 @@ import type { AuthManager, ApiKeyPermission, ApiKeyRole } from '../services/auth
 import type { QuotaManager } from '../services/auth/QuotaManager.js';
 import type { Config } from '../config.js';
 import { SYSTEM_TENANT } from '../config.js';
+
+/** Issue #3208: Module-level config ref for strictRBAC enforcement. */
+let _config: Config | null = null;
+
+/** Set the config reference during route initialization. */
+export function setRouteConfig(config: Config): void { _config = config; }
 import type { MetricsCollector } from '../metrics.js';
 import type { SessionMonitor } from '../monitor.js';
 import type { SessionEventBus } from '../events.js';
@@ -126,7 +132,15 @@ export function requireRole(
   reply: FastifyReply,
   ...allowedRoles: ApiKeyRole[]
 ): boolean {
-  if (!auth.authEnabled && !hasRequestAuthContext(req)) return true;
+  // Issue #3208: strictRBAC enforcement — when enabled, reject unauthenticated
+  // requests to role-protected endpoints even when auth is disabled.
+  if (!auth.authEnabled && !hasRequestAuthContext(req)) {
+    if (_config?.strictRBAC) {
+      reply.status(401).send({ error: 'Unauthorized — strictRBAC requires authentication' });
+      return false;
+    }
+    return true;
+  }
   if (auth.authEnabled && (req.authKeyId === null || req.authKeyId === undefined)) {
     reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
     return false;
@@ -146,7 +160,12 @@ export function requirePermission(
   reply: FastifyReply,
   permission: ApiKeyPermission,
 ): boolean {
+  // Issue #3208: strictRBAC enforcement for permission-guarded routes
   if (!auth.authEnabled && !hasRequestAuthContext(req)) {
+    if (_config?.strictRBAC) {
+      reply.status(401).send({ error: 'Unauthorized — strictRBAC requires authentication' });
+      return false;
+    }
     req.matchedPermission = permission;
     return true;
   }

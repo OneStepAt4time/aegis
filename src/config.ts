@@ -124,6 +124,11 @@ export interface Config {
   /** Issue #1910: Enforce session ownership on action routes (default: true).
    *  When false, any authenticated key can operate on any session. */
   enforceSessionOwnership: boolean;
+  /** Issue #3208: Enforce RBAC role checks even when auth is disabled (default: false).
+   *  When false (dev mode), unauthenticated requests to requireRole-guarded routes are allowed.
+   *  When true, all RBAC checks are enforced regardless of auth status — returns 401 for
+   *  unauthenticated requests to role-protected endpoints. Recommended for production. */
+  strictRBAC: boolean;
   /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
   sseIdleMs: number;
   /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
@@ -212,6 +217,7 @@ const defaults: Config = {
   envDenylist: [],
   envAdminAllowlist: [],
   enforceSessionOwnership: true,
+  strictRBAC: false,
   sseIdleMs: 60_000,
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
@@ -452,6 +458,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_DASHBOARD_ENABLED', manus: '', key: 'dashboardEnabled' },
     { aegis: 'AEGIS_DEFAULT_TENANT_ID', manus: '', key: 'defaultTenantId' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
+    { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
   ];
 
