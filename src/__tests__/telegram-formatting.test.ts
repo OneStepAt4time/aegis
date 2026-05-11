@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 // Test the formatting logic directly (these mirror the internal functions)
 
 function esc(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function truncate(text: string, maxLen: number): string {
@@ -163,6 +163,14 @@ describe('Telegram formatting (Issue #43)', () => {
 
     it('should handle empty string', () => {
       expect(esc('')).toBe('');
+    });
+
+    it('should escape double quotes to prevent attribute injection', () => {
+      expect(esc('hello "world"')).toBe('hello &quot;world&quot;');
+    });
+
+    it('should escape all HTML-special characters together', () => {
+      expect(esc('<a href="x">&')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;');
     });
   });
 

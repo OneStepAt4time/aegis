@@ -13,7 +13,7 @@ import { describe, it, expect } from 'vitest';
 
 // Re-implement formatting functions for testing (mirrors telegram.ts)
 function esc(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function truncate(text: string, maxLen: number): string {
