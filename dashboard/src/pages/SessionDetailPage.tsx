@@ -498,7 +498,7 @@ export default function SessionDetailPage() {
           onClick={handleInsertSlashCommand}
           disabled={slashSending || !h.alive}
           className={buttonClass}
-          title="Insert selected slash command into the message input"
+          title={t('sessionDetail.sessionInsertSlashCommandInput')}
         >
           {t('sessionDetail.insertSlash')}
         </button>
@@ -508,7 +508,7 @@ export default function SessionDetailPage() {
           onClick={handleSendSlashCommand}
           disabled={slashSending || !h.alive}
           className={accentButtonClass}
-          title="Send selected slash command immediately"
+          title={t('sessionDetail.sessionSendSlashCommand')}
         >
           {slashSending ? t('sessionDetail.sendingSlash') : t('sessionDetail.runSlash')}
         </button>
@@ -519,7 +519,7 @@ export default function SessionDetailPage() {
             onClick={handleCaptureScreenshot}
             disabled={capturingScreenshot || !h.alive}
             className={buttonClass}
-            title="Capture screenshot"
+            title={t('sessionDetail.sessionCaptureScreenshot')}
           >
             {capturingScreenshot ? t('sessionDetail.capturing') : t('sessionDetail.screenshot')}
           </button>
@@ -532,7 +532,7 @@ export default function SessionDetailPage() {
               onClick={handleInterrupt}
               aria-label={t('sessionDetail.interrupt')}
               className={buttonClass}
-              title="Interrupt (Ctrl+C)"
+              title={t('sessionDetail.sessionInterruptCtrlC')}
             >
               {t('sessionDetail.interrupt')}
             </button>
@@ -541,7 +541,7 @@ export default function SessionDetailPage() {
               onClick={handleEscape}
               aria-label={t('sessionDetail.escape')}
               className={buttonClass}
-              title="Send Escape"
+              title={t('sessionDetail.sessionSendEscape')}
             >
               {t('sessionDetail.escape')}
             </button>
@@ -820,43 +820,43 @@ export default function SessionDetailPage() {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  title="Insert slash command"
+                  title={t('sessionDetail.sessionInsertSlashCommand')}
                   onClick={() => { setMsgInput((v) => v || '/'); getVisibleMessageInput()?.focus(); }}
                   disabled={!h.alive}
                   className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                  aria-label="Slash command"
+                  aria-label={t('sessionDetail.sessionSlashCommand')}
                 >
                   <span className="text-sm font-mono font-bold">/</span>
                 </button>
                 {!screenshotUnsupported && (
                   <button
                     type="button"
-                    title="Capture screenshot"
+                    title={t('sessionDetail.sessionCaptureScreenshot')}
                     onClick={handleCaptureScreenshot}
                     disabled={capturingScreenshot || !h.alive}
                     className="inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                    aria-label="Capture screenshot"
+                    aria-label={t('sessionDetail.sessionCaptureScreenshot')}
                   >
                     <span className="text-xs">⬛</span>
                   </button>
                 )}
                 <button
                   type="button"
-                  title="Send Escape"
+                  title={t('sessionDetail.sessionSendEscape')}
                   onClick={handleEscape}
                   disabled={!h.alive}
                   className="inline-flex h-8 items-center justify-center rounded px-1.5 text-[10px] font-mono text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                  aria-label="Send Escape to session"
+                  aria-label={t('sessionDetail.sessionSendEscape')}
                 >
                   Esc
                 </button>
                 <button
                   type="button"
-                  title="Interrupt (Ctrl+C)"
+                  title={t('sessionDetail.sessionInterruptCtrlC')}
                   onClick={handleInterrupt}
                   disabled={!h.alive}
                   className="inline-flex h-8 items-center justify-center rounded px-1.5 text-[10px] font-mono text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:opacity-30"
-                  aria-label="Interrupt session with Ctrl+C"
+                  aria-label={t('sessionDetail.sessionInterruptCtrlC')}
                 >
                   ^C
                 </button>
@@ -882,7 +882,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)]/50 bg-[var(--color-cta-bg)]/15 p-2.5 text-[var(--color-cta-bg)] transition-all hover:bg-[var(--color-cta-bg)]/30 disabled:cursor-not-allowed disabled:opacity-30"
-                aria-label="Send message (⌘↵)"
+                aria-label={t('sessionDetail.sessionSendMessageCmd')}
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -1014,7 +1014,7 @@ export default function SessionDetailPage() {
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
                 className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-3 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
-                aria-label="Send message"
+                aria-label={t('sessionDetail.sessionSendMessage')}
               >
                 <Send className="h-4 w-4" />
               </button>
