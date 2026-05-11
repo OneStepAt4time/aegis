@@ -29,6 +29,7 @@ import { getAnalyticsCosts } from '../api/client';
 import type { AnalyticsCostsResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
+import { ForecastChart } from '../components/cost/ForecastChart';
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
@@ -406,6 +407,7 @@ export default function CostPage() {
               />
             </div>
             <SpendSummary dailyTrends={dailyData} />
+            <ForecastChart dailyTrends={dailyData} monthlyCap={budget.budgetMonthlyCapUsd} />
           </>
         );
       })()}
