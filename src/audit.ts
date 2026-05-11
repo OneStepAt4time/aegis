@@ -45,6 +45,7 @@ export type AuditAction =
   | 'key.revoke'
   | 'key.rotate'
   | 'key.quotas.update'
+  | 'key.update'
   | 'session.create'
   | 'session.kill'
   | 'session.quota.rejected'
