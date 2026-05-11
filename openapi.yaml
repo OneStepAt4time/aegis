@@ -287,6 +287,134 @@ paths:
 
 
 
+    patch:
+      summary: "Update API key role, name, or permissions"
+      operationId: "patchV1AuthKeysId"
+      tags:
+        - "Auth"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Key ID"
+          schema:
+            type: "string"
+
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                name:
+                  type: "string"
+                  minLength: 1
+
+                role:
+                  type: "string"
+                  enum:
+                    - "admin"
+                    - "operator"
+                    - "viewer"
+
+
+                permissions:
+                  anyOf:
+                    - maxItems: 5
+                      type: "array"
+                      items:
+                        type: "string"
+                        enum:
+                          - "create"
+                          - "send"
+                          - "approve"
+                          - "reject"
+                          - "kill"
+
+
+
+                    - type: "null"
+
+
+
+
+              additionalProperties: false
+
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+
+                  key:
+                    type: "string"
+
+                  name:
+                    type: "string"
+
+                  expiresAt:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+                  role:
+                    type: "string"
+                    enum:
+                      - "admin"
+                      - "operator"
+                      - "viewer"
+
+
+                  permissions:
+                    type: "array"
+                    items:
+                      type: "string"
+                      enum:
+                        - "create"
+                        - "send"
+                        - "approve"
+                        - "reject"
+                        - "kill"
+
+
+
+
+                required:
+                  - "id"
+                  - "key"
+                  - "name"
+                  - "expiresAt"
+                  - "role"
+                  - "permissions"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+        "409":
+          description: "Conflict: self-demotion guard or duplicate name"
+
+
+
 
   /v1/auth/sse-token:
     post:
