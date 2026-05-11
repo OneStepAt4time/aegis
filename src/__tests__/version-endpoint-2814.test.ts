@@ -84,6 +84,7 @@ async function buildApp(tmpDir: string): Promise<FastifyInstance> {
     tgAllowedUsers: [],
     tgTopicTtlMs: 0,
     tgTopicAutoDelete: true,
+    tgVerbose: false,
     tgTopicTTLHours: 0,
     stallThresholdMs: 300000,
     defaultPermissionMode: 'default',

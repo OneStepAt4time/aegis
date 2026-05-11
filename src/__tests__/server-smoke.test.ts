@@ -90,6 +90,7 @@ async function buildRouteContext(tmpDir: string): Promise<{
     tgAllowedUsers: [],
     tgTopicTtlMs: 0,
     tgTopicAutoDelete: true,
+    tgVerbose: false,
     tgTopicTTLHours: 0,
     stallThresholdMs: 5 * 60 * 1000,
     defaultPermissionMode: 'default',

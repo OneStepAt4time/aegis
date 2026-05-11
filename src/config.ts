@@ -58,6 +58,8 @@ export interface Config {
   tgTopicTtlMs: number;
   /** Whether to auto-delete Telegram forum topics after TTL expires (default: true). */
   tgTopicAutoDelete: boolean;
+  /** Forward verbose CC output to Telegram (thinking, tool calls, code). Default: false. */
+  tgVerbose: boolean;
   /** TTL for Telegram forum topics in hours (alternative to tgTopicTtlMs; takes priority if set). */
   tgTopicTTLHours: number;
   /** Webhook URLs (comma-separated or array) */
@@ -190,6 +192,7 @@ const defaults: Config = {
   tgAllowedUsers: [],
   tgTopicTtlMs: 24 * 60 * 60 * 1000,
   tgTopicAutoDelete: true,
+  tgVerbose: false,
   tgTopicTTLHours: 0, // 0 = use tgTopicTtlMs instead
   webhooks: [],
   defaultSessionEnv: {},
@@ -435,6 +438,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_TG_TOPIC_TTL_MS', manus: 'MANUS_TG_TOPIC_TTL_MS', key: 'tgTopicTtlMs' },
     { aegis: 'AEGIS_TG_TOPIC_AUTO_DELETE', manus: 'MANUS_TG_TOPIC_AUTO_DELETE', key: 'tgTopicAutoDelete' },
     { aegis: 'AEGIS_TG_TOPIC_TTL_HOURS', manus: 'MANUS_TG_TOPIC_TTL_HOURS', key: 'tgTopicTTLHours' },
+    { aegis: 'AEGIS_TG_VERBOSE', manus: 'MANUS_TG_VERBOSE', key: 'tgVerbose' },
     { aegis: 'AEGIS_WEBHOOKS', manus: 'MANUS_WEBHOOKS', key: 'webhooks' },
     { aegis: 'AEGIS_SSE_MAX_CONNECTIONS', manus: 'MANUS_SSE_MAX_CONNECTIONS', key: 'sseMaxConnections' },
     { aegis: 'AEGIS_SSE_MAX_PER_IP', manus: 'MANUS_SSE_MAX_PER_IP', key: 'sseMaxPerIp' },
@@ -476,6 +480,7 @@ function applyEnvOverrides(config: Config): Config {
         break;
       case 'hookSecretHeaderOnly':
       case 'tgTopicAutoDelete':
+      case 'tgVerbose':
       case 'dashboardEnabled':
       case 'acpEnabled':
         if (value === 'true' || value === 'false') {
