@@ -129,7 +129,7 @@ It's not the simplest tool to set up. We know that. But "simple" and "production
 
 ## The One-Command Future
 
-We're working on making the enterprise path as smooth as the simple one. With `ag run`, you can now go from zero to a running coding session in a single command — no config file required for local use.
+We're working on making the enterprise path as smooth as the simple one. With `ag run`, you go from install to a running coding session in two steps — install, then run. No config file, no setup wizard, no token for local use.
 
 But when your team grows, when compliance knocks, when you need to know who approved what and when — the structure is already there. No migration, no rebuild.
 
@@ -146,8 +146,7 @@ The best time to think about audit trails is before the auditor asks.
 *Getting started with Aegis:*
 ```bash
 npm install -g @onestepat4time/aegis
-ag init
-ag
+ag run
 ```
 
 *Read the docs:* [getting-started.md](../getting-started.md) | [enterprise.md](../enterprise.md) | [COMPLIANCE.md](../COMPLIANCE.md)
