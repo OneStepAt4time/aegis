@@ -1,6 +1,6 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-10 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus)
+> **Last updated:** 2026-05-11 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
@@ -10,6 +10,8 @@
 The Claude Code orchestration space is **crowded and moving fast**. 8+ competitors with 200×–470× Aegis's star count. The market is bifurcating into **simple developer tools** (win on ease-of-use) and **enterprise platforms** (win on depth and governance). Aegis is an enterprise platform — the moat is real but the **simplicity gap is existential**.
 
 **Bottom line:** We cannot out-feature ruflo (47K ⭐, 98 agents, 314 MCP tools). We cannot out-simplify oh-my-claudecode (33K ⭐, zero-config install). We *can* own the **enterprise orchestration middleware** niche — API-first, compliant, auditable — if we close the install friction gap and ship multi-agent support.
+
+**Strategic window:** 3-6 months. After that, Ruflo's 47K-star community and OMC's 33K-star plugin marketplace distribution will make organic discoverability nearly impossible without paid marketing.
 
 ---
 
@@ -87,6 +89,32 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 
 ---
 
+## New Findings (2026-05-11 Deep Dive)
+
+### oh-my-claudecode — Critical Path
+- **12 features we lack:** autopilot mode, multi-agent team orchestration (plan→PRD→exec→verify→fix), cross-model advisor (/ccg), deep interview (Socratic requirements), skill learning system, smart model routing (30-50% token savings), HUD statusline, magic keyword triggers, persistent verify/fix loops, tmux CLI workers, multi-language docs (7 languages)
+- **Their moat:** plugin marketplace = built-in discovery. "Don't learn Claude Code. Just use OMC." executes our positioning better than we do.
+- **Not direct competitors:** OMC is a Claude Code plugin (dev tool). Aegis is a standalone service (infrastructure). They serve different buyers. Risk is OMC captures devs before they discover Aegis.
+- **Top action:** reduce install to `npm i -g aegis && ag run` (2 commands). Then plugin marketplace listing.
+
+### Ruflo — AI Operating System
+- **20 features we lack:** 100+ agents, 314 MCP tools, 32-plugin system, swarm coordination (hierarchical/mesh/adaptive), self-learning SONA neural patterns, federated agent comms, Rust-based vector engine (HNSW, 150x faster), GOAP goal planner (A*), web UI (flo.ruv.io), 12 background workers, browser automation (Playwright), security audit plugin, WASM sandboxed agents, IoT management, neural trading, cost tracker plugin, ADR management, DDD scaffolding
+- **Their moat:** self-learning compounds — the more you use Ruflo, the smarter it gets. Rust engine is an infrastructure moat. 47K-star gravity.
+- **Their weakness:** zero compliance story. No OIDC, no audit trail, no K8s, no supply-chain security. They're a dev tool, not enterprise infrastructure.
+- **Positioning:** complement, not compete. "Aegis as the API gateway that makes Ruflo-style agents production-safe."
+
+### Full Landscape — Strategic Threats
+- **Simplicity trap:** devs find OMC/OpenACP first, never discover Aegis. Counter: 2-command install + marketplace listing.
+- **Breadth race:** Ruflo covers Aegis's entire feature set + 10x more. Counter: don't compete on breadth, lean into security/compliance/audit.
+- **Convergence:** cc-connect adding our features (lifecycle hooks, auth, custom prompts). Counter: ship enterprise features faster.
+- **Aegis is the ONLY project** with all 6 enterprise pillars: K8s + OIDC + audit trail + OTel + Sigstore + SDKs.
+
+### Recommended Positioning
+> **"Run any AI agent. Ship with confidence."**
+>
+> Aegis = enterprise-safe orchestration middleware. The layer between AI agents and production requirements.
+> Not the AI OS (Ruflo's lane). Not the simplest dev tool (OMC's lane). The middleware that makes AI agents production-grade: secure, auditable, observable, compliant.
+
 ## Competitor Detail References
 
 | Issue | Competitor | Key takeaway |
@@ -100,4 +128,4 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 
 ---
 
-*Maintained by Scribe 📝 — update on each competitive scan.*
+*Maintained by Scribe 📝 — last deep dive: 2026-05-11. Update on each competitive scan.*
