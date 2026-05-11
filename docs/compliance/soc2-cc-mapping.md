@@ -20,12 +20,13 @@ Security is the **required** Trust Services category for SOC 2. The Common Crite
 | Master token + per-key roles (admin / operator / viewer) | `src/routes/auth.ts` — role-based permission policies | ✅ Implemented |
 | Per-key permissions and quotas | `src/config.ts` — `ApiKeyPermissions`, quota enforcement middleware | ✅ Implemented |
 | Timing-safe token comparison | `src/routes/auth.ts` — `crypto.timingSafeEqual()` | ✅ Implemented |
-| Session ownership enforcement | `enforceSessionOwnership: true` default; `src/routes/sessions.ts` — ownership checks | ⚠️ Partial — per-action RBAC not yet granular (P0-6) |
+| Session ownership enforcement | `enforceSessionOwnership: true` default; `src/routes/sessions.ts` — ownership checks | ✅ Implemented (CC6.3 also covers) |
+| Per-endpoint RBAC guards | `requireRole()` on all route handlers including templates and tools (#3187) | ✅ Implemented |
 | Dashboard authentication | `dashboard/src/` — login gate, token persistence | ✅ Implemented |
 
 **Gap Actions:**
-- Implement per-action RBAC (P0-6)
-- Complete session ownership enforcement for all session operations (P0-1)
+- ~~Implement per-action RBAC (P0-6)~~ ✅ Closed — #3187 added `requireRole()` to all endpoints
+- ~~Complete session ownership enforcement for all session operations (P0-1)~~ ✅ Closed
 
 ### CC6.2 — Authentication
 
@@ -39,7 +40,7 @@ Security is the **required** Trust Services category for SOC 2. The Common Crite
 | SSE tokens: 60s TTL, single-use, max 5 per key | `src/routes/sessions.ts` — SSE endpoint | ✅ Implemented |
 
 **Gap Actions:**
-- Add SSO / OIDC support (Phase 3)
+- ~~Add SSO / OIDC support (Phase 3)~~ ✅ Closed — OIDC/DexidP implemented (`src/routes/oidc-auth.ts`, `src/services/auth/OIDCManager.ts`)
 - Implement MFA for dashboard access
 - Add mandatory API key expiry and rotation policies
 
@@ -52,9 +53,12 @@ Security is the **required** Trust Services category for SOC 2. The Common Crite
 | Three roles with permission policies | `src/config.ts` — `admin`, `operator`, `viewer` | ✅ Implemented |
 | Session ownership enforcement (default on) | `enforceSessionOwnership: true` | ✅ Implemented |
 | Metrics endpoint gated by dedicated token | `src/routes/metrics.ts` — metrics auth | ✅ Implemented |
+| Tenant-scoped access isolation | `src/routes/context.ts` — tenant-scoped session/audit queries | ✅ Implemented |
+| Template RBAC guards (CUD=admin+operator, R=all) | `src/routes/templates.ts` — #3187 | ✅ Implemented |
+| Tool enumeration RBAC (auth required) | `src/routes/session-data.ts` — #3187 | ✅ Implemented |
 
 **Gap Actions:**
-- Implement per-action RBAC granularity (P0-6)
+- ~~Implement per-action RBAC granularity (P0-6)~~ ✅ Closed — all endpoints now have `requireRole()` guards (#3187)
 - Add attribute-based access control (ABAC) for enterprise tier
 
 ### CC6.6 — Network Security
@@ -127,7 +131,9 @@ Security is the **required** Trust Services category for SOC 2. The Common Crite
 
 | Aegis Feature | Evidence | Status |
 |---------------|----------|--------|
-| Tamper-evident audit chain (SHA-256, daily rotation) | `src/audit.ts` — chained audit logger | ✅ Implemented |
+| Tamper-evident audit chain (HMAC-SHA256 v4, daily rotation) | `src/audit.ts` — chained audit logger with inter-process locking | ✅ Implemented |
+| Audit chain verification (`ag doctor`) | `src/audit.ts` — `verify()` method supports v1–v4 records | ✅ Implemented |
+| Symlink attack prevention on audit files | `src/audit.ts` — `assertNotSymlink()` on all read/write paths | ✅ Implemented |
 | Structured JSON logging with token redaction | `src/logger.ts` — serializers | ✅ Implemented |
 | Stall detection + dead session diagnostics | `src/sessionManager.ts` — health checks | ✅ Implemented |
 | Alert webhooks for session failures | `src/` — webhook alert system | ✅ Implemented |
@@ -145,8 +151,9 @@ Security is the **required** Trust Services category for SOC 2. The Common Crite
 | Aegis Feature | Evidence | Status |
 |---------------|----------|--------|
 | Audit logger: key CRUD, quota changes, authenticated calls | `src/audit.ts` — event types | ✅ Implemented |
-| SHA-256 chained daily audit files | `src/audit.ts` — chain integrity | ✅ Implemented |
+| HMAC-SHA256 chained daily audit files (v4) | `src/audit.ts` — chain integrity with scrypt actor obfuscation | ✅ Implemented |
 | Token and secret redaction in all log serializers | `src/logger.ts` — redaction rules | ✅ Implemented |
+| Audit log export with offset pagination (#2082) | `src/audit.ts` — `queryWithOffset()` API | ✅ Implemented |
 
 **Gap Actions:**
 - Add SIEM integration guide
