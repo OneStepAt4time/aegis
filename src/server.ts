@@ -1105,6 +1105,8 @@ async function main(): Promise<void> {
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
   // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
   const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
+  // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
+  let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
   let pidFilePath = '';
 
   // Issue #361: Graceful shutdown handler
@@ -1177,6 +1179,7 @@ async function main(): Promise<void> {
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
       clearInterval(quotaSweepInterval);
+      if (staticPruneInterval) clearInterval(staticPruneInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
@@ -1360,7 +1363,8 @@ async function main(): Promise<void> {
 
 
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
-  await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
+  // #3227: Capture prune interval handle for cleanup on shutdown
+  staticPruneInterval = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
   await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);

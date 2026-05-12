@@ -8,7 +8,7 @@
  * to ensure the full plugin lifecycle works end-to-end.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Fastify from 'fastify';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -90,6 +90,71 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
     }
     const info = limiter.getBucketInfo('1.2.3.4');
     expect(info.remaining).toBe(0);
+  });
+});
+
+// ── Prune timer tests (#3227) ──────────────────────────────────────────────
+
+describe('StaticRateLimiter prune timer (#3227)', () => {
+  let mockDashboardDir: string;
+
+  beforeEach(() => {
+    mockDashboardDir = path.join(os.tmpdir(), `aegis-test-dashboard-${Date.now()}`);
+    fs.mkdirSync(mockDashboardDir, { recursive: true });
+    fs.writeFileSync(path.join(mockDashboardDir, 'index.html'), '<html>test</html>');
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    fs.rmSync(mockDashboardDir, { recursive: true, force: true });
+  });
+
+  it('registerDashboardStatic returns a prune interval handle when dashboard is available', async () => {
+    const app = Fastify();
+    try {
+      const handle = await registerDashboardStatic(app, { _dashboardRoot: mockDashboardDir });
+      expect(handle).not.toBeNull();
+      if (handle) clearInterval(handle);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('registerDashboardStatic returns null when dashboard is disabled', async () => {
+    const app = Fastify();
+    try {
+      const handle = await registerDashboardStatic(app, { enabled: false });
+      expect(handle).toBeNull();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('prune interval calls limiter.prune() every 60 seconds', async () => {
+    const limiter = new StaticRateLimiter();
+    const pruneSpy = vi.spyOn(limiter, 'prune');
+    const app = Fastify();
+    try {
+      const handle = await registerDashboardStatic(app, {
+        _dashboardRoot: mockDashboardDir,
+        rateLimiter: limiter,
+      });
+      expect(handle).not.toBeNull();
+
+      expect(pruneSpy).toHaveBeenCalledTimes(0);
+      vi.advanceTimersByTime(60_000);
+      expect(pruneSpy).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(60_000);
+      expect(pruneSpy).toHaveBeenCalledTimes(2);
+
+      if (handle) clearInterval(handle);
+
+      vi.advanceTimersByTime(60_000);
+      expect(pruneSpy).toHaveBeenCalledTimes(2); // stopped after clearInterval
+    } finally {
+      await app.close();
+    }
   });
 });
 
