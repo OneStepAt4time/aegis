@@ -15,12 +15,36 @@
 
 // ── HTML Helpers (re-exported for channel use) ──────────────────────────────
 
+/**
+ * Escape a string for safe inclusion in Telegram HTML parse_mode messages.
+ *
+ * Sanitization contract — this function escapes ALL five HTML-special characters:
+ *   & → &amp;   < → &lt;   > → &gt;   " → &quot;   ' → &#39;
+ *
+ * **Why all five?** Telegram's HTML parser accepts a limited subset of tags
+ * (<b>, <i>, <code>, <pre>, <a>, <blockquote>). Any user-controlled content
+ * MUST be escaped before insertion to prevent:
+ *   - Tag injection: <script>, <img onerror=...>, etc.
+ *   - Attribute breakout: unescaped quotes in href="..." or other attributes
+ *   - Entity smuggling: double-encoding of &lt; etc.
+ *
+ * **Usage:** Wrap any user-controlled string with esc() before placing it
+ * inside a Telegram message with parse_mode: 'HTML'. The helper functions
+ * bold(), code(), italic() all call esc() internally.
+ *
+ * **Do NOT use for URL href values** — use sanitizeHref() from telegram.ts
+ * instead, which validates the scheme (http/https only) before escaping.
+ *
+ * @param text - Raw string to escape
+ * @returns HTML-safe string with all five special characters encoded
+ */
 export function esc(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function bold(text: string): string {

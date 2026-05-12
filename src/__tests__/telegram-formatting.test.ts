@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 // Test the formatting logic directly (these mirror the internal functions)
 
 function esc(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function truncate(text: string, maxLen: number): string {
@@ -19,6 +19,17 @@ function shortPath(path: string): string {
   const parts = path.replace(/^\//, '').split('/');
   if (parts.length <= 2) return parts.join('/');
   return '…/' + parts.slice(-2).join('/');
+}
+
+// Mirror sanitizeHref from telegram.ts for testing
+const ALLOWED_HREF_SCHEMES = ['http:', 'https:', 'tg:', '#:', 'mailto:'];
+
+function sanitizeHref(href: string): string {
+  const trimmed = href.trim();
+  if (trimmed.startsWith('#') || trimmed.startsWith('/')) return esc(trimmed);
+  const scheme = trimmed.split(':')[0]?.toLowerCase() + ':';
+  if (ALLOWED_HREF_SCHEMES.includes(scheme)) return esc(trimmed);
+  return '#';
 }
 
 describe('Telegram formatting (Issue #43)', () => {
@@ -174,6 +185,72 @@ describe('Telegram formatting (Issue #43)', () => {
     });
   });
 
+  // ── Security: HTML injection vectors (#3219) ─────────────────────────────
+  describe('Security: HTML injection prevention (#3219)', () => {
+    it('should escape single quotes', () => {
+      expect(esc("it's a test")).toBe('it&#39;s a test');
+    });
+
+    it('should escape script tags', () => {
+      expect(esc('<script>alert("xss")</script>')).toBe(
+        '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+      );
+    });
+
+    it('should escape img onerror injection', () => {
+      expect(esc('<img src=x onerror=alert(1)>')).toBe(
+        '&lt;img src=x onerror=alert(1)&gt;'
+      );
+    });
+
+    it('should escape event handler attributes', () => {
+      expect(esc('<div onload="alert(1)" onclick=\'alert(2)\'>')).toBe(
+        '&lt;div onload=&quot;alert(1)&quot; onclick=&#39;alert(2)&#39;&gt;'
+      );
+    });
+
+    it('should handle nested/malformed tag injection', () => {
+      // <scr<script>ipt> → after escaping, both layers are safe
+      expect(esc('<scr<script>ipt>')).toBe('&lt;scr&lt;script&gt;ipt&gt;');
+    });
+
+    it('should handle null bytes in content', () => {
+      const withNull = 'before\x00after';
+      // esc() should not crash on null bytes
+      expect(() => esc(withNull)).not.toThrow();
+      expect(esc(withNull)).toBe('before\x00after');
+    });
+
+    it('should prevent double-encoding attack (entity smuggling)', () => {
+      // Attacker tries to inject via pre-encoded entities
+      expect(esc('&lt;script&gt;')).toBe('&amp;lt;script&amp;gt;');
+    });
+
+    it('should escape all five HTML-special characters in a single string', () => {
+      expect(esc('<>&"\'')).toBe('&lt;&gt;&amp;&quot;&#39;');
+    });
+
+    it('should escape mixed content: code + HTML injection', () => {
+      const malicious = 'const x = "<script>alert(\'xss\')</script>"';
+      expect(esc(malicious)).toBe(
+        'const x = &quot;&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;&quot;'
+      );
+    });
+
+    it('should handle unicode content safely', () => {
+      expect(esc('日本語 <tag> & "quotes"')).toBe(
+        '日本語 &lt;tag&gt; &amp; &quot;quotes&quot;'
+      );
+    });
+
+    it('should escape very long injection strings without truncation', () => {
+      const long = '<script>' + 'A'.repeat(10000) + '</script>';
+      const escaped = esc(long);
+      expect(escaped.startsWith('&lt;script&gt;')).toBe(true);
+      expect(escaped.endsWith('&lt;/script&gt;')).toBe(true);
+    });
+  });
+
   describe('Path shortening', () => {
     it('should shorten deep paths', () => {
       expect(shortPath('/home/user/projects/aegis/src/server.ts')).toBe('…/src/server.ts');
@@ -181,6 +258,63 @@ describe('Telegram formatting (Issue #43)', () => {
 
     it('should keep short paths as-is', () => {
       expect(shortPath('src/index.ts')).toBe('src/index.ts');
+    });
+  });
+
+  // ── Security: URL scheme validation (#3219) ──────────────────────────────
+  describe('Security: sanitizeHref URL scheme validation (#3219)', () => {
+    it('should allow http:// URLs', () => {
+      expect(sanitizeHref('http://example.com')).toBe('http://example.com');
+    });
+
+    it('should allow https:// URLs', () => {
+      expect(sanitizeHref('https://example.com/path')).toBe('https://example.com/path');
+    });
+
+    it('should allow tg:// Telegram deep links', () => {
+      expect(sanitizeHref('tg://resolve?domain=test')).toBe('tg://resolve?domain=test');
+    });
+
+    it('should allow relative paths starting with /', () => {
+      expect(sanitizeHref('/path/to/page')).toBe('/path/to/page');
+    });
+
+    it('should allow anchor links starting with #', () => {
+      expect(sanitizeHref('#section')).toBe('#section');
+    });
+
+    it('should allow mailto: links', () => {
+      expect(sanitizeHref('mailto:user@example.com')).toBe('mailto:user@example.com');
+    });
+
+    it('should BLOCK javascript: URLs', () => {
+      expect(sanitizeHref('javascript:alert(1)')).toBe('#');
+    });
+
+    it('should BLOCK javascript: URLs with mixed case', () => {
+      expect(sanitizeHref('JaVaScRiPt:alert(1)')).toBe('#');
+    });
+
+    it('should BLOCK data: URLs', () => {
+      expect(sanitizeHref('data:text/html,<script>alert(1)</script>')).toBe('#');
+    });
+
+    it('should BLOCK vbscript: URLs', () => {
+      expect(sanitizeHref('vbscript:MsgBox("xss")')).toBe('#');
+    });
+
+    it('should BLOCK file: URLs', () => {
+      expect(sanitizeHref('file:///etc/passwd')).toBe('#');
+    });
+
+    it('should sanitize quotes in allowed URLs', () => {
+      // An attacker tries to break out of the href attribute
+      expect(sanitizeHref('https://example.com/"onclick="alert(1)')).not.toContain('"');
+      expect(sanitizeHref('https://example.com/\'onload=\'alert(1)')).not.toContain("'");
+    });
+
+    it('should handle whitespace-padded javascript: URLs', () => {
+      expect(sanitizeHref('  javascript:alert(1)')).toBe('#');
     });
   });
 });
