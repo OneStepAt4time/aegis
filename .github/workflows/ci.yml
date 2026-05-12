@@ -78,20 +78,21 @@ jobs:
               return;
             }
 
-            const title = pr.title || '';
+            // Fetch live PR data from the API instead of using the frozen payload.
+            // This ensures re-runs pick up title changes and labels added after the initial push.
+            const { data: livePr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const title = livePr.title || '';
             const isFeat = /^feat(\(.+\))?!?:\s/i.test(title);
             if (!isFeat) {
               core.info(`PR title is not feat:* (${title}); gate passed.`);
               return;
             }
 
-            // Fetch live labels from the API instead of using the frozen payload.
-            // This ensures re-runs pick up labels added after the initial push.
-            const { data: livePr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-            });
             const labels = (livePr.labels || []).map(label => label.name);
 
             if (labels.includes('approved-minor-bump')) {
