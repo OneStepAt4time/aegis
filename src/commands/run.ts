@@ -232,6 +232,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   try {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
+      signal: AbortSignal.timeout(120_000),  // Issue #3247: prevent indefinite hang
       headers,
       body: JSON.stringify({
         workDir: cwd,
@@ -251,10 +252,14 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, `  ✅ Session: ${session.displayName} (${sessionId.slice(0, 8)})`);
   } catch (e) {
     const cause = (e as { cause?: { code?: string } }).cause;
-    if (cause?.code === 'ECONNREFUSED') {
+    const errMessage = getErrorMessage(e);
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      writeLine(io.stderr, `  ❌ Session creation timed out after 120s. The server may be slow to respond with your LLM provider.`);
+      writeLine(io.stderr, `     Try setting AEGIS_ACP_PROMPT_TIMEOUT_MS=180000 and restarting.`);
+    } else if (cause?.code === 'ECONNREFUSED') {
       writeLine(io.stderr, `  ❌ Cannot connect to server at ${baseUrl}.`);
     } else {
-      writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
+      writeLine(io.stderr, `  ❌ ${errMessage}`);
     }
     return 1;
   }
