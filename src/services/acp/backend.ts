@@ -404,6 +404,11 @@ export class AcpBackend {
       });
       return { delivered: true, attempts: 1 };
     } catch (err) {
+      // Issue #3223: Log timeout details for BYO-LLM proxy diagnosis
+      if (err instanceof Error && err.message.includes('timed out')) {
+        const timeoutMs = this.options.jsonRpcClientOptions?.requestTimeoutMs ?? 60_000;
+        console.warn(`[ACP prompt timeout] session=${sessionId} method=session/prompt timeout=${timeoutMs}ms`);
+      }
       return { delivered: false, attempts: 1, error: (err as Error).message };
     } finally {
       this.inFlightPrompts.delete(sessionId);
