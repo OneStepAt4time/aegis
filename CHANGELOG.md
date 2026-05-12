@@ -177,6 +177,7 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **ACP prompt timeout docs** — documented `AEGIS_ACP_PROMPT_TIMEOUT_MS` in enterprise and getting-started guides ([#3226](https://github.com/OneStepAt4time/aegis/pull/3226))
 - **ACP timeout default docs** — updated default from 60s to 120s ([#3245](https://github.com/OneStepAt4time/aegis/pull/3245))
 - **ag run troubleshooting** — added fallback note for session creation hangs ([#3248](https://github.com/OneStepAt4time/aegis/pull/3248))
+- **Async prompt delivery docs** — documented `promptDelivery.status` field, async polling workflow, and ACP vs non-ACP behavior ([#3254](https://github.com/OneStepAt4time/aegis/pull/3254), refs [#3253](https://github.com/OneStepAt4time/aegis/pull/3253))
 - **PATCH auth keys + strictRBAC docs** — documented PATCH endpoint and strictRBAC config ([#3213](https://github.com/OneStepAt4time/aegis/pull/3213))
 - **SOC2 compliance update** — updated CC mapping with RBAC, OIDC, and audit v4 ([#3205](https://github.com/OneStepAt4time/aegis/pull/3205))
 - **Blog: What We Learned** — blog post on building an AI agent orchestrator ([#3200](https://github.com/OneStepAt4time/aegis/pull/3200))
