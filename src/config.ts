@@ -167,6 +167,8 @@ export interface Config {
   /** Enable ACP backend for session creation and control actions (default: false).
    *  Transitional flag for Phase 3.5 ACP backend migration. */
   acpEnabled: boolean;
+  /** ACP JSON-RPC request timeout in ms (default: 60000). Issue #3223. */
+  acpPromptTimeoutMs: number;
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -231,6 +233,7 @@ const defaults: Config = {
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
   acpEnabled: true,
+  acpPromptTimeoutMs: 60_000, // Issue #3223: 60s default for BYO-LLM proxy setups
 };
 
 /** Parse CLI args for --config flag */
@@ -367,7 +370,8 @@ type NumericConfigEnvKey =
   | 'sseClientTimeoutMs'
   | 'hookTimeoutMs'
   | 'shutdownGraceMs'
-  | 'shutdownHardMs';
+  | 'shutdownHardMs'
+  | 'acpPromptTimeoutMs';
 
 const MAX_ENV_INT = Number.MAX_SAFE_INTEGER;
 
@@ -386,6 +390,7 @@ const numericEnvBounds: Record<NumericConfigEnvKey, { min: number; max: number }
   hookTimeoutMs: { min: 100, max: MAX_ENV_INT },
   shutdownGraceMs: { min: 1000, max: MAX_ENV_INT },
   shutdownHardMs: { min: 1000, max: MAX_ENV_INT },
+  acpPromptTimeoutMs: { min: 1000, max: MAX_ENV_INT },
 };
 
 function parseNumericEnvOverride(
@@ -460,6 +465,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
+    { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -483,6 +489,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'hookTimeoutMs':
       case 'shutdownGraceMs':
       case 'shutdownHardMs':
+      case 'acpPromptTimeoutMs':
         config[key] = parseNumericEnvOverride(envName, value, config[key], numericEnvBounds[key]);
         break;
       case 'hookSecretHeaderOnly':

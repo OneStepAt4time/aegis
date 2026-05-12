@@ -812,7 +812,10 @@ async function main(): Promise<void> {
   acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
-  acpBackend = new AcpBackend({ sessionService: acpSessionService });
+  acpBackend = new AcpBackend({
+    sessionService: acpSessionService,
+    jsonRpcClientOptions: { requestTimeoutMs: config.acpPromptTimeoutMs },
+  });
   acpTerminalBridge = new AcpTerminalBridge({
     sessionResolver: {
       getSession: (sessionId, scope) => acpSessionService!.getSession(sessionId, scope),

@@ -4,7 +4,7 @@ import type {
   AcpChildProcessShutdownOptions,
 } from './child-process.js';
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 const DEFAULT_ID_NAMESPACE = 'aegis-acp';
 const DEFAULT_ABANDONED_RESPONSE_GRACE_MS = 60_000;
 
