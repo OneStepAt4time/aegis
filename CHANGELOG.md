@@ -125,6 +125,13 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **ACP kill-session process reap** — shutdown ACP backend on session kill to reap orphaned CC child processes (~250MB RSS per leak) ([#3191](https://github.com/OneStepAt4time/aegis/pull/3191), closes [#3184](https://github.com/OneStepAt4time/aegis/issues/3184))
 - **Dashboard i18n aria-labels** — aria-labels and title attributes for 3 pages ([#3195](https://github.com/OneStepAt4time/aegis/pull/3195))
 - **Security helpers cleanup** — export security helpers, fix indentation, cache `redactError` ([#3177](https://github.com/OneStepAt4time/aegis/pull/3177))
+- **Dashboard static rate limiting** — per-IP fixed-window rate limiter (100 req/min) on dashboard static asset routes ([#3222](https://github.com/OneStepAt4time/aegis/pull/3222), closes [#3220](https://github.com/OneStepAt4time/aegis/issues/3220))
+- **Telegram HTML sanitizer hardening** — complete `esc()` entity escaping (all 5 HTML-special characters) and URL scheme validation ([#3221](https://github.com/OneStepAt4time/aegis/pull/3221), closes [#3219](https://github.com/OneStepAt4time/aegis/issues/3219))
+- **ACP JSON-RPC timeout** — increase default timeout from 15s to 60s for BYO-LLM proxy setups; configurable via `AEGIS_ACP_PROMPT_TIMEOUT_MS` ([#3225](https://github.com/OneStepAt4time/aegis/pull/3225), closes [#3223](https://github.com/OneStepAt4time/aegis/issues/3223))
+- **XSS prevention** — escape double quotes in `esc()` to prevent XSS vectors ([#3210](https://github.com/OneStepAt4time/aegis/pull/3210))
+- **strictRBAC config** — enforce RBAC on protected endpoints even when auth is disabled via `AEGIS_STRICT_RBAC=true` ([#3211](https://github.com/OneStepAt4time/aegis/pull/3211), closes [#3208](https://github.com/OneStepAt4time/aegis/issues/3208))
+- **SessionMonitor in containers** — start sessionMonitor during container boot ([#3204](https://github.com/OneStepAt4time/aegis/pull/3204), closes [#3189](https://github.com/OneStepAt4time/aegis/issues/3189))
+- **Telegram stale getUpdates** — clear stale `getUpdates` on startup to prevent 409 Conflict errors ([#3199](https://github.com/OneStepAt4time/aegis/pull/3199))
 
 ### Documentation
 
@@ -162,6 +169,12 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **RBAC role tables** — RBAC role tables added to templates and tools endpoint docs ([#3188](https://github.com/OneStepAt4time/aegis/pull/3188))
 - **RBAC viewer role docs** — updated viewer role description after RBAC guards ([#3193](https://github.com/OneStepAt4time/aegis/pull/3193))
 - **Telegram verbose mode docs** — documented `tgVerbose` config and `AEGIS_TG_VERBOSE` env var ([#3197](https://github.com/OneStepAt4time/aegis/pull/3197))
+- **ACP prompt timeout docs** — documented `AEGIS_ACP_PROMPT_TIMEOUT_MS` in enterprise and getting-started guides ([#3226](https://github.com/OneStepAt4time/aegis/pull/3226))
+- **PATCH auth keys + strictRBAC docs** — documented PATCH endpoint and strictRBAC config ([#3213](https://github.com/OneStepAt4time/aegis/pull/3213))
+- **SOC2 compliance update** — updated CC mapping with RBAC, OIDC, and audit v4 ([#3205](https://github.com/OneStepAt4time/aegis/pull/3205))
+- **Blog: What We Learned** — blog post on building an AI agent orchestrator ([#3200](https://github.com/OneStepAt4time/aegis/pull/3200))
+- **Dashboard static rate limiting docs** — added dashboard static rate limiting to enterprise rate limit table
+- **PATCH /v1/auth/keys/:id** — update API key role, name, and permissions without recreating ([#3212](https://github.com/OneStepAt4time/aegis/pull/3212), closes [#3207](https://github.com/OneStepAt4time/aegis/issues/3207))
 
 ### CI
 
