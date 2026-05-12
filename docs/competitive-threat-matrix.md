@@ -27,6 +27,7 @@ The Claude Code orchestration space is **crowded and moving fast**. 8+ competito
 | #6 | **mission-control** | 4.7K | 🟠 HIGH | `npm install` | Multi-gateway | Skills Hub | ✅ | ✅ | ✅ RBAC |
 | #7 | **OpenACP** | 346 | 🟠 HIGH | `curl \| bash` | **28+** | Telegram, Discord, Slack | ✅ | ❌ | ❌ |
 | #8 | **ECC** | 177K | 🟢 OPPORTUNITY | Config library | N/A (skills) | N/A | ❌ | ❌ | ❌ |
+| #9 | **ClaudeClaw** | 1 | 🟡 MEDIUM | `curl \| bash` | 1 (CC hooks) | Telegram | ❌ | ❌ | ❌ |
 | — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
 ---
@@ -223,11 +224,12 @@ For each competitor: what they have that we don't **AND** what we have that they
 
 | Issue | Competitor | Key takeaway |
 |-------|-----------|-------------|
-| #3013 | Ruflo (47K ⭐) | Full-stack, 98 agents, self-learning. Enterprise moat still defensible. |
+| #3013 | Ruflo (49K ⭐) | Full-stack, 98 agents, self-learning. Enterprise moat still defensible. |
 | #3014 | oh-my-claudecode (33K ⭐) | Zero-config is our biggest UX gap. `/autopilot` mode to replicate. |
 | #3004 | cc-connect (8K ⭐) | 11 chat platforms, multi-agent. Converging on our enterprise features. |
 | #3003 | OpenACP (346 ⭐) | Same architecture, simpler install, 28+ agents. Highest-threat small competitor. |
 | #3016 | Full landscape | 8 competitors ranked. Aegis smallest by stars, deepest by enterprise features. |
+| #3234 | ClaudeClaw (1 ⭐) | CC hooks-based simplicity play. Zero infrastructure, conversational onboarding. Tier 1 threat. |
 | ECC | everything-claude-code (177K ⭐) | Not a competitor — distribution channel. Skills layer, not orchestration. |
 
 ---
