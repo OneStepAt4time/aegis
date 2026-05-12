@@ -398,7 +398,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
             }
           }
           promptDelivery = acpBackend && ctx.config.acpEnabled
-          ? await acpBackend.sendPrompt(existing.id, finalPrompt, { tenantId: req.tenantId ?? 'system', ownerKeyId: req.authKeyId ?? 'master' })
+          ? await acpBackend.sendPrompt(existing.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' })
           : await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
@@ -469,7 +469,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         }
       }
       promptDelivery = acpBackend && ctx.config.acpEnabled
-        ? await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? 'system', ownerKeyId: req.authKeyId ?? 'master' })
+        ? await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' })
         : await sessions.sendInitialPrompt(session.id, finalPrompt);
       metrics.promptSent(promptDelivery.delivered);
     }

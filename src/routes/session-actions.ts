@@ -4,6 +4,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { SYSTEM_TENANT } from '../config.js';
 import { sendMessageSchema, commandSchema, permissionRuleSchema, permissionProfileSchema, type PermissionProfile } from '../validation.js';
 import type { PermissionPolicy } from '../validation.js';
 import { registerPermissionRoutes } from '../permission-routes.js';
@@ -54,7 +55,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     }
     try {
       const result = acpBackend && config.acpEnabled
-        ? await acpBackend.sendPrompt(sessionId, text, { tenantId: (req as any).tenantId ?? 'system', ownerKeyId: (req as any).authKeyId ?? 'master' })
+        ? await acpBackend.sendPrompt(sessionId, text, { tenantId: (req as any).tenantId ?? SYSTEM_TENANT, ownerKeyId: (req as any).authKeyId ?? 'master' })
         : await sessions.sendMessage(sessionId, text);
       // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.
       // Previously we called getStallInfo BEFORE send, capturing a stale state
@@ -272,7 +273,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     try {
       const cmd = command.startsWith('/') ? command : `/${command}`;
       const cmdResult = acpBackend && config.acpEnabled
-        ? await acpBackend.sendPrompt(session.id, cmd, { tenantId: (req as any).tenantId ?? 'system', ownerKeyId: (req as any).authKeyId ?? 'master' })
+        ? await acpBackend.sendPrompt(session.id, cmd, { tenantId: (req as any).tenantId ?? SYSTEM_TENANT, ownerKeyId: (req as any).authKeyId ?? 'master' })
         : await sessions.sendMessage(session.id, cmd);
       return { ok: true };
     } catch (e: unknown) {
