@@ -42,6 +42,7 @@ export interface AcpChildProcessSpawnOptions {
   env: NodeJS.ProcessEnv;
   stdio: 'pipe';
   windowsHide: true;
+  detached?: boolean;
 }
 
 export interface AcpReadableProcessStream {
@@ -241,6 +242,7 @@ export class AcpChildProcess {
       ),
       stdio: 'pipe',
       windowsHide: true,
+      detached: true,  // Issue #3250: new process group for clean tree-kill
     };
 
     let child: AcpChildProcessHandle;
@@ -330,12 +332,13 @@ export class AcpChildProcess {
     const gracefulExit = await this.waitForExitWithin(graceMs);
     if (gracefulExit) return gracefulExit;
 
-    this.child.kill('SIGTERM');
+    // Issue #3250: Kill entire process group (catches hook child processes)
+    try { process.kill(-this.child.pid!, 'SIGTERM'); } catch { this.child.kill('SIGTERM'); }
     const terminatedExit = await this.waitForExitWithin(graceMs);
     if (terminatedExit) return terminatedExit;
 
     this.shutdownEscalated = true;
-    this.child.kill('SIGKILL');
+    try { process.kill(-this.child.pid!, 'SIGKILL'); } catch { this.child.kill('SIGKILL'); }
     return this.waitForExit();
   }
 
