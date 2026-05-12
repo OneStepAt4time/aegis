@@ -129,7 +129,7 @@ export interface SessionInfo {
   autoApprove?: boolean;        // API contract compat: auto-approve flag
   pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
-  promptDelivery?: { delivered: boolean; attempts: number };  // API contract compat: prompt status
+  promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
   // Issue #2518: Hook failure circuit breaker
   hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
