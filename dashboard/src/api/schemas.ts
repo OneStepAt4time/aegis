@@ -201,7 +201,7 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   permissionRespondedAt: z.number().optional(),
   pendingPermission: PendingPermissionInfoSchema.optional(),
   pendingQuestion: PendingQuestionInfoSchema.optional(),
-  promptDelivery: z.object({ delivered: z.boolean(), attempts: z.number() }).optional(),
+  promptDelivery: z.object({ delivered: z.boolean(), attempts: z.number(), status: z.enum(['pending', 'delivered', 'failed', 'timeout']).optional() }).optional(),
   actionHints: z.record(z.string(), z.object({
     method: z.string(),
     url: z.string(),

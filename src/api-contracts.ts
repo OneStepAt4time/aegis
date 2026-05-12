@@ -63,7 +63,7 @@ export interface SessionInfo {
   permissionRespondedAt?: number;
   pendingPermission?: PendingPermissionInfo;
   pendingQuestion?: PendingQuestionInfo;
-  promptDelivery?: { delivered: boolean; attempts: number };
+  promptDelivery?: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout' };  // Issue #3256
   actionHints?: Record<string, {
     method: string;
     url: string;
