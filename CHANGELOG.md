@@ -50,6 +50,7 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Telegram verbose mode** — forward full CC output (thinking, tool calls, code) via `AEGIS_TG_VERBOSE=true` ([#3196](https://github.com/OneStepAt4time/aegis/pull/3196))
 - **Dashboard i18n string extraction** — string extraction for 7 remaining dashboard pages ([#3192](https://github.com/OneStepAt4time/aegis/pull/3192))
 - **Dashboard aria-label i18n** — 152 aria-label translation keys added + batch 2 component replacements (20 files, 37 calls) ([#3231](https://github.com/OneStepAt4time/aegis/pull/3231), [#3238](https://github.com/OneStepAt4time/aegis/pull/3238), refs [#3229](https://github.com/OneStepAt4time/aegis/issues/3229))
+- **Dashboard aria-label i18n batch 3** — remaining hardcoded aria-labels extracted to i18n calls ([#3246](https://github.com/OneStepAt4time/aegis/pull/3246), refs [#3229](https://github.com/OneStepAt4time/aegis/issues/3229))
 
 ### Changed
 
@@ -129,6 +130,8 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Dashboard static rate limiting** — per-IP fixed-window rate limiter (100 req/min) on dashboard static asset routes ([#3222](https://github.com/OneStepAt4time/aegis/pull/3222), closes [#3220](https://github.com/OneStepAt4time/aegis/issues/3220))
 - **Telegram HTML sanitizer hardening** — complete `esc()` entity escaping (all 5 HTML-special characters) and URL scheme validation ([#3221](https://github.com/OneStepAt4time/aegis/pull/3221), closes [#3219](https://github.com/OneStepAt4time/aegis/issues/3219))
 - **ACP JSON-RPC timeout** — increase default timeout from 15s to 60s for BYO-LLM proxy setups; configurable via `AEGIS_ACP_PROMPT_TIMEOUT_MS` ([#3225](https://github.com/OneStepAt4time/aegis/pull/3225), closes [#3223](https://github.com/OneStepAt4time/aegis/issues/3223))
+- **ACP prompt timeout default** — increase default from 60s to 120s for slow BYO-LLM proxy setups ([#3244](https://github.com/OneStepAt4time/aegis/pull/3244), closes [#3243](https://github.com/OneStepAt4time/aegis/issues/3243))
+- **`ag run` session creation timeout** — add client-side timeout to prevent silent hangs during session creation ([#3249](https://github.com/OneStepAt4time/aegis/pull/3249), closes [#3247](https://github.com/OneStepAt4time/aegis/issues/3247))
 - **XSS prevention** — escape double quotes in `esc()` to prevent XSS vectors ([#3210](https://github.com/OneStepAt4time/aegis/pull/3210))
 - **strictRBAC config** — enforce RBAC on protected endpoints even when auth is disabled via `AEGIS_STRICT_RBAC=true` ([#3211](https://github.com/OneStepAt4time/aegis/pull/3211), closes [#3208](https://github.com/OneStepAt4time/aegis/issues/3208))
 - **SessionMonitor in containers** — start sessionMonitor during container boot ([#3204](https://github.com/OneStepAt4time/aegis/pull/3204), closes [#3189](https://github.com/OneStepAt4time/aegis/issues/3189))
@@ -172,6 +175,8 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **RBAC viewer role docs** — updated viewer role description after RBAC guards ([#3193](https://github.com/OneStepAt4time/aegis/pull/3193))
 - **Telegram verbose mode docs** — documented `tgVerbose` config and `AEGIS_TG_VERBOSE` env var ([#3197](https://github.com/OneStepAt4time/aegis/pull/3197))
 - **ACP prompt timeout docs** — documented `AEGIS_ACP_PROMPT_TIMEOUT_MS` in enterprise and getting-started guides ([#3226](https://github.com/OneStepAt4time/aegis/pull/3226))
+- **ACP timeout default docs** — updated default from 60s to 120s ([#3245](https://github.com/OneStepAt4time/aegis/pull/3245))
+- **ag run troubleshooting** — added fallback note for session creation hangs ([#3248](https://github.com/OneStepAt4time/aegis/pull/3248))
 - **PATCH auth keys + strictRBAC docs** — documented PATCH endpoint and strictRBAC config ([#3213](https://github.com/OneStepAt4time/aegis/pull/3213))
 - **SOC2 compliance update** — updated CC mapping with RBAC, OIDC, and audit v4 ([#3205](https://github.com/OneStepAt4time/aegis/pull/3205))
 - **Blog: What We Learned** — blog post on building an AI agent orchestrator ([#3200](https://github.com/OneStepAt4time/aegis/pull/3200))
