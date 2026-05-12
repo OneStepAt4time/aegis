@@ -232,7 +232,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   try {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
-      signal: AbortSignal.timeout(120_000),  // Issue #3247: prevent indefinite hang
+      signal: AbortSignal.timeout(30_000),  // Issue #3243: session creation is now fast (prompt delivery is async)
       headers,
       body: JSON.stringify({
         workDir: cwd,
@@ -247,9 +247,41 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
       return 1;
     }
 
-    const session = await res.json() as { id: string; displayName: string };
+    const session = await res.json() as { id: string; displayName: string; promptDelivery?: { status?: string } };
     sessionId = session.id;
     writeLine(io.stdout, `  ✅ Session: ${session.displayName} (${sessionId.slice(0, 8)})`);
+
+    // Issue #3243: Poll for async prompt delivery if pending
+    if (session.promptDelivery?.status === 'pending') {
+      writeLine(io.stdout, '  ⏳ Delivering prompt...');
+      const pollStart = Date.now();
+      const pollTimeout = 180_000; // 3 min max wait for prompt delivery
+      while (Date.now() - pollStart < pollTimeout) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const pollRes = await fetch(`${baseUrl}/v1/sessions/${sessionId}`, {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+            signal: AbortSignal.timeout(5000),
+          });
+          if (pollRes.ok) {
+            const pollData = await pollRes.json() as { promptDelivery?: { status?: string; delivered?: boolean } };
+            const pdStatus = pollData.promptDelivery?.status;
+            if (pdStatus === 'delivered') {
+              writeLine(io.stdout, '  ✅ Prompt delivered');
+              break;
+            } else if (pdStatus === 'failed' || pdStatus === 'timeout') {
+              writeLine(io.stderr, `  ⚠️  Prompt delivery ${pdStatus}. Session exists but agent may not have received the prompt.`);
+              break;
+            }
+          }
+        } catch {
+          // Polling error — session may still be initializing
+        }
+      }
+      if (Date.now() - pollStart >= pollTimeout) {
+        writeLine(io.stderr, '  ⚠️  Prompt delivery timed out after 3 minutes. Session exists but agent may be slow to respond.');
+      }
+    }
   } catch (e) {
     const cause = (e as { cause?: { code?: string } }).cause;
     const errMessage = getErrorMessage(e);

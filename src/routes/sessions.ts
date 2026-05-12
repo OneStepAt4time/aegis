@@ -456,7 +456,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });
 
-    let promptDelivery: { delivered: boolean; attempts: number } | undefined;
+    let promptDelivery: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout' } | undefined;
     if (prompt) {
       let finalPrompt = prompt;
       if (memoryKeys && memoryKeys.length > 0 && memoryBridge) {
@@ -468,10 +468,27 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           finalPrompt = lines.join('\n');
         }
       }
-      promptDelivery = acpBackend && ctx.config.acpEnabled
-        ? await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' })
-        : await sessions.sendInitialPrompt(session.id, finalPrompt);
-      metrics.promptSent(promptDelivery.delivered);
+
+      if (acpBackend && ctx.config.acpEnabled) {
+        // Issue #3243: Async prompt delivery for ACP sessions.
+        // Return immediately with status 'pending'; deliver prompt in background.
+        // The client polls GET /v1/sessions/:id to check promptDelivery.status.
+        promptDelivery = { delivered: false, attempts: 0, status: 'pending' };
+        session.promptDelivery = promptDelivery;
+        const deliverAsync = async () => {
+          try {
+            const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
+            session.promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed' };
+            metrics.promptSent(result.delivered);
+          } catch (e) {
+            session.promptDelivery = { delivered: false, attempts: 1, status: 'failed' };
+          }
+        };
+        void deliverAsync();
+      } else {
+        promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
+        metrics.promptSent(promptDelivery.delivered);
+      }
     }
 
     // Issue #3068: Warn when ACP is disabled — sessions are created but no agent runs
