@@ -103,7 +103,8 @@
     "ip-address": "^10.2.0",
     "express-rate-limit": "^8.5.1",
     "hono": "^4.12.18",
-    "fast-uri": "^3.1.2"
+    "fast-uri": "^3.1.2",
+    "protobufjs": ">=8.2.0"
   },
   "repository": {
     "type": "git",
