@@ -5,7 +5,8 @@
  * gradient backdrop, glow border on active.
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useT } from '../../i18n/context';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -82,6 +83,7 @@ interface CommandPaletteProps {
 }
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -200,7 +202,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
             role="dialog"
             aria-modal="true"
-            aria-label="Command palette"
+            aria-label={t('aria.commandPalette')}
             ref={trapRef as React.Ref<HTMLDivElement>}
             className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
           >

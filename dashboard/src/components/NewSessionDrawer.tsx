@@ -4,7 +4,8 @@
  * Width: 480px desktop, full-width mobile.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useT } from '../i18n/context';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -22,6 +23,7 @@ const PERMISSION_MODES = [
 ];
 
 export function NewSessionDrawer() {
+  const t = useT();
   const navigate = useNavigate();
   const addToast = useToastStore((t) => t.addToast);
   const { newSessionOpen, closeNewSession } = useDrawerStore();
@@ -126,7 +128,7 @@ export function NewSessionDrawer() {
             key="drawer-panel"
             role="dialog"
             aria-modal="true"
-            aria-label="New Session"
+            aria-label={t('aria.newSession')}
             ref={trapRef as React.Ref<HTMLDivElement>}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -143,7 +145,7 @@ export function NewSessionDrawer() {
               <button
                 type="button"
                 onClick={closeNewSession}
-                aria-label="Close drawer"
+                aria-label={t('aria.closeDrawer')}
                 className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <X className="h-4 w-4" />

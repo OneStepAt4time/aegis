@@ -4,7 +4,8 @@ import { logger } from '../utils/logger';
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'
+import { useT } from '../i18n/context';
 import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
@@ -105,6 +106,7 @@ function isMobileSidebarViewport(): boolean {
 }
 
 export default function Layout() {
+  const t = useT();
   const sseConnected = useStore((s) => s.sseConnected);
   const setSseConnected = useStore((s) => s.setSseConnected);
   const sseError = useStore((s) => s.sseError);
@@ -406,7 +408,7 @@ export default function Layout() {
 
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
-        aria-label="Primary sidebar"
+        aria-label={t('aria.primarySidebar')}
         className={`
           fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
           transition-all duration-300 ease-in-out
@@ -428,7 +430,7 @@ export default function Layout() {
               tabIndex={hiddenMobileSidebarControlTabIndex}
               disabled={isMobileSidebarHidden}
               className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
-              aria-label="Close menu"
+              aria-label={t('aria.closeMenu')}
               aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
             >
               <X className="h-5 w-5" />
@@ -436,7 +438,7 @@ export default function Layout() {
         </div>
 
         {/* Nav links */}
-        <nav className="flex flex-col gap-4 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden" aria-label="Main navigation">
+        <nav className="flex flex-col gap-4 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden" aria-label={t('aria.mainNavigation')}>
           {NAV_GROUPS.map((group) => (
             <div key={group.label} className="flex flex-col gap-1">
               {!isCollapsed && (
@@ -471,7 +473,7 @@ export default function Layout() {
         {/* Bottom section: Settings + toggle + logout */}
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
           {identityLabel && identityDetailLabel && !isCollapsed && (
-            <div className="px-3 py-2" aria-label="Signed in user">
+            <div className="px-3 py-2" aria-label={t('aria.signedInUser')}>
               <p className="truncate text-xs font-medium text-slate-700 dark:text-[var(--color-text-primary)]">{identityLabel}</p>
               <p className="truncate text-[11px] text-slate-500 dark:text-[var(--color-text-muted)]">
                 {identityDetailLabel}
@@ -519,7 +521,7 @@ export default function Layout() {
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
             className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
-            aria-label="Sign out"
+            aria-label={t('aria.signOut')}
           >
             <LogOut className="h-4 w-4 shrink-0" />
             {!isCollapsed && <span className="truncate">Sign out</span>}
@@ -540,7 +542,7 @@ export default function Layout() {
                 tabIndex={isMobileDrawerOpen ? -1 : undefined}
                 aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
                 className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
-                aria-label="Open menu"
+                aria-label={t('aria.openMenu')}
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -559,7 +561,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={openNewSession}
-                aria-label="New Session (⌘N)"
+                aria-label={t('aria.newSessionCmd')}
                 title="New Session (⌘N)"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
               >

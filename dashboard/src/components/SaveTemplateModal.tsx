@@ -2,7 +2,8 @@
  * components/SaveTemplateModal.tsx — Modal dialog for saving a session as a template.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useT } from '../i18n/context';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { X, Loader2 } from 'lucide-react';
 import { createTemplate } from '../api/client';
@@ -15,6 +16,7 @@ interface SaveTemplateModalProps {
 }
 
 export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemplateModalProps) {
+  const t = useT();
   const abortRef = useRef<AbortController | null>(null);
   const trapRef = useFocusTrap(open);
 
@@ -95,13 +97,13 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
         ref={trapRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Save session as template"
+        aria-label={t('aria.saveAsTemplate')}
         className="relative w-full max-w-md mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Save as Template</h2>
-          <button aria-label="Close"
+          <button aria-label={t('aria.close')}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >

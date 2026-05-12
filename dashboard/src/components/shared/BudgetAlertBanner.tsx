@@ -7,7 +7,8 @@
  * Part of issue #3125: Budget Alerts & Cost Forecasts.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react'
+import { useT } from '../../i18n/context';
 import { AlertTriangle, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatNumber';
 import { getBudgetSettings } from '../../utils/budgetSettings';
@@ -21,6 +22,7 @@ interface AlertState {
 const DISMISS_KEY = 'aegis:budget-alert-dismissed';
 
 export function BudgetAlertBanner() {
+  const t = useT();
   const [alert, setAlert] = useState<AlertState | null>(null);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
 
@@ -120,7 +122,7 @@ export function BudgetAlertBanner() {
             setAlert(null);
           }}
           className="flex-shrink-0 rounded p-1 hover:opacity-70 transition-opacity"
-          aria-label="Dismiss budget alert"
+          aria-label={t('aria.dismissBudgetAlert')}
         >
           <X className="h-4 w-4" />
         </button>

@@ -3,7 +3,8 @@
  * Sticky 280px side rail showing live audit events on xl+ viewports (issue 2014).
  */
 
-import { useMemo } from 'react';
+import { useMemo } from 'react'
+import { useT } from '../../i18n/context';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle, CheckCircle, Zap, XCircle } from 'lucide-react';
@@ -62,13 +63,14 @@ function EventIcon({ event }: { event: GlobalSSEEventType }) {
 }
 
 export default function LiveAuditStream() {
+  const t = useT();
   const activities = useStore((s) => s.activities);
   const sseConnected = useStore((s) => s.sseConnected);
 
   const events = useMemo(() => activities.slice(0, maxEvents), [activities]);
 
   return (
-    <aside aria-label="Live audit stream" className="hidden xl:flex w-[var(--side-rail-width)] shrink-0 flex-col border-l border-white/5 bg-transparent backdrop-blur-md overflow-hidden">
+    <aside aria-label={t('aria.liveAuditStream')} className="hidden xl:flex w-[var(--side-rail-width)] shrink-0 flex-col border-l border-white/5 bg-transparent backdrop-blur-md overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-white/5 px-4 py-3 flex items-center gap-2">
         <Activity className="h-4 w-4 text-[var(--color-accent-cyan)]" />

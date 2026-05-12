@@ -7,7 +7,8 @@
  * - Colors via CSS vars: success=emerald, warning=amber, error=red, info=slate
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useT } from '../i18n/context';
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle, Trash2, Undo } from 'lucide-react';
 import { useToastStore } from '../store/useToastStore';
 import type { ToastType } from '../store/useToastStore';
@@ -43,6 +44,7 @@ function ToastItem({
   description?: string;
   undoAction?: () => void;
 }) {
+  const t = useT();
   const removeToast = useToastStore((s) => s.removeToast);
   const [progress, setProgress] = useState(100);
   const Icon = TYPE_ICONS[type];
@@ -131,7 +133,7 @@ function ToastItem({
         <button
           onClick={handleUndo}
           className="shrink-0 flex items-center gap-1 rounded px-2 py-1 text-xs font-medium opacity-80 hover:opacity-100 transition-opacity bg-current/10"
-          aria-label="Undo"
+          aria-label={t('aria.undo')}
         >
           <Undo className="h-3 w-3" />
           Undo
@@ -140,7 +142,7 @@ function ToastItem({
       <button
         onClick={() => removeToast(id)}
         className="shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 transition-opacity"
-        aria-label="Dismiss"
+        aria-label={t('aria.dismiss')}
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -150,6 +152,7 @@ function ToastItem({
 
 export default function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts);
+  const t = useT();
   const removeToast = useToastStore((s) => s.removeToast);
 
   if (toasts.length === 0) return null;
@@ -157,7 +160,7 @@ export default function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      aria-label="Notifications"
+      aria-label={t('aria.notifications')}
       className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
     >
       {toasts.length > 1 && (
@@ -165,7 +168,7 @@ export default function ToastContainer() {
           <button
             onClick={() => toasts.forEach((t) => removeToast(t.id))}
             className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Dismiss all notifications"
+            aria-label={t('aria.dismissAll')}
           >
             <Trash2 className="h-3 w-3" />
             Clear all
