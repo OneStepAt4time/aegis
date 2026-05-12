@@ -2,7 +2,8 @@
  * components/shared/CodeBlock.tsx — Syntax-highlighted code block renderer.
  */
 
-import { useState } from 'react';
+import { useState } from 'react'
+import { useT } from '../../i18n/context';
 import { Copy, Check } from 'lucide-react';
 
 // Lightweight syntax highlighting via regex — zero dependencies
@@ -49,6 +50,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -65,7 +67,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
         <button
           onClick={handleCopy}
           className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-          aria-label="Copy code"
+          aria-label={t('aria.copyCode')}
         >
           {copied ? <Check className="h-3.5 w-3.5 text-[var(--color-success)]" /> : <Copy className="h-3.5 w-3.5" />}
         </button>

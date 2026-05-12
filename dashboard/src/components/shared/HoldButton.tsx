@@ -6,13 +6,13 @@
  * cancels. A radial progress ring shows hold progress.
  *
  * Usage:
- *   <HoldButton onConfirm={handleKill} aria-label="Hold to kill session">
+ *   <HoldButton onConfirm={handleKill} aria-label={t('aria.holdToKill')}>
  *     Kill
  *   </HoldButton>
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 export interface HoldButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onMouseDown' | 'onMouseUp' | 'onTouchStart' | 'onTouchEnd'> {

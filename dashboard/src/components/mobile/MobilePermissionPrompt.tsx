@@ -3,7 +3,8 @@
  * Mobile-optimized permission prompt with swipe gestures, haptics, and long-press.
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useT } from '../../i18n/context';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { PendingPermissionInfo } from '../../types';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
@@ -43,6 +44,7 @@ export function MobilePermissionPrompt({
   onViewDetails,
   onJumpToTranscript,
 }: MobilePermissionPromptProps) {
+  const t = useT();
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [rippleOrigin, setRippleOrigin] = useState<{ x: number; y: number } | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,7 +114,7 @@ export function MobilePermissionPrompt({
       ref={containerRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Permission prompt"
+      aria-label={t('aria.permissionPrompt')}
       className="relative overflow-hidden rounded-t-2xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

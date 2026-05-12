@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'
+import { useT } from '../../i18n/context';
 import { X, Keyboard } from 'lucide-react';
 import { SHORTCUTS } from '../../hooks/useKeyboardShortcuts';
 
@@ -9,13 +10,14 @@ export function KeyboardShortcutsHelp({
   open: boolean;
   onClose: () => void;
 }) {
+  const translate = useT();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (open) setVisible(true);
     else {
-      const t = setTimeout(() => setVisible(false), 200);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setVisible(false), 200);
+      return () => clearTimeout(timer);
     }
   }, [open]);
 
@@ -29,7 +31,7 @@ export function KeyboardShortcutsHelp({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Keyboard shortcuts"
+      aria-label={translate('aria.keyboardShortcuts')}
     >
       <div
         className="w-full max-w-md rounded-xl border border-[var(--color-void-lighter)]/60 bg-[var(--color-surface)] p-6 shadow-2xl"
@@ -43,7 +45,7 @@ export function KeyboardShortcutsHelp({
           <button
             onClick={onClose}
             className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-void-lighter)]/50 hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Close"
+            aria-label={translate('aria.close')}
           >
             <X className="h-4 w-4" />
           </button>

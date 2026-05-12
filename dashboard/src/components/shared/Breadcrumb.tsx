@@ -3,6 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
+import { useT } from '../../i18n/context';
 import { ChevronRight, Home } from 'lucide-react';
 
 interface Crumb {
@@ -49,6 +50,7 @@ function buildCrumbs(pathname: string): Crumb[] {
 }
 
 export default function Breadcrumb() {
+  const t = useT();
   const location = useLocation();
 
   if (location.pathname === '/' || location.pathname === '') return null;
@@ -56,7 +58,7 @@ export default function Breadcrumb() {
   const crumbs = buildCrumbs(location.pathname);
 
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-[var(--color-text-muted)]">
+    <nav aria-label={t('aria.breadcrumb')} className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-[var(--color-text-muted)]">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex min-w-0 items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3 text-[var(--color-text-muted)]" />}

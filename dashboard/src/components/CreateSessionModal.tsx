@@ -2,7 +2,8 @@
  * components/CreateSessionModal.tsx â€” Modal dialog for creating new sessions.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useT } from '../i18n/context';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
@@ -21,6 +22,7 @@ function makeRow(): BatchRow {
 }
 
 export default function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
+  const t = useT();
   const navigate = useNavigate();
   const workDirRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -192,7 +194,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       />
 
       {/* Modal */}
-      <div ref={trapRef} role="dialog" aria-modal="true" aria-label="Create new session" className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
+      <div ref={trapRef} role="dialog" aria-modal="true" aria-label={t('aria.createNewSession')} className={`relative w-full ${mode === 'batch' ? 'max-w-2xl' : 'max-w-md'} mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <div className="flex items-center gap-4">
@@ -235,7 +237,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               )}
             </div>
           </div>
-          <button aria-label="Close"
+          <button aria-label={t('aria.close')}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
@@ -388,7 +390,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 <button
                   type="button"
                   onClick={() => removeBatchRow(i)}
-                  aria-label="Remove row"
+                  aria-label={t('aria.removeRow')}
                   disabled={batchRows.length <= 1}
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >

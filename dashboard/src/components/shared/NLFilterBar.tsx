@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react'
+import { useT } from '../../i18n/context';
 import { Icon } from '../Icon';
 
 export interface FilterToken {
@@ -165,6 +166,7 @@ interface NLFilterBarProps {
 }
 
 export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions today", "by admin last week"…', className }: NLFilterBarProps) {
+  const t = useT();
   const [inputValue, setInputValue] = useState('');
   const [chips, setChips] = useState<FilterToken[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -228,13 +230,13 @@ export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions 
         onBlur={() => { if (inputValue.trim()) commitInput(); }}
         placeholder={chips.length === 0 ? placeholder : 'Add filter…'}
         className="min-h-8 min-w-[200px] flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
-        aria-label="Natural language filter"
+        aria-label={t('aria.naturalLanguageFilter')}
       />
       {(chips.length > 0 || inputValue) && (
         <button
           type="button"
           onClick={clearAll}
-          aria-label="Clear all filters"
+          aria-label={t('aria.clearAllFilters')}
           className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
         >
           <Icon name="X" size={16} />
