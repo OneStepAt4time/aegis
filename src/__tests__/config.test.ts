@@ -52,6 +52,7 @@ describe('config', () => {
       expect(config.tgGroupId).toBe('');
       expect(config.tgTopicTtlMs).toBe(24 * 60 * 60 * 1000);
       expect(config.hookSecretHeaderOnly).toBe(false);
+      expect(config.acpPromptTimeoutMs).toBe(120_000);
     });
   });
 

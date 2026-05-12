@@ -85,7 +85,7 @@ async function buildRouteContext(tmpDir: string) {
       strictRBAC: false,
     sseIdleMs: 60_000, sseClientTimeoutMs: 300_000, hookTimeoutMs: 10_000,
     shutdownGraceMs: 15_000, keyRotationGraceSeconds: 3600, shutdownHardMs: 20_000,
-      acpPromptTimeoutMs: 60_000,
+      acpPromptTimeoutMs: 120_000,
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file', postgresUrl: '', defaultTenantId: 'default', acpEnabled: false,
     tenantWorkdirs: {},

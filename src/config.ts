@@ -233,7 +233,7 @@ const defaults: Config = {
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
   acpEnabled: true,
-  acpPromptTimeoutMs: 60_000, // Issue #3223: 60s default for BYO-LLM proxy setups
+  acpPromptTimeoutMs: 120_000, // Issue #3243: 120s default for BYO-LLM proxy setups
 };
 
 /** Parse CLI args for --config flag */

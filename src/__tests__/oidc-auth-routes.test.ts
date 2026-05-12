@@ -103,7 +103,7 @@ function makeConfig(): Config {
     shutdownGraceMs: 1,
     keyRotationGraceSeconds: 1,
     shutdownHardMs: 1,
-      acpPromptTimeoutMs: 60_000,
+      acpPromptTimeoutMs: 120_000,
     stateStore: 'file',
     postgresUrl: '',
     dashboardEnabled: true,

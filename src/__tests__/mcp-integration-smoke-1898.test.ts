@@ -218,7 +218,7 @@ async function buildTestServer(): Promise<{
     shutdownGraceMs: 15_000,
       keyRotationGraceSeconds: 3600,
     shutdownHardMs: 20_000,
-      acpPromptTimeoutMs: 60_000,
+      acpPromptTimeoutMs: 120_000,
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file',
     postgresUrl: '',
