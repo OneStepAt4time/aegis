@@ -763,11 +763,23 @@ curl -X POST http://localhost:9100/v1/sessions \
   "workDir": "/home/user/my-project",
   "status": "working",
   "createdAt": 1712650800000,
-  "promptDelivery": { "delivered": false, "attempts": 0 }
+  "promptDelivery": { "delivered": false, "attempts": 0, "status": "pending" }
 }
 ```
 
-> **Note:** `promptDelivery.delivered` is `false` when ACP is disabled — no backend process is spawned to handle the prompt. The response includes a `warning` field explaining the issue. Enable ACP via `AEGIS_ACP_ENABLED=true` or `"acpEnabled": true` in config.
+**`promptDelivery` fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `delivered` | boolean | Whether the prompt was successfully delivered to the agent |
+| `attempts` | number | Number of delivery attempts |
+| `status` | string | Delivery status: `pending` (ACP async, not yet sent), `delivered`, `failed`, or `timeout` |
+
+> **Async delivery (ACP):** For ACP sessions with a prompt, the server returns `201` immediately with `status: "pending"`. The prompt is delivered in the background. Poll `GET /v1/sessions/:id` to check `promptDelivery.status` until it transitions to `delivered` or `failed`.
+>
+> **Non-ACP sessions:** For built-in sessions, `promptDelivery` is resolved synchronously — `status` is omitted and `delivered` reflects the immediate result.
+>
+> **ACP disabled:** When ACP is disabled, `delivered` is `false` with no agent process spawned. The response includes a `warning` field. Enable via `AEGIS_ACP_ENABLED=true` or `"acpEnabled": true` in config.
 
 **Response (`200 OK`):** Returned when reusing an existing idle session (`reused: true`).
 
