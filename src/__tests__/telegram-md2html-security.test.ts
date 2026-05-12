@@ -39,8 +39,8 @@ describe('Security: md2html URI scheme allowlist (#3173)', () => {
       expect(sanitizeHref('/path/to/page')).toBe('/path/to/page');
     });
 
-    it('should block tg:// deep links', () => {
-      expect(sanitizeHref('tg://resolve?domain=attacker_bot')).toBe('#');
+    it('should allow tg:// deep links (Telegram native scheme)', () => {
+      expect(sanitizeHref('tg://resolve?domain=attacker_bot')).toBe('tg://resolve?domain=attacker_bot'); // tg: is Telegram deep link, allowed
     });
 
     it('should block javascript: URIs', () => {
@@ -64,7 +64,7 @@ describe('Security: md2html URI scheme allowlist (#3173)', () => {
     });
 
     it('should be case-insensitive for scheme check', () => {
-      expect(sanitizeHref('TG://resolve?domain=bot')).toBe('#');
+      expect(sanitizeHref('TG://resolve?domain=bot')).toBe('TG://resolve?domain=bot'); // tg: allowed, case preserved in output
       expect(sanitizeHref('JavaScript:alert(1)')).toBe('#');
     });
 
@@ -74,7 +74,7 @@ describe('Security: md2html URI scheme allowlist (#3173)', () => {
 
     it('should handle whitespace-padded hrefs', () => {
       expect(sanitizeHref('  https://example.com  ')).toBe('https://example.com');
-      expect(sanitizeHref('  tg://evil  ')).toBe('#');
+      expect(sanitizeHref('  tg://evil  ')).toBe('tg://evil'); // tg: allowed, trimmed
     });
   });
 });
