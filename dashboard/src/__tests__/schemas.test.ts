@@ -119,6 +119,35 @@ describe('SessionInfoSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+  it('accepts promptDelivery with status field', () => {
+    const result = SessionInfoSchema.safeParse({
+      ...validPayload,
+      promptDelivery: { delivered: false, attempts: 0, status: 'pending' },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.promptDelivery?.status).toBe('pending');
+    }
+  });
+
+  it('accepts promptDelivery without status (backward compatible)', () => {
+    const result = SessionInfoSchema.safeParse({
+      ...validPayload,
+      promptDelivery: { delivered: true, attempts: 1 },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.promptDelivery?.status).toBeUndefined();
+    }
+  });
+
+  it('rejects promptDelivery with invalid status', () => {
+    const result = SessionInfoSchema.safeParse({
+      ...validPayload,
+      promptDelivery: { delivered: false, attempts: 0, status: 'unknown' },
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('SessionSSEEventDataSchema', () => {
