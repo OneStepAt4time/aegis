@@ -49,6 +49,7 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Dashboard budget progress bars** — budget bars with spend summary in cost page ([#3183](https://github.com/OneStepAt4time/aegis/pull/3183))
 - **Telegram verbose mode** — forward full CC output (thinking, tool calls, code) via `AEGIS_TG_VERBOSE=true` ([#3196](https://github.com/OneStepAt4time/aegis/pull/3196))
 - **Dashboard i18n string extraction** — string extraction for 7 remaining dashboard pages ([#3192](https://github.com/OneStepAt4time/aegis/pull/3192))
+- **Dashboard aria-label i18n** — 152 aria-label translation keys added + batch 2 component replacements (20 files, 37 calls) ([#3231](https://github.com/OneStepAt4time/aegis/pull/3231), [#3238](https://github.com/OneStepAt4time/aegis/pull/3238), refs [#3229](https://github.com/OneStepAt4time/aegis/issues/3229))
 
 ### Changed
 
@@ -132,6 +133,7 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **strictRBAC config** — enforce RBAC on protected endpoints even when auth is disabled via `AEGIS_STRICT_RBAC=true` ([#3211](https://github.com/OneStepAt4time/aegis/pull/3211), closes [#3208](https://github.com/OneStepAt4time/aegis/issues/3208))
 - **SessionMonitor in containers** — start sessionMonitor during container boot ([#3204](https://github.com/OneStepAt4time/aegis/pull/3204), closes [#3189](https://github.com/OneStepAt4time/aegis/issues/3189))
 - **Telegram stale getUpdates** — clear stale `getUpdates` on startup to prevent 409 Conflict errors ([#3199](https://github.com/OneStepAt4time/aegis/pull/3199))
+- **StaticRateLimiter prune timer** — periodic eviction of expired buckets to prevent memory growth ([#3230](https://github.com/OneStepAt4time/aegis/pull/3230), closes [#3227](https://github.com/OneStepAt4time/aegis/issues/3227))
 
 ### Documentation
 
@@ -174,6 +176,9 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **SOC2 compliance update** — updated CC mapping with RBAC, OIDC, and audit v4 ([#3205](https://github.com/OneStepAt4time/aegis/pull/3205))
 - **Blog: What We Learned** — blog post on building an AI agent orchestrator ([#3200](https://github.com/OneStepAt4time/aegis/pull/3200))
 - **Dashboard static rate limiting docs** — added dashboard static rate limiting to enterprise rate limit table
+- **ACP tenantId alignment** — align unauth `tenantId` fallback with `SYSTEM_TENANT` constant ([#3239](https://github.com/OneStepAt4time/aegis/pull/3239), closes [#3237](https://github.com/OneStepAt4time/aegis/issues/3237))
+- **Quickstart restructure** — lead with 2-command `npx` + `ag run` flow in README and getting-started ([#3232](https://github.com/OneStepAt4time/aegis/pull/3232), refs [#3181](https://github.com/OneStepAt4time/aegis/issues/3181))
+- **Competitive threat matrix update** — live market data (Ruflo 49.3K⭐, OMC 33.5K⭐) + ClaudeClaw added ([#3233](https://github.com/OneStepAt4time/aegis/pull/3233), [#3235](https://github.com/OneStepAt4time/aegis/pull/3235))
 - **PATCH /v1/auth/keys/:id** — update API key role, name, and permissions without recreating ([#3212](https://github.com/OneStepAt4time/aegis/pull/3212), closes [#3207](https://github.com/OneStepAt4time/aegis/issues/3207))
 
 ### CI
