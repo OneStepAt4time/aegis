@@ -266,7 +266,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Master bearer token (empty = no auth) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory (sessions, PID file) |
 | `AEGIS_ACP_BIN` | _(auto)_ | Path to the ACP binary (auto-detected if empty) |
-| `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `60000` | Timeout in ms for ACP JSON-RPC requests (default 60s). Increase for slow BYO-LLM proxy setups (min: 1000) |
+| `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `120000` | Timeout in ms for ACP JSON-RPC requests (default 120s). Increase for slow BYO-LLM proxy setups (min: 1000) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
