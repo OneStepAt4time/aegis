@@ -6,6 +6,7 @@
  */
 
 import { formatCurrency } from '../../utils/formatNumber';
+import { useT } from '../../i18n/context';
 
 export interface SpendSummaryProps {
   /** Daily cost trends from analytics API. */
@@ -36,6 +37,8 @@ function getCurrentDay(): number {
 }
 
 export function SpendSummary({ dailyTrends }: SpendSummaryProps) {
+    const t = useT();
+
   const today = getToday();
   const monthPrefix = getCurrentMonthPrefix();
   const daysInMonth = getDaysInMonth();
@@ -64,7 +67,7 @@ export function SpendSummary({ dailyTrends }: SpendSummaryProps) {
     return (
       <div
         className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-        aria-label="Spending summary"
+        aria-label={t("aria.spendingSummary")}
       >
         {['Today', 'This Month', 'Projected'].map((label) => (
           <div
@@ -92,7 +95,7 @@ export function SpendSummary({ dailyTrends }: SpendSummaryProps) {
   return (
     <div
       className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-      aria-label="Spending summary"
+      aria-label={t("aria.spendingSummary")}
     >
       {stats.map((stat) => (
         <div

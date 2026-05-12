@@ -157,12 +157,12 @@ export default function PipelinesPage() {
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder={t("pipelines.searchPlaceholder")} aria-label="Search pipelines"
+          placeholder={t("pipelines.searchPlaceholder")} aria-label={t("aria.searchPipelines")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="min-h-[44px] flex-1 min-w-[200px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
         />
-        <select aria-label="Filter by status"
+        <select aria-label={t("aria.filterByStatus")}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
@@ -173,7 +173,7 @@ export default function PipelinesPage() {
           <option value="failed">Failed</option>
           <option value="pending">Pending</option>
         </select>
-        <select aria-label="Sort by"
+        <select aria-label={t("pipelines.sortBy")}
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"

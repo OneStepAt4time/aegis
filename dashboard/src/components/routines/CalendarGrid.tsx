@@ -36,6 +36,7 @@ function addMonths(d: Date, n: number): Date { return new Date(d.getFullYear(), 
 function subMonths(d: Date, n: number): Date { return addMonths(d, -n); }
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useT } from '../../i18n/context';
 
 export interface RoutineSchedule {
   id: string;
@@ -60,6 +61,7 @@ export default function CalendarGrid({
   onSelectDate,
   className = '',
 }: CalendarGridProps) {
+  const t = useT();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   const days = useMemo(() => {
@@ -105,21 +107,21 @@ export default function CalendarGrid({
           <button
             onClick={handleToday}
             className="px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded"
-            aria-label="Go to today"
+            aria-label={t("aria.goToToday")}
           >
             Today
           </button>
           <button
             onClick={handlePrevMonth}
             className="p-1 rounded hover:bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Previous month"
+            aria-label={t("aria.prevMonth")}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={handleNextMonth}
             className="p-1 rounded hover:bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Next month"
+            aria-label={t("aria.nextMonth")}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -140,7 +142,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7" role="grid" aria-label="Calendar">
+      <div className="grid grid-cols-7" role="grid" aria-label={t("aria.calendar")}>
         {days.map((day) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayRoutines = routineDates.get(dateKey);

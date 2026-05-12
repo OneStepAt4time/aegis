@@ -41,7 +41,7 @@ export default function SessionsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-white/5" role="tablist" aria-label="Session views">
+      <div className="flex gap-1 border-b border-white/5" role="tablist" aria-label={translate("aria.sessionViews")}>
         <button
           type="button"
           role="tab"
@@ -74,11 +74,11 @@ export default function SessionsPage() {
 
       {/* Tab panels */}
       {tab === 'active' ? (
-        <div id="tab-panel-active" role="tabpanel" aria-label="Active sessions">
+        <div id="tab-panel-active" role="tabpanel" aria-label={translate("aria.activeSessions")}>
           <SessionTable />
         </div>
       ) : (
-        <div id="tab-panel-all" role="tabpanel" aria-label="All sessions">
+        <div id="tab-panel-all" role="tabpanel" aria-label={translate("aria.allSessions")}>
           <Suspense fallback={<SkeletonTable rows={8} />}>
             <SessionHistoryPage />
           </Suspense>

@@ -16,6 +16,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useT } from '../../i18n/context';
 import {
   Send,
   Bot,
@@ -215,6 +216,8 @@ export function AcpChatView({
   onStop,
   config,
 }: AcpChatViewProps) {
+    const t = useT();
+
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -251,7 +254,7 @@ export function AcpChatView({
       {sessionUsage && <TokenMeter usage={sessionUsage} />}
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4" role="log" aria-label="Chat messages">
+      <div className="flex-1 overflow-y-auto px-4 py-4" role="log" aria-label={t("aria.chatMessages")}>
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-[var(--color-text-muted)] opacity-60">
             No messages yet. Send a prompt to start.
@@ -281,14 +284,14 @@ export function AcpChatView({
               rows={1}
               className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-blue-500/50 focus:outline-none"
               disabled={!isDriver}
-              aria-label="Message input"
+              aria-label={t("aria.messageInput")}
             />
             {isGenerating ? (
               <button
                 type="button"
                 onClick={onStop}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
-                aria-label="Stop generation"
+                aria-label={t("aria.stopGeneration")}
               >
                 ⏹
               </button>
@@ -298,7 +301,7 @@ export function AcpChatView({
                 onClick={handleSend}
                 disabled={!input.trim()}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Send message"
+                aria-label={t("aria.sendMessage")}
               >
                 <Send className="h-4 w-4" />
               </button>

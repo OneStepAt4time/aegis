@@ -64,3 +64,42 @@ vi.mock('../../api/resilient-websocket', () => ({
   }),
 }));
 
+
+// Safe useT mock: resolves i18n keys using the English catalog.
+// Returns a stable function reference to avoid re-render loops.
+vi.mock('../i18n/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../i18n/context')>();
+  let enObj: any = {};
+  try {
+    const mod = await vi.importActual<typeof import('../i18n/en')>('../i18n/en');
+    enObj = (mod as any).en || (mod as any).default || mod;
+  } catch {
+    // Fallback: empty catalog
+  }
+
+  const catalog: Record<string, string> = {};
+  const flatten = (obj: any, prefix: string) => {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? prefix + '.' + k : k;
+      if (typeof v === 'string') catalog[key] = v;
+      else if (typeof v === 'object' && v !== null) flatten(v, key);
+    }
+  };
+  flatten(enObj, '');
+
+  const stableT = (key: string, params?: Record<string, string | number>): string => {
+    let val = catalog[key] || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        val = val.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      });
+    }
+    return val;
+  };
+
+  return {
+    ...actual,
+    useT: () => stableT,
+    I18nProvider: actual.I18nProvider,
+  };
+});

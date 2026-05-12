@@ -48,6 +48,7 @@ export const en = {
     sortDate: 'Date',
     sortName: 'Name',
     sortStatus: 'Status',
+    sortBy: 'Sort by',
     metricTotal: 'Total',
     metricRunning: 'Running',
     metricCompleted: 'Completed',
@@ -567,6 +568,7 @@ export const en = {
     // Session table
     retryLoading: 'Retry loading sessions',
     searchSessions: 'Search sessions',
+    searchPipelines: 'Search pipelines',
     filterByStatus: 'Filter by status',
     filterByStatusGroup: 'Filter sessions by status',
     bulkActions: 'Bulk actions',

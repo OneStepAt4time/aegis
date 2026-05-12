@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { AcpSessionParticipants } from '../../types/acp-driver-observer';
 import { ROLE_COLORS } from '../../types/acp-driver-observer';
+import { useT } from '../../i18n/context';
 
 export interface DriverControlBarProps {
   participants: AcpSessionParticipants | null;
@@ -48,6 +49,8 @@ export function DriverControlBar({
   onTransfer,
   userRole = 'observer',
 }: DriverControlBarProps) {
+    const t = useT();
+
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [transferTarget, setTransferTarget] = useState('');
   const [transferReason, setTransferReason] = useState('');
@@ -68,7 +71,7 @@ export function DriverControlBar({
     <div
       className="flex flex-col gap-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3"
       role="toolbar"
-      aria-label="Session driver and observer controls"
+      aria-label={t("aria.sessionDriverControls")}
     >
       {/* Error banner */}
       {error && (
@@ -78,7 +81,7 @@ export function DriverControlBar({
             <button
               onClick={onClearError}
               className="text-red-400 hover:text-red-300"
-              aria-label="Dismiss error"
+              aria-label={t("aria.dismissError")}
             >
               ✕
             </button>
@@ -121,7 +124,7 @@ export function DriverControlBar({
             onClick={() => onClaim?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Claim driver role"
+            aria-label={t("aria.claimDriver")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gamepad2 className="h-4 w-4" />}
             Claim Driver
@@ -134,7 +137,7 @@ export function DriverControlBar({
               onClick={() => onRelease?.()}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-50"
-              aria-label="Release driver role"
+              aria-label={t("aria.releaseDriver")}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               Release (become observer)
@@ -143,7 +146,7 @@ export function DriverControlBar({
               onClick={() => setShowTransferForm(true)}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
-              aria-label="Transfer driver role"
+              aria-label={t("aria.transferDriver")}
             >
               <ArrowRightLeft className="h-4 w-4" />
               Transfer
@@ -156,7 +159,7 @@ export function DriverControlBar({
             onClick={() => setShowTransferForm(true)}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
-            aria-label="Request driver transfer"
+            aria-label={t("aria.requestTransfer")}
           >
             <ArrowRightLeft className="h-4 w-4" />
             Request Transfer
@@ -197,7 +200,7 @@ export function DriverControlBar({
               onClick={handleTransfer}
               disabled={!transferTarget.trim() || isLoading}
               className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
-              aria-label="Confirm transfer"
+              aria-label={t("aria.confirmTransfer")}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
               Transfer
@@ -205,7 +208,7 @@ export function DriverControlBar({
             <button
               onClick={() => { setShowTransferForm(false); setTransferTarget(''); setTransferReason(''); }}
               className="rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-              aria-label="Cancel transfer"
+              aria-label={t("aria.cancelTransfer")}
             >
               Cancel
             </button>
@@ -219,7 +222,7 @@ export function DriverControlBar({
           <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)] opacity-60">
             Observers ({participants.observers.length})
           </span>
-          <div className="flex flex-wrap gap-1" role="list" aria-label="Session observers">
+          <div className="flex flex-wrap gap-1" role="list" aria-label={t("aria.sessionObservers")}>
             {participants.observers.map((obs) => (
               <span
                 key={obs.subscriberId}

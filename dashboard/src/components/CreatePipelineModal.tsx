@@ -2,12 +2,12 @@
  * components/CreatePipelineModal.tsx â€” Modal dialog for creating new pipelines.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useT } from '../i18n/context';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createPipeline } from '../api/client';
+import { useT } from '../i18n/context';
 
 interface CreatePipelineModalProps {
   open: boolean;
@@ -120,11 +120,11 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-      <div ref={trapRef} role="dialog" aria-modal="true" aria-label={t('aria.createNewPipeline')} className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div ref={trapRef} role="dialog" aria-modal="true" aria-label={t("aria.createNewPipeline")} className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">New Pipeline</h2>
-          <button aria-label={t('aria.close')}
+          <button aria-label={t("aria.close")}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
@@ -144,7 +144,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
               value={pipelineName}
               onChange={(e) => setPipelineName(e.target.value)}
               placeholder="my-pipeline"
-              aria-label={t('aria.pipelineName')}
+              aria-label={t("aria.pipelineName")}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
             />
           </div>

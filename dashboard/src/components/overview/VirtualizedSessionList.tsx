@@ -19,6 +19,7 @@ import {
 import type { SessionHealthState, SessionInfo } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
+import { useT } from '../../i18n/context';
 
 const needsApproval = (session: SessionInfo): boolean =>
   session.status === 'permission_prompt' || session.status === 'bash_approval';
@@ -266,6 +267,8 @@ export function VirtualizedSessionList({
   onInterrupt,
   onKill,
 }: VirtualizedSessionListProps) {
+    const t = useT();
+
   const items: FlatItem[] = useMemo(() => {
     if (!groupedRowModels || groupedRowModels.size === 0) {
       return rowViewModels.map((data) => ({ type: 'session' as const, data }));
@@ -309,7 +312,7 @@ export function VirtualizedSessionList({
           <div className="px-3 py-3 font-medium">
             <input
               type="checkbox"
-              aria-label="Select all visible sessions"
+              aria-label={t("aria.selectAll")}
               checked={allVisibleSelected}
               onChange={(e) => onToggleSelectAll(e.target.checked)}
               className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"

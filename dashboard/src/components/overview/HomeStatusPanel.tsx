@@ -6,6 +6,7 @@ import { useSseAwarePolling } from '../../hooks/useSseAwarePolling.js';
 import { useStore } from '../../store/useStore.js';
 import type { HealthResponse } from '../../types';
 import RealtimeBadge from './RealtimeBadge.js';
+import { useT } from '../../i18n/context';
 
 const FALLBACK_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -172,6 +173,8 @@ function getActiveSessionsCard(health: HealthResponse | null, isLoading: boolean
 }
 
 export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPanelProps) {
+    const t = useT();
+
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseConnected = useStore((s) => s.sseConnected);
   const sseError = useStore((s) => s.sseError);
@@ -209,7 +212,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
   const activeSessionsCard = getActiveSessionsCard(health, isLoading, loadError);
 
   return (
-    <section className="space-y-4" aria-label="System health">
+    <section className="space-y-4" aria-label={t("aria.systemHealth")}>
       {showStatusRow && (
         <div
           role="status"

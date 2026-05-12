@@ -6,6 +6,7 @@ import '@xterm/xterm/css/xterm.css';
 import { ResilientWebSocket } from '../../api/resilient-websocket';
 import { useStore } from '../../store/useStore';
 import type { WsInboundMessage, WsOutboundMessage, UIState } from '../../types';
+import { useT } from '../../i18n/context';
 
 interface LiveTerminalProps {
   sessionId: string;
@@ -13,6 +14,8 @@ interface LiveTerminalProps {
 }
 
 export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
+    const t = useT();
+
   const token = useStore((s) => s.token);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -246,7 +249,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
                 setRetryKey((k) => k + 1);
               }}
               className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--color-warning)]/30 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
-              aria-label="Retry terminal connection"
+              aria-label={t("aria.retryTerminal")}
             >
               Retry
             </button>

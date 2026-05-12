@@ -29,10 +29,20 @@ vi.mock('../store/useStore', () => ({
   useStore: vi.fn((sel: (s: Record<string, unknown>) => unknown) => sel({ sseError: null })),
 }));
 
-// Mock i18n
-vi.mock('../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+// Mock i18n — resolves keys from the English catalog
+vi.mock('../i18n/context', async () => {
+  const { en } = await import('../i18n/en');
+  const catalog: Record<string, string> = {};
+  const flatten = (obj: any, prefix: string) => {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? prefix + '.' + k : k;
+      if (typeof v === 'string') catalog[key] = v;
+      else if (typeof v === 'object' && v !== null) flatten(v, key);
+    }
+  };
+  flatten(en, '');
+  return { useT: () => (key: string) => catalog[key] || key };
+});
 
 // Mock child components
 vi.mock('../components/overview/HomeStatusPanel', () => ({
@@ -58,7 +68,7 @@ describe('OverviewPage (CCMeter redesign)', () => {
 
   it('renders page title', () => {
     render(<OverviewPage />);
-    expect(screen.getByText('overview.title')).not.toBeNull();
+    expect(screen.getByText('Overview')).not.toBeNull();
   });
 
   it('renders New Session button', () => {

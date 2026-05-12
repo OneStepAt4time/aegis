@@ -2,13 +2,13 @@
  * components/TemplateModal.tsx — Modal dialog for creating and editing session templates.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useT } from '../i18n/context';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { X, Loader2 } from 'lucide-react';
 import { createTemplate, updateTemplate } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
+import { useT } from '../i18n/context';
 
 const PERMISSION_MODES = [
   { value: '', label: 'Default (prompt)' },
@@ -166,7 +166,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {isEditing ? 'Edit Template' : 'Create Template'}
           </h2>
-          <button aria-label={t('aria.close')}
+          <button aria-label={t("aria.close")}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >

@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { useT } from '../../i18n/context';
 import {
   Pause,
   Play,
@@ -51,6 +52,8 @@ export function PauseControlBar({
   onCompleteIntervention,
   onResume,
 }: PauseControlBarProps) {
+    const t = useT();
+
   const [pauseReason, setPauseReason] = useState('');
   const [guidance, setGuidance] = useState('');
   const [showPauseForm, setShowPauseForm] = useState(false);
@@ -79,7 +82,7 @@ export function PauseControlBar({
     <div
       className="flex flex-col gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3"
       role="toolbar"
-      aria-label="Session pause and intervention controls"
+      aria-label={t("aria.pauseInterventionControls")}
     >
       {/* Error banner */}
       {error && (
@@ -89,7 +92,7 @@ export function PauseControlBar({
             <button
               onClick={onClearError}
               className="text-red-400 hover:text-red-300"
-              aria-label="Dismiss error"
+              aria-label={t("aria.dismissError")}
             >
               ✕
             </button>
@@ -105,7 +108,7 @@ export function PauseControlBar({
               onClick={() => setShowPauseForm(true)}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Pause session"
+              aria-label={t("aria.pauseSession")}
             >
               <Pause className="h-4 w-4" />
               Pause
@@ -131,7 +134,7 @@ export function PauseControlBar({
                 onClick={handlePause}
                 disabled={!pauseReason.trim() || isLoading}
                 className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
-                aria-label="Confirm pause"
+                aria-label={t("aria.confirmPause")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
                 Confirm
@@ -139,7 +142,7 @@ export function PauseControlBar({
               <button
                 onClick={() => { setShowPauseForm(false); setPauseReason(''); }}
                 className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-                aria-label="Cancel pause"
+                aria-label={t("aria.cancelPause")}
               >
                 Cancel
               </button>
@@ -158,7 +161,7 @@ export function PauseControlBar({
             onClick={() => onIntervene?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
-            aria-label="Start intervention"
+            aria-label={t("aria.startIntervention")}
           >
             <Hand className="h-4 w-4" />
             Intervene
@@ -167,7 +170,7 @@ export function PauseControlBar({
             onClick={() => onResume?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
-            aria-label="Resume session"
+            aria-label={t("aria.resumeSession")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Resume
@@ -187,7 +190,7 @@ export function PauseControlBar({
                 onClick={() => setShowGuidanceForm(true)}
                 disabled={!canAct}
                 className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
-                aria-label="Complete intervention with guidance"
+                aria-label={t("aria.completeWithGuidance")}
               >
                 <CheckCircle className="h-4 w-4" />
                 Complete Intervention
@@ -214,7 +217,7 @@ export function PauseControlBar({
                   onClick={handleComplete}
                   disabled={isLoading}
                   className="flex items-center gap-1 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:opacity-50"
-                  aria-label="Submit guidance and complete intervention"
+                  aria-label={t("aria.submitGuidance")}
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                   Submit &amp; Resume
@@ -222,7 +225,7 @@ export function PauseControlBar({
                 <button
                   onClick={() => { setShowGuidanceForm(false); setGuidance(''); }}
                   className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-                  aria-label="Cancel intervention completion"
+                  aria-label={t("aria.cancelIntervention")}
                 >
                   Cancel
                 </button>
@@ -235,7 +238,7 @@ export function PauseControlBar({
               onClick={() => onResume?.()}
               disabled={!canAct}
               className="flex items-center gap-2 self-start rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
-              aria-label="Resume without guidance"
+              aria-label={t("aria.resumeWithoutGuidance")}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Resume without guidance

@@ -21,6 +21,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useT } from '../../i18n/context';
 import {
   User,
   Terminal,
@@ -195,6 +196,8 @@ export function OperatorTimeline({
   config,
   isLoading = false,
 }: OperatorTimelineProps) {
+    const t = useT();
+
   const [filters, setFilters] = useState<AcpTimelineFilters>({
     categories: new Set(config?.defaultFilters ?? ALL_CATEGORIES),
     search: '',
@@ -255,7 +258,7 @@ export function OperatorTimeline({
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
           }`}
           aria-expanded={showFilters}
-          aria-label="Toggle category filters"
+          aria-label={t("aria.toggleCategoryFilters")}
         >
           <Filter className="h-3.5 w-3.5" />
           Filter
@@ -273,7 +276,7 @@ export function OperatorTimeline({
             onChange={handleSearch}
             placeholder="Search events..."
             className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-void)] py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus:outline-none"
-            aria-label="Search timeline events"
+            aria-label={t("aria.searchTimeline")}
           />
         </div>
         <span className="text-[10px] text-[var(--color-text-muted)]">
@@ -283,7 +286,7 @@ export function OperatorTimeline({
 
       {/* Category filter bar */}
       {showFilters && (
-        <div className="flex flex-wrap gap-1 border-b border-[var(--color-border)] px-3 py-2" role="group" aria-label="Category filters">
+        <div className="flex flex-wrap gap-1 border-b border-[var(--color-border)] px-3 py-2" role="group" aria-label={t("aria.categoryFilters")}>
           {ALL_CATEGORIES.map((cat) => {
             const cfg = CATEGORY_CONFIG[cat];
             const isActive = filters.categories.has(cat);
@@ -313,7 +316,7 @@ export function OperatorTimeline({
         ref={listRef}
         className="flex-1 overflow-y-auto"
         role="list"
-        aria-label="Session timeline"
+        aria-label={t("aria.sessionTimeline")}
       >
         {isLoading && (
           <div className="flex items-center justify-center p-8" role="status">

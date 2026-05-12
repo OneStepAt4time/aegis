@@ -18,6 +18,7 @@ import {
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
 import { ChartFrame } from '../shared/ChartFrame';
+import { useT } from '../../i18n/context';
 
 export interface ForecastChartProps {
   /** Daily cost trends from analytics API. */
@@ -128,6 +129,8 @@ function CustomTooltip({ active, payload, label }: {
 }
 
 export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProps) {
+    const t = useT();
+
   const chartData = buildChartData(dailyTrends);
   const hasData = chartData.length > 0;
 
@@ -135,7 +138,7 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
     return (
       <div
         className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5"
-        aria-label="Cost forecast chart"
+        aria-label={t("aria.costForecastChart")}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Cost Forecast
@@ -157,7 +160,7 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
   return (
     <section
       className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5"
-      aria-label="Cost forecast chart"
+      aria-label={t("aria.costForecastChart")}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

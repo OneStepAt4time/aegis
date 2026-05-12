@@ -58,7 +58,7 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
               style={{ backgroundColor: bar.color }}
             />
             <span className="text-[var(--color-text-muted)]">{bar.label}</span>
-            <span className="text-[#ccc] font-mono">{formatTokens(bar.value)}</span>
+            <span className="text-muted-foreground font-mono">{formatTokens(bar.value)}</span>
           </div>
         ))}
         {estimatedCostUsd != null && (

@@ -4,8 +4,7 @@
  * Width: 480px desktop, full-width mobile.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useT } from '../i18n/context';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -15,6 +14,7 @@ import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useDrawerStore } from '../store/useDrawerStore';
 import { useConfetti } from '../hooks/useConfetti';
+import { useT } from '../i18n/context';
 
 const PERMISSION_MODES = [
   { value: 'default', label: 'Default (prompt)' },
@@ -23,9 +23,9 @@ const PERMISSION_MODES = [
 ];
 
 export function NewSessionDrawer() {
-  const t = useT();
   const navigate = useNavigate();
   const addToast = useToastStore((t) => t.addToast);
+  const t = useT();
   const { newSessionOpen, closeNewSession } = useDrawerStore();
   const { triggerFirstSessionConfetti } = useConfetti();
 
@@ -128,7 +128,7 @@ export function NewSessionDrawer() {
             key="drawer-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={t('aria.newSession')}
+            aria-label={t("aria.newSession")}
             ref={trapRef as React.Ref<HTMLDivElement>}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -145,7 +145,7 @@ export function NewSessionDrawer() {
               <button
                 type="button"
                 onClick={closeNewSession}
-                aria-label={t('aria.closeDrawer')}
+                aria-label={t("aria.closeDrawer")}
                 className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <X className="h-4 w-4" />

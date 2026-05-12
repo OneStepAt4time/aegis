@@ -33,6 +33,7 @@ import RealtimeBadge from './RealtimeBadge';
 import { SessionPreviewCard } from '../session/SessionPreviewCard';
 import { VirtualizedSessionList } from './VirtualizedSessionList';
 import type { VirtualizedRowData } from './VirtualizedSessionList';
+import { useT } from '../../i18n/context';
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -90,6 +91,8 @@ interface SessionTableProps {
 }
 
 export default function SessionTable({ maxRows }: SessionTableProps = {}) {
+    const t = useT();
+
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -449,7 +452,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               setLoadError(null);
               void fetchSessions();
             }}
-            aria-label="Retry loading sessions"
+            aria-label={t("aria.retryLoading")}
             className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
           >
             Retry
@@ -477,7 +480,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   }}
                   placeholder="Search sessions…"
                    className="min-h-[44px] w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
-                  aria-label="Search sessions"
+                  aria-label={t("aria.searchSessions")}
                 />
               </label>
 
@@ -489,7 +492,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setStatusFilter(e.target.value as SessionStatusFilter);
                     setPage(1);
                   }}
-                  aria-label="Filter by status"
+                  aria-label={t("aria.filterByStatus")}
                   className="min-h-[44px] rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-cyan"
                 >
                   {STATUS_FILTERS.map((status) => (
@@ -514,7 +517,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter sessions by status">
+            <div className="flex flex-wrap gap-2" role="group" aria-label={t("aria.filterByStatusGroup")}>
               {STATUS_FILTERS.filter((status) => status === 'all' || (statusCounts[status] ?? 0) > 0).map((status) => {
                 const isActive = statusFilter === status;
                 return (
@@ -570,7 +573,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               {selectedIds.length} session{selectedIds.length === 1 ? '' : 's'} selected
             </div>
 
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Bulk actions">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("aria.bulkActions")}>
               <button
                 type="button"
                 onClick={() => runBulkAction('interrupt')}
@@ -593,7 +596,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 type="button"
                 onClick={() => setSelectedIds([])}
                 disabled={bulkAction !== null}
-                aria-label="Clear selection"
+                aria-label={t("aria.clearSelection")}
                 className="min-h-[44px] rounded-md border border-void-lighter px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear
@@ -666,7 +669,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  aria-label="Select all visible sessions"
+                  aria-label={t("aria.selectAll")}
                   checked={allVisibleSelected}
                   onChange={(e) => handleToggleSelectAll(e.target.checked)}
                   className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -730,14 +733,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             }
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block" tabIndex={0} aria-label="Sessions table scroll region">
-            <table className="w-full text-left text-sm" aria-label="Sessions table">
+          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
+            <table className="w-full text-left text-sm" aria-label={t("aria.sessionsTable")}>
               <thead>
                 <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
                   <th className="px-4 py-3 font-medium">
                     <input
                       type="checkbox"
-                      aria-label="Select all visible sessions"
+                      aria-label={t("aria.selectAll")}
                       checked={allVisibleSelected}
                       onChange={(e) => handleToggleSelectAll(e.target.checked)}
                       className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -784,7 +787,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={pagination.page <= 1}
-                  aria-label="Go to previous page"
+                  aria-label={t("aria.prevPage")}
                   className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
@@ -793,7 +796,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   type="button"
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                   disabled={pagination.page >= pagination.totalPages}
-                  aria-label="Go to next page"
+                  aria-label={t("aria.nextPage")}
                   className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next <ChevronRight className="h-4 w-4" />

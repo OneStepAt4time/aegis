@@ -116,7 +116,7 @@ export default function MetricCard({
             ) : (
               <>
                 {value}
-                {suffix && <span className="ml-1 text-base text-[#666]">{suffix}</span>}
+                {suffix && <span className="ml-1 text-base text-muted-foreground">{suffix}</span>}
               </>
             )}
           </div>
@@ -153,7 +153,7 @@ export default function MetricCard({
       )}
 
       {subLabel && !customVisual && (
-        <div className="mt-1.5 text-xs text-[#666]">{subLabel}</div>
+        <div className="mt-1.5 text-xs text-muted-foreground">{subLabel}</div>
       )}
     </div>
   );

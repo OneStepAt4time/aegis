@@ -3,8 +3,8 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { useT } from '../../i18n/context';
 import { ChevronRight, Home } from 'lucide-react';
+import { useT } from '../../i18n/context';
 
 interface Crumb {
   label: string;
@@ -58,7 +58,7 @@ export default function Breadcrumb() {
   const crumbs = buildCrumbs(location.pathname);
 
   return (
-    <nav aria-label={t('aria.breadcrumb')} className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-[var(--color-text-muted)]">
+    <nav aria-label={t("aria.breadcrumb")} className="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-[var(--color-text-muted)]">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex min-w-0 items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3 text-[var(--color-text-muted)]" />}

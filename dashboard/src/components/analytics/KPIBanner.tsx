@@ -63,7 +63,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
       <div
         className="flex h-[52px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-muted)]"
         role="status"
-        aria-label="No KPI data available"
+        aria-label={t("aria.noKpiData")}
       >
         {t('analytics.noData') || 'No data available'}
       </div>
@@ -75,7 +75,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
       className={`grid divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] ${className}`}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       role="list"
-      aria-label="Key performance indicators"
+      aria-label={t("aria.keyPerformanceIndicators")}
     >
       {items.map((item) => (
         <div

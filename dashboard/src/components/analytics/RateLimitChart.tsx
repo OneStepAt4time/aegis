@@ -16,6 +16,7 @@ import {
   Cell,
 } from 'recharts';
 import type { RateLimitKeyUsage } from '../../types';
+import { useT } from '../../i18n/context';
 
 /** Color thresholds matching the plan spec — CSS vars so they work with recharts Cell fill. */
 const COLOR_CYAN = 'var(--color-accent-cyan)';
@@ -112,12 +113,14 @@ function ChartTooltip({ active, payload, label }: {
 }
 
 export function RateLimitChart({ perKey }: RateLimitChartProps) {
+    const t = useT();
+
   if (perKey.length === 0) {
     return (
       <div
         className="flex h-[200px] items-center justify-center text-sm text-[var(--color-text-muted)]"
         role="status"
-        aria-label="No rate-limit data"
+        aria-label={t("aria.noRateLimitData")}
       >
         No rate-limit data available
       </div>
@@ -129,7 +132,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
   return (
     <section
       className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5"
-      aria-label="Rate-limit usage chart"
+      aria-label={t("aria.rateLimitChart")}
       role="region"
     >
       <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
@@ -179,7 +182,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             dataKey="sessionRatio"
             name="Sessions"
             radius={[0, 4, 4, 0]}
-            aria-label="Session usage"
+            aria-label={t("aria.sessionUsage")}
           >
             {data.map((row, i) => (
               <Cell key={`s-${i}`} fill={barColor(row.sessionRatio)} />
@@ -189,7 +192,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             dataKey="tokenRatio"
             name="Tokens"
             radius={[0, 4, 4, 0]}
-            aria-label="Token usage"
+            aria-label={t("aria.tokenUsage")}
           >
             {data.map((row, i) => (
               <Cell key={`t-${i}`} fill={barColor(row.tokenRatio)} />
@@ -199,7 +202,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             dataKey="spendRatio"
             name="Spend"
             radius={[0, 4, 4, 0]}
-            aria-label="Spend usage"
+            aria-label={t("aria.spendUsage")}
           >
             {data.map((row, i) => (
               <Cell key={`sp-${i}`} fill={barColor(row.spendRatio)} />

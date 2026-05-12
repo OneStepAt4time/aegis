@@ -175,7 +175,7 @@ export default function OverviewPage() {
         <button
           onClick={() => setModalOpen(true)}
           className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-semibold text-[var(--color-accent-cyan)] transition-all hover:bg-[var(--color-accent-cyan)]/20 hover:border-[var(--color-accent-cyan)]/50"
-          aria-label="Create new session"
+          aria-label={t("aria.createNewSession")}
         >
           <Plus className="h-3.5 w-3.5" />
           New Session
@@ -240,7 +240,7 @@ export default function OverviewPage() {
       {/* Zone D: Cost Chart + Efficiency Gauge */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Cost/Day chart — 2/3 width */}
-        <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Daily cost chart">
+        <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.dailyCostChart")}>
           <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Cost / Day</h3>
           {analytics && analytics.costTrends.length > 0 ? (
             <Suspense fallback={<div className="h-[220px] animate-pulse rounded bg-[var(--color-void-lighter)]/20" />}>
@@ -254,7 +254,7 @@ export default function OverviewPage() {
         </section>
 
         {/* Efficiency Gauge — 1/3 width */}
-        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Efficiency gauge">
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.efficiencyGauge")}>
           <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Efficiency</h3>
           <EfficiencyGauge
             score={totalTokens > 0 && totalSessions > 0 ? Math.min(100, Math.round((totalTokens / totalSessions) / 100)) : 0}

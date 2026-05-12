@@ -226,7 +226,7 @@ describe('AuditPage', () => {
       expect(screen.getByText('Page 1 of 2')).toBeDefined();
     });
 
-    await act(async () => { fireEvent.click(screen.getByLabelText('Next page')); });
+    await act(async () => { fireEvent.click(screen.getByLabelText('Go to next page')); });
 
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({

@@ -5,6 +5,7 @@ import { SessionStateBadge, uiStateToSessionBadgeStatus } from './SessionStateBa
 import { HoldButton } from '../shared/HoldButton';
 import { CopyButton } from '../shared/CopyButton';
 import { TimelineScrubber, type TimelineEvent } from './TimelineScrubber';
+import { useT } from '../../i18n/context';
 
 interface SessionHeaderProps {
   session: SessionInfo;
@@ -49,6 +50,7 @@ function OverflowMenu({
   onFork?: () => void;
   onKill?: () => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +70,7 @@ function OverflowMenu({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="More session actions"
+        aria-label={t("aria.moreActions")}
         aria-haspopup="menu"
         aria-expanded={open}
         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
@@ -108,7 +110,7 @@ function OverflowMenu({
                 onConfirm={() => { setOpen(false); onKill(); }}
                 holdDuration={800}
                 variant="danger"
-                aria-label="Hold to kill session"
+                aria-label={t("aria.holdToKill")}
                 className="w-full justify-center"
               >
                 Kill Session
@@ -134,6 +136,7 @@ export function SessionHeader({
   onSaveTemplate,
   onFork,
 }: SessionHeaderProps) {
+
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
   const badgeStatus = uiStateToSessionBadgeStatus(health.status, health.alive);
 

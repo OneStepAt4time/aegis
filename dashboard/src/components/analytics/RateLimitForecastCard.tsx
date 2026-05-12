@@ -6,6 +6,7 @@
  */
 
 import type { RateLimitForecast } from '../../types';
+import { useT } from '../../i18n/context';
 
 export interface RateLimitForecastCardProps {
   forecast: RateLimitForecast;
@@ -38,6 +39,8 @@ function formatRemaining(value: number | null): string {
 }
 
 export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) {
+    const t = useT();
+
   const { estimatedSessionsRemaining, bottleneck } = forecast;
   const severity = severityForRemaining(estimatedSessionsRemaining);
   const color = SEVERITY_COLORS[severity];
@@ -48,7 +51,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
   return (
     <section
       className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5"
-      aria-label="Rate-limit forecast"
+      aria-label={t("aria.rateLimitForecast")}
       role="region"
     >
       <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">

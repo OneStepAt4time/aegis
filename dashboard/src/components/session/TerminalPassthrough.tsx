@@ -14,6 +14,7 @@ import { SessionSSEEventDataSchema, WsInboundMessageSchema } from '../../api/sch
 import { sanitizeTerminalStream } from '../../utils/sanitizeStream';
 import { ClaudeStatusStrip, parseStatusFooter, type ClaudeStatusStripProps } from './ClaudeStatusStrip';
 import { useSessionEventsStore } from '../../store/useSessionEventsStore';
+import { useT } from '../../i18n/context';
 
 /** Heuristic browser-side platform hint for the sanitizer. The server's OS
  * is not reliably known to the client, so we only distinguish Windows from
@@ -64,6 +65,7 @@ function formatTranscriptEntry(entry: ParsedEntry): string {
 export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughProps) {
   const token = useStore((s: AppState) => s.token);
   const addToast = useToastStore((s) => s.addToast);
+  const t = useT();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -516,7 +518,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
                 setRetryKey((k) => k + 1);
               }}
               className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--color-warning)]/30 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
-              aria-label="Retry terminal connection"
+              aria-label={t("aria.retryTerminal")}
             >
               Retry
             </button>

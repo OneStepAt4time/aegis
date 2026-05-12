@@ -6,6 +6,7 @@
 
 import { Shield, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import type { AuditRecord } from '../../types';
+import { useT } from '../../i18n/context';
 
 interface AuditTrailPanelProps {
   records: AuditRecord[];
@@ -68,6 +69,8 @@ function actionBg(action: string): string {
 }
 
 export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProps) {
+    const t = useT();
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
@@ -96,7 +99,7 @@ export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProp
   }
 
   return (
-    <div className="flex flex-col gap-2" role="list" aria-label="Audit trail">
+    <div className="flex flex-col gap-2" role="list" aria-label={t("aria.auditTrail")}>
       {records.map((record, i) => {
         const Icon = actionIcon(record.action);
         const color = actionColor(record.action);
