@@ -39,6 +39,8 @@ npx --package=@onestepat4time/aegis ag run "Build a login page with email/passwo
 
 That's it. `ag run` bootstraps config, starts the server, creates a session, and streams output to your terminal.
 
+> **If `ag run` hangs** without creating a session, use the step-by-step setup below instead — it separates server start from session creation and gives clearer error output.
+
 <details>
 <summary>With a global install (optional)</summary>
 

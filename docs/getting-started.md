@@ -32,6 +32,8 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--port <number>` | Server port override |
 | `--no-stream` | Don't stream output; print curl commands instead |
 
+> **Troubleshooting:** If `ag run` hangs without creating a session, fall back to the step-by-step setup below. It separates server start from session creation and gives clearer error output.
+
 ---
 
 *Everything below is for advanced setups — most users can stop here.*
