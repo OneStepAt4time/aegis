@@ -254,8 +254,8 @@ function formatSubAgentTree(text: string): string | null {
  * Handles: **bold**, `code`, ```blocks```, [links](url), tables
  * Must be called BEFORE wrapping in blockquote/pre tags.
  */
-/** Allowlisted URI schemes for md2html() link hrefs. Prevents tg://, javascript:, data:, etc. */
-const ALLOWED_HREF_SCHEMES = ['http:', 'https:', '#:', 'mailto:'];
+/** Allowlisted URI schemes for md2html() link hrefs. Prevents javascript:, data:, vbscript:, etc. */
+const ALLOWED_HREF_SCHEMES = ['http:', 'https:', 'tg:', '#:', 'mailto:'];
 
 export function sanitizeHref(href: string): string {
   const trimmed = href.trim();
