@@ -163,6 +163,8 @@ export interface DashboardStaticOptions {
   enabled?: boolean;
   /** External rate limiter instance (optional). If not provided, an internal one is created. */
   rateLimiter?: StaticRateLimiter;
+  /** @internal Test-only: override the resolved dashboard root directory. */
+  _dashboardRoot?: string;
 }
 
 /**
@@ -170,15 +172,16 @@ export interface DashboardStaticOptions {
  * and manifest.json endpoint.
  *
  * Gracefully handles missing dashboard build (warns, serves nothing).
- * Returns true if dashboard is available, false otherwise.
+ * Returns the prune interval handle (caller must clearInterval on shutdown),
+ * or null if the dashboard is unavailable or disabled.
  */
 export async function registerDashboardStatic(
   app: FastifyInstance,
   options: DashboardStaticOptions = {}
-): Promise<boolean> {
+): Promise<ReturnType<typeof setInterval> | null> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const dashboardRoot = path.join(__dirname, '..', 'dashboard');
+  const dashboardRoot = options._dashboardRoot ?? path.join(__dirname, '..', 'dashboard');
   const dashboardEnabled = options.enabled !== false;
   let dashboardAvailable = false;
 
@@ -199,10 +202,15 @@ export async function registerDashboardStatic(
     }
   }
 
-  if (!dashboardAvailable) return false;
+  if (!dashboardAvailable) return null;
 
   // #3220: Rate limiting for dashboard static asset routes
   const limiter = options.rateLimiter ?? new StaticRateLimiter();
+
+  // #3227: Periodic prune to evict stale IP buckets (mirrors server.ts pattern)
+  const pruneInterval = setInterval(() => limiter.prune(), 60_000);
+  pruneInterval.unref();
+
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url ?? '/';
     const isStaticRoute =
@@ -277,5 +285,5 @@ export async function registerDashboardStatic(
     return reply.status(404).send({ error: "Not found" });
   });
 
-  return true;
+  return pruneInterval;
 }
