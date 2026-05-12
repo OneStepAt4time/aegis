@@ -45,6 +45,85 @@ const DASHBOARD_RESPONSE_HEADERS = {
   'Content-Security-Policy': DASHBOARD_CSP,
 } as const;
 
+// ── Rate limiting (#3220) ──────────────────────────────────────────────────
+
+/** Max requests per IP per window for dashboard static assets. */
+const STATIC_RATE_LIMIT = 100;
+/** Rate limit window in milliseconds. */
+const STATIC_RATE_WINDOW_MS = 60_000;
+/** Max tracked IPs before eviction. */
+const STATIC_RATE_MAX_ENTRIES = 2_000;
+
+interface StaticRateBucket {
+  windowStart: number;
+  count: number;
+}
+
+/** Lightweight per-IP fixed-window rate limiter for static asset routes (#3220). */
+export class StaticRateLimiter {
+  private buckets = new Map<string, StaticRateBucket>();
+
+  /** Check if an IP has exceeded the rate limit. Returns true if LIMITED. */
+  isRateLimited(ip: string): boolean {
+    const now = Date.now();
+    let bucket = this.buckets.get(ip);
+
+    if (!bucket || now - bucket.windowStart >= STATIC_RATE_WINDOW_MS) {
+      bucket = { windowStart: now, count: 0 };
+      this.buckets.set(ip, bucket);
+    }
+
+    bucket.count++;
+
+    // Evict oldest entry when map grows too large
+    if (this.buckets.size > STATIC_RATE_MAX_ENTRIES) {
+      let oldestKey = '';
+      let oldestTime = Infinity;
+      for (const [key, b] of this.buckets) {
+        if (b.windowStart < oldestTime) {
+          oldestTime = b.windowStart;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) this.buckets.delete(oldestKey);
+    }
+
+    return bucket.count > STATIC_RATE_LIMIT;
+  }
+
+  /** Get current bucket info for response headers. */
+  getBucketInfo(ip: string): { limit: number; remaining: number; reset: number } {
+    const bucket = this.buckets.get(ip);
+    if (!bucket) {
+      return {
+        limit: STATIC_RATE_LIMIT,
+        remaining: STATIC_RATE_LIMIT,
+        reset: Math.ceil((Date.now() + STATIC_RATE_WINDOW_MS) / 1000),
+      };
+    }
+    const remaining = Math.max(0, STATIC_RATE_LIMIT - bucket.count);
+    return {
+      limit: STATIC_RATE_LIMIT,
+      remaining,
+      reset: Math.ceil((bucket.windowStart + STATIC_RATE_WINDOW_MS) / 1000),
+    };
+  }
+
+  /** Prune expired buckets. */
+  prune(): void {
+    const cutoff = Date.now() - STATIC_RATE_WINDOW_MS;
+    for (const [key, bucket] of this.buckets) {
+      if (bucket.windowStart < cutoff) this.buckets.delete(key);
+    }
+  }
+
+  /** Current bucket count (for testing). */
+  get size(): number {
+    return this.buckets.size;
+  }
+}
+
+
 // ── Helper functions ───────────────────────────────────────────────────────
 
 export function applyDashboardResponseHeaders(reply: FastifyReply): void {
@@ -82,6 +161,8 @@ function dashboardCacheControl(dashboardRoot: string, pathname: string): string 
 export interface DashboardStaticOptions {
   /** Whether the dashboard is enabled (default: true). */
   enabled?: boolean;
+  /** External rate limiter instance (optional). If not provided, an internal one is created. */
+  rateLimiter?: StaticRateLimiter;
 }
 
 /**
@@ -119,6 +200,28 @@ export async function registerDashboardStatic(
   }
 
   if (!dashboardAvailable) return false;
+
+  // #3220: Rate limiting for dashboard static asset routes
+  const limiter = options.rateLimiter ?? new StaticRateLimiter();
+  app.addHook('onRequest', async (req, reply) => {
+    const url = req.url ?? '/';
+    const isStaticRoute =
+      url === '/' ||
+      url.startsWith('/dashboard') ||
+      url === '/manifest.json';
+
+    if (!isStaticRoute) return;
+
+    const ip = req.ip ?? '127.0.0.1';
+    if (limiter.isRateLimited(ip)) {
+      const info = limiter.getBucketInfo(ip);
+      reply.header('Retry-After', String(Math.max(1, info.reset - Math.ceil(Date.now() / 1000))));
+      reply.header('X-RateLimit-Limit', String(info.limit));
+      reply.header('X-RateLimit-Remaining', '0');
+      reply.header('X-RateLimit-Reset', String(info.reset));
+      return reply.status(429).send({ error: 'Too many requests', retryAfter: info.reset });
+    }
+  });
 
   // Register static file serving
   await app.register(fastifyStatic, {
