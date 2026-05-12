@@ -23,6 +23,7 @@ function formatRelative(date: Date): string {
   return `${days}d ${suffix}`;
 }
 import type { RoutineSchedule } from './CalendarGrid';
+import { useT } from '../../i18n/context';
 
 interface RoutineCardProps {
   routine: RoutineSchedule;
@@ -39,6 +40,8 @@ export default function RoutineCard({
   onDelete,
   className = '',
 }: RoutineCardProps) {
+    const t = useT();
+
   const isActive = routine.status === 'active';
   const nextRunLabel = (() => {
     try {
@@ -93,7 +96,7 @@ export default function RoutineCard({
         </div>
 
         {/* Quick actions */}
-        <div className="flex items-center gap-1" role="group" aria-label="Routine actions">
+        <div className="flex items-center gap-1" role="group" aria-label={t("aria.routineActions")}>
           <button
             onClick={() => onTogglePause?.(routine.id)}
             className={`
@@ -111,7 +114,7 @@ export default function RoutineCard({
           <button
             onClick={() => onTriggerNow?.(routine.id)}
             className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"
-            aria-label="Trigger routine now"
+            aria-label={t("aria.triggerRoutine")}
             title="Run now"
           >
             <Zap className="w-4 h-4" />
@@ -119,7 +122,7 @@ export default function RoutineCard({
           <button
             onClick={() => onDelete?.(routine.id)}
             className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
-            aria-label="Delete routine"
+            aria-label={t("aria.deleteRoutine")}
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />

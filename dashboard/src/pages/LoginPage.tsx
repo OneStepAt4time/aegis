@@ -76,7 +76,7 @@ export default function LoginPage() {
         </div>
 
         {checkingAuthMode ? (
-          <div className="flex justify-center py-2" aria-label="Checking authentication">
+          <div className="flex justify-center py-2" aria-label={t("aria.checkingAuth")}>
             <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
           </div>
         ) : oidcAvailable ? (

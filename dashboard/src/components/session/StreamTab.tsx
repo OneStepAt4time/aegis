@@ -13,6 +13,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AcpTerminalDebugView } from './AcpTerminalDebugView';
 import { TranscriptView } from './TranscriptView';
 import { StreamSplitView } from './StreamSplitView';
+import { useT } from '../../i18n/context';
 
 type ViewMode = 'terminal' | 'transcript' | 'split';
 
@@ -34,6 +35,8 @@ function detectDefaultView(): ViewMode {
 }
 
 export function StreamTab({ sessionId, isDriver }: StreamTabProps) {
+    const t = useT();
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Seed the view from ?view=… if present, otherwise from the viewport.
@@ -75,7 +78,7 @@ export function StreamTab({ sessionId, isDriver }: StreamTabProps) {
         <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
           View:
         </span>
-        <div className="flex gap-1 bg-[var(--color-void-lighter)]/20 rounded-lg p-0.5" role="tablist" aria-label="Stream view">
+        <div className="flex gap-1 bg-[var(--color-void-lighter)]/20 rounded-lg p-0.5" role="tablist" aria-label={t("aria.streamView")}>
           {VIEW_MODES.map((mode) => (
             <button
               key={mode}

@@ -150,7 +150,7 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
             <RenderWithCodeBlocks text={rawText} />
           </div>
         ) : (
-          <div className={`px-3 py-2 text-xs text-[#666] font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
+          <div className={`px-3 py-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap break-all overflow-y-auto ${expanded ? 'max-h-[600px]' : 'max-h-32'}`}>
             {expanded ? rawText : (rawText.length > 100 ? rawText.slice(0, 100) + '\u2026' : rawText)}
           </div>
         )}

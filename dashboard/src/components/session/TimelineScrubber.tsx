@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, Wrench, CheckCircle, ShieldAlert } from 'lucide-react';
+import { useT } from '../../i18n/context';
 
 export interface TimelineEvent {
   timestamp: number;
@@ -33,6 +34,8 @@ const EVENT_ICONS = {
 };
 
 export function TimelineScrubber({ events, currentTime, onSeek, className = '' }: TimelineScrubberProps) {
+    const t = useT();
+
   const [isDragging, setIsDragging] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,7 +160,7 @@ export function TimelineScrubber({ events, currentTime, onSeek, className = '' }
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="slider"
-        aria-label="Timeline scrubber"
+        aria-label={t("aria.timelineScrubber")}
         aria-valuemin={minTime}
         aria-valuemax={maxTime}
         aria-valuenow={currentTime || minTime}

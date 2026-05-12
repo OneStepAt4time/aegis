@@ -330,6 +330,7 @@ function DetailDrawer({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const t = useT();
 
   const handleCopy = async (label: string, value: string) => {
     try {
@@ -375,7 +376,7 @@ function DetailDrawer({
           key="audit-drawer-panel"
           role="dialog"
           aria-modal="true"
-          aria-label="Audit record detail"
+          aria-label={t("aria.auditRecordDetail")}
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
@@ -390,7 +391,7 @@ function DetailDrawer({
             <button
               onClick={onClose}
               className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] dark:hover:text-[var(--color-text-primary)] transition-colors"
-              aria-label="Close detail drawer"
+              aria-label={t("aria.closeDetailDrawer")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -701,7 +702,7 @@ export default function AuditPage() {
             onClick={() => { void handleExport('csv'); }}
             disabled={loading || exportingFormat !== null}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
-            aria-label="Export CSV"
+            aria-label={t("aria.exportCsv")}
           >
             <Download className="h-3.5 w-3.5" />
             {exportingFormat === 'csv' ? 'Exporting CSV…' : 'Export CSV'}
@@ -710,7 +711,7 @@ export default function AuditPage() {
             onClick={() => { void handleExport('ndjson'); }}
             disabled={loading || exportingFormat !== null}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
-            aria-label="Export NDJSON"
+            aria-label={t("aria.exportNdjson")}
           >
             <Download className="h-3.5 w-3.5" />
             {exportingFormat === 'ndjson' ? 'Exporting NDJSON…' : 'Export NDJSON'}
@@ -845,7 +846,7 @@ export default function AuditPage() {
           </button>
         </div>
       ) : loading ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50" tabIndex={0} aria-label="Audit records loading table">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50" tabIndex={0} aria-label={t("aria.auditLoadingTable")}>
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[var(--color-void-lighter)]">
@@ -872,7 +873,7 @@ export default function AuditPage() {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50" tabIndex={0} aria-label="Audit records table">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50" tabIndex={0} aria-label={t("aria.auditRecordsTable")}>
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-[var(--color-void-lighter)]">
@@ -923,7 +924,7 @@ export default function AuditPage() {
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page <= 1}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Previous page"
+                aria-label={t("aria.prevPage")}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
@@ -931,7 +932,7 @@ export default function AuditPage() {
                 onClick={() => setPage((current) => current + 1)}
                 disabled={!hasMore || page >= totalPages}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Next page"
+                aria-label={t("aria.nextPage")}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>

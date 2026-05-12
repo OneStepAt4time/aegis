@@ -227,7 +227,7 @@ export default function MetricsPage() {
 
       {/* Anomaly alerts */}
       {data && data.anomalies?.length > 0 && (
-        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Anomalous sessions">
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label={t("aria.anomalousSessions")}>
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
             <div>
@@ -338,8 +338,8 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Breakdown by API Key
           </h3>
-          <div className="overflow-x-auto" tabIndex={0} aria-label="Metrics breakdown table">
-            <table className="w-full text-sm" aria-label="Metrics breakdown by API key">
+          <div className="overflow-x-auto" tabIndex={0} aria-label={t("aria.metricsTable")}>
+            <table className="w-full text-sm" aria-label={t("aria.metricsByKey")}>
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
                   <th className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>

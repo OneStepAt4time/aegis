@@ -3,7 +3,8 @@
  * Uses the I18n context to read/write locale preference.
  */
 
-import { useLocale, useT } from '../../i18n/context';
+import { useLocale } from '../../i18n/context';
+import { useT } from '../../i18n/context';
 
 const LANGUAGES = [
   { value: 'en-US', label: 'English' },
@@ -18,7 +19,7 @@ export default function LanguageSwitcher() {
     <select
       value={locale === 'en' ? 'en-US' : locale}
       onChange={(e) => setLocale(e.target.value)}
-      aria-label={t('aria.language')}
+      aria-label={t("aria.language")}
       className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)]"
     >
       {LANGUAGES.map(({ value, label }) => (

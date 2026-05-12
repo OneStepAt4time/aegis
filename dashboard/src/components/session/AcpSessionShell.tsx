@@ -30,6 +30,7 @@ import type {
   AcpSessionShellConfig,
 } from '../../types/acp-session-shell';
 import { DEFAULT_SESSION_TABS } from '../../types/acp-session-shell';
+import { useT } from '../../i18n/context';
 
 /** Map icon name strings to Lucide components. */
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -65,6 +66,8 @@ export function AcpSessionShell({
   isLoading = false,
   error = null,
 }: AcpSessionShellProps) {
+    const t = useT();
+
   const tabs = config?.tabs ?? DEFAULT_SESSION_TABS;
   const defaultTab = config?.defaultTab ?? 'chat';
   const showRailDefault = config?.showControlRail ?? true;
@@ -128,7 +131,7 @@ export function AcpSessionShell({
             <nav
               className="flex items-center border-b border-[var(--color-border-strong)] px-2"
               role="tablist"
-              aria-label="Session views"
+              aria-label={t("aria.sessionViews")}
             >
               {tabs.map((tab) => {
                 const Icon = ICON_MAP[tab.icon] ?? MessageSquare;
@@ -193,7 +196,7 @@ export function AcpSessionShell({
             <aside
               className="w-72 shrink-0 overflow-y-auto border-l border-[var(--color-border-strong)] bg-[var(--color-surface)]"
               role="complementary"
-              aria-label="Session controls"
+              aria-label={t("aria.sessionControls")}
             >
               {/* Rail close button (mobile) */}
                <div className="flex items-center justify-end border-b border-[var(--color-border-strong)] p-2 lg:hidden">
@@ -201,7 +204,7 @@ export function AcpSessionShell({
                   type="button"
                   onClick={() => setRailOpen(false)}
                   className="rounded-md p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                  aria-label="Close control rail"
+                  aria-label={t("aria.closeControlRail")}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>

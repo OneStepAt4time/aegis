@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clock, CalendarDays, CalendarRange, Infinity } from 'lucide-react';
+import { useT } from '../../i18n/context';
 
 export interface TimeRange {
   from: string | null;
@@ -47,6 +48,8 @@ function startOfDay(): string {
 }
 
 export default function TimeFilterBar({ value, onChange, className = '' }: TimeFilterBarProps) {
+    const t = useT();
+
   const [activePreset, setActivePreset] = useState<string | null>(() => {
     if (!value.from && !value.to) return 'All';
     const from = value.from ? new Date(value.from).getTime() : 0;
@@ -96,7 +99,7 @@ export default function TimeFilterBar({ value, onChange, className = '' }: TimeF
     <div
       className={`flex flex-wrap items-center gap-2 ${className}`}
       role="toolbar"
-      aria-label="Time range filter"
+      aria-label={t("aria.timeRangeFilter")}
     >
       {presets.map(({ label, icon: Icon }) => (
         <button

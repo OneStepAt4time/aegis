@@ -3,6 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// Needs real useT — override global mock
+vi.unmock("../i18n/context");
+
 vi.mock('../utils/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));

@@ -103,7 +103,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] hover:border-[#333] transition-colors"
+            className="flex-1 min-h-[44px] px-3 py-2 text-xs font-medium rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] hover:border-muted transition-colors"
           >
             {cancelLabel}
           </button>

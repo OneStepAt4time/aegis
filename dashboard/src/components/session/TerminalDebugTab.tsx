@@ -15,6 +15,7 @@
  */
 
 import { useState, useRef, useCallback } from 'react';
+import { useT } from '../../i18n/context';
 import {
   Terminal as TerminalIcon,
   Lock,
@@ -63,6 +64,8 @@ export function TerminalDebugTab({
   onReconnect,
   error = null,
 }: TerminalDebugTabProps) {
+    const t = useT();
+
   const fullConfig = { ...DEFAULT_TERMINAL_CONFIG, ...config };
   const mode: AcpTerminalMode = fullConfig.mode;
 
@@ -117,7 +120,7 @@ export function TerminalDebugTab({
       className={`flex flex-col bg-[var(--color-void)] ${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'}`}
       data-session-id={sessionId}
       role="region"
-      aria-label="Terminal debug view"
+      aria-label={t("aria.terminalDebug")}
     >
       {/* Diagnostic warning bar */}
       <div className="flex items-center gap-2 border-b border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5 px-3 py-1.5">
@@ -167,7 +170,7 @@ export function TerminalDebugTab({
               type="button"
               onClick={onReconnect}
               className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-colors"
-              aria-label="Reconnect terminal"
+              aria-label={t("aria.reconnectTerminal")}
             >
               <RefreshCw className="h-3 w-3" />
               Reconnect
@@ -204,7 +207,7 @@ export function TerminalDebugTab({
           backgroundColor: DEFAULT_TERMINAL_THEME.background,
         }}
         role="log"
-        aria-label="Terminal output"
+        aria-label={t("aria.terminalOutput")}
         aria-live="polite"
       >
         {terminalOutput.map((line, i) => (
@@ -235,7 +238,7 @@ export function TerminalDebugTab({
               className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
               disabled={!isConnected}
               autoFocus
-              aria-label="Terminal input"
+              aria-label={t("aria.terminalInput")}
             />
           </div>
         </div>

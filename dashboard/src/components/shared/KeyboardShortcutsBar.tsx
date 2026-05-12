@@ -1,3 +1,4 @@
+import { useT } from '../../i18n/context';
 /**
  * components/shared/KeyboardShortcutsBar.tsx — CCMeter-inspired keyboard shortcuts bar.
  *
@@ -5,7 +6,6 @@
  * Only visible on desktop (hidden on mobile).
  * Uses CSS vars for all colors (light + dark mode).
  */
-import { useT } from '../../i18n/context';
 
 export interface ShortcutDef {
   keys: string[];
@@ -28,12 +28,13 @@ export function KeyboardShortcutsBar({
   shortcuts = DEFAULT_SHORTCUTS,
   className = '',
 }: KeyboardShortcutsBarProps) {
-  const t = useT();
+    const t = useT();
+
   return (
     <div
       className={`hidden md:flex items-center justify-center gap-6 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-2 text-[10px] text-[var(--color-text-muted)] ${className}`}
       role="contentinfo"
-      aria-label={t('aria.keyboardShortcuts')}
+      aria-label={t("aria.keyboardShortcuts")}
     >
       {shortcuts.map((shortcut, i) => (
         <span key={shortcut.label} className="flex items-center gap-1.5">

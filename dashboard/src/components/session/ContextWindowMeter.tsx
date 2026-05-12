@@ -1,3 +1,4 @@
+import { useT } from '../../i18n/context';
 /**
  * ContextWindowMeter — Visual indicator of context window usage per session.
  *
@@ -62,6 +63,8 @@ export function ContextWindowMeter({
   showLabel = true,
   compact = false,
 }: ContextWindowMeterProps) {
+    const t = useT();
+
   const percentage = Math.min(usedTokens / maxTokens, 1);
   const color = getUsageColor(percentage);
   const textColor = getUsageTextColor(percentage);
@@ -92,7 +95,7 @@ export function ContextWindowMeter({
     <div
       className="space-y-1.5"
       role="region"
-      aria-label="Context window usage"
+      aria-label={t("aria.contextWindowUsage")}
     >
       {showLabel && (
         <div className="flex items-center justify-between">

@@ -20,7 +20,7 @@ describe('TerminalPassthrough', () => {
 
   describe('streaming failure UX (issue #2347)', () => {
     it('failure detail banner has accessible retry button', () => {
-      expect(src).toContain('aria-label="Retry terminal connection"');
+      expect(src).toContain('aria.retryTerminal');
     });
 
     it('failure banner mentions transcript and metrics fallback', () => {

@@ -59,7 +59,7 @@ function StatTile({ icon, label, value, color = 'text-[var(--color-accent)]' }: 
         {icon}
       </div>
       <div>
-        <div className="text-xs text-[#666]">{label}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
         <div className={`font-mono text-lg font-semibold ${color}`}>{value}</div>
       </div>
     </div>

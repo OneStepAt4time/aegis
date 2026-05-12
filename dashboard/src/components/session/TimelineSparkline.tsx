@@ -19,6 +19,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ParsedEntry } from '../../types';
+import { useT } from '../../i18n/context';
 
 export type TimelineRange = '1H' | '12H' | 'Today' | '7D' | '14D';
 
@@ -86,6 +87,8 @@ export function TimelineSparkline({
   onSeek,
   initialRange = 'Today',
 }: TimelineSparklineProps) {
+    const t = useT();
+
   const [range, setRange] = useState<TimelineRange>(initialRange);
 
   const resolvedNow = nowMs ?? Date.now();
@@ -109,7 +112,7 @@ export function TimelineSparkline({
         <div
           className="ml-auto flex gap-0.5 rounded-md bg-[var(--color-void-lighter)]/30 p-0.5"
           role="tablist"
-          aria-label="Timeline range"
+          aria-label={t("aria.timelineRange")}
         >
           {(Object.keys(RANGE_CONFIG) as TimelineRange[]).map((r) => (
             <button

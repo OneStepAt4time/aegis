@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { AcpApprovalRequest } from '../../types/acp-approval';
 import { RISK_LEVEL_CONFIG } from '../../types/acp-approval';
+import { useT } from '../../i18n/context';
 
 export interface AcpApprovalModalProps {
   approval: AcpApprovalRequest;
@@ -74,6 +75,8 @@ export function AcpApprovalModal({
   onApprove,
   onReject,
 }: AcpApprovalModalProps) {
+    const t = useT();
+
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [approveReason, setApproveReason] = useState('');
@@ -100,7 +103,7 @@ export function AcpApprovalModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Tool approval required"
+      aria-label={t("aria.toolApprovalRequired")}
       className="flex flex-col gap-3 rounded-xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
     >
       {/* Header */}
@@ -157,7 +160,7 @@ export function AcpApprovalModal({
         <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button onClick={onClearError} className="text-red-400 hover:text-red-300" aria-label="Dismiss error">
+            <button onClick={onClearError} className="text-red-400 hover:text-red-300" aria-label={t("aria.dismissError")}>
               ✕
             </button>
           )}
@@ -175,7 +178,7 @@ export function AcpApprovalModal({
                 onClick={handleApprove}
                 disabled={isLoading}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Approve tool"
+                aria-label={t("aria.approveTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                 Approve
@@ -185,7 +188,7 @@ export function AcpApprovalModal({
                 onClick={() => setShowRejectReason(true)}
                 disabled={isLoading}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Reject tool"
+                aria-label={t("aria.rejectTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
                 Reject
@@ -244,7 +247,7 @@ export function AcpApprovalModal({
                     onClick={handleReject}
                     disabled={isLoading}
                     className="flex items-center gap-1 rounded-md bg-red-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-400 disabled:opacity-50"
-                    aria-label="Confirm rejection"
+                    aria-label={t("aria.confirmRejection")}
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
                     Confirm Reject
@@ -266,7 +269,7 @@ export function AcpApprovalModal({
             onClick={() => onReject?.()}
             disabled={isLoading}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] disabled:opacity-50"
-            aria-label="Dismiss expired approval"
+            aria-label={t("aria.dismissExpired")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
             Dismiss

@@ -3,13 +3,13 @@
  * Creates a real session in a sandbox dir, walks through permission prompt, approval, kill.
  */
 
-import { useEffect, useState } from 'react'
-import { useT } from '../../i18n/context';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, PlayCircle, CheckCircle2, Shield, Trash2, Lightbulb } from 'lucide-react';
 import { createSession, approve, killSession, getSessions } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
 import type { SessionInfo } from '../../types';
+import { useT } from '../../i18n/context';
 
 const TOUR_COMPLETED_KEY = 'aegis:tour:completed';
 const SANDBOX_DIR = '/tmp/aegis-tour';
@@ -21,11 +21,11 @@ interface FirstRunTourProps {
 }
 
 export function FirstRunTour({ onComplete }: FirstRunTourProps) {
-  const t = useT();
   const [step, setStep] = useState<TourStep>('welcome');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const addToast = useToastStore((s) => s.addToast);
+  const t = useT();
 
   // Listen for Esc key to skip tour
   useEffect(() => {
@@ -242,7 +242,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
               type="button"
               onClick={handleSkip}
               className="absolute top-4 right-4 p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-dark)] transition-colors"
-              aria-label={t('aria.skipTour')}
+              aria-label={t("aria.skipTour")}
               title="Press Esc to skip"
             >
               <X className="h-5 w-5" />

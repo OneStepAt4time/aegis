@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { AcpTerminalDebugView } from './AcpTerminalDebugView';
 import { TranscriptView } from './TranscriptView';
+import { useT } from '../../i18n/context';
 
 interface StreamSplitViewProps {
   sessionId: string;
@@ -8,6 +9,8 @@ interface StreamSplitViewProps {
 }
 
 export function StreamSplitView({ sessionId, isDriver }: StreamSplitViewProps) {
+    const t = useT();
+
   const [leftWidth, setLeftWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,7 +64,7 @@ export function StreamSplitView({ sessionId, isDriver }: StreamSplitViewProps) {
         className={`w-1 h-full bg-[var(--color-void-lighter)] hover:bg-[var(--color-accent)] cursor-col-resize transition-colors shrink-0 ${
           isDragging ? 'bg-[var(--color-accent)]' : ''
         }`}
-        aria-label="Resize panes"
+        aria-label={t("aria.resizePanes")}
       />
 
       {/* Right pane: Transcript */}

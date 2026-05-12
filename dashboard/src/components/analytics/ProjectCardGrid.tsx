@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { FolderKanban, DollarSign, Cpu, Activity } from 'lucide-react';
 import { formatCurrency, formatCompact } from '../../utils/formatNumber';
 import { SparkLine } from '../overview/SparkLine';
+import { useT } from '../../i18n/context';
 
 export interface ProjectSummary {
   name: string;
@@ -30,6 +31,8 @@ interface ProjectCardGridProps {
 }
 
 export function ProjectCardGrid({ projects, className = '' }: ProjectCardGridProps) {
+    const t = useT();
+
   if (projects.length === 0) {
     return (
       <div className="flex h-[200px] items-center justify-center text-sm text-[var(--color-text-muted)]">
@@ -42,7 +45,7 @@ export function ProjectCardGrid({ projects, className = '' }: ProjectCardGridPro
     <div
       className={`grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 ${className}`}
       role="list"
-      aria-label="Project cards"
+      aria-label={t("aria.projectCards")}
     >
       {projects.map((project) => (
         <ProjectCard key={project.workDir} project={project} />

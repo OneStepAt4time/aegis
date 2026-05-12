@@ -10,6 +10,7 @@
  */
 
 import { modelAccent } from '../../design/modelAccents';
+import { useT } from '../../i18n/context';
 
 export interface ClaudeStatusStripProps {
   version?: string;
@@ -68,6 +69,8 @@ export function ClaudeStatusStrip({
   thinking,
   className,
 }: ClaudeStatusStripProps) {
+    const t = useT();
+
   const leading: string[] = [];
   if (version) leading.push(`claude v${version}`);
   const trailing: string[] = [];
@@ -77,7 +80,7 @@ export function ClaudeStatusStrip({
     <div
       className={`flex items-center gap-1.5 text-[11px] font-mono text-[var(--color-text-muted)] ${className ?? ''}`}
       aria-live="polite"
-      aria-label="Claude runtime status"
+      aria-label={t("aria.claudeRuntimeStatus")}
     >
       <span>
         {leading.length > 0 && <span>{leading.join(' · ')}</span>}
@@ -99,7 +102,7 @@ export function ClaudeStatusStrip({
       {thinking && (
         <span
           className="inline-flex items-center gap-1 text-[var(--color-warning)]"
-          aria-label="Claude is thinking"
+          aria-label={t("aria.claudeThinking")}
         >
           {(leading.length > 0 || model || trailing.length > 0) && <span aria-hidden="true">·</span>}
           <span aria-hidden="true">◉</span>

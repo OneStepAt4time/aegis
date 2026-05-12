@@ -1,6 +1,7 @@
 import type { SessionSummary, UIState } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from '../overview/StatusDot';
+import { useT } from '../../i18n/context';
 
 const STATUS_LABELS: Record<UIState, string> = {
   idle: 'Idle',
@@ -28,6 +29,8 @@ interface SessionSummaryCardProps {
 }
 
 export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps) {
+    const t = useT();
+
   if (loading) {
     return (
       <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 animate-pulse text-[var(--color-text-muted)] text-xs">
@@ -47,7 +50,7 @@ export function SessionSummaryCard({ summary, loading }: SessionSummaryCardProps
 
   return (
     <div
-      aria-label="Session summary"
+      aria-label={t("aria.sessionSummary")}
       role="region"
       className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
     >

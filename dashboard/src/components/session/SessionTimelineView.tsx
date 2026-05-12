@@ -13,6 +13,7 @@ import {
   ChevronDown, ChevronRight, Clock, Filter,
 } from 'lucide-react';
 import type { AcpTimelineEvent, AcpTimelineCategory } from '../../types/acp-timeline';
+import { useT } from '../../i18n/context';
 
 /* ── Category config ─────────────────────────────────────── */
 
@@ -58,6 +59,8 @@ interface SessionTimelineViewProps {
 /* ── Component ───────────────────────────────────────────── */
 
 export function SessionTimelineView({ events, isLoading }: SessionTimelineViewProps) {
+    const t = useT();
+
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [activeFilters, setActiveFilters] = useState<Set<AcpTimelineCategory>>(new Set(ALL_CATEGORIES));
   const [showFilters, setShowFilters] = useState(false);
@@ -136,7 +139,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
             type="button"
             onClick={() => setShowFilters(v => !v)}
             className={`text-xs transition-colors ${showFilters ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}
-            aria-label="Toggle event filters"
+            aria-label={t("aria.toggleEventFilters")}
             aria-expanded={showFilters}
           >
             <Filter className="h-3.5 w-3.5 inline mr-1" />
@@ -147,7 +150,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
 
       {/* Filter bar */}
       {showFilters && (
-        <div className="flex flex-wrap gap-1.5 py-2 px-1" role="group" aria-label="Event category filters">
+        <div className="flex flex-wrap gap-1.5 py-2 px-1" role="group" aria-label={t("aria.eventCategoryFilters")}>
           {ALL_CATEGORIES.map(cat => {
             const cfg = CATEGORY_CONFIG[cat];
             const active = activeFilters.has(cat);
@@ -173,7 +176,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
       )}
 
       {/* Timeline */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto py-3 space-y-0" role="list" aria-label="Session event timeline">
+      <div ref={containerRef} className="flex-1 overflow-y-auto py-3 space-y-0" role="list" aria-label={t("aria.sessionEventTimeline")}>
         {filteredEvents.map((event, i) => {
           const cfg = CATEGORY_CONFIG[event.category];
           const Icon = cfg.icon;

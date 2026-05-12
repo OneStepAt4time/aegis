@@ -73,8 +73,9 @@ interface BudgetOverviewProps {
 
 function BudgetOverview({ dailyData, budgetSettings, navigateToSettings }: BudgetOverviewProps) {
   if (!budgetSettings.budgetAlertEnabled) {
+  const t = useT();
     return (
-      <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label="Budget alerts">
+      <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label={t("aria.budgetAlerts")}>
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>

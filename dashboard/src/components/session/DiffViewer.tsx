@@ -12,6 +12,7 @@
 import { useMemo, useState } from 'react';
 import { FileEdit, FilePlus2, File, ChevronRight, Loader2 } from 'lucide-react';
 import type { ParsedEntry } from '../../types';
+import { useT } from '../../i18n/context';
 
 /** A parsed file change from transcript. */
 export interface FileChange {
@@ -125,6 +126,8 @@ export interface DiffViewerProps {
 }
 
 export function DiffViewer({ entries, isLoading }: DiffViewerProps) {
+    const t = useT();
+
   const changes = useMemo(() => parseFileChanges(entries), [entries]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -152,14 +155,14 @@ export function DiffViewer({ entries, isLoading }: DiffViewerProps) {
   const selectedChange = changes[selectedIndex];
 
   return (
-    <div className="flex h-full min-h-[300px] divide-x divide-[var(--color-border-strong)]" role="region" aria-label="File diff viewer">
+    <div className="flex h-full min-h-[300px] divide-x divide-[var(--color-border-strong)]" role="region" aria-label={t("aria.fileDiffViewer")}>
       {/* File list sidebar */}
-      <nav className="w-56 shrink-0 overflow-y-auto bg-[var(--color-surface)]" aria-label="Changed files">
+      <nav className="w-56 shrink-0 overflow-y-auto bg-[var(--color-surface)]" aria-label={t("aria.changedFiles")}>
         <div className="p-2">
           <h3 className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
             {changes.length} file{changes.length !== 1 ? 's' : ''} changed
           </h3>
-          <ul className="mt-1 space-y-0.5" role="listbox" aria-label="File list">
+          <ul className="mt-1 space-y-0.5" role="listbox" aria-label={t("aria.fileList")}>
             {changes.map((change, i) => (
               <li key={change.id}>
                 <button

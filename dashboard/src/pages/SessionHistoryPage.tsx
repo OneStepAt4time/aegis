@@ -713,7 +713,7 @@ export default function SessionHistoryPage() {
                             data-no-nav
                             onClick={(e) => copySessionId(record.id, e)}
                             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] opacity-0 transition-opacity hover:text-[var(--color-text-primary)] group-hover/id:opacity-100"
-                            aria-label="Copy session ID"
+                            aria-label={t("aria.copySessionId")}
                           >
                             <Copy className="h-3 w-3" />
                           </button>

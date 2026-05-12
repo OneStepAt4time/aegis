@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Pause, Play, Hand, CheckCircle, Loader2 } from 'lucide-react';
 import type { AcpPauseInterventionRecord } from '../../types/acp-pause';
 import { getSessionIntervention } from '../../api/acp-pause-client';
+import { useT } from '../../i18n/context';
 
 export interface InterventionHistoryPanelProps {
   sessionId: string;
@@ -89,6 +90,8 @@ const TONE_ICON_STYLES = {
 } as const;
 
 export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanelProps) {
+    const t = useT();
+
   const [record, setRecord] = useState<AcpPauseInterventionRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -109,7 +112,7 @@ export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanel
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8" role="status" aria-label="Loading intervention history">
+      <div className="flex items-center justify-center py-8" role="status" aria-label={t("aria.loadingIntervention")}>
         <Loader2 className="h-5 w-5 animate-spin text-[var(--color-text-muted)]" />
         <span className="ml-2 text-sm text-[var(--color-text-muted)]">Loading intervention history...</span>
       </div>
@@ -127,7 +130,7 @@ export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanel
   const timeline = buildTimeline(record);
 
   return (
-    <div className="flex flex-col gap-1" role="list" aria-label="Intervention timeline">
+    <div className="flex flex-col gap-1" role="list" aria-label={t("aria.interventionTimeline")}>
       {timeline.map((entry, i) => {
         const Icon = entry.icon;
         return (

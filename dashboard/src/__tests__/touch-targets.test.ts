@@ -21,7 +21,7 @@ describe('Mobile touch targets (issue #2350)', () => {
     const lines = src.split('\n');
     let found = false;
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes("aria.newSession") || lines[i].includes('aria-label="New Session')) {
+      if (lines[i].includes('aria.newSessionCmd')) {
         // Search within 5 lines in both directions for className with min-h
         for (let j = Math.max(0, i - 5); j <= Math.min(lines.length - 1, i + 5); j++) {
           if (lines[j].includes('className="') && lines[j].includes('min-h-[44px]')) {

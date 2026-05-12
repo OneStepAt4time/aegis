@@ -13,10 +13,10 @@
  * increases by 5+ percentage points.
  */
 
-import { useState, useEffect } from 'react'
-import { useT } from '../../i18n/context';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, X, AlertCircle } from 'lucide-react';
 import type { AnalyticsErrorRates } from '../../../../src/api-contracts';
+import { useT } from '../../i18n/context';
 
 interface SessionHealthBannerProps {
   errorRates: AnalyticsErrorRates | undefined;
@@ -36,7 +36,8 @@ function getHealthLevel(errorRates: AnalyticsErrorRates | undefined): HealthLeve
 const STORAGE_KEY = 'aegis-session-health-dismissed-rate';
 
 export function SessionHealthBanner({ errorRates, loading }: SessionHealthBannerProps) {
-  const t = useT();
+    const t = useT();
+
   const [dismissedRate, setDismissedRate] = useState<number | null>(null);
 
   // Load dismissed rate from sessionStorage
@@ -104,7 +105,7 @@ export function SessionHealthBanner({ errorRates, loading }: SessionHealthBanner
       <button
         onClick={handleDismiss}
         className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
-        aria-label={t('aria.dismissHealthAlert')}
+        aria-label={t("aria.dismissHealthAlert")}
       >
         <X className="h-4 w-4 text-[var(--color-text-muted)]" />
       </button>
