@@ -1,6 +1,6 @@
 # Getting Started with Aegis
 
-Get from zero to orchestrating Claude Code sessions in under 5 minutes.
+Get from zero to orchestrating Claude Code sessions in **two commands**.
 
 ## Prerequisites
 
@@ -11,9 +11,36 @@ Get from zero to orchestrating Claude Code sessions in under 5 minutes.
 
 Aegis bundles `claude-agent-acp` — no tmux installation required.
 
-## 1. Bootstrap and Start Aegis
+## Quick Start (2 commands)
 
-Install once, bootstrap `.aegis/config.yaml`, then start Aegis with the primary `ag` CLI:
+```bash
+# Run Aegis — no install needed
+npx --package=@onestepat4time/aegis ag run "Analyze this project and list the main technologies." --cwd /path/to/your/project
+```
+
+`ag run` does everything for you:
+1. Bootstraps `.aegis/config.yaml` with sensible defaults
+2. Starts the server on **http://localhost:9100**
+3. Creates a Claude Code session
+4. Streams output to your terminal
+
+If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
+
+| Flag | Description |
+|------|-------------|
+| `--cwd <path>` | Working directory (default: current directory) |
+| `--port <number>` | Server port override |
+| `--no-stream` | Don't stream output; print curl commands instead |
+
+---
+
+*Everything below is for advanced setups — most users can stop here.*
+
+---
+
+## Step-by-Step Setup
+
+### 1. Install and Bootstrap
 
 ```bash
 npm install -g @onestepat4time/aegis
@@ -24,6 +51,7 @@ ag init
 
 ```bash
 ag
+```
 
 > The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary.
 
@@ -32,15 +60,6 @@ Aegis starts on **http://localhost:9100** by default. Verify it's running:
 ```bash
 curl http://localhost:9100/v1/health
 ```
-
-<details>
-<summary>Run without a global install (optional)</summary>
-
-```bash
-npx --package=@onestepat4time/aegis ag
-```
-
-</details>
 
 <details>
 <summary>Docker (alternative)</summary>
@@ -92,15 +111,13 @@ For **dashboard SSO**, also set `AEGIS_OIDC_CLIENT_SECRET`. The dashboard will r
 > ```bash
 > export TOKEN=your-secret-token
 > ```
-> All examples from section 5 onward use `$TOKEN` for brevity. No-auth setups can omit the `-H "Authorization: Bearer $TOKEN"` headers.
+> All examples from section 4 onward use `$TOKEN` for brevity. No-auth setups can omit the `-H "Authorization: Bearer $TOKEN"` headers.
 
 </details>
 
 ## 2. Open the Dashboard
 
 Visit **http://localhost:9100/dashboard/** in your browser. The dashboard shows all sessions, their status, and activity in real time.
-
-> **Note:** `ag init` can create an admin API token and save it in `.aegis/config.yaml`. Use that token to sign in, or keep using `AEGIS_AUTH_TOKEN` if you prefer an environment-based setup. If OIDC SSO is configured, the dashboard uses IdP-based login instead.
 
 ## 3. Dashboard Keyboard Shortcuts
 
@@ -120,39 +137,7 @@ Navigate the dashboard faster using keyboard shortcuts:
 
 The dashboard displays the shortcut hint in the sidebar footer.
 
-## 4. Create Your First Session
-
-### One-command mode (`ag run`)
-
-Skip all the setup — `ag run` bootstraps config, starts the server, creates a session, and streams output to your terminal:
-
-```bash
-ag run "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project
-```
-
-```text
-🚀 ag run: Analyze this project...
-⏳ Server not running — starting...
-⏳ Waiting for server...
-✅ Server started
-✅ Session: run-analyze-this-proj- (ff3aafbb)
-📊 Dashboard: http://127.0.0.1:9100
-
-📡 Streaming session output (Ctrl+C to stop)...
-
-👤 Analyze this project...
-🤖 I'll analyze the project structure...
-```
-
-| Flag | Description |
-|------|-------------|
-| `--cwd <path>` | Working directory (default: current directory) |
-| `--port <number>` | Server port override |
-| `--no-stream` | Don't stream output; print curl commands instead |
-
-If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
-
-### Step-by-step (`ag create`)
+## 4. Create a Session
 
 ```bash
 ag create "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project

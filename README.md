@@ -30,29 +30,52 @@
 
 ## Quick Start
 
+Two commands from zero to a running Claude Code session:
+
 ```bash
-# Install
-npm install -g @onestepat4time/aegis
-
-# Zero-to-session in one command (bootstraps config, starts server, creates session)
-ag run "Build a login page with email/password fields." --cwd /path/to/project
-
-# Or step by step
-ag init
-ag
-ag create "Build a login page with email/password fields." --cwd /path/to/project
-
-# Scaffold a repo-local starter
-ag init --list-templates
-ag init --from-template code-reviewer
-ag doctor
+# 1. Run Aegis (no install needed — npx handles everything)
+npx --package=@onestepat4time/aegis ag run "Build a login page with email/password fields." --cwd /path/to/project
 ```
 
-> **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
+That's it. `ag run` bootstraps config, starts the server, creates a session, and streams output to your terminal.
 
-Built-in starter templates include `code-reviewer`, `ci-runner`, `pr-reviewer`, and `docs-writer`.
+<details>
+<summary>With a global install (optional)</summary>
+
+```bash
+npm install -g @onestepat4time/aegis
+ag run "Build a login page with email/password fields." --cwd /path/to/project
+```
+
+</details>
+
+<details>
+<summary>Step-by-step setup</summary>
+
+```bash
+ag init                    # Bootstrap config (use --force to overwrite)
+ag                         # Start server
+ag create "Your prompt" --cwd /path/to/project  # Create session
+ag doctor                  # Verify setup
+```
+
+</details>
+
+<details>
+<summary>Starter templates</summary>
+
+```bash
+ag init --list-templates
+ag init --from-template code-reviewer
+```
+
+Built-in templates: `code-reviewer`, `ci-runner`, `pr-reviewer`, `docs-writer`.
+
+</details>
 
 > **Prerequisites:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). Aegis bundles `claude-agent-acp` — no separate install needed.
+
+> **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
 
 ### Windows Setup
 
