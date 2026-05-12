@@ -1,6 +1,6 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-11 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus) + deep competitive research (Scribe)
+> **Last updated:** 2026-05-12 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
@@ -19,15 +19,15 @@ The Claude Code orchestration space is **crowded and moving fast**. 8+ competito
 
 | Rank | Competitor | ⭐ | Threat | Installs in | Agent count | Chat platforms | API | Dashboard | Enterprise auth |
 |------|-----------|-----|--------|-------------|-------------|---------------|-----|-----------|----------------|
-| #1 | **Ruflo** | 47K | 🔴 CRITICAL | `npx ruflo init` | 98 | UI only | ✅ (undocumented) | ✅ (beta) | ❌ |
-| #2 | **oh-my-claudecode** | 33K | 🔴 CRITICAL | `/plugin install` (1 cmd) | Multi-agent | Plugin (inside CC) | ❌ | ❌ | ❌ |
+| #1 | **Ruflo** | 49.3K (+2.3K in 3 days) | 🔴 CRITICAL | `npx ruflo init` | 98 | UI only | ✅ (undocumented) | ✅ (beta) | ❌ |
+| #2 | **oh-my-claudecode** | 33.5K (+400 in 3 days) | 🔴 CRITICAL | `/plugin install` (1 cmd) | Multi-agent | Plugin (inside CC) | ❌ | ❌ | ❌ |
 | #3 | **cc-connect** | 8K | 🟠 HIGH | Binary download | 10+ | **11** (inc. WeChat, QQ) | ❌ | ✅ (basic) | Token only |
 | #4 | **Composio** | 6.9K | 🟠 HIGH | `npm install` | Multi-agent | CI/CD focus | ✅ | ❌ | ❌ |
 | #5 | **open-multi-agent** | 6.1K | 🟡 MEDIUM | `npm install` | Multi-agent | MCP only | ✅ | Tracing UI | ❌ |
 | #6 | **mission-control** | 4.7K | 🟠 HIGH | `npm install` | Multi-gateway | Skills Hub | ✅ | ✅ | ✅ RBAC |
 | #7 | **OpenACP** | 346 | 🟠 HIGH | `curl \| bash` | **28+** | Telegram, Discord, Slack | ✅ | ❌ | ❌ |
 | #8 | **ECC** | 177K | 🟢 OPPORTUNITY | Config library | N/A (skills) | N/A | ❌ | ❌ | ❌ |
-| — | **Aegis** | ~200 | — | `npm + init + config` | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
+| — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
 ---
 
@@ -87,9 +87,25 @@ No single competitor has ALL of these. This is the enterprise wedge:
 
 This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise middleware** — the layer between "someone typed a message" and "code shipped to production." The moat is compliance, governance, observability. Don't compete on agent count. Compete on trust.
 
----
+## Market Pulse — 2026-05-12
 
-## New Findings (2026-05-11 Deep Dive)
+Live star counts and release velocity as of May 12:
+
+| Competitor | ⭐ Today | 3-day delta | Latest release | npm installs/week | Ship cadence |
+|-----------|---------|-------------|----------------|-------------------|-------------|
+| **Ruflo** | 49,305 | +2,300 | v3.7.0-alpha.23 (May 11) | 56,915 | Multiple/day (alpha) |
+| **oh-my-claudecode** | 33,491 | +400 | v4.13.7 (May 9) | 7,341 | Weekly |
+| **Aegis** | ~10 | — | v0.6.7-preview.1 (May 11) | 162 | 5–10 PRs/day |
+
+**Key signals:**
+- Ruflo gained 2,300 stars in 3 days — accelerating. Still pre-stable (alpha releases).
+- OMC grew 400 stars — steady. On v4.13.7 with stable weekly releases.
+- Aegis npm installs: 162/week. Ruflo: 56,915/week (351× our volume). OMC: 7,341/week (45× our volume).
+- Ruflo shipped 15+ alpha releases between May 6–11. Velocity is extreme.
+
+**Takeaway:** The install friction gap is costing us real users. Ruflo's `npx ruflo init` and OMC's `/plugin install` capture developers before they discover Aegis. PR #3232 (2-command quickstart docs) addresses this at the docs level. The code-level simplification (#3181) needs Ema's product direction.
+
+---
 
 ### oh-my-claudecode — Critical Path
 - **12 features we lack:** autopilot mode, multi-agent team orchestration (plan→PRD→exec→verify→fix), cross-model advisor (/ccg), deep interview (Socratic requirements), skill learning system, smart model routing (30-50% token savings), HUD statusline, magic keyword triggers, persistent verify/fix loops, tmux CLI workers, multi-language docs (7 languages)
@@ -216,4 +232,4 @@ For each competitor: what they have that we don't **AND** what we have that they
 
 ---
 
-*Maintained by Scribe 📝 — last deep dive: 2026-05-11. Update on each competitive scan.*
+*Maintained by Scribe 📝 — last deep dive: 2026-05-11, star counts updated: 2026-05-12. Update on each competitive scan.*
