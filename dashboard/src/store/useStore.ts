@@ -57,6 +57,7 @@ function areSessionsEqual(a: SessionInfo[], b: SessionInfo[]): boolean {
       || left.settingsPatched !== right.settingsPatched
       || left.promptDelivery?.delivered !== right.promptDelivery?.delivered
       || left.promptDelivery?.attempts !== right.promptDelivery?.attempts
+      || left.promptDelivery?.status !== right.promptDelivery?.status
     ) {
       return false;
     }

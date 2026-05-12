@@ -633,7 +633,7 @@ export function getScreenshot(id: string): Promise<{ image: string; mimeType?: s
 // ── Batch ──────────────────────────────────────────────────────
 
 export interface BatchResult {
-  sessions: Array<{ id: string; name: string; promptDelivery?: { delivered: boolean; attempts: number } }>;
+  sessions: Array<{ id: string; name: string; promptDelivery?: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout' } }>;
   created: number;
   failed: number;
   errors: string[];
