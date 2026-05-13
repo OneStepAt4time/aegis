@@ -232,6 +232,45 @@ export class BillingMeteringService {
     return result;
   }
 
+
+  /**
+   * Get per-day token breakdown aggregated from metering records.
+   * Returns an array of daily token counts sorted by date ascending.
+   */
+  getDailyTokenBreakdown(options?: { from?: string; to?: string }): Array<{
+    date: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+  }> {
+    const filtered = this.filterRecords({ from: options?.from, to: options?.to });
+    const dayMap = new Map<string, { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number }>();
+
+    for (const r of filtered) {
+      const date = r.timestamp.slice(0, 10); // YYYY-MM-DD
+      let bucket = dayMap.get(date);
+      if (!bucket) {
+        bucket = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+        dayMap.set(date, bucket);
+      }
+      bucket.inputTokens += r.inputTokens;
+      bucket.outputTokens += r.outputTokens;
+      bucket.cacheReadTokens += r.cacheReadTokens;
+      bucket.cacheWriteTokens += r.cacheCreationTokens;
+    }
+
+    return [...dayMap.entries()]
+      .map(([date, d]) => ({
+        date,
+        inputTokens: d.inputTokens,
+        outputTokens: d.outputTokens,
+        cacheReadTokens: d.cacheReadTokens,
+        cacheWriteTokens: d.cacheWriteTokens,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   /**
    * Get per-session usage records.
    */

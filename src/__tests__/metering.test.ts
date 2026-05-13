@@ -561,4 +561,79 @@ describe('MeteringService', () => {
       expect(svc.recordCount).toBe(10);
     });
   });
+  // ── getDailyTokenBreakdown (Issue #3282) ─────────────────────────
+  describe('getDailyTokenBreakdown', () => {
+    it('returns empty array when no records exist', () => {
+      expect(metering.getDailyTokenBreakdown()).toEqual([]);
+    });
+
+    it('aggregates tokens by date', async () => {
+      metering.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 10, cacheReadTokens: 20 }, 'sonnet');
+      await flushAsync();
+
+      metering.recordTokenUsage('s2', { inputTokens: 200, outputTokens: 100, cacheCreationTokens: 30, cacheReadTokens: 40 }, 'sonnet');
+      await flushAsync();
+
+      const result = metering.getDailyTokenBreakdown();
+      expect(result).toHaveLength(1);
+
+      const today = new Date().toISOString().slice(0, 10);
+      expect(result[0].date).toBe(today);
+      expect(result[0].inputTokens).toBe(300);
+      expect(result[0].outputTokens).toBe(150);
+      expect(result[0].cacheReadTokens).toBe(60);
+      expect(result[0].cacheWriteTokens).toBe(40);
+    });
+
+    it('filters by from/to date range', async () => {
+      metering.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 10, cacheReadTokens: 20 }, 'sonnet');
+      await flushAsync();
+      const records = (metering as any).records as UsageRecord[];
+      if (records.length > 0) records[records.length - 1].timestamp = '2026-05-10T10:00:00Z';
+
+      metering.recordTokenUsage('s2', { inputTokens: 200, outputTokens: 100, cacheCreationTokens: 30, cacheReadTokens: 40 }, 'sonnet');
+      await flushAsync();
+      const records2 = (metering as any).records as UsageRecord[];
+      if (records2.length > 1) records2[records2.length - 1].timestamp = '2026-05-12T10:00:00Z';
+
+      const result = metering.getDailyTokenBreakdown({ from: '2026-05-12T00:00:00Z', to: '2026-05-12T23:59:59Z' });
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2026-05-12');
+      expect(result[0].inputTokens).toBe(200);
+    });
+
+    it('returns empty for out-of-range dates', async () => {
+      metering.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 10, cacheReadTokens: 20 }, 'sonnet');
+      await flushAsync();
+
+      const result = metering.getDailyTokenBreakdown({ from: '2020-01-01T00:00:00Z', to: '2020-01-02T00:00:00Z' });
+      expect(result).toEqual([]);
+    });
+
+    it('separates records across different dates', async () => {
+      metering.recordTokenUsage('s1', { inputTokens: 100, outputTokens: 50, cacheCreationTokens: 10, cacheReadTokens: 20 }, 'sonnet');
+      await flushAsync();
+
+      metering.recordTokenUsage('s2', { inputTokens: 200, outputTokens: 100, cacheCreationTokens: 30, cacheReadTokens: 40 }, 'sonnet');
+      await flushAsync();
+
+      metering.recordTokenUsage('s3', { inputTokens: 300, outputTokens: 150, cacheCreationTokens: 50, cacheReadTokens: 60 }, 'sonnet');
+      await flushAsync();
+
+      // Backdate records to different days
+      const recs = (metering as any).records as UsageRecord[];
+      recs[0].timestamp = '2026-05-10T10:00:00Z';
+      recs[1].timestamp = '2026-05-11T10:00:00Z';
+      recs[2].timestamp = '2026-05-12T10:00:00Z';
+
+      const result = metering.getDailyTokenBreakdown();
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2026-05-10');
+      expect(result[0].inputTokens).toBe(100);
+      expect(result[1].date).toBe('2026-05-11');
+      expect(result[1].inputTokens).toBe(200);
+      expect(result[2].date).toBe('2026-05-12');
+      expect(result[2].inputTokens).toBe(300);
+    });
+  });
 });

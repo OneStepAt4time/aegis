@@ -22,7 +22,7 @@ import type { ApiKey } from '../services/auth/types.js';
 const GLOBAL_RATE_LIMIT = { max: 600, timeWindowMs: 60_000 };
 
 export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { metricsCache, auth, quotas, sessions } = ctx;
+  const { metricsCache, auth, quotas, sessions, metering } = ctx;
 
   // ── Summary endpoint (delegates to MetricsCache) ────────────
   registerWithLegacy(app, 'get', '/v1/analytics/summary', {
@@ -73,12 +73,13 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     },
   });
 
-  // ── Token usage endpoint (Issue #2247) ──────────────────────
+  // ── Token usage endpoint (Issue #2247, #3282) ──────────────
   registerWithLegacy(app, 'get', '/v1/analytics/tokens', {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
+      const query = req.query as { from?: string; to?: string };
       const metrics = metricsCache.getMetrics();
 
       const totalTokens = metrics.tokenUsageByModel.reduce(
@@ -89,6 +90,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
         (sum, m) => sum + m.estimatedCostUsd,
         0,
       );
+
+      // Per-day token breakdown from metering records (Issue #3282)
+      const dailyBreakdown = metering.getDailyTokenBreakdown({
+        from: query.from,
+        to: query.to,
+      });
 
       return {
         totalTokens,
@@ -106,6 +113,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
           estimatedCostUsd: d.cost,
           sessions: d.sessions,
         })),
+        dailyBreakdown,
         generatedAt: metrics.generatedAt,
       };
     },
