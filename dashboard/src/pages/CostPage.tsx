@@ -26,8 +26,8 @@ import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { ChartFrame } from '../components/shared/ChartFrame';
-import { getAnalyticsCosts } from '../api/client';
-import type { AnalyticsCostsResponse } from '../types';
+import { getAnalyticsCosts, getCostSummary, getCostByModel } from '../api/client';
+import type { AnalyticsCostsResponse, CostSummaryResponse, CostByModelResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
 import { ForecastChart } from '../components/cost/ForecastChart';
@@ -166,12 +166,20 @@ export default function CostPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [costSummary, setCostSummary] = useState<CostSummaryResponse | null>(null);
+  const [costByModel, setCostByModel] = useState<CostByModelResponse | null>(null);
   const sseConnected = useStore((s) => s.sseConnected);
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await getAnalyticsCosts();
-      setCostData(data);
+      const [data, summary, byModel] = await Promise.allSettled([
+        getAnalyticsCosts(),
+        getCostSummary().catch(() => null),
+        getCostByModel().catch(() => null),
+      ]);
+      if (data.status === 'fulfilled') setCostData(data.value);
+      if (summary.status === 'fulfilled' && summary.value) setCostSummary(summary.value);
+      if (byModel.status === 'fulfilled' && byModel.value) setCostByModel(byModel.value);
       setDataError(null);
     } catch (err) {
       setDataError(err instanceof Error ? err.message : 'Failed to load cost data');
@@ -220,6 +228,12 @@ export default function CostPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
         </div>
+        <SkeletonCard className="h-72" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SkeletonCard className="h-72" />
+          <SkeletonCard className="h-72" />
+        </div>
+        {/* Cost analytics skeleton */}
         <SkeletonCard className="h-72" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <SkeletonCard className="h-72" />
@@ -332,7 +346,7 @@ export default function CostPage() {
 
       {/* Daily spend chart */}
       {dailyData.length > 0 && (
-        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Daily spend chart">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Daily Spend ({dailyData.length} days)
           </h3>
@@ -366,22 +380,27 @@ export default function CostPage() {
 
       {/* ── Cost Analytics Panels (#3273) ── */}
       <section aria-label="Cost analytics">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
             Cost Analytics
+            {costSummary?.burnRateUsdPerHour && costSummary.burnRateUsdPerHour > 0 && (
+              <span className="ml-3 text-sm font-normal text-[var(--color-accent-cyan)]">
+                {formatCurrency(costSummary.burnRateUsdPerHour)}/hr burn rate
+              </span>
+            )}
           </h2>
           <TimeRangePicker value={timeRange} onChange={setTimeRange} />
         </div>
 
         {/* Burn rate — full width */}
         <div className="mb-4">
-          <BurnRateChart />
+          <BurnRateChart data={dailyData.map(d => ({ date: d.date, cost: d.estimatedCostUsd }))} />
         </div>
 
         {/* Token breakdown + Cost by model — side by side */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <TokenBreakdownChart />
-          <CostByModelChart />
+          <CostByModelChart data={costByModel?.models.map(m => ({ model: m.model, cost: m.estimatedCostUsd }))} />
         </div>
       </section>
 
@@ -389,7 +408,7 @@ export default function CostPage() {
       {modelData.length > 0 && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Pie chart */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Cost by model chart">
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Cost by Model
             </h3>
@@ -420,7 +439,7 @@ export default function CostPage() {
           </section>
 
           {/* Model list */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Model details">
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Model Details
             </h3>
