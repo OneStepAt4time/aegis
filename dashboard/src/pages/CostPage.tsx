@@ -1,6 +1,7 @@
 /**
  * pages/CostPage.tsx — Global cost & billing dashboard with charts and budgets.
- * Wired to GET /v1/analytics/costs (Issue #2802). // token-ok
+ * Wired to GET /v1/analytics/costs (Issue #2802).
+ * Cost analytics panels added (Issue #3273).
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -30,6 +31,9 @@ import type { AnalyticsCostsResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
 import { ForecastChart } from '../components/cost/ForecastChart';
+import { BurnRateChart } from '../components/cost/BurnRateChart';
+import { TokenBreakdownChart } from '../components/cost/TokenBreakdownChart';
+import { CostByModelChart } from '../components/cost/CostByModelChart';
 import { getBudgetSettings, type BudgetSettings } from '../utils/budgetSettings';
 
 const MODEL_COLORS: Record<string, string> = {
@@ -40,6 +44,36 @@ const MODEL_COLORS: Record<string, string> = {
   'gpt-4.1': 'var(--color-info)',
   other: 'var(--color-text-muted)',
 };
+
+type TimeRange = '7d' | '30d' | '90d';
+
+const TIME_RANGES: Array<{ value: TimeRange; label: string }> = [
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: '30 Days' },
+  { value: '90d', label: '90 Days' },
+];
+
+function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
+  return (
+    <div className="inline-flex rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)]" role="group" aria-label="Time range selector">
+      {TIME_RANGES.map((range) => (
+        <button
+          key={range.value}
+          type="button"
+          onClick={() => onChange(range.value)}
+          className={`min-h-[36px] px-3 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+            value === range.value
+              ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+          }`}
+          aria-pressed={value === range.value}
+        >
+          {range.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function CustomTooltip({ active, payload, label }: {
   active?: boolean;
@@ -131,6 +165,7 @@ export default function CostPage() {
   const [costData, setCostData] = useState<AnalyticsCostsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const sseConnected = useStore((s) => s.sseConnected);
 
   const fetchData = useCallback(async () => {
@@ -328,6 +363,27 @@ export default function CostPage() {
           </ChartFrame>
         </section>
       )}
+
+      {/* ── Cost Analytics Panels (#3273) ── */}
+      <section aria-label="Cost analytics">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
+            Cost Analytics
+          </h2>
+          <TimeRangePicker value={timeRange} onChange={setTimeRange} />
+        </div>
+
+        {/* Burn rate — full width */}
+        <div className="mb-4">
+          <BurnRateChart />
+        </div>
+
+        {/* Token breakdown + Cost by model — side by side */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TokenBreakdownChart />
+          <CostByModelChart />
+        </div>
+      </section>
 
       {/* Model breakdown */}
       {modelData.length > 0 && (
