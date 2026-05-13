@@ -16,6 +16,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-url.js';
+import { AuthManager } from '../services/auth/index.js';
 import { loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
 import { getErrorMessage, parseIntSafe } from '../validation.js';
 
@@ -55,20 +56,30 @@ async function waitForServer(baseUrl: string, authToken: string | undefined, tim
   return false;
 }
 
-/** Bootstrap config with sensible defaults if none exists. */
-async function ensureConfig(configPath: string): Promise<string | undefined> {
+/**
+ * Bootstrap config with sensible defaults if none exists.
+ * Issue #3261: Use AuthManager to create a proper key in keys.json,
+ * not a random token that the server won't recognize.
+ */
+async function ensureConfig(configPath: string, stateDir: string): Promise<string | undefined> {
   const existing = await readConfigFile(configPath);
   if (existing) {
     return existing.authToken || existing.clientAuthToken || undefined;
   }
 
-  // Create minimal config with generated auth token
-  const token = `aegis-quickstart-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  // Issue #3261: Use AuthManager to register the key in keys.json.
+  // This mirrors what `ag init` does — the freshly-started server will
+  // load keys.json and recognize the generated token.
+  const authManager = new AuthManager(join(stateDir, 'keys.json'));
+  await authManager.load();
+  const createdKey = await authManager.createKey('ag-run-admin', 100, undefined, 'admin');
+  const token = createdKey.key;
+
   const config: Partial<Config> = {
     authToken: token,
     baseUrl: 'http://127.0.0.1:9100',
     dashboardEnabled: true,
-    acpEnabled: true,  // Issue #3068: Enable ACP by default so sessions actually run
+    acpEnabled: true,
   };
 
   const content = serializeConfigFile(config, configPath);
@@ -192,10 +203,10 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   if (!serverRunning) {
     writeLine(io.stdout, '  ⏳ Server not running — starting...');
 
-    // Ensure config exists
+    // Ensure config exists (creates proper key in keys.json via AuthManager)
     if (!existingConfig) {
       writeLine(io.stdout, '  ⏳ No config found — bootstrapping with defaults...');
-      const generatedToken = await ensureConfig(configPath);
+      const generatedToken = await ensureConfig(configPath, config.stateDir);
       if (generatedToken) authToken = generatedToken;
       writeLine(io.stdout, `  ✅ Config created: ${configPath}`);
     }
@@ -242,6 +253,25 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     });
 
     if (!res.ok) {
+      // Issue #3261: When a server is already running with auth but the CLI has
+      // no matching token, provide a clear actionable error instead of a generic one.
+      if (res.status === 401) {
+        const errBody = await res.json().catch(() => ({ error: res.statusText }));
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  ❌ Unauthorized — the server requires authentication.');
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  This happens when a server is already running with API keys configured');
+        writeLine(io.stderr, '  but no matching auth token is available locally.');
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  To fix this:');
+        writeLine(io.stderr, '    1. Run `ag init` to create a new API key and config');
+        writeLine(io.stderr, '    2. Or set AEGIS_AUTH_TOKEN=<your-key> in your environment');
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  If you set up the server, your original token was shown by `ag init`.');
+        writeLine(io.stderr, '  Check your shell history or re-run `ag init --force` to generate a new one.');
+        return 1;
+      }
+
       const err = await res.json().catch(() => ({ error: res.statusText }));
       writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
       return 1;
