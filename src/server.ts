@@ -967,6 +967,9 @@ async function main(): Promise<void> {
   });
   await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
+  // Issue #3264: Initialize MeteringService for persistent cost tracking.
+  const metering = new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl'));
+
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
   jsonlWatcher.onEntries((event) => {
@@ -975,6 +978,10 @@ async function main(): Promise<void> {
       if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
         const model = sessions.getSession(event.sessionId)?.model;
         metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+        // Issue #3264: Persist token usage to MeteringService for cost API queries.
+        if (metering) {
+          metering.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+        }
       }
       // Issue #2536: Count messages and tool calls from parsed entries.
       for (const msg of event.messages) {
@@ -1050,7 +1057,7 @@ async function main(): Promise<void> {
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
     quotas: new QuotaManager(),
-    metering: new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl')),
+    metering,
     metricsCache,
     dashboardOidc,
     dashboardTokenSessions,
