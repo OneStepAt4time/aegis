@@ -27,7 +27,7 @@ export function PanePreview({ status, content, loading }: PanePreviewProps) {
   return (
     <div className="bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
       {/* Toggle header */}
-      <button
+      <button type="button"
         onClick={() => setCollapsed(c => !c)}
         className="flex items-center justify-between w-full px-4 py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors border-b border-[var(--color-void-lighter)]"
       >

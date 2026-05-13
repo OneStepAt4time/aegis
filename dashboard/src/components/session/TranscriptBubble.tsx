@@ -121,7 +121,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
         className="flex justify-start mb-3 group"
       >
         <div className="max-w-[90%] w-full">
-          <button
+          <button type="button"
             onClick={(e) => {
               e.stopPropagation();
               setCollapsed(!collapsed);
@@ -171,7 +171,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
             </div>
           )}
           <div className="flex-1">
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setCollapsed(!collapsed);
