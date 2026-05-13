@@ -53,7 +53,6 @@ interface ModelCostEntry {
   cacheReadTokens: number;
   estimatedCostUsd: number;
   cacheHitRate: number;
-  recordCount: number;
 }
 
 interface CostByModelResponse {
@@ -64,8 +63,23 @@ interface CostByModelResponse {
   totalCostUsd: number;
 }
 
+/** Calculate burn rate (USD/hour) from cost and time range. */
+function calcBurnRate(costUsd: number, from: string | undefined, to: string | undefined): number | null {
+  if (!from || !to) return null;
+  const durationMs = new Date(to).getTime() - new Date(from).getTime();
+  if (durationMs <= 0) return null;
+  return Math.round((costUsd / durationMs) * 3600 * 1_000_000) / 1_000_000;
+}
+
+/** Calculate cache-hit rate from read and write tokens. */
+function calcCacheHitRate(cacheRead: number, cacheWrite: number): number {
+  const total = cacheRead + cacheWrite;
+  if (total === 0) return 0;
+  return Math.round((cacheRead / total) * 10000) / 10000;
+}
+
 export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { metering, sessions } = ctx;
+  const { metering } = ctx;
 
   /**
    * GET /v1/sessions/:id/cost — Per-session cost breakdown.
@@ -73,7 +87,7 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
    * Returns aggregated token counts, cost estimate, cache-hit rate,
    * and burn rate for a single session.
    */
-  registerWithLegacy(app, 'get', '/v1/sessions/:id/cost', withOwnership(sessions, async (_req, _reply, session) => {
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/cost', withOwnership(ctx.sessions, async (_req, _reply, session) => {
     if (!requireRole(ctx.auth, _req, _reply, 'admin', 'operator', 'viewer')) return;
 
     const sessionId = session.id;
@@ -94,20 +108,9 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
       if (!latestTs || r.timestamp > latestTs) latestTs = r.timestamp;
     }
 
-    const totalPotentialCache = totalCacheRead + totalCacheWrite;
-    const cacheHitRate = totalPotentialCache > 0
-      ? Math.round((totalCacheRead / totalPotentialCache) * 10000) / 10000
-      : 0;
-
-    let burnRateUsdPerHour: number | null = null;
-    let durationMinutes: number | null = null;
-    if (earliestTs && latestTs) {
-      const durationMs = new Date(latestTs).getTime() - new Date(earliestTs).getTime();
-      durationMinutes = Math.round(durationMs / 60000);
-      if (durationMs > 0) {
-        burnRateUsdPerHour = Math.round((summary.totalCostUsd / durationMs) * 3600 * 1_000_000) / 1_000_000;
-      }
-    }
+    const durationMinutes = earliestTs && latestTs
+      ? Math.round((new Date(latestTs).getTime() - new Date(earliestTs).getTime()) / 60000)
+      : null;
 
     const response: SessionCostResponse = {
       sessionId,
@@ -115,10 +118,10 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
       totalOutputTokens: summary.totalOutputTokens,
       totalCacheCreationTokens: summary.totalCacheCreationTokens,
       totalCacheReadTokens: summary.totalCacheReadTokens,
-      cacheHitRate,
+      cacheHitRate: calcCacheHitRate(totalCacheRead, totalCacheWrite),
       estimatedCostUsd: summary.totalCostUsd,
       model: latestModel,
-      burnRateUsdPerHour,
+      burnRateUsdPerHour: calcBurnRate(summary.totalCostUsd, earliestTs ?? undefined, latestTs ?? undefined),
       durationMinutes,
       recordCount: summary.recordCount,
     };
@@ -138,23 +141,6 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
     const query = req.query as { from?: string; to?: string };
     const summary = metering.getUsageSummary({ from: query.from, to: query.to });
 
-    // Calculate cache-hit rate across all records in range
-    const records = metering.getSessionUsage('', { from: query.from, to: query.to });
-    // getSessionUsage with empty sessionId returns nothing, use getUsageSummary data
-    const totalPotentialCache = summary.totalCacheReadTokens + summary.totalCacheCreationTokens;
-    const cacheHitRate = totalPotentialCache > 0
-      ? Math.round((summary.totalCacheReadTokens / totalPotentialCache) * 10000) / 10000
-      : 0;
-
-    // Calculate burn rate from time range
-    let burnRateUsdPerHour: number | null = null;
-    if (summary.from && summary.to) {
-      const durationMs = new Date(summary.to).getTime() - new Date(summary.from).getTime();
-      if (durationMs > 0) {
-        burnRateUsdPerHour = Math.round((summary.totalCostUsd / durationMs) * 3600 * 1_000_000) / 1_000_000;
-      }
-    }
-
     const response: CostSummaryResponse = {
       from: summary.from ?? null,
       to: summary.to ?? null,
@@ -162,9 +148,9 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
       totalOutputTokens: summary.totalOutputTokens,
       totalCacheCreationTokens: summary.totalCacheCreationTokens,
       totalCacheReadTokens: summary.totalCacheReadTokens,
-      cacheHitRate,
+      cacheHitRate: calcCacheHitRate(summary.totalCacheReadTokens, summary.totalCacheCreationTokens),
       estimatedCostUsd: summary.totalCostUsd,
-      burnRateUsdPerHour,
+      burnRateUsdPerHour: calcBurnRate(summary.totalCostUsd, summary.from, summary.to),
       sessions: summary.sessions,
     };
     return response;
@@ -173,6 +159,7 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
   /**
    * GET /v1/cost/by-model — Cost grouped by model.
    *
+   * Uses the MetricsCache for model-grouped token and cost data.
    * Query params:
    *   from — ISO timestamp lower bound (inclusive)
    *   to   — ISO timestamp upper bound (inclusive)
@@ -182,40 +169,18 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
 
     const query = req.query as { from?: string; to?: string };
     const summary = metering.getUsageSummary({ from: query.from, to: query.to });
-
-    // Aggregate by model from usage-by-key records
-    // We need raw records grouped by model — use the metering service
-    const byKey = metering.getUsageByKey({ from: query.from, to: query.to });
-
-    // Collect all records and group by model
-    // Since MeteringService doesn't have a by-model method, we compute from records
-    // Actually, getUsageSummary already has the totals. We need a model breakdown.
-    // Let's use the analytics cache for model data, or compute from metering records.
-    // The metering service records each have a model field, so let's aggregate.
-    // But we don't have direct access to all records with model grouping.
-    // Use a workaround: get per-session records and aggregate.
-    // Better approach: add a getUsageByModel method to MeteringService.
-    // For now, compute from the available data.
-
-    // Use the existing analytics endpoint data via metricsCache
     const metricsCache = ctx.metricsCache;
     const analytics = metricsCache.getMetrics();
 
-    const modelEntries: ModelCostEntry[] = analytics.tokenUsageByModel.map(m => {
-      const totalCache = m.cacheCreationTokens + m.cacheReadTokens;
-      return {
-        model: m.model,
-        inputTokens: m.inputTokens,
-        outputTokens: m.outputTokens,
-        cacheCreationTokens: m.cacheCreationTokens,
-        cacheReadTokens: m.cacheReadTokens,
-        estimatedCostUsd: m.estimatedCostUsd,
-        cacheHitRate: totalCache > 0
-          ? Math.round((m.cacheReadTokens / totalCache) * 10000) / 10000
-          : 0,
-        recordCount: 0, // not available per-model from cache
-      };
-    });
+    const modelEntries: ModelCostEntry[] = analytics.tokenUsageByModel.map(m => ({
+      model: m.model,
+      inputTokens: m.inputTokens,
+      outputTokens: m.outputTokens,
+      cacheCreationTokens: m.cacheCreationTokens,
+      cacheReadTokens: m.cacheReadTokens,
+      estimatedCostUsd: m.estimatedCostUsd,
+      cacheHitRate: calcCacheHitRate(m.cacheReadTokens, m.cacheCreationTokens),
+    }));
 
     const totalCost = modelEntries.reduce((sum, m) => sum + m.estimatedCostUsd, 0);
 
