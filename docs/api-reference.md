@@ -2565,14 +2565,26 @@ curl http://localhost:9100/v1/analytics/costs \
 GET /v1/analytics/tokens
 ```
 
-Returns aggregated token usage with per-model distribution and daily cost trends.
+Returns aggregated token usage with per-model distribution, daily cost trends, and per-day token breakdown.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|------------|
+| `from` | ISO 8601 string | Optional. Filter records from this timestamp. |
+| `to` | ISO 8601 string | Optional. Filter records up to this timestamp. |
 
 | Role | Required |
 |------|----------|
 | admin, operator, viewer | Yes |
 
 ```bash
+# Full breakdown
 curl http://localhost:9100/v1/analytics/tokens \
+  -H "Authorization: Bearer $TOKEN"
+
+# Filtered by date range
+curl "http://localhost:9100/v1/analytics/tokens?from=2026-05-01T00:00:00Z&to=2026-05-10T23:59:59Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -2587,6 +2599,10 @@ curl http://localhost:9100/v1/analytics/tokens \
   ],
   "dailyCost": [
     { "date": "2026-04-22", "estimatedCostUsd": 24.50, "sessions": 12 }
+  ],
+  "dailyBreakdown": [
+    { "date": "2026-05-10", "inputTokens": 300000, "outputTokens": 150000, "cacheReadTokens": 60000, "cacheWriteTokens": 40000 },
+    { "date": "2026-05-11", "inputTokens": 280000, "outputTokens": 120000, "cacheReadTokens": 45000, "cacheWriteTokens": 35000 }
   ],
   "generatedAt": "2026-04-28T06:00:00.000Z"
 }
