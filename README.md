@@ -55,7 +55,7 @@ ag run "Build a login page with email/password fields." --cwd /path/to/project
 <summary>Step-by-step setup</summary>
 
 ```bash
-ag init                    # Bootstrap config (use --force to overwrite)
+ag init                    # Bootstrap config (use --force to overwrite, --model <model> for non-interactive)
 ag                         # Start server
 ag create "Your prompt" --cwd /path/to/project  # Create session
 ag doctor                  # Verify setup

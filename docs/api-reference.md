@@ -2626,6 +2626,141 @@ curl http://localhost:9100/v1/analytics/rate-limits \
 }
 ```
 
+### Get Session Cost
+
+```
+GET /v1/sessions/:id/cost
+```
+
+Returns per-session cost summary with burn rate, cache-hit rate, and token breakdown.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer (owner) | Yes |
+
+```bash
+curl http://localhost:9100/v1/sessions/sess_abc123/cost \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "sessionId": "sess_abc123",
+  "totalInputTokens": 150000,
+  "totalOutputTokens": 50000,
+  "totalCacheCreationTokens": 20000,
+  "totalCacheReadTokens": 80000,
+  "cacheHitRate": 0.8,
+  "estimatedCostUsd": 3.42,
+  "model": "claude-sonnet-4-20250514",
+  "burnRateUsdPerHour": 12.5,
+  "durationMinutes": 16,
+  "recordCount": 24
+}
+```
+
+---
+
+### Get Cost Summary
+
+```
+GET /v1/cost/summary
+```
+
+Returns aggregate cost summary with burn rate across all sessions.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from` | string | no | ISO timestamp lower bound (inclusive) |
+| `to` | string | no | ISO timestamp upper bound (inclusive) |
+
+```bash
+curl "http://localhost:9100/v1/cost/summary?from=2026-05-01T00:00:00Z&to=2026-05-13T00:00:00Z" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "from": "2026-05-01T00:00:00.000Z",
+  "to": "2026-05-13T00:00:00.000Z",
+  "totalInputTokens": 2400000,
+  "totalOutputTokens": 800000,
+  "totalCacheCreationTokens": 100000,
+  "totalCacheReadTokens": 500000,
+  "cacheHitRate": 0.8333,
+  "estimatedCostUsd": 52.40,
+  "burnRateUsdPerHour": 4.37,
+  "sessions": 42
+}
+```
+
+---
+
+### Get Cost by Model
+
+```
+GET /v1/cost/by-model
+```
+
+Returns cost grouped by model with per-model token breakdown and cache-hit rate.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from` | string | no | ISO timestamp lower bound (inclusive) |
+| `to` | string | no | ISO timestamp upper bound (inclusive) |
+
+```bash
+curl "http://localhost:9100/v1/cost/by-model" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "from": null,
+  "to": null,
+  "models": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "inputTokens": 2000000,
+      "outputTokens": 700000,
+      "cacheCreationTokens": 80000,
+      "cacheReadTokens": 400000,
+      "estimatedCostUsd": 45.20,
+      "cacheHitRate": 0.8333
+    },
+    {
+      "model": "claude-opus-4-20250514",
+      "inputTokens": 400000,
+      "outputTokens": 100000,
+      "cacheCreationTokens": 20000,
+      "cacheReadTokens": 100000,
+      "estimatedCostUsd": 7.20,
+      "cacheHitRate": 0.8333
+    }
+  ],
+  "totalModels": 2,
+  "totalCostUsd": 52.40
+}
+```
+
 ---
 
 ## 8. Monitoring
