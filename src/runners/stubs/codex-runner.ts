@@ -15,6 +15,7 @@ import type {
   RunnerKillOptions,
   RunnerKillResult,
 } from '../types.js';
+import { NotImplementedError } from './shared.js';
 
 /**
  * CodexRunner — stub implementation for OpenAI Codex CLI.
@@ -34,6 +35,8 @@ export class CodexRunner implements AgentRunner {
     throw new NotImplementedError('CodexRunner.sendInput');
   }
 
+  // Note: the throw occurs before any yield, so the caller gets a rejected
+  // promise rather than an error during iteration.
   async *readOutput(_handle: ProcessHandle): AsyncIterable<OutputChunk> {
     throw new NotImplementedError('CodexRunner.readOutput');
   }
@@ -48,12 +51,5 @@ export class CodexRunner implements AgentRunner {
 
   getHandle(_sessionId: string): ProcessHandle | undefined {
     return undefined;
-  }
-}
-
-class NotImplementedError extends Error {
-  constructor(method: string) {
-    super(`${method} is not implemented. CodexRunner is a stub for future Codex CLI integration.`);
-    this.name = 'NotImplementedError';
   }
 }

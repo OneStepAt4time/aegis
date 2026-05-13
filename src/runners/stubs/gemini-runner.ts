@@ -15,6 +15,7 @@ import type {
   RunnerKillOptions,
   RunnerKillResult,
 } from '../types.js';
+import { NotImplementedError } from './shared.js';
 
 /**
  * GeminiCliRunner — stub implementation for Google Gemini CLI.
@@ -34,6 +35,8 @@ export class GeminiCliRunner implements AgentRunner {
     throw new NotImplementedError('GeminiCliRunner.sendInput');
   }
 
+  // Note: the throw occurs before any yield, so the caller gets a rejected
+  // promise rather than an error during iteration.
   async *readOutput(_handle: ProcessHandle): AsyncIterable<OutputChunk> {
     throw new NotImplementedError('GeminiCliRunner.readOutput');
   }
@@ -48,12 +51,5 @@ export class GeminiCliRunner implements AgentRunner {
 
   getHandle(_sessionId: string): ProcessHandle | undefined {
     return undefined;
-  }
-}
-
-class NotImplementedError extends Error {
-  constructor(method: string) {
-    super(`${method} is not implemented. GeminiCliRunner is a stub for future Gemini CLI integration.`);
-    this.name = 'NotImplementedError';
   }
 }
