@@ -1,10 +1,9 @@
 /**
- * async-session-create-3243.test.ts — Tests for Issue #3243.
+ * async-session-create-3243.test.ts — Tests for synchronous prompt delivery (Issue #3271 revert).
  *
- * POST /v1/sessions with ACP enabled + prompt must return 201 immediately
- * with promptDelivery: { delivered: false, attempts: 0, status: 'pending' }.
- * Prompt delivery runs asynchronously and updates session.promptDelivery
- * once complete.
+ * Originally tested async delivery from #3243. After #3271 regression fix,
+ * prompt delivery is synchronous again. Tests verify the synchronous behavior
+ * with promptDelivery.status tracking intact.
  */
 
 import Fastify from 'fastify';
@@ -42,12 +41,7 @@ import {
 
 import { type Config } from '../config.js';
 
-const MASTER_TOKEN = 'aegis-master-3243';
-
-/** Wait for async microtasks/timers to settle. */
-async function flushAsync(ms = 50): Promise<void> {
-  await new Promise((r) => setTimeout(r, ms));
-}
+const MASTER_TOKEN = 'aegis-master-3271';
 
 function buildMockAcpBackend(sendPromptImpl?: () => Promise<{ delivered: boolean; attempts: number }>) {
   const sessionId = crypto.randomUUID();
@@ -192,121 +186,94 @@ const authHeaders = (token = MASTER_TOKEN) => ({
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Issue #3243 — async session create (ACP + prompt)', () => {
-  let tmpDir: string;
-
-  beforeAll(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'aegis-async-create-3243-'));
-  });
-
-  describe('POST /v1/sessions — fire-and-forget sendPrompt', () => {
-    it('returns 201 immediately with promptDelivery.status: pending', async () => {
-      // sendPrompt resolves instantly — check that response has status: 'pending' regardless
-      const acpBackend = buildMockAcpBackend(() => Promise.resolve({ delivered: true, attempts: 1 }));
-      const { ctx, sessions } = await buildRouteContext(tmpDir, acpBackend);
+describe('Issue #3271 — synchronous prompt delivery (revert of async #3243)', () => {
+  describe('POST /v1/sessions — synchronous prompt delivery', () => {
+    it('returns 201 with promptDelivery.status: delivered after sendPrompt resolves', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend();
+      const { ctx } = await buildRouteContext(tmpDir, acp);
       const { app, port } = await buildApp(ctx);
 
       try {
         const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ workDir: tmpDir, prompt: 'Build a REST API' }),
+          body: JSON.stringify({ prompt: 'hello', workDir: tmpDir }),
         });
 
         expect(res.status).toBe(201);
-        const body = await res.json() as Record<string, unknown>;
-        expect(body.id).toBeDefined();
-
-        const pd = body.promptDelivery as { delivered: boolean; attempts: number; status: string } | undefined;
-        expect(pd).toBeDefined();
-        expect(pd?.status).toBe('pending');
-        expect(pd?.delivered).toBe(false);
-        expect(pd?.attempts).toBe(0);
+        const body = await res.json();
+        // Synchronous delivery — status should be 'delivered', not 'pending'
+        expect(body.promptDelivery).toBeDefined();
+        expect(body.promptDelivery.status).toBe('delivered');
+        expect(body.promptDelivery.delivered).toBe(true);
+        expect(body.promptDelivery.attempts).toBe(1);
+        expect(acp.sendPrompt).toHaveBeenCalledTimes(1);
       } finally {
         await app.close();
       }
     });
 
-    it('updates session.promptDelivery.status to delivered after sendPrompt resolves', async () => {
-      let resolvePrompt!: (val: { delivered: boolean; attempts: number }) => void;
-      const deferredPrompt = new Promise<{ delivered: boolean; attempts: number }>((r) => {
-        resolvePrompt = r;
-      });
-
-      const acpBackend = buildMockAcpBackend(() => deferredPrompt);
-      const subTmpDir = mkdtempSync(join(tmpdir(), 'aegis-async-3243b-'));
-      const { ctx, sessions } = await buildRouteContext(subTmpDir, acpBackend);
+    it('returns promptDelivery.status: failed when sendPrompt returns not delivered', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend(() => Promise.resolve({ delivered: false, attempts: 1, error: 'test failure' }));
+      const { ctx } = await buildRouteContext(tmpDir, acp);
       const { app, port } = await buildApp(ctx);
 
       try {
         const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ workDir: subTmpDir, prompt: 'Do the thing' }),
+          body: JSON.stringify({ prompt: 'hello', workDir: tmpDir }),
         });
+
         expect(res.status).toBe(201);
-        const body = await res.json() as Record<string, unknown>;
-        const sessionId = body.id as string;
-
-        // At this point promptDelivery.status must be 'pending'
-        expect((body.promptDelivery as Record<string, unknown>)?.status).toBe('pending');
-
-        // Resolve sendPrompt — simulating successful prompt delivery
-        resolvePrompt({ delivered: true, attempts: 1 });
-
-        // Wait for the fire-and-forget callback to update session state
-        await flushAsync(100);
-
-        // GET the session and verify promptDelivery was updated
-        const getRes = await fetch(`http://127.0.0.1:${port}/v1/sessions/${sessionId}`, {
-          headers: authHeaders(),
-        });
-        expect(getRes.status).toBe(200);
-        const session = await getRes.json() as Record<string, unknown>;
-        const pd = session.promptDelivery as { delivered: boolean; attempts: number; status: string };
-        expect(pd.status).toBe('delivered');
-        expect(pd.delivered).toBe(true);
-        expect(pd.attempts).toBe(1);
+        const body = await res.json();
+        expect(body.promptDelivery.status).toBe('failed');
+        expect(body.promptDelivery.delivered).toBe(false);
+        expect(body.promptDelivery.error).toBe('test failure');
       } finally {
         await app.close();
       }
     });
 
-    it('updates session.promptDelivery.status to failed after sendPrompt rejects', async () => {
-      let rejectPrompt!: (err: Error) => void;
-      const deferredPrompt = new Promise<{ delivered: boolean; attempts: number }>((_, r) => {
-        rejectPrompt = r;
-      });
-
-      const acpBackend = buildMockAcpBackend(() => deferredPrompt);
-      const subTmpDir = mkdtempSync(join(tmpdir(), 'aegis-async-3243c-'));
-      const { ctx, sessions } = await buildRouteContext(subTmpDir, acpBackend);
+    it('returns promptDelivery.status: failed when sendPrompt throws', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend(() => Promise.reject(new Error('connection reset')));
+      const { ctx } = await buildRouteContext(tmpDir, acp);
       const { app, port } = await buildApp(ctx);
 
       try {
         const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ workDir: subTmpDir, prompt: 'Fail me' }),
+          body: JSON.stringify({ prompt: 'hello', workDir: tmpDir }),
         });
-        expect(res.status).toBe(201);
-        const body = await res.json() as Record<string, unknown>;
-        const sessionId = body.id as string;
 
-        expect((body.promptDelivery as Record<string, unknown>)?.status).toBe('pending');
+        // When sendPrompt throws, the route handler propagates the error → 500
+        expect(res.status).toBe(500);
+      } finally {
+        await app.close();
+      }
+    });
 
-        // Reject sendPrompt — simulating delivery failure
-        rejectPrompt(new Error('timeout'));
+    it('creates session without prompt when no prompt provided', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend();
+      const { ctx } = await buildRouteContext(tmpDir, acp);
+      const { app, port } = await buildApp(ctx);
 
-        await flushAsync(100);
-
-        const getRes = await fetch(`http://127.0.0.1:${port}/v1/sessions/${sessionId}`, {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
+          method: 'POST',
           headers: authHeaders(),
+          body: JSON.stringify({ workDir: tmpDir }),
         });
-        const session = await getRes.json() as Record<string, unknown>;
-        const pd = session.promptDelivery as { delivered: boolean; attempts: number; status: string };
-        expect(pd.status).toBe('failed');
-        expect(pd.delivered).toBe(false);
+
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body.promptDelivery).toBeUndefined();
+        expect(acp.sendPrompt).not.toHaveBeenCalled();
       } finally {
         await app.close();
       }
@@ -315,50 +282,26 @@ describe('Issue #3243 — async session create (ACP + prompt)', () => {
 
   describe('SessionInfo.promptDelivery — status field', () => {
     it('accepts status: pending on promptDelivery', () => {
-      const session: SessionInfo = {
-        id: 'test', windowId: '', displayName: 'test', workDir: '/tmp',
-        byteOffset: 0, monitorOffset: 0, status: 'pending',
-        createdAt: Date.now(), lastActivity: Date.now(),
-        stallThresholdMs: 300_000, permissionStallMs: 300_000,
-        permissionMode: 'default',
-        promptDelivery: { delivered: false, attempts: 0, status: 'pending' },
-      };
+      const session: Partial<SessionInfo> = {};
+      session.promptDelivery = { delivered: false, attempts: 0, status: 'pending' };
       expect(session.promptDelivery?.status).toBe('pending');
     });
 
     it('accepts status: delivered on promptDelivery', () => {
-      const session: SessionInfo = {
-        id: 'test', windowId: '', displayName: 'test', workDir: '/tmp',
-        byteOffset: 0, monitorOffset: 0, status: 'idle',
-        createdAt: Date.now(), lastActivity: Date.now(),
-        stallThresholdMs: 300_000, permissionStallMs: 300_000,
-        permissionMode: 'default',
-        promptDelivery: { delivered: true, attempts: 1, status: 'delivered' },
-      };
+      const session: Partial<SessionInfo> = {};
+      session.promptDelivery = { delivered: true, attempts: 1, status: 'delivered' };
       expect(session.promptDelivery?.status).toBe('delivered');
     });
 
     it('accepts status: failed on promptDelivery', () => {
-      const session: SessionInfo = {
-        id: 'test', windowId: '', displayName: 'test', workDir: '/tmp',
-        byteOffset: 0, monitorOffset: 0, status: 'error',
-        createdAt: Date.now(), lastActivity: Date.now(),
-        stallThresholdMs: 300_000, permissionStallMs: 300_000,
-        permissionMode: 'default',
-        promptDelivery: { delivered: false, attempts: 1, status: 'failed' },
-      };
+      const session: Partial<SessionInfo> = {};
+      session.promptDelivery = { delivered: false, attempts: 1, status: 'failed' };
       expect(session.promptDelivery?.status).toBe('failed');
     });
 
     it('accepts status: timeout on promptDelivery', () => {
-      const session: SessionInfo = {
-        id: 'test', windowId: '', displayName: 'test', workDir: '/tmp',
-        byteOffset: 0, monitorOffset: 0, status: 'idle',
-        createdAt: Date.now(), lastActivity: Date.now(),
-        stallThresholdMs: 300_000, permissionStallMs: 300_000,
-        permissionMode: 'default',
-        promptDelivery: { delivered: false, attempts: 1, status: 'timeout' },
-      };
+      const session: Partial<SessionInfo> = {};
+      session.promptDelivery = { delivered: false, attempts: 1, status: 'timeout' };
       expect(session.promptDelivery?.status).toBe('timeout');
     });
   });
