@@ -24,6 +24,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 |--------|------|------|---------|
 | `GET` | `/v1/sessions/{id}` | Bearer | Get session details |
 | `GET` | `/v1/sessions/{id}/health` | Bearer | Single session health check |
+| `GET` | `/v1/sessions/{id}/cost` | Bearer | Per-session cost summary with burn rate |
 
 ## Session Actions
 
@@ -175,6 +176,13 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/alerts/test` | Bearer | Fire test alert |
 | `GET` | `/v1/webhooks/dead-letter` | Bearer | Webhook dead letter queue |
 | `GET` | `/v1/channels/health` | Bearer | Channel health reporting |
+
+## Cost Tracking
+
+| Method | Path | Auth | Summary |
+|--------|------|------|---------|
+| `GET` | `/v1/cost/summary` | Bearer | Aggregate cost summary with burn rate |
+| `GET` | `/v1/cost/by-model` | Bearer | Cost grouped by model |
 
 ## Metrics
 

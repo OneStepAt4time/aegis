@@ -256,6 +256,7 @@ See: PRs #1779 (search/filter), #1782 (keyboard shortcuts), #1791 (CSV export), 
 |---|---|
 | `session.ts` | Core session lifecycle: create, send messages, kill, state tracking |
 | `session-cleanup.ts` | Reaps idle sessions and frees resources |
+| `runners/` | Pluggable agent runner abstraction — defines the `AgentRunner` interface for start/send/read/kill lifecycle. Registry maps runner IDs to implementations |
 | `services/acp/backend.ts` | ACP backend: child process lifecycle management via JSON-RPC over stdio |
 | `services/acp/child-process.ts` | Claude Code child process spawning and management |
 | `services/acp/terminal-bridge.ts` | Terminal output streaming from ACP child processes |

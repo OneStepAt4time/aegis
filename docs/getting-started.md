@@ -50,6 +50,8 @@ ag init
 ```
 
 > **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and generates a new auth token. Restart the server to apply changes. Use `ag init --force` to skip the confirmation prompt.
+>
+> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session.
 
 ```bash
 ag
