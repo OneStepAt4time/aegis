@@ -213,3 +213,39 @@ export interface WsResizeMessage {
 
 export type WsOutboundMessage = WsInputMessage | WsResizeMessage;
 
+
+// ── Cost Tracking API (Issue #3264, #3273) ─────────────────────
+
+/** Response from GET /v1/cost/summary */
+export interface CostSummaryResponse {
+  from: string | null;
+  to: string | null;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheCreationTokens: number;
+  totalCacheReadTokens: number;
+  cacheHitRate: number;
+  estimatedCostUsd: number;
+  burnRateUsdPerHour: number | null;
+  sessions: number;
+}
+
+/** Per-model cost entry from GET /v1/cost/by-model */
+export interface ModelCostEntry {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  estimatedCostUsd: number;
+  cacheHitRate: number;
+}
+
+/** Response from GET /v1/cost/by-model */
+export interface CostByModelResponse {
+  from: string | null;
+  to: string | null;
+  models: ModelCostEntry[];
+  totalModels: number;
+  totalCostUsd: number;
+}

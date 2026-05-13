@@ -26,8 +26,8 @@ import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { ChartFrame } from '../components/shared/ChartFrame';
-import { getAnalyticsCosts } from '../api/client';
-import type { AnalyticsCostsResponse } from '../types';
+import { getAnalyticsCosts, getCostSummary, getCostByModel } from '../api/client';
+import type { AnalyticsCostsResponse, CostSummaryResponse, CostByModelResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
 import { ForecastChart } from '../components/cost/ForecastChart';
@@ -166,12 +166,20 @@ export default function CostPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [costSummary, setCostSummary] = useState<CostSummaryResponse | null>(null);
+  const [costByModel, setCostByModel] = useState<CostByModelResponse | null>(null);
   const sseConnected = useStore((s) => s.sseConnected);
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await getAnalyticsCosts();
-      setCostData(data);
+      const [data, summary, byModel] = await Promise.allSettled([
+        getAnalyticsCosts(),
+        getCostSummary().catch(() => null),
+        getCostByModel().catch(() => null),
+      ]);
+      if (data.status === 'fulfilled') setCostData(data.value);
+      if (summary.status === 'fulfilled' && summary.value) setCostSummary(summary.value);
+      if (byModel.status === 'fulfilled' && byModel.value) setCostByModel(byModel.value);
       setDataError(null);
     } catch (err) {
       setDataError(err instanceof Error ? err.message : 'Failed to load cost data');
@@ -375,19 +383,24 @@ export default function CostPage() {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
             Cost Analytics
+            {costSummary?.burnRateUsdPerHour && costSummary.burnRateUsdPerHour > 0 && (
+              <span className="ml-3 text-sm font-normal text-[var(--color-accent-cyan)]">
+                {formatCurrency(costSummary.burnRateUsdPerHour)}/hr burn rate
+              </span>
+            )}
           </h2>
           <TimeRangePicker value={timeRange} onChange={setTimeRange} />
         </div>
 
         {/* Burn rate — full width */}
         <div className="mb-4">
-          <BurnRateChart />
+          <BurnRateChart data={dailyData.map(d => ({ date: d.date, cost: d.estimatedCostUsd }))} />
         </div>
 
         {/* Token breakdown + Cost by model — side by side */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <TokenBreakdownChart />
-          <CostByModelChart />
+          <CostByModelChart data={costByModel?.models.map(m => ({ model: m.model, cost: m.estimatedCostUsd }))} />
         </div>
       </section>
 
