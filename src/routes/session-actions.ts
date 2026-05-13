@@ -243,6 +243,15 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       return reply.status(404).send({ error: 'Session already terminated', status: session.status });
     }
     try {
+      // #3224: Shutdown ACP backend (CC child process) before marking session killed.
+      // Without this, the CC process becomes an orphan consuming ~250MB RSS.
+      if (acpBackend && ctx.config.acpEnabled) {
+        await acpBackend.shutdownSession({
+          sessionId: session.id,
+          tenantId: (req as any).tenantId ?? SYSTEM_TENANT,
+          ownerKeyId: (req as any).authKeyId ?? 'master',
+        }).catch(() => {}); // Best-effort: session may not have ACP runtime
+      }
       await sessions.killSession(session.id);
       // Issue #2067: record session as failed before cleanup
       metrics.sessionFailed(session.id);
