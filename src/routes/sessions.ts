@@ -456,7 +456,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });
 
-    let promptDelivery: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout' } | undefined;
+    let promptDelivery: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout'; error?: string } | undefined;
     if (prompt) {
       let finalPrompt = prompt;
       if (memoryKeys && memoryKeys.length > 0 && memoryBridge) {
@@ -470,21 +470,16 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
 
       if (acpBackend && ctx.config.acpEnabled) {
-        // Issue #3243: Async prompt delivery for ACP sessions.
-        // Return immediately with status 'pending'; deliver prompt in background.
-        // The client polls GET /v1/sessions/:id to check promptDelivery.status.
-        promptDelivery = { delivered: false, attempts: 0, status: 'pending' };
+        // Issue #3271: Reverted async prompt delivery (from #3243) to synchronous.
+        // Async delivery caused promptDelivery tracking to hang — the JSON-RPC
+        // session/prompt response was never received by the tracking layer even
+        // though Claude Code processed the prompt successfully.
+        // Synchronous delivery blocks until CC acknowledges, which is the
+        // proven pre-#3243 behavior.
+        const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
+        promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed', error: result.error };
         session.promptDelivery = promptDelivery;
-        const deliverAsync = async () => {
-          try {
-            const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
-            session.promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed' };
-            metrics.promptSent(result.delivered);
-          } catch (e) {
-            session.promptDelivery = { delivered: false, attempts: 1, status: 'failed' };
-          }
-        };
-        void deliverAsync();
+        metrics.promptSent(result.delivered);
       } else {
         promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
         metrics.promptSent(promptDelivery.delivered);
