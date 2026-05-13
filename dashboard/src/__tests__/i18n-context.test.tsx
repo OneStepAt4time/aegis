@@ -16,7 +16,7 @@ function TestComponent() {
       <div data-testid="title">{t('overview.title')}</div>
       <div data-testid="subtitle">{t('overview.subtitle')}</div>
       <div data-testid="missing">{t('nonexistent.key')}</div>
-      <button onClick={() => setLocale('de-DE')}>Change to German</button>
+      <button type="button" onClick={() => setLocale('de-DE')}>Change to German</button>
     </div>
   );
 }

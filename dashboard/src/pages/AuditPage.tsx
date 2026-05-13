@@ -388,7 +388,7 @@ function DetailDrawer({
               <Eye className="h-4 w-4 text-[var(--color-accent-cyan)]" />
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Record Detail</h3>
             </div>
-            <button
+            <button type="button"
               onClick={onClose}
               className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] dark:hover:text-[var(--color-text-primary)] transition-colors"
               aria-label={t("aria.closeDetailDrawer")}
@@ -411,7 +411,7 @@ function DetailDrawer({
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Hash</p>
-                <button
+                <button type="button"
                   onClick={() => { void handleCopy('hash', record.hash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
@@ -425,7 +425,7 @@ function DetailDrawer({
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Previous Hash</p>
-                <button
+                <button type="button"
                   onClick={() => { void handleCopy('prevHash', record.prevHash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
@@ -440,7 +440,7 @@ function DetailDrawer({
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Full Record (JSON)</p>
-                <button
+                <button type="button"
                   onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
@@ -676,7 +676,7 @@ export default function AuditPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Live tail toggle */}
-          <button
+          <button type="button"
             onClick={() => setLiveTail((prev) => !prev)}
             disabled={page !== 1}
             className={`flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -690,7 +690,7 @@ export default function AuditPage() {
             {liveTail ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             {liveTail ? 'LIVE' : 'Follow'}
           </button>
-          <button
+          <button type="button"
             onClick={() => { void fetchData(); }}
             disabled={loading}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
@@ -698,7 +698,7 @@ export default function AuditPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button
+          <button type="button"
             onClick={() => { void handleExport('csv'); }}
             disabled={loading || exportingFormat !== null}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
@@ -707,7 +707,7 @@ export default function AuditPage() {
             <Download className="h-3.5 w-3.5" />
             {exportingFormat === 'csv' ? 'Exporting CSV…' : 'Export CSV'}
           </button>
-          <button
+          <button type="button"
             onClick={() => { void handleExport('ndjson'); }}
             disabled={loading || exportingFormat !== null}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50"
@@ -798,13 +798,13 @@ export default function AuditPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
+          <button type="button"
             onClick={applyFilters}
             className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             Apply
           </button>
-          <button
+          <button type="button"
             onClick={clearFilters}
             className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)]"
           >
@@ -838,7 +838,7 @@ export default function AuditPage() {
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
           <p className="font-medium text-red-400">Failed to load audit logs</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
-          <button
+          <button type="button"
             onClick={() => { void fetchData(); }}
             className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
           >
@@ -920,7 +920,7 @@ export default function AuditPage() {
               <span className="text-xs text-[var(--color-text-muted)]">
                 Page {page} of {totalPages}
               </span>
-              <button
+              <button type="button"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page <= 1}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"
@@ -928,7 +928,7 @@ export default function AuditPage() {
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <button
+              <button type="button"
                 onClick={() => setPage((current) => current + 1)}
                 disabled={!hasMore || page >= totalPages}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:opacity-40"

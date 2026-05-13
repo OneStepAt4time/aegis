@@ -600,7 +600,7 @@ export default function SessionDetailPage() {
 
           <div className="relative flex gap-2 py-1" role="tablist">
             {TABS.map((tab) => (
-              <button
+              <button type="button"
                 key={tab.id}
                 id={`tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
