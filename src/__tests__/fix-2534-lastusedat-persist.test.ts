@@ -3,6 +3,10 @@
  *
  * Bug: lastUsedAt was updated in memory but never persisted to disk.
  * Fix: dirty flag + periodic save during sweepStaleRateLimits().
+ *
+ * Flakiness fix: Uses crypto.randomUUID() for temp file names (no
+ * Date.now() collision under parallel execution) and properly awaits
+ * async sweepStaleRateLimits() instead of fire-and-forget + setTimeout.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -10,13 +14,14 @@ import { AuthManager } from '../auth.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { readFileSync, rmSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 
 describe('Issue #2534: lastUsedAt persisted to disk', () => {
   let auth: AuthManager;
   let tmpFile: string;
 
   beforeEach(async () => {
-    tmpFile = join(tmpdir(), `aegis-test-2534-${Date.now()}.json`);
+    tmpFile = join(tmpdir(), `aegis-test-2534-${randomUUID()}.json`);
     auth = new AuthManager(tmpFile, '');
   });
 
@@ -44,12 +49,13 @@ describe('Issue #2534: lastUsedAt persisted to disk', () => {
 
   it('should NOT persist when no key was used (dirty flag is false)', async () => {
     const { key } = await auth.createKey('no-use-test', 10);
+
+    // Read the on-disk state after createKey (which calls save)
     const before = JSON.parse(readFileSync(tmpFile, 'utf-8'));
     expect(before.keys[0].lastUsedAt).toBe(0);
 
-    // Sweep without any validate calls
-    auth.sweepStaleRateLimits();
-    await new Promise((r) => setTimeout(r, 10));
+    // Sweep without any validate calls — properly await
+    await auth.sweepStaleRateLimits();
 
     const after = JSON.parse(readFileSync(tmpFile, 'utf-8'));
     // lastUsedAt should still be 0 — no unnecessary write with same value
@@ -68,9 +74,8 @@ describe('Issue #2534: lastUsedAt persisted to disk', () => {
     const result = auth.validate(oldKey);
     expect(result.valid).toBe(true);
 
-    // Sweep should persist the lastUsedAt update from the grace path
-    auth.sweepStaleRateLimits();
-    await new Promise((r) => setTimeout(r, 10));
+    // Sweep should persist the lastUsedAt update from the grace path — properly await
+    await auth.sweepStaleRateLimits();
 
     const onDisk = JSON.parse(readFileSync(tmpFile, 'utf-8'));
     expect(onDisk.keys[0].lastUsedAt).toBeGreaterThan(0);
@@ -79,10 +84,9 @@ describe('Issue #2534: lastUsedAt persisted to disk', () => {
   it('should persist lastUsedAt across load/save cycle', async () => {
     const { key } = await auth.createKey('cycle-test', 10);
 
-    // Validate and sweep to persist
+    // Validate and sweep to persist — properly await
     auth.validate(key);
-    auth.sweepStaleRateLimits();
-    await new Promise((r) => setTimeout(r, 10));
+    await auth.sweepStaleRateLimits();
 
     const onDisk = JSON.parse(readFileSync(tmpFile, 'utf-8'));
     const persistedTime = onDisk.keys[0].lastUsedAt;
