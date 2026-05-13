@@ -21,4 +21,9 @@ describe('Issue #909: computeProjectHash cross-platform normalization', () => {
   it('returns fallback for empty input', () => {
     expect(computeProjectHash('')).toBe('-');
   });
+
+  it('replaces dots in segments to match Claude Code slug (Issue #3286)', () => {
+    expect(computeProjectHash('/home/me/.claude/repo')).toBe('-home-me--claude-repo');
+    expect(computeProjectHash('/Users/x/Documents/aegis/.claude/worktrees/foo')).toBe('-Users-x-Documents-aegis--claude-worktrees-foo');
+  });
 });

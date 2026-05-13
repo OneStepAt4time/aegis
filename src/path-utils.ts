@@ -15,7 +15,7 @@ export function computeProjectHash(workDir: string): string {
   const segments = withLowerDrive
     .split('/')
     .filter(Boolean)
-    .map((segment) => segment.replace(/:/g, '').replace(/\s+/g, '-'));
+    .map((segment) => segment.replace(/:/g, '').replace(/\s+/g, '-').replace(/\./g, '-'));
 
   if (segments.length === 0) return '-';
   return `-${segments.join('-')}`;
