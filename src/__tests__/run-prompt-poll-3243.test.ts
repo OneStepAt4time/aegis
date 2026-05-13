@@ -11,6 +11,7 @@ import { handleRun } from '../commands/run.js';
 
 // Module-scoped mocks (hoisted by vitest)
 vi.mock('../config.js', () => ({
+  findConfigFilePath: vi.fn().mockReturnValue(null),
   loadConfig: vi.fn().mockResolvedValue({
     port: 9100,
     host: '127.0.0.1',

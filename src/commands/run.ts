@@ -17,7 +17,7 @@ import { join, resolve } from 'node:path';
 
 import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-url.js';
 import { AuthManager } from '../services/auth/index.js';
-import { loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
+import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
 import { getErrorMessage, parseIntSafe } from '../validation.js';
 
 interface CliIO {
@@ -102,8 +102,13 @@ function startServer(cwd: string): ChildProcess {
   return child;
 }
 
-/** Default config file path. */
+/** Default config file path.
+ *  Searches for project-local .aegis/config.yaml (walking up from CWD),
+ *  then falls back to the XDG/home config location.
+ */
 function defaultConfigPath(): string {
+  const found = findConfigFilePath();
+  if (found) return found;
   const xdg = process.env.XDG_CONFIG_HOME;
   if (xdg) return join(xdg, 'aegis', 'config.yaml');
   return join(homedir(), '.aegis', 'config.yaml');
