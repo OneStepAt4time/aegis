@@ -31,6 +31,7 @@ import { formatDateShort } from '../utils/formatDate';
 import type { AnalyticsSummary, RateLimitAnalyticsResponse } from '../types';
 import { RateLimitChart } from '../components/analytics/RateLimitChart';
 import { RateLimitForecastCard } from '../components/analytics/RateLimitForecastCard';
+import { AgentContributionsPanel } from '../components/analytics/AgentContributionsPanel';
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
@@ -480,6 +481,9 @@ export default function AnalyticsPage() {
           <RateLimitForecastCard forecast={rateLimitData.forecast} />
         </div>
       )}
+
+      {/* Agent Contributions (#3269) */}
+      <AgentContributionsPanel />
     </div>
   );
 }
