@@ -763,7 +763,7 @@ curl -X POST http://localhost:9100/v1/sessions \
   "workDir": "/home/user/my-project",
   "status": "working",
   "createdAt": 1712650800000,
-  "promptDelivery": { "delivered": false, "attempts": 0, "status": "pending" }
+  "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" }
 }
 ```
 
@@ -773,11 +773,9 @@ curl -X POST http://localhost:9100/v1/sessions \
 |-------|------|-------------|
 | `delivered` | boolean | Whether the prompt was successfully delivered to the agent |
 | `attempts` | number | Number of delivery attempts |
-| `status` | string | Delivery status: `pending` (ACP async, not yet sent), `delivered`, `failed`, or `timeout` |
+| `status` | string | Delivery status: `delivered` or `failed` |
 
-> **Async delivery (ACP):** For ACP sessions with a prompt, the server returns `201` immediately with `status: "pending"`. The prompt is delivered in the background. Poll `GET /v1/sessions/:id` to check `promptDelivery.status` until it transitions to `delivered` or `failed`.
->
-> **Non-ACP sessions:** For built-in sessions, `promptDelivery` is resolved synchronously — `status` is omitted and `delivered` reflects the immediate result.
+> **Synchronous delivery:** The server blocks until the agent acknowledges the prompt. `promptDelivery.status` is `delivered` or `failed` immediately in the response — no polling needed.
 >
 > **ACP disabled:** When ACP is disabled, `delivered` is `false` with no agent process spawned. The response includes a `warning` field. Enable via `AEGIS_ACP_ENABLED=true` or `"acpEnabled": true` in config.
 
