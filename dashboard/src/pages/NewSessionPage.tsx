@@ -91,7 +91,7 @@ export default function NewSessionPage() {
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button
+        <button type="button"
           onClick={() => navigate(-1)}
           className="p-2 rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           title={t('newSession.goBack')}

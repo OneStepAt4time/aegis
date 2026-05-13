@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
           </div>
-          <button
+          <button type="button"
             onClick={this.handleRetry}
             className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-100 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-200 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
           >

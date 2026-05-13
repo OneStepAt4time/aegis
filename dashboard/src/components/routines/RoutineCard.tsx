@@ -97,7 +97,7 @@ export default function RoutineCard({
 
         {/* Quick actions */}
         <div className="flex items-center gap-1" role="group" aria-label={t("aria.routineActions")}>
-          <button
+          <button type="button"
             onClick={() => onTogglePause?.(routine.id)}
             className={`
               p-1.5 rounded transition-colors
@@ -111,7 +111,7 @@ export default function RoutineCard({
           >
             {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
-          <button
+          <button type="button"
             onClick={() => onTriggerNow?.(routine.id)}
             className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"
             aria-label={t("aria.triggerRoutine")}
@@ -119,7 +119,7 @@ export default function RoutineCard({
           >
             <Zap className="w-4 h-4" />
           </button>
-          <button
+          <button type="button"
             onClick={() => onDelete?.(routine.id)}
             className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
             aria-label={t("aria.deleteRoutine")}

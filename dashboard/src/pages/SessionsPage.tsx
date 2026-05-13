@@ -35,7 +35,7 @@ export default function SessionsPage() {
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{translate("sessions.title")}</h1>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)] dark:text-slate-400">
+        <p className="mt-1 text-sm text-[var(--color-text-muted)] ">
           {translate("sessions.subtitle")}
         </p>
       </div>

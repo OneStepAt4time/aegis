@@ -65,7 +65,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
     <div className="my-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-deepest)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-1 border-b border-[var(--color-void-lighter)]">
         <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{language || 'code'}</span>
-        <button
+        <button type="button"
           onClick={handleCopy}
           className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           aria-label={t("aria.copyCode")}

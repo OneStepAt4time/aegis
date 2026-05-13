@@ -237,7 +237,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               )}
             </div>
           </div>
-          <button aria-label={t("aria.close")}
+          <button type="button" aria-label={t("aria.close")}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >

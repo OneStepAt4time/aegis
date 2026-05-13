@@ -214,7 +214,7 @@ export default function AuthKeysPage() {
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-4 py-3 text-sm text-slate-300"
+          className="flex items-start justify-between gap-3 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4 text-sm text-[var(--color-text-primary)]"
         >
           <p className="leading-relaxed">
             {t('authKeys.usersBannerText')}
@@ -223,7 +223,7 @@ export default function AuthKeysPage() {
             type="button"
             onClick={dismissUsersBanner}
             aria-label={t('authKeys.authDismissBanner')}
-            className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200"
+            className="shrink-0 rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
           >
             <X className="h-3.5 w-3.5" />
           </button>
