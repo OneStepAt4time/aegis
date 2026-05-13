@@ -135,15 +135,26 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
    *   from — ISO timestamp lower bound (inclusive)
    *   to   — ISO timestamp upper bound (inclusive)
    */
+
+/** Validate from/to query params for cost endpoints. */
+function validateDateRange(from?: string, to?: string): { error: string; statusCode: number } | null {
+  if (from && isNaN(Date.parse(from))) return { error: 'Invalid "from" date format. Use ISO 8601.', statusCode: 400 };
+  if (to && isNaN(Date.parse(to))) return { error: 'Invalid "to" date format. Use ISO 8601.', statusCode: 400 };
+  if (from && to && new Date(from) > new Date(to)) return { error: '"from" must be before "to".', statusCode: 400 };
+  return null;
+}
+
   registerWithLegacy(app, 'get', '/v1/cost/summary', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(ctx.auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
     const query = req.query as { from?: string; to?: string };
+    const dateError = validateDateRange(query.from, query.to);
+    if (dateError) return reply.status(dateError.statusCode).send({ code: 'INVALID_DATE_RANGE', message: dateError.error });
     const summary = metering.getUsageSummary({ from: query.from, to: query.to });
 
     const response: CostSummaryResponse = {
-      from: summary.from ?? null,
-      to: summary.to ?? null,
+      from: query.from ?? summary.from ?? null,
+      to: query.to ?? summary.to ?? null,
       totalInputTokens: summary.totalInputTokens,
       totalOutputTokens: summary.totalOutputTokens,
       totalCacheCreationTokens: summary.totalCacheCreationTokens,
@@ -168,6 +179,8 @@ export function registerCostRoutes(app: FastifyInstance, ctx: RouteContext): voi
     if (!requireRole(ctx.auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
     const query = req.query as { from?: string; to?: string };
+    const dateError = validateDateRange(query.from, query.to);
+    if (dateError) return reply.status(dateError.statusCode).send({ code: 'INVALID_DATE_RANGE', message: dateError.error });
     const summary = metering.getUsageSummary({ from: query.from, to: query.to });
     const metricsCache = ctx.metricsCache;
     const analytics = metricsCache.getMetrics();
