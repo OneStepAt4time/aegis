@@ -165,6 +165,18 @@ vi.mock('../api/client', () => ({
     ],
     generatedAt: new Date().toISOString(),
   }),
+  getCostSummary: vi.fn().mockResolvedValue({
+    from: null, to: null,
+    totalInputTokens: 3000, totalOutputTokens: 1500,
+    totalCacheCreationTokens: 600, totalCacheReadTokens: 2400,
+    cacheHitRate: 0.8, estimatedCostUsd: 12.34,
+    burnRateUsdPerHour: 1.5, sessions: 5,
+  }),
+  getCostByModel: vi.fn().mockResolvedValue({
+    from: null, to: null,
+    models: [{ model: 'claude-sonnet-4-20250514', inputTokens: 3000, outputTokens: 1500, cacheCreationTokens: 600, cacheReadTokens: 2400, estimatedCostUsd: 12.34, cacheHitRate: 0.8 }],
+    totalModels: 1, totalCostUsd: 12.34,
+  }),
   checkForUpdates: vi.fn().mockResolvedValue({
     currentVersion: '1.0.0',
     latestVersion: '1.0.0',
