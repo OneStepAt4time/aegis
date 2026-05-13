@@ -144,7 +144,7 @@ export default function PipelinesPage() {
             Manage and monitor session pipelines
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setModalOpen(true)}
           className="flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-medium rounded bg-[var(--color-accent-cyan)]/10 hover:bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/30 transition-colors"
         >
@@ -182,7 +182,7 @@ export default function PipelinesPage() {
           <option value="name">Name</option>
           <option value="status">Status</option>
         </select>
-        <button
+        <button type="button"
           onClick={() => setSortAsc(!sortAsc)}
           className="min-h-[44px] min-w-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent-cyan)]/50 transition-colors"
           aria-label={sortAsc ? 'Sort ascending' : 'Sort descending'}

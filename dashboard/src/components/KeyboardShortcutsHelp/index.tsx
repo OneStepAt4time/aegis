@@ -42,7 +42,7 @@ export function KeyboardShortcutsHelp({
             <Keyboard className="h-5 w-5 text-[var(--color-accent-cyan)]" />
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Keyboard Shortcuts</h2>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-void-lighter)]/50 hover:text-[var(--color-text-primary)] transition-colors"
             aria-label={t("aria.close")}

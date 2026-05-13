@@ -117,7 +117,7 @@ export function BudgetAlertBanner() {
       <AlertTriangle className="h-4 w-4 flex-shrink-0" />
       <span className="flex-1 font-medium">{alert.message}</span>
       {!isCritical && (
-        <button
+        <button type="button"
           onClick={() => {
             sessionStorage.setItem(DISMISS_KEY, String(Date.now()));
             setAlert(null);

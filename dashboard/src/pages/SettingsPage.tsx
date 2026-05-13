@@ -179,7 +179,7 @@ export default function SettingsPage() {
               <p className="text-sm text-[var(--color-text-primary)]">{t('settings.display.theme')}</p>
               <p className="text-xs text-[var(--color-text-muted)]">{t('settings.display.themeDescription')}</p>
             </div>
-            <button
+            <button type="button"
               onClick={toggleTheme}
               className="min-h-[44px] rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
@@ -196,7 +196,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex gap-1.5">
                 {LIGHT_VARIANTS.map(({ value, label, description }) => (
-                  <button
+                  <button type="button"
                     key={value}
                     onClick={() => setTheme(value)}
                     title={description}
@@ -254,7 +254,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex gap-1.5">
               {READING_FONTS.map(({ value, label, description }) => (
-                <button
+                <button type="button"
                   key={value}
                   onClick={() => setReadingFont(value)}
                   title={description}

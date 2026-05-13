@@ -130,7 +130,7 @@ function ToastItem({
         )}
       </div>
       {undoAction && (
-        <button
+        <button type="button"
           onClick={handleUndo}
           className="shrink-0 flex items-center gap-1 rounded px-2 py-1 text-xs font-medium opacity-80 hover:opacity-100 transition-opacity bg-current/10"
           aria-label={t("aria.undo")}
@@ -139,7 +139,7 @@ function ToastItem({
           Undo
         </button>
       )}
-      <button
+      <button type="button"
         onClick={() => removeToast(id)}
         className="shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 transition-opacity"
         aria-label={t("aria.dismiss")}
@@ -165,7 +165,7 @@ export default function ToastContainer() {
     >
       {toasts.length > 1 && (
         <div className="flex justify-end pointer-events-auto">
-          <button
+          <button type="button"
             onClick={() => toasts.forEach((t) => removeToast(t.id))}
             className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             aria-label={t("aria.dismissAll")}

@@ -109,7 +109,7 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
           <StatusDot status={session.status} />
           <span className="text-sm font-medium text-[var(--color-text-primary)]">{session.displayName || session.id}</span>
         </div>
-        <button
+        <button type="button"
           onClick={onClose}
           className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
         >

@@ -186,7 +186,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
         <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Filter:</span>
         {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
-          <button
+          <button type="button"
             key={key}
             onClick={() => toggleFilter(key)}
             aria-pressed={filters[key]}
@@ -238,7 +238,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
       {/* Scroll to bottom button */}
       {showScrollBtn && (
-        <button
+        <button type="button"
           onClick={scrollToBottom}
           className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
           title="Scroll to bottom"

@@ -89,7 +89,7 @@ export function PauseControlBar({
         <div className="flex items-center gap-2 rounded bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button
+            <button type="button"
               onClick={onClearError}
               className="text-red-400 hover:text-red-300"
               aria-label={t("aria.dismissError")}
@@ -104,7 +104,7 @@ export function PauseControlBar({
       {isRunning && (
         <div className="flex items-center gap-2">
           {!showPauseForm ? (
-            <button
+            <button type="button"
               onClick={() => setShowPauseForm(true)}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -130,7 +130,7 @@ export function PauseControlBar({
                   autoFocus
                 />
               </div>
-              <button
+              <button type="button"
                 onClick={handlePause}
                 disabled={!pauseReason.trim() || isLoading}
                 className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
@@ -139,7 +139,7 @@ export function PauseControlBar({
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
                 Confirm
               </button>
-              <button
+              <button type="button"
                 onClick={() => { setShowPauseForm(false); setPauseReason(''); }}
                 className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                 aria-label={t("aria.cancelPause")}
@@ -157,7 +157,7 @@ export function PauseControlBar({
           <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-400">
             Paused
           </span>
-          <button
+          <button type="button"
             onClick={() => onIntervene?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
@@ -166,7 +166,7 @@ export function PauseControlBar({
             <Hand className="h-4 w-4" />
             Intervene
           </button>
-          <button
+          <button type="button"
             onClick={() => onResume?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
@@ -186,7 +186,7 @@ export function PauseControlBar({
               Intervening
             </span>
             {!showGuidanceForm && (
-              <button
+              <button type="button"
                 onClick={() => setShowGuidanceForm(true)}
                 disabled={!canAct}
                 className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
@@ -213,7 +213,7 @@ export function PauseControlBar({
                 autoFocus
               />
               <div className="flex items-center gap-2">
-                <button
+                <button type="button"
                   onClick={handleComplete}
                   disabled={isLoading}
                   className="flex items-center gap-1 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:opacity-50"
@@ -222,7 +222,7 @@ export function PauseControlBar({
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                   Submit &amp; Resume
                 </button>
-                <button
+                <button type="button"
                   onClick={() => { setShowGuidanceForm(false); setGuidance(''); }}
                   className="rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                   aria-label={t("aria.cancelIntervention")}
@@ -234,7 +234,7 @@ export function PauseControlBar({
           )}
 
           {!showGuidanceForm && (
-            <button
+            <button type="button"
               onClick={() => onResume?.()}
               disabled={!canAct}
               className="flex items-center gap-2 self-start rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
