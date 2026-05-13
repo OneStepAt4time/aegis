@@ -25,7 +25,7 @@ import Layout from '../components/Layout';
 vi.mock('../components/overview/HomeStatusPanel', () => ({
   default: ({ onCreateFirstSession }: { onCreateFirstSession: () => void }) => (
     <div data-testid="home-status-panel">
-      <button onClick={onCreateFirstSession}>Create first session</button>
+      <button type="button" onClick={onCreateFirstSession}>Create first session</button>
     </div>
   ),
 }));

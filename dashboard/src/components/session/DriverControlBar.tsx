@@ -78,7 +78,7 @@ export function DriverControlBar({
         <div className="flex items-center gap-2 rounded bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button
+            <button type="button"
               onClick={onClearError}
               className="text-red-400 hover:text-red-300"
               aria-label={t("aria.dismissError")}
@@ -120,7 +120,7 @@ export function DriverControlBar({
       {/* Action buttons */}
       <div className="flex items-center gap-2">
         {!hasDriver && (
-          <button
+          <button type="button"
             onClick={() => onClaim?.()}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -133,7 +133,7 @@ export function DriverControlBar({
 
         {isDriver && (
           <>
-            <button
+            <button type="button"
               onClick={() => onRelease?.()}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:opacity-50"
@@ -142,7 +142,7 @@ export function DriverControlBar({
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               Release (become observer)
             </button>
-            <button
+            <button type="button"
               onClick={() => setShowTransferForm(true)}
               disabled={!canAct}
               className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
@@ -155,7 +155,7 @@ export function DriverControlBar({
         )}
 
         {hasDriver && !isDriver && canOperate && (
-          <button
+          <button type="button"
             onClick={() => setShowTransferForm(true)}
             disabled={!canAct}
             className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
@@ -196,7 +196,7 @@ export function DriverControlBar({
             className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-warning)]/50 focus:outline-none"
           />
           <div className="flex items-center gap-2">
-            <button
+            <button type="button"
               onClick={handleTransfer}
               disabled={!transferTarget.trim() || isLoading}
               className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
@@ -205,7 +205,7 @@ export function DriverControlBar({
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
               Transfer
             </button>
-            <button
+            <button type="button"
               onClick={() => { setShowTransferForm(false); setTransferTarget(''); setTransferReason(''); }}
               className="rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
               aria-label={t("aria.cancelTransfer")}

@@ -102,7 +102,7 @@ export function SessionHealthBanner({ errorRates, loading }: SessionHealthBanner
           </p>
         )}
       </div>
-      <button
+      <button type="button"
         onClick={handleDismiss}
         className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
         aria-label={t("aria.dismissHealthAlert")}

@@ -104,21 +104,21 @@ export default function CalendarGrid({
           {format(currentMonth, 'MMMM yyyy')}
         </h3>
         <div className="flex items-center gap-1">
-          <button
+          <button type="button"
             onClick={handleToday}
             className="px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded"
             aria-label={t("aria.goToToday")}
           >
             Today
           </button>
-          <button
+          <button type="button"
             onClick={handlePrevMonth}
             className="p-1 rounded hover:bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             aria-label={t("aria.prevMonth")}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button
+          <button type="button"
             onClick={handleNextMonth}
             className="p-1 rounded hover:bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             aria-label={t("aria.nextMonth")}
@@ -152,7 +152,7 @@ export default function CalendarGrid({
           const today = isToday(day);
 
           return (
-            <button
+            <button type="button"
               key={dateKey}
               onClick={() => onSelectDate(day)}
               disabled={!inCurrentMonth}

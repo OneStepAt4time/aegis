@@ -124,7 +124,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">New Pipeline</h2>
-          <button aria-label={t("aria.close")}
+          <button type="button" aria-label={t("aria.close")}
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >

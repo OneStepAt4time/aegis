@@ -67,8 +67,8 @@ describe('i18n integration', () => {
         <div>
           <span data-testid="current-locale">{locale}</span>
           <span>{t('settings.display.title')}</span>
-          <button onClick={() => setLocale('it-IT')}>Switch to Italian</button>
-          <button onClick={() => setLocale('en-US')}>Switch to English</button>
+          <button type="button" onClick={() => setLocale('it-IT')}>Switch to Italian</button>
+          <button type="button" onClick={() => setLocale('en-US')}>Switch to English</button>
         </div>
       );
     }
@@ -94,7 +94,7 @@ describe('i18n integration', () => {
   it('persists locale choice to localStorage', () => {
     function LocaleWriter() {
       const { setLocale } = useLocale();
-      return <button onClick={() => setLocale('it-IT')}>Set Italian</button>;
+      return <button type="button" onClick={() => setLocale('it-IT')}>Set Italian</button>;
     }
 
     render(

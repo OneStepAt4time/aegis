@@ -433,7 +433,7 @@ export default function SessionHistoryPage() {
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('sessionHistory.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => { void fetchData(); }}
             aria-label={t('sessionHistory.refresh')}
             disabled={loading}
@@ -443,7 +443,7 @@ export default function SessionHistoryPage() {
             {t('sessionHistory.refresh')}
           </button>
           {records.length > 0 && (
-            <button
+            <button type="button"
               onClick={() => void handleExport()}
               disabled={exporting}
               className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -560,14 +560,14 @@ export default function SessionHistoryPage() {
             </select>
           </div>
 
-          <button
+          <button type="button"
             onClick={applyFilters}
             className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             {t('sessionHistory.apply')}
           </button>
 
-          <button
+          <button type="button"
             onClick={clearFilters}
             className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)]"
           >
@@ -595,7 +595,7 @@ export default function SessionHistoryPage() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-4 py-2.5">
               <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{t('sessionHistory.selected', { count: selectedIds.size })}</span>
-              <button
+              <button type="button"
                 onClick={() => void handleExport()}
                 disabled={exporting}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -604,7 +604,7 @@ export default function SessionHistoryPage() {
                 <Icon name="Download" size={12} />
                 {exporting ? t('sessionHistory.exporting') : t('sessionHistory.export')}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setConfirmDeleteOpen(true)}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
                 aria-label={t('sessionHistory.kill')}
@@ -612,7 +612,7 @@ export default function SessionHistoryPage() {
                 <Trash2 className="h-3 w-3" />
                 {t('sessionHistory.kill')}
               </button>
-              <button
+              <button type="button"
                 onClick={handleShareLink}
                 className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)]"
                 aria-label={t('sessionHistory.shareLink')}
@@ -620,7 +620,7 @@ export default function SessionHistoryPage() {
                 <Share2 className="h-3 w-3" />
                 {t('sessionHistory.shareLink')}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setSelectedIds(new Set())}
                 className="ml-auto flex min-h-[44px] items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 aria-label={t('sessionHistory.clear')}
@@ -666,7 +666,7 @@ export default function SessionHistoryPage() {
                         title={t('sessionHistory.noRecords')}
                         description={t('sessionHistory.noRecordsDescription')}
                         action={
-                          <button
+                          <button type="button"
                             className="mt-4 px-4 py-2 text-sm rounded-lg bg-[var(--color-void-lighter)] hover:bg-[var(--color-void-lighter)] transition-colors"
                             onClick={() => {
                               setFilterSearch('');
@@ -709,7 +709,7 @@ export default function SessionHistoryPage() {
                           >
                             {shortId(record.id)}
                           </span>
-                          <button
+                          <button type="button"
                             data-no-nav
                             onClick={(e) => copySessionId(record.id, e)}
                             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] opacity-0 transition-opacity hover:text-[var(--color-text-primary)] group-hover/id:opacity-100"
@@ -767,7 +767,7 @@ export default function SessionHistoryPage() {
                 ))}
               </select>
 
-              <button
+              <button type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || loading}
                 aria-label={t('sessionHistory.prev')}
@@ -776,7 +776,7 @@ export default function SessionHistoryPage() {
                 <ChevronLeft className="h-3 w-3" /> {t('sessionHistory.prev')}
               </button>
 
-              <button
+              <button type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages || loading}
                 className="inline-flex min-h-[44px] items-center gap-1 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-void-lighter)] disabled:opacity-40"
@@ -799,14 +799,14 @@ export default function SessionHistoryPage() {
               {t('sessionHistory.killDialogDescription')}
             </p>
             <div className="mt-5 flex gap-3">
-              <button
+              <button type="button"
                 onClick={handleBulkDelete}
                 disabled={deleting}
                 className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
               >
                 {deleting ? t('sessionHistory.killing') : t('sessionHistory.killCount', { count: selectedIds.size })}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setConfirmDeleteOpen(false)}
                 disabled={deleting}
                 className="flex-1 rounded border border-[var(--color-void-lighter)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] disabled:opacity-50"

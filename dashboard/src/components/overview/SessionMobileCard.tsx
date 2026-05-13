@@ -60,7 +60,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
 
         <div className="flex shrink-0 items-center gap-1.5">
           {needsApproval(session) && (
-            <button
+            <button type="button"
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
               aria-label={`Approve session ${session.displayName || session.id}`}
@@ -70,7 +70,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
               <Play className="h-4 w-4" />
             </button>
           )}
-          <button
+          <button type="button"
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
             aria-label={`Interrupt session ${session.displayName || session.id}`}
@@ -79,7 +79,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
           >
             <Ban className="h-4 w-4" />
           </button>
-          <button
+          <button type="button"
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
             aria-label={`Kill session ${session.displayName || session.id}`}
