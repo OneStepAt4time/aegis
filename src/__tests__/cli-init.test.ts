@@ -73,6 +73,7 @@ describe('ag init', () => {
 
   it('bootstraps .aegis/config.yaml from interactive answers', async () => {
     const result = await runInit(['init'], [
+      '',               // name (empty)
       'y',
       'http://127.0.0.1:9200',
       'y',
@@ -149,6 +150,7 @@ describe('ag init', () => {
     expect(firstRun.code).toBe(0);
 
     const secondRun = await runInit(['init'], [
+      '',               // name (empty)
       'n',
       'http://127.0.0.1:9300',
       'n',
@@ -159,5 +161,137 @@ describe('ag init', () => {
     expect(secondRun.code).toBe(0);
     expect(readFileSync(configPath, 'utf-8')).toBe(initialConfig);
     expect(secondRun.stdout).toContain('Using existing');
+  });
+});
+
+describe('ag init --model flag', () => {
+  let originalCwd: string;
+  let originalEnv: NodeJS.ProcessEnv;
+  let projectDir: string;
+  let stateDir: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    originalEnv = { ...process.env };
+    projectDir = mkdtempSync(join(tmpdir(), 'aegis-cli-init-model-'));
+    stateDir = join(projectDir, 'state');
+    process.chdir(projectDir);
+
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('AEGIS_') || key.startsWith('MANUS_')) {
+        delete process.env[key];
+      }
+    }
+
+    process.env.AEGIS_STATE_DIR = stateDir;
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    process.env = originalEnv;
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it('sets default model via --model flag in non-interactive mode', async () => {
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+
+    const runPromise = runCli(['init', '--yes', '--model', 'claude-opus-4'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+
+    const code = await runPromise;
+    expect(code).toBe(0);
+
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
+      defaultSessionEnv?: Record<string, string>;
+    };
+    expect(config.defaultSessionEnv?.ANTHROPIC_DEFAULT_MODEL).toBe('claude-opus-4');
+  });
+
+  it('scaffolds identity.md with --name flag', async () => {
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+
+    const runPromise = runCli(['init', '--yes', '--name', 'Ada'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+
+    const code = await runPromise;
+    expect(code).toBe(0);
+
+    const identityPath = join(projectDir, '.aegis', 'identity.md');
+    expect(existsSync(identityPath)).toBe(true);
+
+    const content = readFileSync(identityPath, 'utf-8');
+    expect(content).toContain('Ada');
+    expect(content).toContain('# Identity');
+    expect(stdout.text()).toContain('identity file');
+  });
+
+  it('scaffolds identity.md from interactive name prompt', async () => {
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+
+    const runPromise = runCli(['init'], { stdin, stdout, stderr });
+    setImmediate(() => {
+      stdin.end([
+        'Grace',           // name
+        'y',               // create token
+        'http://127.0.0.1:9200',
+        'n',               // no BYO-LLM
+        'y',               // dashboard
+      ].join('\n'));
+    });
+
+    const code = await runPromise;
+    expect(code).toBe(0);
+
+    const identityPath = join(projectDir, '.aegis', 'identity.md');
+    expect(existsSync(identityPath)).toBe(true);
+
+    const content = readFileSync(identityPath, 'utf-8');
+    expect(content).toContain('Grace');
+  });
+
+  it('does not scaffold identity.md when name is empty', async () => {
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+
+    const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+
+    const code = await runPromise;
+    expect(code).toBe(0);
+
+    const identityPath = join(projectDir, '.aegis', 'identity.md');
+    expect(existsSync(identityPath)).toBe(false);
+  });
+
+  it('combines --name and --model flags', async () => {
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+
+    const runPromise = runCli(['init', '--yes', '--name', 'Turing', '--model', 'gpt-5'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+
+    const code = await runPromise;
+    expect(code).toBe(0);
+
+    // Identity file
+    const identityPath = join(projectDir, '.aegis', 'identity.md');
+    expect(existsSync(identityPath)).toBe(true);
+    expect(readFileSync(identityPath, 'utf-8')).toContain('Turing');
+
+    // Config with model
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
+      defaultSessionEnv?: Record<string, string>;
+    };
+    expect(config.defaultSessionEnv?.ANTHROPIC_DEFAULT_MODEL).toBe('gpt-5');
   });
 });
