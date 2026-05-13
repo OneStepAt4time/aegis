@@ -225,6 +225,12 @@ export default function CostPage() {
           <SkeletonCard className="h-72" />
           <SkeletonCard className="h-72" />
         </div>
+        {/* Cost analytics skeleton */}
+        <SkeletonCard className="h-72" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SkeletonCard className="h-72" />
+          <SkeletonCard className="h-72" />
+        </div>
       </div>
     );
   }
@@ -332,7 +338,7 @@ export default function CostPage() {
 
       {/* Daily spend chart */}
       {dailyData.length > 0 && (
-        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Daily spend chart">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Daily Spend ({dailyData.length} days)
           </h3>
@@ -366,7 +372,7 @@ export default function CostPage() {
 
       {/* ── Cost Analytics Panels (#3273) ── */}
       <section aria-label="Cost analytics">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
             Cost Analytics
           </h2>
@@ -389,7 +395,7 @@ export default function CostPage() {
       {modelData.length > 0 && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Pie chart */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Cost by model chart">
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Cost by Model
             </h3>
@@ -420,7 +426,7 @@ export default function CostPage() {
           </section>
 
           {/* Model list */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label="Model details">
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Model Details
             </h3>
