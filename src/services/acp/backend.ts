@@ -281,11 +281,19 @@ export class AcpBackend {
     this.clientCapabilities = options.clientCapabilities ?? {};
   }
 
+  /**
+   * Create a new ACP session: durable record → child process → initialize → session/new.
+   * @throws {AcpBackendLifecycleError} on handshake or session/new failure
+   */
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt);
   }
 
+  /**
+   * Resume an existing ACP session by spawning a fresh child process and calling session/resume.
+   * Requires an existing acpAgentSessionId on the session record.
+   */
   async resumeSession(input: AcpBackendResumeSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
     if (!session.acpAgentSessionId) {
@@ -296,6 +304,10 @@ export class AcpBackend {
     return this.startResumeRuntime(session, input.cwd);
   }
 
+  /**
+   * Load an existing ACP session into a fresh runtime, calling session/load
+   * to restore context. Used when reconnecting to a previously active session.
+   */
   async loadSession(input: AcpBackendLoadSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
     if (!session.acpAgentSessionId) {
@@ -306,6 +318,10 @@ export class AcpBackend {
     return this.startLoadRuntime(session, input.cwd, input.mcpServers);
   }
 
+  /**
+   * Send session/cancel to the ACP agent for the given session.
+   * The agent decides how to handle cancellation (stop current work, rollback, etc).
+   */
   async cancelSession(input: AcpBackendCancelSessionInput): Promise<AcpBackendCancelResult> {
     const scope = scopeFromInput(input);
     const session = await this.sessionService.getSession(input.sessionId, scope);
@@ -325,6 +341,10 @@ export class AcpBackend {
     };
   }
 
+  /**
+   * Approve a pending permission request from the ACP agent.
+   * Responds with the 'allow-once' option to the pending approval.
+   */
   async approveSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
     const runtime = this.requireRuntime(input.sessionId);
     await runtime.client.respond(input.approvalId, {
@@ -339,6 +359,10 @@ export class AcpBackend {
     };
   }
 
+  /**
+   * Reject a pending permission request from the ACP agent.
+   * Responds with the 'reject-once' option to the pending approval.
+   */
   async rejectSession(input: AcpBackendApprovalInput): Promise<AcpBackendApprovalResult> {
     const runtime = this.requireRuntime(input.sessionId);
     await runtime.client.respond(input.approvalId, {
@@ -353,10 +377,12 @@ export class AcpBackend {
     };
   }
 
+  /** Return the pending permission approval for a session, or null. */
   getPendingApproval(sessionId: string): AcpPendingApproval | null {
     return this.pendingApprovals.get(sessionId) ?? null;
   }
 
+  /** Return the ACP client and agent capabilities for an active runtime, or undefined. */
   getRuntime(sessionId: string): { client: AcpBackendClient; agentCapabilities?: AcpJsonValue } | undefined {
     const runtime = this.runtimes.get(sessionId);
     if (!runtime) return undefined;
@@ -415,6 +441,10 @@ export class AcpBackend {
     }
   }
 
+  /**
+   * Claim the driver seat for a session. Only one driver is allowed at a time.
+   * @throws {AcpBackendLifecycleError} if a driver is already claimed
+   */
   async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
     await this.sessionService.getSession(input.sessionId, scope);
@@ -433,6 +463,10 @@ export class AcpBackend {
     return { sessionId: input.sessionId, holderId: input.holderId, role: 'driver', fence, ttlMs: input.ttlMs };
   }
 
+  /**
+   * Release the driver seat. The caller must be the current driver.
+   * @throws {AcpBackendLifecycleError} if not the current driver
+   */
   async releaseDriver(input: AcpBackendReleaseDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
     await this.sessionService.getSession(input.sessionId, scope);
@@ -445,6 +479,10 @@ export class AcpBackend {
     return { sessionId: input.sessionId, holderId: null, role: 'observer' };
   }
 
+  /**
+   * Transfer the driver seat to another subscriber. The current driver's
+   * fence is incremented.
+   */
   async transferDriver(input: AcpBackendTransferDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
     await this.sessionService.getSession(input.sessionId, scope);
@@ -458,6 +496,7 @@ export class AcpBackend {
     return { sessionId: input.sessionId, holderId: input.targetSubscriberId, role: 'driver', fence };
   }
 
+  /** Return current driver, observers, and active count for a session. */
   getParticipants(sessionId: string, _scope: AcpSessionScope): AcpBackendParticipantsResult {
     return (
       this.participants.get(sessionId) ?? {
@@ -469,6 +508,10 @@ export class AcpBackend {
     );
   }
 
+  /**
+   * Dispatch an action from the action queue to the appropriate ACP runtime method.
+   * Handles: close, prompt, approve, reject, cancel. Throws for unimplemented types.
+   */
   async dispatchAction(action: AcpActionRecord): Promise<AcpBackendDispatchActionResult> {
     if (action.actionType === 'close') {
       const result = await this.shutdownSession(action);
@@ -507,6 +550,11 @@ export class AcpBackend {
     }
   }
 
+  /**
+   * Gracefully shut down an ACP runtime: transitions status, sends session/close,
+   * kills the child process, and cleans up internal state.
+   * No-op if no runtime exists for the session.
+   */
   async shutdownSession(input: AcpBackendShutdownSessionInput): Promise<AcpBackendShutdownResult> {
     const scope = scopeFromInput(input);
     const session = await this.sessionService.getSession(input.sessionId, scope);
@@ -520,6 +568,10 @@ export class AcpBackend {
     return runtime.cleanupPromise;
   }
 
+  /**
+   * Restart an ACP session: kill existing runtime, create fresh child process,
+   * and call session/resume. Includes configurable backoff delay.
+   */
   async restartSession(input: AcpBackendRestartSessionInput): Promise<AcpBackendRestartResult> {
     const scope = scopeFromInput(input);
     const verified = await this.sessionService.getSession(input.sessionId, scope);

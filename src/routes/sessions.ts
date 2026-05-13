@@ -73,6 +73,20 @@ const sessionHistoryQuerySchema = z.object({
   status: z.string().optional(),
   ownerKeyId: z.string().optional(),
 });
+
+/**
+ * Returns true when the caller is NOT a master key and NOT an admin.
+ * Used to gate ownership-based session filtering.
+ */
+function isNonAdminCaller(keyId: string | null | undefined, role: string | undefined): boolean {
+  return keyId !== 'master' && keyId !== null && keyId !== undefined && role !== 'admin';
+}
+/**
+ * Register all session-related REST routes on the Fastify instance.
+ *
+ * Provides: CRUD, listing, pagination, batch operations, health checks,
+ * event replay, and ACP event schema for session resources.
+ */
 export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
     sessions, auth, quotas, metrics, monitor, eventBus, channels,
@@ -164,7 +178,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     let history = Array.from(historyMap.values());
     const callerKeyId = req.authKeyId;
     const callerRole = getRequestRole(auth, req);
-    if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && callerRole !== 'admin') {
+    if (isNonAdminCaller(callerKeyId, callerRole)) {
       history = history.filter(h => !h.ownerKeyId || h.ownerKeyId === callerKeyId);
     }
     if (ownerFilter) {
@@ -210,7 +224,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     let all = sessions.listSessions();
     const callerKeyId = req.authKeyId;
     const callerRole = getRequestRole(auth, req);
-    if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && callerRole !== 'admin') {
+    if (isNonAdminCaller(callerKeyId, callerRole)) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
@@ -239,7 +253,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     let all = sessions.listSessions();
     const callerKeyId = req.authKeyId;
     const callerRole = getRequestRole(auth, req);
-    if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && callerRole !== 'admin') {
+    if (isNonAdminCaller(callerKeyId, callerRole)) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
@@ -313,13 +327,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     return reply.status(200).send({ deleted, notFound, errors });
   }));
 
-  // Backwards compat: /sessions (no prefix) returns raw array
+  /** @deprecated Use GET /v1/sessions instead. Kept for backward compatibility with pre-v1 clients. */
   app.get('/sessions', async (req, reply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     let all = sessions.listSessions();
     const callerKeyId = req.authKeyId;
     const callerRole = getRequestRole(auth, req);
-    if (callerKeyId !== 'master' && callerKeyId !== null && callerKeyId !== undefined && callerRole !== 'admin') {
+    if (isNonAdminCaller(callerKeyId, callerRole)) {
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
@@ -328,7 +342,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     return all.map(s => redactSession(s as unknown as Record<string, unknown>));
   });
 
-  // Create session (Issue #607: reuse idle session for same workDir)
+  /**
+   * Core handler for POST /v1/sessions.
+   *
+   * Creates a new session (or reuses an idle one for the same workDir when
+   * not in ACP mode). Validates workDir, enforces quotas, checks CC version,
+   * delivers the initial prompt, and emits audit/channel events.
+   */
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
     const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt } = data;
@@ -424,7 +444,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       } catch (e) {
         const auditLogger = getAuditLogger();
         if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
-        return reply.status(500).send({ error: 'ACP runtime failed to start', details: (e as Error).message });
+        const acpErr = e instanceof Error ? e.message : String(e);
+        return reply.status(500).send({ error: 'ACP runtime failed to start — check claude CLI availability and ACP configuration', details: acpErr });
       }
       try {
         session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
@@ -553,12 +574,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     await Promise.all(allSessions.map(async (s) => {
       try {
         results[s.id] = await sessions.getHealth(s.id);
-      } catch {
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : 'Unknown error';
         results[s.id] = {
           alive: false, claudeRunning: false,
           status: 'unknown', hasTranscript: false,
           lastActivity: 0, lastActivityAgo: 0, sessionAge: 0,
-          details: 'Error fetching health',
+          details: `Health check failed: ${errMsg}`,
         };
       }
     }));
@@ -601,7 +623,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         count: records.length,
       };
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      const msg = e instanceof Error ? e.message : String(e);
+      return reply.status(500).send({ error: 'Failed to query event store', details: msg });
     }
   }));
 
