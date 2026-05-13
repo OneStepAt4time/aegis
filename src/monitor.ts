@@ -627,8 +627,11 @@ export class SessionMonitor {
     const result = await this.sessions.readMessagesForMonitor(session.id);
     const prevStatus = this.lastStatus.get(session.id);
 
-    // Forward messages only when watcher is NOT active (fallback polling path)
-    if (!this.jsonlWatcher && result.messages.length > 0) {
+    // Forward messages only when watcher is NOT active for THIS session (#3286).
+    // Checking the watcher instance alone misses the discovery poll where the
+    // fallback just set jsonlPath but the watcher hasn't started yet — entries
+    // read here would otherwise be dropped before the watcher subscribes.
+    if (!this.jsonlWatcher?.isWatching(session.id) && result.messages.length > 0) {
       this.rateLimitedSessions.delete(session.id);
       for (const msg of result.messages) {
         await this.forwardMessage(session, msg);
