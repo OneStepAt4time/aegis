@@ -11,7 +11,7 @@ import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
 import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
-import { OnboardingScreen } from './components/brand/OnboardingScreen';
+import { OnboardingWizard } from './components/brand/OnboardingWizard';
 import { useAuthStore } from './store/useAuthStore';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
@@ -106,7 +106,7 @@ export default function App() {
   });
 
   if (isAuthenticated && showOnboarding) {
-    return <OnboardingScreen onComplete={() => {
+    return <OnboardingWizard onComplete={() => {
       setShowOnboarding(false);
       if (!isTourCompleted()) setShowTour(true);
     }} />;

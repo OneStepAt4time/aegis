@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Settings, Monitor, Bell, DollarSign, AlertTriangle } from 'lucide-react';
+import { Settings, Monitor, Bell, DollarSign, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
@@ -111,6 +111,7 @@ function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
 }
 
 export default function SettingsPage() {
+  const handleRestartOnboarding = () => { try { localStorage.removeItem('aegis:onboarded'); sessionStorage.removeItem('aegis:onboarded'); } catch {} window.location.reload(); };
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
@@ -406,6 +407,22 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+      </section>
+
+      {/* Onboarding */}
+      <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+        <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Onboarding</h3>
+        <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+          Restart the first-run walkthrough wizard.
+        </p>
+        <button
+          type="button"
+          onClick={handleRestartOnboarding}
+          className="flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)]"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Restart onboarding
+        </button>
       </section>
     </div>
   );
