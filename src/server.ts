@@ -90,6 +90,7 @@ import {
   registerAnalyticsRoutes,
   registerOidcAuthRoutes,
   registerUsageRoutes,
+  registerCostRoutes,
   registerControlActionRoutes,
   registerDriverRoutes,
   registerTerminalRoutes,
@@ -1085,6 +1086,7 @@ async function main(): Promise<void> {
   registerPipelineRoutes(app, routeCtx);
   registerAnalyticsRoutes(app, routeCtx);
   registerUsageRoutes(app, routeCtx);
+  registerCostRoutes(app, routeCtx);
   registerControlActionRoutes(app, routeCtx);
   registerDriverRoutes(app, routeCtx);
   registerTerminalRoutes(app, routeCtx);
