@@ -245,10 +245,32 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
 }
 
 export async function handleRun(args: string[], io: CliIO): Promise<number> {
+  // #3358: Show run-specific help
+  if (args.includes('--help') || args.includes('-h')) {
+    writeLine(io.stdout);
+    writeLine(io.stdout, '  ag run <prompt> [options]');
+    writeLine(io.stdout);
+    writeLine(io.stdout, '  Create a session, deliver a brief, and stream output.');
+    writeLine(io.stdout);
+    writeLine(io.stdout, '  Arguments:');
+    writeLine(io.stdout, '    <prompt>              Task description for Claude');
+    writeLine(io.stdout);
+    writeLine(io.stdout, '  Options:');
+    writeLine(io.stdout, '    --cwd <path>          Working directory (default: current directory)');
+    writeLine(io.stdout, '    --port <number>       Server port override (default: 9100)');
+    writeLine(io.stdout, '    --no-stream           Don\'t stream output; print status only');
+    writeLine(io.stdout, '    --accept-permissions  Auto-approve tool permissions (-y)');
+    writeLine(io.stdout, '    --model <model>       Override default Claude model');
+    writeLine(io.stdout, '    -h, --help            Show this help message');
+    writeLine(io.stdout);
+    return 0;
+  }
+
   // Extract prompt
   const brief = args.find((a) => !a.startsWith('-'));
   if (!brief) {
     writeLine(io.stderr, '  ❌ Missing prompt. Usage: ag run "Build a REST API" [--cwd /path]');
+    writeLine(io.stderr, '  Run ag run --help for available options.');
     return 1;
   }
 
