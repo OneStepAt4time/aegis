@@ -174,11 +174,7 @@ curl "http://localhost:9100/v1/diagnostics?limit=20" \
 POST /v1/handshake
 ```
 
-Performs capability negotiation with Aegis. Returns server capabilities and compatibility status.
-
-| Role | Required |
-|------|----------|
-| admin, operator, viewer | Yes |
+Performs capability negotiation with Aegis. Returns server capabilities and compatibility status. **No authentication required.**
 
 ```bash
 curl -X POST http://localhost:9100/v1/handshake \
@@ -1205,11 +1201,7 @@ curl http://localhost:9100/v1/sessions/abc123/metrics \
 GET /v1/sessions/:id/tools
 ```
 
-Returns per-tool call counts for a session, parsed from the JSONL transcript.
-
-| Role | Required |
-|------|----------|
-| admin, operator, viewer | Yes |
+Returns per-tool call counts for a session, parsed from the JSONL transcript. **Ownership-based access** — requires the session's API key owner.
 
 ```bash
 curl http://localhost:9100/v1/sessions/abc123/tools \
