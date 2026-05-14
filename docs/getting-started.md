@@ -62,7 +62,7 @@ npm install -g @onestepat4time/aegis
 ag init
 ```
 
-> **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml`. Restart the server to apply changes. Use `ag init --force` to skip confirmation prompts.
+> **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and regenerates auth keys. **You must restart the server** for the new keys to take effect — the running server does not hot-reload keys from disk. Without a restart, CLI commands will return `401 Unauthorized` with the new token.
 >
 > `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session.
 
@@ -399,6 +399,7 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | Claude not authenticated | Run `claude login` first. Sessions created without auth produce no output. `ag doctor` checks this |
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
+| `401` after `ag init` | Restart the server — it does not hot-reload keys. Kill the process and run `ag` again |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
 | Session shows `pending` | Initial state — connecting to ACP runtime. Wait a moment and re-poll |
 | Session shows `killed` | Terminal state — stopped via API. Session retained for audit, cannot be resumed |
