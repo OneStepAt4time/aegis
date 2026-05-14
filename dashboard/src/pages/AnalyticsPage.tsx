@@ -28,6 +28,8 @@ import { ModelDistributionBar } from '../components/analytics/ModelDistributionB
 import { getAnalyticsSummary, getRateLimitAnalytics } from '../api/client';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
+import { ErrorState } from '../components/ErrorState';
+import { getErrorVariant } from '../utils/getErrorVariant';
 import type { AnalyticsSummary, RateLimitAnalyticsResponse } from '../types';
 import { RateLimitChart } from '../components/analytics/RateLimitChart';
 import { RateLimitForecastCard } from '../components/analytics/RateLimitForecastCard';
@@ -85,7 +87,7 @@ export default function AnalyticsPage() {
   const t = useT();
   const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [rateLimitData, setRateLimitData] = useState<RateLimitAnalyticsResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ raw: unknown; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -98,11 +100,11 @@ export default function AnalyticsPage() {
         setData(summary.value);
         setError(null);
       } else {
-        setError(summary.reason instanceof Error ? summary.reason.message : t('analytics.loadError'));
+        setError({ raw: summary.reason, message: summary.reason instanceof Error ? summary.reason.message : t('analytics.loadError') });
       }
       if (rateLimits.status === 'fulfilled') setRateLimitData(rateLimits.value);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('analytics.loadError'));
+      setError({ raw: e, message: e instanceof Error ? e.message : t('analytics.loadError') });
     } finally {
       setLoading(false);
     }
@@ -123,9 +125,11 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400" role="alert">
-        Failed to load analytics: {error}
-      </div>
+      <ErrorState
+        variant={getErrorVariant(error.raw)}
+        message={error.message}
+        onRetry={() => { void fetchData(); }}
+      />
     );
   }
 

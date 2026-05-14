@@ -82,6 +82,7 @@ export function ErrorState({ variant, message, onRetry }: ErrorStateProps): Reac
     <div
       className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center"
       data-testid="error-state"
+      role="alert"
       data-variant={variant}
     >
       <div className="rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
