@@ -10,7 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { timingSafeStringEqual } from '../../crypto-utils.js';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { authStoreSchema } from '../../validation.js';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import { SYSTEM_TENANT } from '../../config.js';
@@ -86,6 +86,10 @@ export class AuthManager {
   private audit: AuditLogger | null = null;
   /** #2534: Dirty flag — set when lastUsedAt is updated, cleared when persisted to disk. */
   private lastUsedAtDirty = false;
+  /** #3367: Track mtime of keys.json to detect external changes. */
+  private lastKeysMtime: number | null = null;
+  /** #3367: Guard against concurrent reloads. */
+  private reloading = false;
 
 
   constructor(
@@ -136,6 +140,9 @@ export class AuthManager {
             await this.save();
           }
         }
+        // #3367: Track mtime after load
+        try { this.lastKeysMtime = statSync(this.keysFile).mtimeMs; } catch { /* ignore */ }
+
         // Issue #2097: Load grace keys from persisted store
         if (Array.isArray(parsed.graceKeys)) {
           const now = Date.now();
@@ -227,6 +234,8 @@ export class AuthManager {
     await writeFile(tmpFile, JSON.stringify(data, null, 2), { mode: 0o600 });
     await rename(tmpFile, this.keysFile);
     await secureFilePermissions(this.keysFile);
+    // #3367: Track mtime after save
+    try { this.lastKeysMtime = statSync(this.keysFile).mtimeMs; } catch { /* ignore */ }
   }
 
   /** Create a new API key. Returns the plaintext key (only shown once). */
@@ -535,6 +544,11 @@ export class AuthManager {
           return { valid: true, keyId: rotatedKey.id, rateLimited: false, tenantId: rotatedKey.tenantId };
         }
       }
+      // #3367: Trigger async reload on invalid — recovers from state dir wipe
+      setImmediate(async () => {
+        const reloaded = await this.reload();
+        if (reloaded) console.warn('[AuthManager] Keys reloaded after failed validation');
+      });
       return { valid: false, keyId: null, rateLimited: false, reason: 'invalid' };
     }
 
@@ -611,6 +625,47 @@ export class AuthManager {
     // Admin role uses system tenant for cross-tenant access
     if (key?.role === 'admin') return SYSTEM_TENANT;
     return key?.tenantId;
+  }
+
+  /** #3367: Reload keys from disk if the file has changed since last load/save. */
+  async reload(): Promise<boolean> {
+    if (this.reloading) return false;
+    this.reloading = true;
+    try {
+      if (!existsSync(this.keysFile)) {
+        console.warn('[AuthManager] keys.json disappeared — keeping in-memory keys');
+        this.lastKeysMtime = null;
+        return false;
+      }
+      if (!this._keysFileChanged()) return false;
+      console.warn('[AuthManager] keys.json changed on disk — reloading');
+      await this.load();
+      return true;
+    } finally {
+      this.reloading = false;
+    }
+  }
+
+  /** #3367: Check if keys.json mtime has changed. */
+  private _keysFileChanged(): boolean {
+    try {
+      const currentMtime = statSync(this.keysFile).mtimeMs;
+      if (this.lastKeysMtime === null || currentMtime > this.lastKeysMtime) {
+        this.lastKeysMtime = currentMtime;
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /** #3367: Health check — false if keys.json missing but in-memory keys exist. */
+  isHealthy(): boolean {
+    if (this.store.keys.length > 0 && !existsSync(this.keysFile)) {
+      return false;
+    }
+    return true;
   }
 
   /** Hash a key with SHA-256. */
