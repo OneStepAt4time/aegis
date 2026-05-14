@@ -83,6 +83,10 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
   // Issue #2461: /input alias for /send
   registerWithLegacy(app, 'post', '/v1/sessions/:id/input', sendHandler);
 
+
+  // Issue #3331: /prompt alias for /send (referenced in getting-started.md)
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/prompt', sendHandler);
+
   // Issue #702: GET children sessions
   registerWithLegacy(app, 'get', '/v1/sessions/:id/children', withOwnership(sessions, async (_req, _reply, session) => {
     const children = (session.children ?? []).map(id => {
