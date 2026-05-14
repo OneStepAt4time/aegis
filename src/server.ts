@@ -833,8 +833,10 @@ async function main(): Promise<void> {
 
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
-  if (config.authToken) {
-    sessions.setEncryptionKey(config.authToken);
+  // #3340: Also check clientAuthToken
+  const encryptionKey = config.authToken || config.clientAuthToken;
+  if (encryptionKey) {
+    sessions.setEncryptionKey(encryptionKey);
   }
 
   // Issue #3143: Wire ACP event store into session transcript reader
@@ -861,7 +863,9 @@ async function main(): Promise<void> {
   registerChannels(config);
 
   // Setup auth (Issue #39: multi-key + backward compat)
-  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), config.authToken, config.defaultTenantId);
+  // #3340: Fall back to clientAuthToken when authToken is not set
+  const masterToken = config.authToken || config.clientAuthToken || undefined;
+  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), masterToken, config.defaultTenantId);
   auth.setHost(config.host);  // #1080: needed for auth bypass security check
 
   // #1419: Initialize audit logger and wire into auth
