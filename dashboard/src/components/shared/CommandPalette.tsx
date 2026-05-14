@@ -210,7 +210,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             <div className="card-glass overflow-hidden shadow-palette">
               {/* Search input */}
               <div className="flex min-h-[44px] items-center gap-3 border-b border-white/5 px-4 py-3.5">
-                <Search className="h-4 w-4 shrink-0 text-slate-500" />
+                <Search className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                 <input
                   ref={inputRef}
                   type="text"
@@ -223,9 +223,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleInputKeyDown}
                   placeholder="Search sessions, navigate, run commands…"
-                  className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                  className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-[var(--color-text-muted)] outline-none"
                 />
-                <kbd className="shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
+                <kbd className="shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
                   ESC
                 </kbd>
               </div>
@@ -238,7 +238,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 className="max-h-[60vh] overflow-y-auto py-2"
               >
                 {Object.keys(grouped).length === 0 && (
-                  <div className="px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">
                     No results for &ldquo;{query}&rdquo;
                   </div>
                 )}
@@ -246,7 +246,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   const groupStartIndex = runningIndex;
                   return (
                     <div key={group}>
-                      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                         {GROUP_LABELS[group] ?? group}
                       </div>
                       {items.map((item, localIdx) => {
@@ -272,19 +272,19 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                             }`}
                           >
                             <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-white/10 glow-icon-active' : 'bg-white/5 group-hover:bg-white/10'}`}>
-                              <Icon className={`h-3.5 w-3.5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                              <Icon className={`h-3.5 w-3.5 transition-colors ${isActive ? 'text-white' : 'text-[var(--color-text-muted)] group-hover:text-white'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                              <p className={`text-sm font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-[var(--color-text-primary)] group-hover:text-white'}`}>
                                 <HighlightMatch text={item.label} query={query} />
                               </p>
                               {item.description && (
-                                <p className="text-xs text-slate-500 truncate mt-0.5">
+                                <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
                                   <HighlightMatch text={item.description} query={query} />
                                 </p>
                               )}
                             </div>
-                            <ChevronRight className={`h-3.5 w-3.5 text-slate-600 shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                            <ChevronRight className={`h-3.5 w-3.5 text-[var(--color-text-muted)] shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                           </motion.button>
                         );
                       })}
@@ -295,15 +295,15 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
               {/* Footer hint */}
               <div className="border-t border-white/5 px-4 py-2 flex items-center gap-4">
-                <span className="text-[10px] text-slate-600">
+                <span className="text-[10px] text-[var(--color-text-muted)]">
                   <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&uarr;&darr;</kbd>
                   {' '}navigate
                 </span>
-                <span className="text-[10px] text-slate-600">
+                <span className="text-[10px] text-[var(--color-text-muted)]">
                   <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&crarr;</kbd>
                   {' '}select
                 </span>
-                <span className="text-[10px] text-slate-600">
+                <span className="text-[10px] text-[var(--color-text-muted)]">
                   <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">esc</kbd>
                   {' '}close
                 </span>

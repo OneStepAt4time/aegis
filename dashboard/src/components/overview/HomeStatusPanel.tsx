@@ -76,8 +76,8 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
             {icon}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</h4>
-            <p className="mt-0.5 text-xs text-slate-500 truncate">{detail}</p>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">{label}</h4>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)] truncate">{detail}</p>
           </div>
           <div className={`font-mono text-lg sm:text-xl font-bold tracking-tight shrink-0 sm:pl-4 ${toneStyles[tone].value}`}>
             {value}

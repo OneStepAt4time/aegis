@@ -226,12 +226,12 @@ export default function ActivityStream({
         {visibleEvents.length === 0 && (
           <div className="px-4 py-10 text-center">
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/5 mb-3">
-              <Activity className="h-5 w-5 text-slate-500" />
+              <Activity className="h-5 w-5 text-[var(--color-text-muted)]" />
             </div>
-            <p className="text-sm font-medium text-slate-400">
+            <p className="text-sm font-medium text-[var(--color-text-muted)]">
               {emptyMessage ?? (!sseConnected && sseError ? 'Stream paused' : 'Awaiting events')}
             </p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
               {!sseConnected && sseError
                 ? 'Real-time feed will resume when the connection recovers.'
                 : 'Agent activity will appear here in real-time.'}
@@ -254,7 +254,7 @@ export default function ActivityStream({
               <div className="flex-1 min-w-0">
                 {/* Session name + event type badge */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-300 truncate max-w-[120px]">
+                  <span className="text-xs font-semibold text-[var(--color-text-muted)] truncate max-w-[120px]">
                     {sessionName(event.sessionId)}
                   </span>
                   <span
@@ -265,11 +265,11 @@ export default function ActivityStream({
                   </span>
                 </div>
                 {/* Human-readable description — never raw JSON */}
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed line-clamp-2">
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed line-clamp-2">
                   {description}
                 </p>
               </div>
-              <span className="text-[10px] text-slate-500 shrink-0 tabular-nums mt-0.5 font-mono">
+              <span className="text-[10px] text-[var(--color-text-muted)] shrink-0 tabular-nums mt-0.5 font-mono">
                 {formatTime(event.timestamp)}
               </span>
             </div>

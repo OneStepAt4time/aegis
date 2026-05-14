@@ -106,15 +106,15 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
         {/* Live indicator */}
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${sseConnected ? 'bg-cyan-400' : 'bg-slate-600'}`} />
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-cyan-400 shadow-[0_0_6px_#67e8f9]' : 'bg-slate-600'}`} />
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${sseConnected ? 'bg-cyan-400' : 'bg-[var(--color-void-lighter)]'}`} />
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-cyan-400 shadow-[0_0_6px_#67e8f9]' : 'bg-[var(--color-void-lighter)]'}`} />
           </span>
           {sseConnected ? (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[var(--color-accent-cyan)]">
               <Radio className="h-3 w-3" />LIVE
             </span>
           ) : (
-            <span className="text-[9px] text-slate-600 uppercase tracking-widest">PAUSED</span>
+            <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-widest">PAUSED</span>
           )}
         </div>
       </div>
@@ -123,10 +123,10 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
       {visibleEvents.length === 0 && (
         <div className="flex flex-col items-center justify-center pt-12 gap-3 text-center">
           <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center">
-            <Activity className="h-4 w-4 text-slate-600" />
+            <Activity className="h-4 w-4 text-[var(--color-text-muted)]" />
           </div>
-          <p className="text-xs text-slate-500">No events yet</p>
-          <p className="text-[10px] text-slate-600">Agent events will stream here in real time</p>
+          <p className="text-xs text-[var(--color-text-muted)]">No events yet</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">Agent events will stream here in real time</p>
         </div>
       )}
 
@@ -175,15 +175,15 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
                         >
                           {meta.label}
                         </span>
-                        <span className="text-[10px] text-slate-500 truncate">
+                        <span className="text-[10px] text-[var(--color-text-muted)] truncate">
                           {sessionLabel}
                         </span>
                       </div>
-                      <span className="text-[9px] text-slate-600 font-mono shrink-0 tabular-nums">
+                      <span className="text-[9px] text-[var(--color-text-muted)] font-mono shrink-0 tabular-nums">
                         {formatTime(event.timestamp)}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
+                    <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
                       {describeEvent(event)}
                     </p>
                   </div>
