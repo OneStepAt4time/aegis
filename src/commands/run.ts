@@ -275,6 +275,31 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     }
   }
 
+  // #3350: Preflight check — verify Claude Code is authenticated before creating session.
+  try {
+    const { execFile } = await import('node:child_process');
+    const claudeCheck = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve, reject) => {
+      const proc = execFile('claude', ['-p', '/version'], { timeout: 5000 }, (err, stdout, stderr) => {
+        resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code: err ? (err as any).code ?? 1 : 0 });
+      });
+    });
+    if (claudeCheck.stderr.includes('Not logged in') || claudeCheck.stderr.includes('Please run /login') || claudeCheck.code === 1) {
+      writeLine(io.stderr, '');
+      writeLine(io.stderr, '  ❌ Claude Code is not authenticated.');
+      writeLine(io.stderr, '');
+      writeLine(io.stderr, '  Aegis requires Claude Code to be logged in before creating sessions.');
+      writeLine(io.stderr, '');
+      writeLine(io.stderr, '  To fix this:');
+      writeLine(io.stderr, '    1. Run: claude');
+      writeLine(io.stderr, '    2. Follow the login prompts, or');
+      writeLine(io.stderr, '    3. Set ANTHROPIC_API_KEY=<your-key> in your environment');
+      writeLine(io.stderr, '');
+      return 1;
+    }
+  } catch {
+    // claude CLI not found — let session creation proceed and fail naturally
+  }
+
   // Create session
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
