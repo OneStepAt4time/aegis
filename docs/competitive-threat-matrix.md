@@ -1,6 +1,6 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-12 | **Source:** Issues #3013, #3014, #3016, #3003, #3004 + ECC analysis (Orpheus) + deep competitive research (Scribe)
+> **Last updated:** 2026-05-14 | **Source:** Issues #3013, #3014, #3016, #3003, #3004, #3216, #3236 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
@@ -28,6 +28,8 @@ The Claude Code orchestration space is **crowded and moving fast**. 8+ competito
 | #7 | **OpenACP** | 346 | 🟠 HIGH | `curl \| bash` | **28+** | Telegram, Discord, Slack | ✅ | ❌ | ❌ |
 | #8 | **ECC** | 177K | 🟢 OPPORTUNITY | Config library | N/A (skills) | N/A | ❌ | ❌ | ❌ |
 | #9 | **ClaudeClaw** | 1 | 🟡 MEDIUM | `curl \| bash` | 1 (CC hooks) | Telegram | ❌ | ❌ | ❌ |
+| #10 | **Verdent AI** | N/A (closed) | 🟠 HIGH | Mac app download | Parallel agents | Telegram, Slack | ❌ | Desktop app | ❌ |
+| — | **ccusage-dashboard** | 1 | 🟢 ADJACENT | Self-hosted | N/A (analytics) | N/A | ❌ | 9-panel React | ❌ |
 | — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
 ---
@@ -61,6 +63,8 @@ No single competitor has ALL of these. This is the enterprise wedge:
 | **Plugin marketplace distribution** | 177K-star audience unreachable | OMC (CC marketplace) | P1 |
 | **Chat platform breadth** | Missing entire Asian market (WeChat, QQ, DingTalk) | cc-connect (11 platforms) | P1 |
 | **Natural language scheduling** | Dev productivity killer feature | cc-connect | P2 |
+| **Project memory** | Adoption — users want persistent context across sessions | Verdent AI, Ruflo | P1 |
+| **Parallel agent execution** | Adoption — every prosumer competitor has it | Verdent AI, cc-connect, Ruflo | P0 |
 | **Self-learning memory** | Agents improve over time | Ruflo | P2 |
 | **Multi-language docs** | International adoption blocked | OMC (6 languages), cc-connect (5) | P2 |
 
@@ -220,6 +224,29 @@ For each competitor: what they have that we don't **AND** what we have that they
 
 **Counter-move:** mission-control is the most direct competitor (dashboard + RBAC). Our advantage: OIDC, audit trail, K8s, OTel, SDKs. Keep shipping these faster.
 
+### vs. Verdent AI (closed, HIGH threat)
+
+| They have (our gaps) | We have (their gaps) | Why they can't replicate easily |
+|---------------------|---------------------|-------------------------------|
+| Parallel agent execution | REST API (108 endpoints) | Desktop app architecture has no HTTP surface. Becoming a service requires a complete rewrite. |
+| Project memory (persistent context) | OIDC/SSO + RBAC | Single-user desktop app. No concept of multi-user or enterprise identity. |
+| Task decomposition (auto-breaks features) | Audit trail with hash chain | No server component. No persistent audit log possible in desktop-first architecture. |
+| Mac desktop app (native UX) | Kubernetes + Helm | Cannot be deployed as infrastructure. Desktop app only. |
+| Telegram + Slack (message-based tasks) | OpenTelemetry tracing | No observability. No metrics. No tracing. |
+| ICSE 2026 Distinguished Paper (academic credibility) | MCP server (34 tools) | No programmatic interface. Other tools can't integrate with Verdent. |
+| BYOK + Eco Mode (cost control) | TypeScript + Python SDKs | No SDKs. No API. Closed-source. |
+| Italian market focus (localized) | Session lifecycle (terminal states, crash recovery) | No session persistence model. |
+
+**Counter-move:** Verdent wins on UX simplicity and parallel agents. We win on every enterprise dimension. They're Mac-only, closed-source, no API. Different market. Risk: they capture prosumer mindshare before users discover enterprise-grade options. Accelerate #3180 (multi-agent) and #3181 (install friction).
+
+### vs. ccusage-dashboard (1 ⭐, ADJACENT — not a direct competitor)
+
+ccusage-dashboard is an **analytics visualization layer**, not an orchestration tool. They provide 9 interactive cost panels with canonical TTL-split cache pricing. No session management, no agent orchestration, no API.
+
+**Relation:** Complement. Users could run ccusage-dashboard alongside Aegis for deeper cost analytics.
+
+**What to learn:** Their burn rate visualization and canonical cost model are deeper than our `/v1/usage` endpoint. Flag for Phase 4 dashboard work.
+
 ## Competitor Detail References
 
 | Issue | Competitor | Key takeaway |
@@ -230,8 +257,10 @@ For each competitor: what they have that we don't **AND** what we have that they
 | #3003 | OpenACP (346 ⭐) | Same architecture, simpler install, 28+ agents. Highest-threat small competitor. |
 | #3016 | Full landscape | 8 competitors ranked. Aegis smallest by stars, deepest by enterprise features. |
 | #3234 | ClaudeClaw (1 ⭐) | CC hooks-based simplicity play. Zero infrastructure, conversational onboarding. Tier 1 threat. |
+| #3216 | Verdent AI (closed) | Consumer/prosumer parallel agents, project memory, Telegram+Slack. ICSE 2026 Distinguished Paper. Mac-only, closed-source, no API. HIGH adoption threat. |
+| #3236 | ccusage-dashboard (1 ⭐) | Adjacent tool, not competitor. 9-panel cost analytics with canonical TTL-split pricing. Complement, not threat. |
 | ECC | everything-claude-code (177K ⭐) | Not a competitor — distribution channel. Skills layer, not orchestration. |
 
 ---
 
-*Maintained by Scribe 📝 — last deep dive: 2026-05-11, star counts updated: 2026-05-12. Update on each competitive scan.*
+*Maintained by Scribe 📝 — last deep dive: 2026-05-14 (added Verdent AI, ccusage-dashboard), star counts updated: 2026-05-12. Update on each competitive scan.*
