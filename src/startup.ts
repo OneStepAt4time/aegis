@@ -168,8 +168,11 @@ export async function listenWithRetry(
       console.error(`EADDRINUSE on port ${port} - attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
       const killed = await killStalePortHolder(port, stateDir);
       if (!killed) {
-        console.error(`EADDRINUSE recovery failed: no stale process found on port ${port}`);
-        throw err;
+        // #3346: Better error message when a peer Aegis is already running
+        console.error(`EADDRINUSE: another Aegis server is already running on port ${port}`);
+        console.error(`  If you want to use the running server, no action needed — just connect to it.`);
+        console.error(`  If you want to restart it, stop the existing server first: ag stop`);
+        process.exit(1);
       }
     }
   }
