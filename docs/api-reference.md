@@ -776,7 +776,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `workDir` | string | **yes** | Absolute path to an existing directory (file paths are rejected) |
 | `name` | string | no | Session name (max 200 chars, `a-zA-Z0-9_ ./@-=` only; defaults to auto-generated) |
 | `label` | string | no | Alias for `name` (same character restrictions; `name` takes precedence) |
-| `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided) |
+| `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided). For follow-up messages after creation, use `POST /v1/sessions/:id/send` with `text` field. |
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
 | `model` | string | no | Model name for analytics grouping (max 200 chars) |
@@ -1414,6 +1414,8 @@ POST /v1/sessions/:id/send
 Sends a text message to the Claude Code session.
 
 **Alias:** `POST /v1/sessions/:id/input` — identical behavior.
+
+> **Note:** There is no `/v1/sessions/:id/prompt` endpoint. Session creation accepts a `prompt` field for the initial message; for follow-up messages, use `/send` or `/input` with the `text` field.
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/abc123/send \
