@@ -88,7 +88,7 @@ ag
 
 For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama, Azure OpenAI), see [BYO LLM](docs/byo-llm.md). For deployment and secure access away from localhost, see [Deployment Guide](docs/deployment.md) and [Remote Access](docs/remote-access.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
+For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For known bugs and workarounds, see [Known Issues](docs/known-issues.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama, Azure OpenAI), see [BYO LLM](docs/byo-llm.md). For deployment and secure access away from localhost, see [Deployment Guide](docs/deployment.md) and [Remote Access](docs/remote-access.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
 
 ---
 
@@ -606,6 +606,7 @@ See [`packages/python-client/`](packages/python-client/) for the full SDK source
 - **[Remote Access](docs/remote-access.md)** — External access configuration
 - **[BYO LLM](docs/byo-llm.md)** — OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama)
 - **[Troubleshooting](docs/troubleshooting.md)** — Common issues and fixes
+- **[Known Issues](docs/known-issues.md)** — Active bugs with workarounds
 - **[Release Process](docs/release-process.md)** — Maintainer runbook for production releases
 - **[Disaster Recovery](docs/DISASTER_RECOVERY.md)** — Data loss and infrastructure failure recovery
 - **[Incident and Rollback Runbook](docs/incident-rollback-runbook.md)** — Deployment rollbacks and version pinning
