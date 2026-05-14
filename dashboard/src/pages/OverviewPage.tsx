@@ -23,6 +23,7 @@ import { EfficiencyGauge } from '../components/analytics/EfficiencyGauge';
 import { useSessionRealtimeUpdates } from '../hooks/useSessionRealtimeUpdates';
 import { useT } from '../i18n/context';
 import { SessionHealthBanner } from '../components/shared/SessionHealthBanner';
+import GettingStartedCard from '../components/shared/GettingStartedCard';
 import { useStore } from '../store/useStore';
 import { getAnalyticsSummary } from '../api/client';
 import { formatCurrency, formatNumber } from '../utils/formatNumber';
@@ -192,6 +193,9 @@ export default function OverviewPage() {
           Heatmap requires daily token breakdown — pending backend API
         </div>
       </div>
+
+      {/* Getting Started — new users */}
+      <GettingStartedCard totalSessions={totalSessions} onCreateSession={() => setModalOpen(true)} />
 
       {/* Zone B: KPI Banner */}
       {!analyticsLoading && analytics && (
