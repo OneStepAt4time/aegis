@@ -230,7 +230,7 @@ export function NLFilterBar({ onFilter, placeholder = 'Filter: "active sessions 
         onKeyDown={handleKeyDown}
         onBlur={() => { if (inputValue.trim()) commitInput(); }}
         placeholder={chips.length === 0 ? placeholder : 'Add filter…'}
-        className="min-h-8 min-w-[200px] flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+        className="min-h-8 sm:min-w-[200px] flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
         aria-label={t("aria.naturalLanguageFilter")}
       />
       {(chips.length > 0 || inputValue) && (
