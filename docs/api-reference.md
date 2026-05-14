@@ -142,7 +142,7 @@ Returns bounded, no-PII diagnostic events from the internal diagnostics bus.
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator | Yes |
 
 **Query parameters:**
 
@@ -229,7 +229,7 @@ Prometheus-compatible metrics scrape endpoint (standard path, no `/v1` prefix).
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin | Yes |
 
 ```bash
 curl http://localhost:9100/metrics \
@@ -331,7 +331,7 @@ curl -X POST http://localhost:9100/v1/auth/keys \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | yes | Key name |
+| `name` | string | yes | Key name (alphanumeric, dots, hyphens, underscores; max 100 chars) |
 | `role` | string | yes | One of: `admin`, `operator`, `viewer` |
 | `rateLimit` | number | no | Requests per minute |
 | `ttlDays` | number | no | Key expiration in days |
@@ -430,7 +430,7 @@ curl -X PATCH http://localhost:9100/v1/auth/keys/key-abc123 \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | no | New key name (must be unique) |
+| `name` | string | no | New key name (alphanumeric, dots, hyphens, underscores; max 100 chars; must be unique) |
 | `role` | string | no | New role: `admin`, `operator`, or `viewer` |
 | `permissions` | string[]\|null | no | Explicit permissions array, or `null` to reset to role defaults |
 
@@ -2532,7 +2532,7 @@ Returns aggregated session, token, cost, duration, and error-rate data from the 
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator, viewer | Yes (viewer blocked for non-system tenants) |
 
 ```bash
 curl http://localhost:9100/v1/analytics/summary \
@@ -2572,7 +2572,7 @@ Returns aggregated cost breakdown by model, key, and daily trends.
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator, viewer | Yes (viewer blocked for non-system tenants) |
 
 ```bash
 curl http://localhost:9100/v1/analytics/costs \
@@ -2617,7 +2617,7 @@ Returns aggregated token usage with per-model distribution, daily cost trends, a
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator, viewer | Yes (viewer blocked for non-system tenants) |
 
 ```bash
 # Full breakdown
@@ -2661,7 +2661,7 @@ Returns per-key quota usage, global rate-limit config, and a session forecast.
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator, viewer | Yes (viewer sees only own tenant's keys) |
 
 ```bash
 curl http://localhost:9100/v1/analytics/rate-limits \
@@ -2832,7 +2832,7 @@ Returns token usage tracking and cost estimation across all sessions.
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator | Yes |
 
 ```bash
 curl http://localhost:9100/v1/metrics \
@@ -2973,7 +2973,7 @@ Returns health status for all connected channels (Telegram, Slack, Email, webhoo
 
 | Role | Required |
 |------|----------|
-| admin, operator, viewer | Yes |
+| admin, operator | Yes |
 
 ```bash
 curl http://localhost:9100/v1/channels/health \
