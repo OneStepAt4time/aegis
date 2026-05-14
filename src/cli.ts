@@ -120,6 +120,8 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
     }
   }
 
+  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y');
+
   if (!brief) {
     writeLine(io.stderr, '  ❌ Missing brief. Usage: ag create "Build a login page"');
     return 1;
@@ -156,7 +158,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ workDir: cwd, name: sessionName }),
+      body: JSON.stringify({ workDir: cwd, name: sessionName, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
     });
 
     if (!res.ok) {
