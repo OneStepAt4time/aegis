@@ -10,7 +10,8 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { RouteContext } from './context.js';
-import { requireRole, registerWithLegacy } from './context.js';
+import { requireRole, registerWithLegacy, getRequestRole } from './context.js';
+import { SYSTEM_TENANT } from '../config.js';
 import type {
   RateLimitKeyUsage,
   RateLimitForecast,
@@ -29,6 +30,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      // #3361: Viewer on non-system tenant blocked — summary is global operational data
+      const role = getRequestRole(auth, req);
+      if (role === 'viewer' && req.tenantId && req.tenantId !== SYSTEM_TENANT) {
+        reply.status(403).send({ error: 'Forbidden: insufficient role' });
+        return;
+      }
       return metricsCache.getMetrics();
     },
   });
@@ -38,6 +45,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      // #3361: Viewer on non-system tenant blocked — costs are global operational data
+      const role = getRequestRole(auth, req);
+      if (role === 'viewer' && req.tenantId && req.tenantId !== SYSTEM_TENANT) {
+        reply.status(403).send({ error: 'Forbidden: insufficient role' });
+        return;
+      }
 
       const metrics = metricsCache.getMetrics();
       const totalCostUsd = metrics.costTrends.reduce((sum, d) => sum + d.cost, 0);
@@ -78,6 +91,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      // #3361: Viewer on non-system tenant blocked — tokens are global operational data
+      const role = getRequestRole(auth, req);
+      if (role === 'viewer' && req.tenantId && req.tenantId !== SYSTEM_TENANT) {
+        reply.status(403).send({ error: 'Forbidden: insufficient role' });
+        return;
+      }
 
       const query = req.query as { from?: string; to?: string };
       const metrics = metricsCache.getMetrics();
@@ -124,6 +143,40 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+
+      // #3359: Tenant-scope key enumeration — viewer sees only own tenant's keys
+      const role = getRequestRole(auth, req);
+      const callerTenantId = req.tenantId;
+      const isSystemTenant = !callerTenantId || callerTenantId === SYSTEM_TENANT;
+      if (role === 'viewer' && !isSystemTenant) {
+        const allKeys = auth.listKeys();
+        const keys = allKeys.filter(k => k.tenantId === callerTenantId);
+        const allSessions = sessions.listSessions();
+        const perKey: RateLimitKeyUsage[] = keys.map((key) => {
+          const owned = allSessions.filter((s) => s.ownerKeyId === key.id);
+          const usage = quotas.getUsage(key as unknown as ApiKey, owned.length);
+          return {
+            keyId: key.id,
+            keyName: key.name,
+            activeSessions: usage.activeSessions,
+            maxSessions: usage.maxSessions,
+            tokensInWindow: usage.tokensInWindow,
+            maxTokens: usage.maxTokens,
+            spendInWindowUsd: usage.spendInWindow,
+            maxSpendUsd: usage.maxSpend,
+            windowMs: usage.windowMs,
+          };
+        });
+        const forecast = computeForecast(perKey);
+        return {
+          global: { ...GLOBAL_RATE_LIMIT },
+          perKey,
+          forecast,
+          generatedAt: new Date().toISOString(),
+        };
+      }
+
+      // Admin/operator/system: show all keys
 
       const keys = auth.listKeys();
       const allSessions = sessions.listSessions();

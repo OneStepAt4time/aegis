@@ -178,8 +178,9 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   });
 
   // Issue #89 L15: Per-channel health reporting
+  // #3361: Restricted to admin/operator — channel config is operational data
   registerWithLegacy(app, 'get', '/v1/channels/health', async (req: FastifyRequest, reply: FastifyReply) => {
-    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
     return channels.getChannels().map(ch => {
       const health = ch.getHealth?.();
       if (health) return health;
