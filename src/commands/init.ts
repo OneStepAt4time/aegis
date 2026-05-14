@@ -562,8 +562,10 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
 
   // --- Config bootstrap path ---
 
-  const yes = args.includes('--yes') || args.includes('-y');
+  let yes = args.includes('--yes') || args.includes('-y');
   const force = args.includes("--force") || args.includes("-f");
+  // #3354: --force implies --yes (non-interactive) — docs say "skip confirmation prompt"
+  if (force) yes = true;
   const flagModel = getOptionValue(args, '--model');
   const flagName = getOptionValue(args, '--name');
   const configPath = resolveInitConfigPath(args);
@@ -668,18 +670,22 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
 
   if (existingConfigText !== null && needsWrite) {
     if (yes && !force) {
-      writeLine(io.stdout, `  ℹ️  Left ${displayConfigPath} unchanged because --yes never overwrites (use --force to override) existing files.`);
-      printInitSummary(io, {
-        authToken: existingToken,
-        baseUrl: existingConfig?.baseUrl ? normalizeBaseUrl(existingConfig.baseUrl) : baseUrl,
-        commandPrefix,
-        configPath: displayConfigPath,
-        dashboardEnabled: existingConfig?.dashboardEnabled ?? dashboardEnabled,
-        tokenCreated: false,
-        identityScaffolded: false,
-        wroteConfig: false,
-      });
-      return 0;
+      // #3345: Only skip write when there's an actual existing config to preserve.
+      // When config file doesn't exist (partial state), --yes should still create it.
+      if (existingConfig) {
+        writeLine(io.stdout, `  ℹ️  Left ${displayConfigPath} unchanged because --yes never overwrites (use --force to override) existing files.`);
+        printInitSummary(io, {
+          authToken: existingToken,
+          baseUrl: existingConfig?.baseUrl ? normalizeBaseUrl(existingConfig.baseUrl) : baseUrl,
+          commandPrefix,
+          configPath: displayConfigPath,
+          dashboardEnabled: existingConfig?.dashboardEnabled ?? dashboardEnabled,
+          tokenCreated: false,
+          identityScaffolded: false,
+          wroteConfig: false,
+        });
+        return 0;
+      }
     }
 
     // Issue #3351: --yes --force should auto-overwrite without prompting
