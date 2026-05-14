@@ -8,8 +8,11 @@ Get from zero to orchestrating Claude Code sessions in **two commands**.
 |---|---|---|
 | Node.js | ≥ 20 | `node --version` |
 | Claude Code CLI | Latest | `claude --version` |
+| Claude Code auth | Logged in | `claude auth status` |
 
 Aegis bundles `claude-agent-acp` — no tmux installation required.
+
+> **Before you start:** Claude Code must be authenticated. Run `claude auth status` — if it shows "Not logged in", run `claude login` first. Sessions created without Claude auth will silently produce no output. `ag doctor` also checks this for you.
 
 ## Quick Start (2 commands)
 
@@ -37,6 +40,10 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--cwd <path>` | Working directory (default: current directory) |
 | `--port <number>` | Server port override |
 | `--no-stream` | Don't stream output; print curl commands instead |
+| `--model <provider/model>` | Override the default model for this session |
+| `--name <name>` | Set a display name for the session |
+
+> **Note:** `ag run --help` currently shows the general help. For `ag run` flags, refer to this table.
 
 > **Troubleshooting:** If `ag run` hangs without creating a session, fall back to the step-by-step setup below. It separates server start from session creation and gives clearer error output.
 
@@ -389,6 +396,7 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | Problem | Solution |
 |---|---|
 | `claude: command not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
+| Claude not authenticated | Run `claude login` first. Sessions created without auth produce no output. `ag doctor` checks this |
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
