@@ -137,7 +137,7 @@ export default function MetricCards() {
       )}
 
       {/* ── Header ─────────────────────── */}
-      <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">Operational Metrics</h4>
+      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-1">Operational Metrics</h4>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {/* ── Operational Metrics ──────────────────────────────── */}
       {completedSessions > 0 && (
@@ -150,7 +150,7 @@ export default function MetricCards() {
       )}
       {failedSessions > 0 && (
         <div className="card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-sm text-slate-400 font-medium">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             Failed Sessions
           </div>
@@ -168,7 +168,7 @@ export default function MetricCards() {
 
       {/* ── Prompt Delivery ──────────────────────────────── */}
       <div className="col-span-2 lg:col-span-4 card-glass card-glass-interactive animate-bento-reveal p-4 sm:p-5 flex flex-col">
-        <div className="mb-1 flex items-center gap-2 text-sm text-slate-400 font-medium">
+        <div className="mb-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
           <Zap className="h-4 w-4" />
           Delivery Rate
         </div>
@@ -184,26 +184,26 @@ export default function MetricCards() {
               <p className="text-2xl font-mono font-bold text-white">
                 {deliveryRate_ !== null ? `${deliveryRate_.toFixed(1)}%` : '—'}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">Trailing session average</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Trailing session average</p>
             </div>
             {(promptsDelivered > 0 || promptsFailed > 0) && (
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-emerald-400">{promptsDelivered}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Delivered</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Delivered</p>
                   </div>
                 )}
                 {promptsFailed > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-red-400">{promptsFailed}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Failed</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Failed</p>
                   </div>
                 )}
                 {promptsSent > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-slate-300">{promptsSent}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Total Sent</p>
+                    <p className="text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Total Sent</p>
                   </div>
                 )}
               </div>

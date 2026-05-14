@@ -85,7 +85,7 @@ export default function LiveAuditStream() {
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
         <AnimatePresence initial={false}>
           {events.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-600">
+            <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
               <Activity className="h-6 w-6 mb-2 opacity-40" />
               <span className="text-xs">Waiting for events…</span>
             </div>
@@ -104,10 +104,10 @@ export default function LiveAuditStream() {
               >
                 <EventIcon event={ev.event} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium text-slate-300 truncate leading-tight">
+                  <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate leading-tight">
                     {ev.event.replace(/_/g, ' ')}
                   </p>
-                  <p className="text-[10px] text-slate-600 truncate mt-0.5">
+                  <p className="text-[10px] text-[var(--color-text-muted)] truncate mt-0.5">
                     {ev.sessionId.slice(0, 8)}&middot;{formatTimestamp(ev.timestamp)}
                   </p>
                 </div>
@@ -119,7 +119,7 @@ export default function LiveAuditStream() {
 
       {/* Footer */}
       <div className="shrink-0 border-t border-white/5 px-4 py-2">
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-[var(--color-text-muted)]">
           {events.length} event{events.length !== 1 ? 's' : ''}
         </span>
       </div>

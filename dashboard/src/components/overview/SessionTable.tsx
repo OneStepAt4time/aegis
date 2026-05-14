@@ -621,7 +621,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
           {/* Icon diamond */}
           <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.12)] transform rotate-45">
-            <span className="text-2xl transform -rotate-45 block text-slate-400">⌘</span>
+            <span className="text-2xl transform -rotate-45 block text-[var(--color-text-muted)]">⌘</span>
           </div>
 
           <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
@@ -638,12 +638,12 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('aegis:create-session'))}
-                className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
+                className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
               >
                 <span className="text-base leading-none">⊕</span>
                 Deploy New Agent
               </button>
-              <div className="flex items-center gap-2 text-slate-600">
+              <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
                 <div className="h-px w-12 bg-white/10" />
                 <span className="text-[10px] uppercase tracking-widest">or</span>
                 <div className="h-px w-12 bg-white/10" />
@@ -686,14 +686,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     <Fragment key={`group-${dirKey}`}>
                       <button
                         type="button"
-                        className="flex min-h-[44px] items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-cyan/40 hover:text-slate-300"
+                        className="flex min-h-[44px] items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-cyan/40 hover:text-[var(--color-text-primary)]"
                         onClick={() => toggleGroup(dirKey)}
                         aria-expanded={!isCollapsed}
                       >
                         {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                         <FolderOpen className="h-3.5 w-3.5" />
                         <span className="font-medium font-mono text-xs">{dirKey}</span>
-                        <span className="text-[10px] text-slate-500 tabular-nums">{groupRows.length}</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] tabular-nums">{groupRows.length}</span>
                       </button>
                       {!isCollapsed && groupRows.map((row) => (
                         <SessionMobileCard
