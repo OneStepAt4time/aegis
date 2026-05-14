@@ -168,6 +168,7 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     }
     // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
     // Issue #3366: error recovery — a failed write must not poison subsequent writes
+    // #3363: restrict file permissions to owner-only
     const content = `${JSON.stringify(serializeState(this.state), null, 2)}\n`;
     const tmpFile = `${this.config.filePath}.tmp.${process.pid}`;
 
@@ -175,9 +176,9 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     this.writeChain = prevChain
       .then(
         // Previous write succeeded — do this write
-        () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
+        () => writeFile(tmpFile, content, { mode: 0o600 }).then(() => rename(tmpFile, this.config.filePath)),
         // Previous write failed — still attempt this write
-        () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
+        () => writeFile(tmpFile, content, { mode: 0o600 }).then(() => rename(tmpFile, this.config.filePath)),
       )
       .then(() => {
         this.persistError = null;
@@ -195,7 +196,6 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
         // Reset chain so next persist() is not chained to a rejected promise
         this.writeChain = Promise.resolve();
       });
-
     await this.writeChain;
   }
 

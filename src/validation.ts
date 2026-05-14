@@ -744,10 +744,7 @@ export async function validateWorkDir(
   const resolved = path.resolve(workDir);
   const preAllowed = candidateSafeDirs.some((dir) => isUnderOrEqual(resolved, dir));
   if (!preAllowed) {
-        const allowedList = candidateSafeDirs.length <= 5
-      ? candidateSafeDirs.join(', ')
-      : candidateSafeDirs.slice(0, 5).join(', ') + ` (+${candidateSafeDirs.length - 5} more)`;
-    return { error: `workDir ${resolved} is not in the allowed directories list. Allowed: ${allowedList}`, code: 'INVALID_WORKDIR' };
+    return { error: `workDir ${resolved} is not in the allowed directories list`, code: 'INVALID_WORKDIR' };
   }
 
   // Step 3: Follow symlinks.
@@ -761,10 +758,7 @@ export async function validateWorkDir(
   // Step 4: Canonical allowlist check after symlink resolution.
   const allowed = candidateSafeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
-        const allowedList = candidateSafeDirs.length <= 5
-      ? candidateSafeDirs.join(', ')
-      : candidateSafeDirs.slice(0, 5).join(', ') + ` (+${candidateSafeDirs.length - 5} more)`;
-    return { error: `workDir ${resolved} is not in the allowed directories list. Allowed: ${allowedList}`, code: 'INVALID_WORKDIR' };
+    return { error: `workDir ${resolved} is not in the allowed directories list`, code: 'INVALID_WORKDIR' };
   }
 
   // Step 5: Ensure workDir is a directory, not a file.
