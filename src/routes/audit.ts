@@ -231,19 +231,21 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
 
   // Global metrics (Issue #40)
   // Note: cannot use registerWithLegacy because legacy path /metrics is used by Prometheus
+  // #3361: Restricted to admin/operator — operational metrics are not viewer data
   app.get('/v1/metrics', {
     config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
       return metrics.getGlobalMetrics(sessions.listSessions().length);
     },
   });
 
   // Bounded no-PII diagnostics channel (Issue #881)
+  // #3361: Restricted to admin/operator — diagnostics are operational data
   registerWithLegacy(app, 'get', '/v1/diagnostics', {
     config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+      if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
       const parsed = diagnosticsQuerySchema.safeParse(req.query ?? {});
       if (!parsed.success) {
         return reply.status(400).send({
