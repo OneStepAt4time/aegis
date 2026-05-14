@@ -10,7 +10,8 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { RouteContext } from './context.js';
-import { requireRole, registerWithLegacy } from './context.js';
+import { requireRole, registerWithLegacy, getRequestRole } from './context.js';
+import { SYSTEM_TENANT } from '../config.js';
 import type {
   RateLimitKeyUsage,
   RateLimitForecast,
