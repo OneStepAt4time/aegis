@@ -902,7 +902,7 @@ async function main(): Promise<void> {
       await auth.load();
     },
     stop: async () => {},
-    health: async () => ({ healthy: true }),
+    health: async () => ({ healthy: auth.isHealthy(), details: auth.isHealthy() ? undefined : "keys.json missing — state dir may have been wiped" }),
   });
   container.register('channelManager', channels, {
     start: async () => {
