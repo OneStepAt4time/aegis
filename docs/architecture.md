@@ -393,6 +393,8 @@ See [deployment.md](./deployment.md#opentelemetry-tracing) for configuration and
 | `hook.ts` | Builds hook commands for pre/post session lifecycle events |
 | `hook-settings.ts` | Parses and validates hook configuration |
 
+For the full hook event reference (29 lifecycle events), permission policy evaluation, circuit breaker, and competitive comparison, see the [Lifecycle Hooks Guide](./hooks-guide.md).
+
 ### 11. Shared Utilities
 
 | Module | Purpose |
