@@ -978,6 +978,7 @@ async function main(): Promise<void> {
   // Issue #3310: Load persisted metering records from previous runs.
   try {
     await metering.load();
+    metering.start();
   } catch (e) {
     logger.error({ component: 'server', operation: 'metering_load_failed', attributes: { error: e instanceof Error ? e.message : String(e) } });
   }
