@@ -967,7 +967,7 @@ export default function SessionDetailPage() {
               onKill={handleKillRequest}
             />
           ) : (
-            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-2xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-2">
               <button
                 type="button"
                 onClick={handleInterrupt}
