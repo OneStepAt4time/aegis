@@ -11,7 +11,7 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -31,7 +31,16 @@ function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
 }
 
 function resolveAuthToken(): string | undefined {
-  return process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN || undefined;
+  const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
+  if (envToken) return envToken;
+
+  // #3369: Check ~/.aegis/auth-token file as fallback
+  try {
+    const tokenPath = join(homedir(), '.aegis', 'auth-token');
+    return readFileSync(tokenPath, 'utf-8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
