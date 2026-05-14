@@ -63,6 +63,7 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
+import { readNewEntries, extractTokenDelta } from './transcript.js';
 import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
@@ -970,6 +971,12 @@ async function main(): Promise<void> {
   // Issue #3264: Initialize MeteringService for persistent cost tracking.
   const metering = new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl'));
 
+  // Issue #3310: Load persisted metering records from previous runs.
+  try {
+    await metering.load();
+  } catch (e) {
+    logger.error({ component: 'server', operation: 'metering_load_failed', attributes: { error: e instanceof Error ? e.message : String(e) } });
+  }
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
   jsonlWatcher.onEntries((event) => {
@@ -1000,6 +1007,29 @@ async function main(): Promise<void> {
     }
   }
 
+  // Issue #3310: Initial replay of existing JSONL data for metering backfill.
+  // The JSONL watcher only fires on file changes, so historical token data
+  // from sessions that were already completed would never be metered.
+  for (const session of sessions.listSessions()) {
+    if (session.jsonlPath && session.monitorOffset > 0) {
+      try {
+        const result = await readNewEntries(session.jsonlPath, 0);
+        const delta = extractTokenDelta(result.raw);
+        if (delta.inputTokens > 0 || delta.outputTokens > 0) {
+          const model = sessions.getSession(session.id)?.model;
+          metering.recordTokenUsage(session.id, delta, model);
+        }
+      } catch {
+        // Non-critical: backfill failure should not block server startup.
+      }
+    }
+  }
+  // Persist the backfilled metering data.
+  try {
+    await metering.save();
+  } catch {
+    // Non-critical.
+  }
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
   registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
 
@@ -1106,6 +1136,8 @@ async function main(): Promise<void> {
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
   const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
   const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+  // Issue #3310: Periodically persist metering data.
+  const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
@@ -1184,6 +1216,7 @@ async function main(): Promise<void> {
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
+      clearInterval(meteringSaveInterval);
       clearInterval(ipPruneInterval);
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
@@ -1272,6 +1305,19 @@ async function main(): Promise<void> {
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }
+
+      // Issue #3310: Save metering data on shutdown.
+      try {
+        await metering.save();
+      } catch (e) {
+        logger.error({
+          component: 'server',
+          operation: 'graceful_shutdown_save_metering',
+          errorCode: 'SHUTDOWN_SAVE_METERING_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+
 
       // 6b. Issue #2250: Flush analytics cache
       try {
