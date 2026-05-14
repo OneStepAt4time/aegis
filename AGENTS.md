@@ -65,6 +65,33 @@ If the gate fails:
 2. Keep CI required checks green before merge.
 3. Prefer small, auditable PRs with clear test evidence.
 
+## Agent Dispatch Rules
+
+These rules govern how the orchestrating team routes work to agents.
+
+### 5-Tier Dispatch
+
+Work is routed through a structured priority system. When assigning tasks, match the tier:
+
+| Tier | Type | Example | Route To |
+|------|------|---------|----------|
+| 1 | P1 hotfix | Security regression, data loss | Best available backend agent immediately |
+| 2 | Sprint-assigned bug | Bug from dogfooding, labeled `ready` | Assigned per sprint plan |
+| 3 | Feature implementation | Roadmap item, has issue + epic | Assigned per sprint plan |
+| 4 | Docs / polish | Documentation, competitive intel | Scribe or designated docs agent |
+| 5 | Spike / exploration | Research, prototyping | Unassigned, tracked in backlog |
+
+Never skip tiers — a P1 blocks all lower-tier work for the assigned agent.
+
+### Always Spawn, Never Redirect
+
+When a user asks Agent A to do work that belongs to Agent B:
+
+- **DO:** Spawn (create a session/send a message) to Agent B with the full context
+- **DO NOT:** Tell the user to go ask Agent B instead
+
+The user asked *you*. Own the handoff. Include the request, context, and any decisions already made so Agent B can start immediately without re-asking.
+
 ## Anti-Drift and Anti-Trash Rules
 
 These are common AI-agent failure modes and must be actively prevented.
