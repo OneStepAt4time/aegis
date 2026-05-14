@@ -63,7 +63,7 @@ function ThinkingBlock({ entry }: { entry: ParsedEntry }) {
       <div className="max-w-[80%] w-full">
         <button type="button"
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] transition-colors py-1 group"
+          className="flex min-h-[44px] items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors py-1 group"
         >
           <span
             className="inline-block transition-transform duration-200"
@@ -111,7 +111,7 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
         {rawText.length > 100 && (
           <button type="button"
             onClick={() => setExpanded(e => !e)}
-            className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+            className="w-full min-h-[44px] text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
           >
             {expanded ? 'Collapse' : 'Expand'}
           </button>
@@ -157,7 +157,7 @@ function ToolResultCard({ entry }: { entry: ParsedEntry }) {
         {rawText.length > 100 && (
           <button type="button"
             onClick={() => setExpanded(e => !e)}
-            className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-muted)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
+            className="w-full min-h-[44px] text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] py-1 border-t border-[var(--color-void-lighter)] transition-colors"
           >
             {expanded ? 'Collapse' : 'Expand'}
           </button>
