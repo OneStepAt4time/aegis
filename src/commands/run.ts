@@ -200,16 +200,18 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       const data = await res.json() as {
-        lines?: Array<{ text: string; role?: string }>;
-        transcript?: Array<{ text: string; role?: string }>;
+        messages?: Array<{ text: string; role?: string; contentType?: string }>;
         status?: string;
+        statusText?: string | null;
       };
 
-      // Support both `lines` and `transcript` response shapes
-      const entries = data.lines || data.transcript || [];
+      // #3368: Read endpoint returns `messages`, not `lines` or `transcript`
+      const entries = data.messages || [];
       if (entries.length > lastLineCount) {
         const newEntries = entries.slice(lastLineCount);
         for (const entry of newEntries) {
+          // Skip non-text content types (thinking, tool_use, tool_result, etc.)
+          if (entry.contentType && entry.contentType !== 'text') continue;
           const prefix = entry.role === 'user' ? '  👤 ' : entry.role === 'assistant' ? '  🤖 ' : '  ';
           writeLine(io.stdout, `${prefix}${entry.text.slice(0, 500)}`);
         }
@@ -218,9 +220,9 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       // Check if session is done
-      if (data.status === 'completed' || data.status === 'error' || data.status === 'killed') {
+      if (data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed') {
         writeLine(io.stdout);
-        writeLine(io.stdout, `  Session ended: ${data.status}`);
+        writeLine(io.stdout, `  ✅ Session ended: ${data.statusText || data.status}`);
         break;
       }
 
