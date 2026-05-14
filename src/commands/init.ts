@@ -583,7 +583,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  let createAdminToken = !existingToken;
+  let createAdminToken = !existingToken || force;
   let baseUrl = existingConfig?.baseUrl
     ? normalizeBaseUrl(existingConfig.baseUrl)
     : getConfiguredBaseUrl(currentConfig);
@@ -664,6 +664,8 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       return 0;
     }
 
+    // Issue #3351: --yes --force should auto-overwrite without prompting
+    if (!yes || !force) {
     const prompter = createPrompter(io);
     try {
       const overwrite = await promptBoolean(prompter, io, `Overwrite ${displayConfigPath}?`, false);
@@ -686,6 +688,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       }
     } finally {
       prompter.close();
+  }
     }
   }
 
@@ -710,6 +713,13 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   await authManager.load();
 
   if (generatedTokenRequested) {
+    // Issue #3351: --force should replace existing key, not crash
+    if (force) {
+      const existingKey = authManager.listKeys().find(k => k.name === 'ag-init-admin');
+      if (existingKey) {
+        await authManager.revokeKey(existingKey.id);
+      }
+    }
     const createdKey = await authManager.createKey('ag-init-admin', 100, undefined, 'admin');
     authToken = createdKey.key;
     createdKeyId = createdKey.id;
