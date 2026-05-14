@@ -380,6 +380,10 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | `Claude Code CLI not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
 | `401 Unauthorized` | Set `AEGIS_AUTH_TOKEN` or include `Authorization: Bearer <token>` header |
 | Session stuck on `stalled` | Send an interrupt: `curl -X POST http://localhost:9100/v1/sessions/:id/interrupt` |
+| Session shows `pending` | Initial state — connecting to ACP runtime. Wait a moment and re-poll |
+| Session shows `killed` | Terminal state — stopped via API. Session retained for audit, cannot be resumed |
+| Session shows `crashed` | Terminal state — terminated unexpectedly. Check `/v1/diagnostics` for details |
+| Session shows `completed` | Terminal state — finished normally. Session retained for audit |
 | MCP tools not showing in Claude Code | Re-run `claude mcp add aegis -- ag mcp` and restart Claude Code |
 | Dashboard won't load | Verify Aegis is running on port 9100: `curl http://localhost:9100/v1/health` |
 | `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 ag` |
