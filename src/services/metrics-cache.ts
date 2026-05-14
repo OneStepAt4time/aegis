@@ -108,7 +108,7 @@ export class JsonFileBackend implements MetricsCacheBackend {
       await mkdir(dir, { recursive: true });
     }
     const tmpFile = `${this.filePath}.tmp`;
-    await writeFile(tmpFile, JSON.stringify(data, null, 2));
+    await writeFile(tmpFile, JSON.stringify(data, null, 2), { mode: 0o600 });
     await rename(tmpFile, this.filePath);
   }
 }

@@ -221,8 +221,9 @@ export function requireOwnership(
   if (keyId === 'master' || keyId === null || keyId === undefined) return session;
   // Issue #2267: Tenant scoping — reject cross-tenant access.
   // SYSTEM_TENANT callers bypass scoping. Tenant-scoped callers can only access their own sessions.
+  // #3360: Return generic 404 to avoid leaking that a cross-tenant session exists.
   if (tenantId && tenantId !== SYSTEM_TENANT && session.tenantId !== tenantId) {
-    reply.status(403).send({ error: 'Forbidden: session belongs to another tenant' });
+    reply.status(404).send({ error: 'Session not found' });
     return null;
   }
   if (role === 'admin') return session;
