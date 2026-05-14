@@ -62,13 +62,43 @@ async function verifyAuth(baseUrl: string, authToken: string | undefined): Promi
   }
 }
 
-/** Check if the server is healthy at the given base URL. */
+/** Check if the server is healthy at the given base URL.
+ *  #3346: Also checks PID file as a fallback when the health endpoint times out.
+ *  If the PID file exists and the process is alive, assume the server is running. */
 async function isServerHealthy(baseUrl: string, authToken?: string): Promise<boolean> {
   try {
     const headers: Record<string, string> = {};
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
     const res = await fetch(`${baseUrl}/v1/health`, { headers, signal: AbortSignal.timeout(3000) });
-    return res.ok;
+    if (res.ok) return true;
+    // Non-401 error or network issue — fall through to PID file check
+  } catch {
+    // Network error — fall through to PID file check
+  }
+
+  // #3346: Fallback — check if an Aegis server PID file exists with a live process
+  try {
+    const { existsSync, readFileSync } = await import('node:fs');
+    const stateDir = process.env.AEGIS_STATE_DIR || join(homedir(), '.aegis');
+    const pidFile = join(stateDir, 'aegis.pid');
+    if (existsSync(pidFile)) {
+      const pid = parseInt(readFileSync(pidFile, 'utf-8').trim(), 10);
+      if (pid > 0 && pidExists(pid)) {
+        return true;
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  return false;
+}
+
+/** Check if a process with the given PID is alive. */
+function pidExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
   } catch {
     return false;
   }
@@ -170,16 +200,18 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       const data = await res.json() as {
-        lines?: Array<{ text: string; role?: string }>;
-        transcript?: Array<{ text: string; role?: string }>;
+        messages?: Array<{ text: string; role?: string; contentType?: string }>;
         status?: string;
+        statusText?: string | null;
       };
 
-      // Support both `lines` and `transcript` response shapes
-      const entries = data.lines || data.transcript || [];
+      // #3368: Read endpoint returns `messages`, not `lines` or `transcript`
+      const entries = data.messages || [];
       if (entries.length > lastLineCount) {
         const newEntries = entries.slice(lastLineCount);
         for (const entry of newEntries) {
+          // Skip non-text content types (thinking, tool_use, tool_result, etc.)
+          if (entry.contentType && entry.contentType !== 'text') continue;
           const prefix = entry.role === 'user' ? '  👤 ' : entry.role === 'assistant' ? '  🤖 ' : '  ';
           writeLine(io.stdout, `${prefix}${entry.text.slice(0, 500)}`);
         }
@@ -188,9 +220,9 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       // Check if session is done
-      if (data.status === 'completed' || data.status === 'error' || data.status === 'killed') {
+      if (data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed') {
         writeLine(io.stdout);
-        writeLine(io.stdout, `  Session ended: ${data.status}`);
+        writeLine(io.stdout, `  ✅ Session ended: ${data.statusText || data.status}`);
         break;
       }
 
