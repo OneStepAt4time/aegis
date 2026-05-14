@@ -15,8 +15,11 @@ import { API_KEY_PERMISSION_VALUES } from './services/auth/permissions.js';
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** POST /v1/auth/keys */
+/** #3364: Safe pattern for API key names — rejects control chars, null bytes, etc. */
+export const KEY_NAME_REGEX = /^[a-zA-Z0-9._-]{1,100}$/;
+
 export const authKeySchema = z.object({
-  name: z.string().min(1),
+  name: z.string().regex(KEY_NAME_REGEX, "Key name must be 1-100 alphanumeric characters, dots, hyphens, or underscores"),
   rateLimit: z.number().int().positive().optional(),
   ttlDays: z.number().int().positive().optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
@@ -27,7 +30,7 @@ export const authKeySchema = z.object({
 
 /** PATCH /v1/auth/keys/:id — update key role/name/permissions (#3207) */
 export const updateKeySchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().regex(KEY_NAME_REGEX, "Key name must be 1-100 alphanumeric characters, dots, hyphens, or underscores").optional(),
   role: z.enum(['admin', 'operator', 'viewer']).optional(),
   permissions: z.array(z.enum(API_KEY_PERMISSION_VALUES)).max(API_KEY_PERMISSION_VALUES.length).nullable().optional(),
 }).strict();
