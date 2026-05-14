@@ -294,4 +294,36 @@ describe('ag init --model flag', () => {
     };
     expect(config.defaultSessionEnv?.ANTHROPIC_DEFAULT_MODEL).toBe('gpt-5');
   });
+
+  it('replaces existing admin key on --force (issue #3351)', async () => {
+    // First init creates a key
+    let stdin = new PassThrough();
+    let stdout = new CaptureStream();
+    let stderr = new CaptureStream();
+    let runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+    let code = await runPromise;
+    expect(code).toBe(0);
+
+    // Read first token
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    const config1 = parseYaml(readFileSync(configPath, 'utf-8')) as { clientAuthToken: string };
+    const token1 = config1.clientAuthToken;
+    expect(token1).toBeTruthy();
+
+    // Second init with --force should replace the key, not crash
+    stdin = new PassThrough();
+    stdout = new CaptureStream();
+    stderr = new CaptureStream();
+    runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+    setImmediate(() => stdin.end());
+    code = await runPromise;
+    expect(code).toBe(0);
+
+    // Verify new token is different
+    const config2 = parseYaml(readFileSync(configPath, 'utf-8')) as { clientAuthToken: string };
+    const token2 = config2.clientAuthToken;
+    expect(token2).toBeTruthy();
+    expect(token2).not.toBe(token1);
+  });
 });
