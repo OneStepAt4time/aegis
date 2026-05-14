@@ -43,8 +43,8 @@ describe('Issue #3359: Tenant isolation on /v1/analytics/rate-limits', () => {
 
     const allKeys = auth.listKeys();
     // Simulate tenant-scoped filtering (same logic as the fix)
-    const requestTenant = 'default';
-    const requestRole = 'viewer';
+    const requestTenant: string = 'default';
+    const requestRole: string = 'viewer';
     const filtered = (requestTenant === SYSTEM_TENANT || requestRole === 'admin')
       ? allKeys
       : allKeys.filter(k => k.tenantId === requestTenant);
@@ -60,8 +60,8 @@ describe('Issue #3359: Tenant isolation on /v1/analytics/rate-limits', () => {
     await auth.createKey('tenant-b-viewer', 100, undefined, 'viewer', undefined, 'tenant-b');
 
     const allKeys = auth.listKeys();
-    const requestTenant = SYSTEM_TENANT;
-    const requestRole = 'admin';
+    const requestTenant: string = SYSTEM_TENANT;
+    const requestRole: string = 'admin';
     const filtered = (requestTenant === SYSTEM_TENANT || requestRole === 'admin')
       ? allKeys
       : allKeys.filter(k => k.tenantId === requestTenant);

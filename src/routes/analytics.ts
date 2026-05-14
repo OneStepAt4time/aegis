@@ -126,7 +126,13 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
       if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
 
-      const keys = auth.listKeys();
+      // #3359: Tenant-scoped key visibility — non-system admins see only their tenant's keys
+      const allKeys = auth.listKeys();
+      const requestTenant = (req as any).tenantId as string | undefined;
+      const requestRole = (req as any).authRole as string | undefined;
+      const keys = (requestTenant === SYSTEM_TENANT || requestRole === 'admin')
+        ? allKeys
+        : allKeys.filter(k => k.tenantId === requestTenant);
       const allSessions = sessions.listSessions();
 
       // Build per-key usage snapshots
