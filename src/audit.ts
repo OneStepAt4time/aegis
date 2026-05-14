@@ -347,6 +347,10 @@ export class AuditLogger {
    */
   private async acquireFileLock(): Promise<void> {
     const lockPath = join(this.logDir, AuditLogger.FILE_LOCK_DIR);
+    // #3353: Ensure audit directory exists before acquiring file lock
+    if (!existsSync(this.logDir)) {
+      await mkdir(this.logDir, { recursive: true });
+    }
     const deadline = Date.now() + AuditLogger.FILE_LOCK_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
