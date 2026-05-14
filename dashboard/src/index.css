@@ -636,6 +636,112 @@ body::before {
 [data-theme="light-aaa"] .border-white\/10 {
   border-color: var(--color-void-lighter) !important;
 }
+/* ------------------------------------------------------------------
+ * Light-mode overrides for slate bg/hover/border utilities.
+ * Used in Layout, CommandPalette, SessionTable, LiveAuditStream,
+ * ActivityStream, MetricCards, HomeStatusPanel with dark: variants.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .bg-slate-100,
+[data-theme="light-paper"] .bg-slate-100,
+[data-theme="light-aaa"] .bg-slate-100 {
+  background-color: var(--color-void-light) !important;
+}
+[data-theme="light"] .hover\:bg-slate-100:hover,
+[data-theme="light-paper"] .hover\:bg-slate-100:hover,
+[data-theme="light-aaa"] .hover\:bg-slate-100:hover {
+  background-color: var(--color-void-light) !important;
+}
+[data-theme="light"] .bg-slate-50,
+[data-theme="light-paper"] .bg-slate-50,
+[data-theme="light-aaa"] .bg-slate-50 {
+  background-color: var(--color-void-dark) !important;
+}
+[data-theme="light"] .hover\:bg-slate-50:hover,
+[data-theme="light-paper"] .hover\:bg-slate-50:hover,
+[data-theme="light-aaa"] .hover\:bg-slate-50:hover {
+  background-color: var(--color-void-dark) !important;
+}
+[data-theme="light"] .text-slate-700,
+[data-theme="light-paper"] .text-slate-700,
+[data-theme="light-aaa"] .text-slate-700 {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .text-slate-900,
+[data-theme="light-paper"] .text-slate-900,
+[data-theme="light-aaa"] .text-slate-900,
+[data-theme="light"] .text-gray-900,
+[data-theme="light-paper"] .text-gray-900,
+[data-theme="light-aaa"] .text-gray-900 {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .hover\:text-slate-900:hover,
+[data-theme="light-paper"] .hover\:text-slate-900:hover,
+[data-theme="light-aaa"] .hover\:text-slate-900:hover,
+[data-theme="light"] .hover\:text-slate-700:hover,
+[data-theme="light-paper"] .hover\:text-slate-700:hover,
+[data-theme="light-aaa"] .hover\:text-slate-700:hover {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .text-slate-300,
+[data-theme="light-paper"] .text-slate-300,
+[data-theme="light-aaa"] .text-slate-300 {
+  color: var(--color-text-muted) !important;
+}
+[data-theme="light"] .hover\:text-slate-300:hover,
+[data-theme="light-paper"] .hover\:text-slate-300:hover,
+[data-theme="light-aaa"] .hover\:text-slate-300:hover {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .text-slate-200,
+[data-theme="light-paper"] .text-slate-200,
+[data-theme="light-aaa"] .text-slate-200 {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .hover\:text-slate-200:hover,
+[data-theme="light-paper"] .hover\:text-slate-200:hover,
+[data-theme="light-aaa"] .hover\:text-slate-200:hover {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .text-slate-950,
+[data-theme="light-paper"] .text-slate-950,
+[data-theme="light-aaa"] .text-slate-950 {
+  color: var(--color-text-primary) !important;
+}
+[data-theme="light"] .border-slate-200,
+[data-theme="light-paper"] .border-slate-200,
+[data-theme="light-aaa"] .border-slate-200 {
+  border-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .border-slate-300,
+[data-theme="light-paper"] .border-slate-300,
+[data-theme="light-aaa"] .border-slate-300 {
+  border-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .disabled\:border-slate-300:disabled,
+[data-theme="light-paper"] .disabled\:border-slate-300:disabled,
+[data-theme="light-aaa"] .disabled\:border-slate-300:disabled {
+  border-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .disabled\:bg-slate-50:disabled,
+[data-theme="light-paper"] .disabled\:bg-slate-50:disabled,
+[data-theme="light-aaa"] .disabled\:bg-slate-50:disabled {
+  background-color: var(--color-void-dark) !important;
+}
+[data-theme="light"] .disabled\:text-slate-700:disabled,
+[data-theme="light-paper"] .disabled\:text-slate-700:disabled,
+[data-theme="light-aaa"] .disabled\:text-slate-700:disabled {
+  color: var(--color-text-muted) !important;
+}
+[data-theme="light"] .bg-slate-600,
+[data-theme="light-paper"] .bg-slate-600,
+[data-theme="light-aaa"] .bg-slate-600 {
+  background-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .bg-white,
+[data-theme="light-paper"] .bg-white,
+[data-theme="light-aaa"] .bg-white {
+  background-color: var(--color-void-dark) !important;
+}
 
 /* ------------------------------------------------------------------
  * Light-mode readability shim for rose/red/sky utility classes (issue #2378).
