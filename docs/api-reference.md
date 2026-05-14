@@ -980,7 +980,7 @@ curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
 GET /v1/sessions/stats
 ```
 
-Returns aggregated session statistics. Non-admin keys see only their own.
+Returns aggregated session statistics. Non-admin keys see only their own. The `active` count **excludes terminal sessions** (`killed`, `completed`, `crashed`); use `byStatus` for a full breakdown.
 
 ```bash
 curl http://localhost:9100/v1/sessions/stats \
