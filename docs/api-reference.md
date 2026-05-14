@@ -28,7 +28,12 @@ Health, swarm coordination, diagnostics, handshake, and the OpenAPI spec.
 GET /v1/health
 ```
 
-Returns server health, version, uptime, and Claude CLI status. **No authentication required** — unauthenticated callers receive only `{ "status": "ok" }` to prevent information leakage.
+Returns server health, version, uptime, and Claude CLI status.
+
+| Role | Required | Notes |
+|------|----------|-------|
+| None | — | Unauthenticated callers receive only `{ "status": "ok" }` to prevent information leakage |
+| admin | Yes | Full response with version, uptime, sessions, Claude CLI status |
 
 ```bash
 curl http://localhost:9100/v1/health
@@ -169,7 +174,7 @@ curl "http://localhost:9100/v1/diagnostics?limit=20" \
 POST /v1/handshake
 ```
 
-Performs capability negotiation with Aegis. Returns server capabilities and compatibility status.
+Performs capability negotiation with Aegis. Returns server capabilities and compatibility status. **No authentication required.**
 
 ```bash
 curl -X POST http://localhost:9100/v1/handshake \
@@ -311,6 +316,10 @@ POST /v1/auth/keys
 
 Creates a new API key. **Admin only.**
 
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Authorization: Bearer $TOKEN" \
@@ -354,6 +363,10 @@ GET /v1/auth/keys
 
 Lists all registered API keys (metadata only, no secrets). **Admin only.**
 
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
 ```bash
 curl http://localhost:9100/v1/auth/keys \
   -H "Authorization: Bearer $TOKEN"
@@ -372,6 +385,10 @@ DELETE /v1/auth/keys/:id
 ```
 
 Revokes an API key by ID. **Admin only.**
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl -X DELETE http://localhost:9100/v1/auth/keys/key-abc123 \
@@ -397,6 +414,10 @@ PATCH /v1/auth/keys/:id
 ```
 
 Updates an API key's role, name, or permissions. **Admin only.**
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl -X PATCH http://localhost:9100/v1/auth/keys/key-abc123 \
@@ -440,6 +461,10 @@ POST /v1/auth/keys/:id/rotate
 
 Rotates an API key in place. The old key is immediately invalidated. **Admin only.**
 
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys/key-abc123/rotate \
   -H "Authorization: Bearer $TOKEN" \
@@ -470,6 +495,10 @@ POST /v1/auth/keys/rotate
 ```
 
 Rotates an API key with a **grace period** during which both old and new keys are valid. **Admin only.**
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys/rotate \
@@ -540,6 +569,10 @@ GET /v1/auth/keys/:id/quotas
 
 Returns configured quotas and current usage for a specific API key. **Admin only.**
 
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
 ```bash
 curl http://localhost:9100/v1/auth/keys/key-abc123/quotas \
   -H "Authorization: Bearer $TOKEN"
@@ -573,6 +606,10 @@ PUT /v1/auth/keys/:id/quotas
 ```
 
 Sets or updates quotas for an API key. Omit a field to leave unchanged; set to `null` to remove. **Admin only.**
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl -X PUT http://localhost:9100/v1/auth/keys/key-abc123/quotas \
@@ -799,6 +836,10 @@ GET /v1/sessions/:id
 ```
 
 Returns session details including action hints for interactive states.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
 
 ```bash
 curl http://localhost:9100/v1/sessions/abc123 \
@@ -1160,7 +1201,7 @@ curl http://localhost:9100/v1/sessions/abc123/metrics \
 GET /v1/sessions/:id/tools
 ```
 
-Returns per-tool call counts for a session, parsed from the JSONL transcript.
+Returns per-tool call counts for a session, parsed from the JSONL transcript. **Ownership-based access** — requires the session's API key owner.
 
 ```bash
 curl http://localhost:9100/v1/sessions/abc123/tools \
@@ -2961,6 +3002,10 @@ GET /v1/audit
 
 Returns audit log records with cursor-based or offset-based pagination, time-range filters, and multi-format export. **Admin only.** Rate limited: 30 req/min.
 
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
 ```bash
 curl "http://localhost:9100/v1/audit?action=session.create&from=2026-04-13T00:00:00Z&limit=50" \
   -H "Authorization: Bearer $TOKEN"
@@ -3568,6 +3613,10 @@ GET /v1/usage/by-key
 ```
 
 Returns usage broken down by API key. **Admin only.**
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
 
 ```bash
 curl "http://localhost:9100/v1/usage/by-key?from=2026-04-01T00:00:00Z" \
