@@ -584,6 +584,58 @@ body::before {
 [data-theme="light-aaa"] .text-amber-400 {
   color: var(--color-warning) !important;
 }
+/* ------------------------------------------------------------------
+ * Light-mode overrides for amber-200 (warning text) and white/opacity
+ * utilities used as backgrounds and borders in dark mode.
+ * amber-200 (#fde68a) has ~1.4:1 contrast on white — fails WCAG AA.
+ * bg-white/5 and border-white/5 are invisible on light backgrounds.
+ * ------------------------------------------------------------------ */
+[data-theme="light"] .text-amber-200,
+[data-theme="light-paper"] .text-amber-200,
+[data-theme="light-aaa"] .text-amber-200 {
+  color: var(--color-warning) !important;
+}
+[data-theme="light"] .text-amber-200\/80,
+[data-theme="light-paper"] .text-amber-200\/80,
+[data-theme="light-aaa"] .text-amber-200\/80 {
+  color: var(--color-warning) !important;
+}
+[data-theme="light"] .border-amber-500\/20,
+[data-theme="light"] .border-amber-500\/30,
+[data-theme="light-paper"] .border-amber-500\/20,
+[data-theme="light-paper"] .border-amber-500\/30,
+[data-theme="light-aaa"] .border-amber-500\/20,
+[data-theme="light-aaa"] .border-amber-500\/30 {
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent) !important;
+}
+[data-theme="light"] .bg-amber-500\/5,
+[data-theme="light"] .bg-amber-500\/10,
+[data-theme="light-paper"] .bg-amber-500\/5,
+[data-theme="light-paper"] .bg-amber-500\/10,
+[data-theme="light-aaa"] .bg-amber-500\/5,
+[data-theme="light-aaa"] .bg-amber-500\/10 {
+  background-color: color-mix(in srgb, var(--color-warning) 8%, transparent) !important;
+}
+[data-theme="light"] .bg-white\/5,
+[data-theme="light-paper"] .bg-white\/5,
+[data-theme="light-aaa"] .bg-white\/5 {
+  background-color: var(--color-void-light) !important;
+}
+[data-theme="light"] .bg-white\/10,
+[data-theme="light-paper"] .bg-white\/10,
+[data-theme="light-aaa"] .bg-white\/10 {
+  background-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .border-white\/5,
+[data-theme="light-paper"] .border-white\/5,
+[data-theme="light-aaa"] .border-white\/5 {
+  border-color: var(--color-void-lighter) !important;
+}
+[data-theme="light"] .border-white\/10,
+[data-theme="light-paper"] .border-white\/10,
+[data-theme="light-aaa"] .border-white\/10 {
+  border-color: var(--color-void-lighter) !important;
+}
 
 /* ------------------------------------------------------------------
  * Light-mode readability shim for rose/red/sky utility classes (issue #2378).
