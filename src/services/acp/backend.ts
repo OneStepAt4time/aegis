@@ -424,7 +424,10 @@ export class AcpBackend {
         return { delivered: false, attempts: 0, error: 'no_agent_session' };
       }
 
-      await runtime.client.request<AcpJsonValue>('session/prompt', {
+      // #3423: Use notify (fire-and-forget) instead of request.
+      // request() blocks until Claude finishes responding (up to 60s timeout),
+      // causing /v1/sessions/:id/send to hang with an empty response body.
+      await runtime.client.notify('session/prompt', {
         sessionId: acpSessionId,
         prompt: [{ type: 'text', text }],
       });
