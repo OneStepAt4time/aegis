@@ -26,6 +26,12 @@ npx --package=@onestepat4time/aegis ag run "Analyze this project and list the ma
 
 If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
 
+> **Auth note:** If you previously configured an API token during `ag init`, set `AEGIS_AUTH_TOKEN` before running CLI commands:
+> ```bash
+> export AEGIS_AUTH_TOKEN=your-secret-token
+> ```
+> Without this, `ag run` and `ag create` return `401 Unauthorized`.
+
 | Flag | Description |
 |------|-------------|
 | `--cwd <path>` | Working directory (default: current directory) |
@@ -49,7 +55,7 @@ npm install -g @onestepat4time/aegis
 ag init
 ```
 
-> **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and generates a new auth token. Restart the server to apply changes. Use `ag init --force` to skip the confirmation prompt.
+> **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml`. Restart the server to apply changes. Use `ag init --force` to skip confirmation prompts.
 >
 > `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session.
 
@@ -142,6 +148,12 @@ Navigate the dashboard faster using keyboard shortcuts:
 The dashboard displays the shortcut hint in the sidebar footer.
 
 ## 4. Create a Session
+
+> **Auth required?** If you answered "yes" to the API token prompt during `ag init` (or set `AEGIS_AUTH_TOKEN`), you must export the token before using `ag create` or `ag run`:
+> ```bash
+> export AEGIS_AUTH_TOKEN=your-secret-token
+> ```
+> Without this, CLI commands return `401 Unauthorized`. No-auth setups can skip this.
 
 ```bash
 ag create "Analyze this project. List the main technologies, directory structure, and any issues you spot." --cwd /path/to/your/project
