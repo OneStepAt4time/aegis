@@ -168,6 +168,8 @@ ag create "Analyze this project. List the main technologies, directory structure
 
 `ag create` prints the session ID and next-step curl commands for you:
 
+> **Known issue:** If `ag create` shows no output, the session may still have been created. Verify with: `curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions`.
+
 ```text
 ✅ Session created: cc-analyze-this-projec
    ID: a1b2c3d4
@@ -412,3 +414,5 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 | `EADDRINUSE` on startup | Port 9100 is in use. Set a different port: `AEGIS_PORT=9200 ag` |
 | Screenshot returns 501 | Install Playwright: `npx playwright install chromium` |
 | No output from `/read` | Wait for transcript entries, or check session events via SSE (see Section 5 for SSE token setup) |
+| `ag create` shows no output | Known issue — session may still be created. Check with `curl -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions` |
+| `ag <word>` creates unwanted session | The CLI treats unrecognized arguments as session briefs. Use `ag --help` to check available commands |
