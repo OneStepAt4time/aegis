@@ -33,22 +33,23 @@ jobs:
           ACTOR: ${{ github.actor }}
           EVENT: ${{ github.event_name }}
         run: |
-          TRUSTED="OneStepAt4time\naegis-gh-agent[bot]\ndependabot[bot]"
-
+          # Stars always notify regardless of actor
           if [ "$EVENT" = "watch" ]; then
             echo "should_notify=true" >> "$GITHUB_OUTPUT"
             echo "event_type=star" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Use grep -Fxq for literal exact-line matching (avoids [bot] being
-          # interpreted as a regex character class)
-          if printf '%s\n' "$TRUSTED" | grep -Fxq "$ACTOR"; then
-            echo "should_notify=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_notify=true" >> "$GITHUB_OUTPUT"
-            echo "event_type=activity" >> "$GITHUB_OUTPUT"
-          fi
+          # Suppress notifications from trusted team/bot actors
+          case "$ACTOR" in
+            OneStepAt4time|'aegis-gh-agent[bot]'|'dependabot[bot]')
+              echo "should_notify=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "should_notify=true" >> "$GITHUB_OUTPUT"
+              echo "event_type=activity" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
       - name: Notify — Star ⭐
         if: steps.check.outputs.should_notify == 'true' && steps.check.outputs.event_type == 'star'
