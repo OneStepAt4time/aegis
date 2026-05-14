@@ -1,6 +1,7 @@
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
+import { logger } from '../../logger.js';
 import type { ServiceHealth } from '../../container.js';
 import {
   AcpDurableIdentityError,
@@ -107,6 +108,7 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   private state = createEmptyState();
   private started = false;
   private writeChain: Promise<void> = Promise.resolve();
+  private persistError: Error | null = null;
   private readonly memorySessionStore: MemoryAcpSessionStore;
   private readonly memoryEventStore: MemoryAcpEventStore;
   private readonly memoryActionQueue: MemoryAcpActionQueue;
@@ -143,7 +145,8 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
 
   async stop(_signal?: AbortSignal): Promise<void> {
     if (!this.started) return;
-    await this.writeChain;
+    // Best-effort final persist — swallow errors so shutdown completes
+    await this.writeChain.catch(() => {});
     this.started = false;
   }
 
@@ -156,15 +159,47 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
 
   private async persist(): Promise<void> {
     if (!this.started) {
-      throw new Error('FileAcpLocalStorageProfile: start() must be called before use');
+      throw new Error('FileAcpLocalStorageProfile: persist() called before start()');
     }
     // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
+    // Issue #3366: error recovery — a failed write must not poison subsequent writes
     const content = `${JSON.stringify(serializeState(this.state), null, 2)}\n`;
     const tmpFile = `${this.config.filePath}.tmp.${process.pid}`;
-    this.writeChain = this.writeChain.then(
-      () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
-    );
+
+    const prevChain = this.writeChain;
+    this.writeChain = prevChain
+      .then(
+        // Previous write succeeded — do this write
+        () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
+        // Previous write failed — still attempt this write
+        () => writeFile(tmpFile, content, 'utf8').then(() => rename(tmpFile, this.config.filePath)),
+      )
+      .then(() => {
+        this.persistError = null;
+      })
+      .catch((err: Error) => {
+        this.persistError = err;
+        logger.error({
+          component: 'acp-local-storage',
+          operation: 'persist',
+          errorCode: 'PERSIST_FAILED',
+          attributes: { error: err.message, filePath: this.config.filePath },
+        });
+        // Clean up stale tmp file if it exists
+        unlink(tmpFile).catch(() => {});
+        // Reset chain so next persist() is not chained to a rejected promise
+        this.writeChain = Promise.resolve();
+      });
+
     await this.writeChain;
+  }
+
+  /**
+   * Returns the last persist error, or null if all writes succeeded.
+   * Useful for diagnostics and health checks.
+   */
+  getPersistError(): Error | null {
+    return this.persistError;
   }
 }
 
