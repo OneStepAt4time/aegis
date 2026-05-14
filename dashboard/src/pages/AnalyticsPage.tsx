@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
                   name="Sessions"
                   stroke="var(--color-accent-cyan)"
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={{ r: 3 }} animationDuration={500} 
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -376,7 +376,7 @@ export default function AnalyticsPage() {
                   dataKey="cost"
                   name="Daily Cost"
                   fill="var(--color-accent-cyan)"
-                  radius={[4, 4, 0, 0]}
+                  radius={[4, 4, 0, 0]} animationDuration={500} 
                 />
               </BarChart>
             </ResponsiveContainer>

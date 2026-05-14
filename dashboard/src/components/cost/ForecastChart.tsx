@@ -202,6 +202,7 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
               strokeWidth={2}
               dot={{ r: 3, fill: 'var(--color-accent-cyan)' }}
               connectNulls={false}
+              animationDuration={500}
             />
             <Line
               type="monotone"
@@ -212,6 +213,7 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
               strokeDasharray="8 4"
               dot={false}
               connectNulls={false}
+              animationDuration={500}
             />
             {monthlyCap > 0 && (
               <ReferenceLine

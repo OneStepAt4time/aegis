@@ -183,6 +183,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Sessions"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.sessionUsage")}
+            animationDuration={500}
           >
             {data.map((row, i) => (
               <Cell key={`s-${i}`} fill={barColor(row.sessionRatio)} />
@@ -193,6 +194,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Tokens"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.tokenUsage")}
+            animationDuration={500}
           >
             {data.map((row, i) => (
               <Cell key={`t-${i}`} fill={barColor(row.tokenRatio)} />
@@ -203,6 +205,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Spend"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.spendUsage")}
+            animationDuration={500}
           >
             {data.map((row, i) => (
               <Cell key={`sp-${i}`} fill={barColor(row.spendRatio)} />
