@@ -6,8 +6,9 @@
  * Also handles `--list-templates` and `--from-template`.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +46,23 @@ interface InitSummary {
   wroteConfig: boolean;
   identityScaffolded: boolean;
 }
+
+/**
+ * Persist the auth token to ~/.aegis/auth-token for easy access.
+ * File is created with 0600 permissions (owner read/write only).
+ * Non-fatal on failure — token remains in config.yaml as clientAuthToken.
+ */
+function persistAuthTokenFile(token: string): void {
+  const tokenDir = join(homedir(), '.aegis');
+  const tokenPath = join(tokenDir, 'auth-token');
+  try {
+    if (!existsSync(tokenDir)) mkdirSync(tokenDir, { recursive: true });
+    writeFileSync(tokenPath, token, { encoding: 'utf-8', mode: 0o600 });
+  } catch {
+    // Non-fatal — token is still in config.yaml as clientAuthToken
+  }
+}
+
 
 type TemplateType = 'agent' | 'skill' | 'slash-command';
 
@@ -783,6 +801,11 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     } catch (error) {
       writeLine(io.stderr, `  ⚠️  Could not write identity file: ${getErrorMessage(error)}`);
     }
+  }
+
+  // #3369: Persist token to ~/.aegis/auth-token for easy scripting access
+  if (authToken) {
+    persistAuthTokenFile(authToken);
   }
 
   printInitSummary(io, {
