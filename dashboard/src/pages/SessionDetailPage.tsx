@@ -598,7 +598,7 @@ export default function SessionDetailPage() {
             userRole="observer"
           />
 
-          <div className="relative flex gap-2 py-1" role="tablist">
+          <div className="relative flex gap-2 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="Session detail tabs">
             {TABS.map((tab) => (
               <button type="button"
                 key={tab.id}

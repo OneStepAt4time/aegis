@@ -1072,3 +1072,13 @@ main[id="main-content"] {
   box-shadow:
     0 40px 80px -15px rgba(0, 0, 0, 0.9);
 }
+
+
+/* Hide scrollbar but keep scroll functionality — for mobile tab bars */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
