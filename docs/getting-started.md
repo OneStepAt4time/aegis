@@ -398,6 +398,8 @@ See the [Worktree Guide](./worktree-guide.md) for detailed setup instructions.
 
 ## Troubleshooting
 
+For active bugs with workarounds, see [Known Issues](known-issues.md).
+
 | Problem | Solution |
 |---|---|
 | `claude: command not found` | Install Claude Code: `npm install -g @anthropic-ai/claude-code` and run `claude` to authenticate |
