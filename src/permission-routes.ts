@@ -41,7 +41,8 @@ function createPermissionHandler(
     if (callerTenantId && callerTenantId !== SYSTEM_TENANT && session.tenantId !== callerTenantId) {
       const effectiveAudit = getAuditLogger ? getAuditLogger() : audit;
       if (effectiveAudit) void effectiveAudit.log(keyId ?? 'system', 'session.action.denied', `Cross-tenant ${matchedPermission} denied on session ${session.id} (tenant: ${session.tenantId})`, session.id, callerTenantId);
-      return reply.status(403).send({ error: 'SESSION_FORBIDDEN', message: 'Session belongs to another tenant' });
+      // #3360: Return generic 404 to avoid leaking cross-tenant session existence.
+      return reply.status(404).send({ error: 'SESSION_NOT_FOUND', message: 'Session not found' });
     }
 
     // Feature flag check (#1910): skip enhanced ownership when disabled

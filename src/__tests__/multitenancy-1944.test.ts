@@ -400,7 +400,7 @@ describe('Multi-tenancy (#1944) — requireOwnership with tenant', () => {
     const result = requireOwnership(sessions, 's-1', reply, 'globex-key', 'globex');
 
     expect(result).toBeNull();
-    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(reply.status).toHaveBeenCalledWith(404);
   });
 
   it('allows same-tenant access', async () => {
