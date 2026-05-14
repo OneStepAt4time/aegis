@@ -200,7 +200,7 @@ describe('dashboard session cookie request auth', () => {
       url: '/v1/owned/other-tenant',
       headers: { cookie: cookieHeader(dashboardSession.sessionId) },
     });
-    expect(otherTenant.statusCode).toBe(403);
+    expect(otherTenant.statusCode).toBe(404);
   });
 
   it('filters global SSE events for tenant-scoped dashboard sessions', () => {
