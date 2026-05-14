@@ -263,8 +263,10 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
     }
     const global = metrics.getGlobalMetrics(all.length);
+    // #3334: active should only count live sessions, not killed/completed/crashed
+    const activeCount = all.filter(s => s.status !== "killed" && s.status !== "completed" && s.status !== "crashed").length;
     return {
-      active: all.length,
+      active: activeCount,
       byStatus,
       totalCreated: global.sessions.total_created,
       totalCompleted: global.sessions.completed,
