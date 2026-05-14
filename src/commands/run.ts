@@ -34,6 +34,25 @@ function resolveAuthToken(): string | undefined {
   return process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN || undefined;
 }
 
+/**
+ * Issue #3306: Verify auth credentials against the server before attempting
+ * to create a session. Prevents orphaned sessions when the CLI has an invalid
+ * or missing token but the server requires authentication.
+ * Returns true if auth is OK (or server doesn't require auth), false on 401.
+ */
+async function verifyAuth(baseUrl: string, authToken: string | undefined): Promise<{ ok: boolean; status?: number }> {
+  try {
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(`${baseUrl}/v1/sessions/stats`, { headers, signal: AbortSignal.timeout(5000) });
+    if (res.ok) return { ok: true };
+    if (res.status === 401) return { ok: false, status: 401 };
+    return { ok: true };
+  } catch {
+    return { ok: true };
+  }
+}
+
 /** Check if the server is healthy at the given base URL. */
 async function isServerHealthy(baseUrl: string, authToken?: string): Promise<boolean> {
   try {
@@ -237,6 +256,22 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
       }
     } else {
       writeLine(io.stdout, '  ✅ Server started');
+    }
+  }
+
+  // Issue #3306: Preflight auth check before creating a session.
+  // Prevents orphaned server sessions when the CLI token is invalid.
+  if (serverRunning && authToken) {
+    const authCheck = await verifyAuth(baseUrl, authToken);
+    if (!authCheck.ok) {
+      writeLine(io.stderr, '');
+      writeLine(io.stderr, '  ❌ Unauthorized — the server rejected the auth token.');
+      writeLine(io.stderr, '');
+      writeLine(io.stderr, '  To fix this:');
+      writeLine(io.stderr, '    1. Run `ag init` to create a new API key and config');
+      writeLine(io.stderr, '    2. Or set AEGIS_AUTH_TOKEN=<your-key> in your environment');
+      writeLine(io.stderr, '');
+      return 1;
     }
   }
 

@@ -134,6 +134,23 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+  // Issue #3306: Preflight auth check to prevent orphaned sessions.
+  if (authToken) {
+    try {
+      const authRes = await fetch(`${baseUrl}/v1/sessions/stats`, {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (authRes.status === 401) {
+        writeLine(io.stderr, '  ❌ Unauthorized — the server rejected the auth token.');
+        writeLine(io.stderr, '  Run `ag init` or set AEGIS_AUTH_TOKEN=<your-key>.');
+        return 1;
+      }
+    } catch {
+      // Network error — proceed, session creation will fail anyway
+    }
+  }
+
   let sessionId: string;
   try {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
