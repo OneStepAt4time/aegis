@@ -30,7 +30,7 @@ function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
   stream.write(`${text}\n`);
 }
 
-function resolveAuthToken(): string | undefined {
+async function resolveAuthToken(): Promise<string | undefined> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
   if (envToken) return envToken;
 
@@ -38,6 +38,17 @@ function resolveAuthToken(): string | undefined {
   try {
     const tokenPath = join(homedir(), '.aegis', 'auth-token');
     return readFileSync(tokenPath, 'utf-8').trim() || undefined;
+  } catch {
+    // File doesn't exist — continue to config search
+  }
+
+  // #3340: Search config files for clientAuthToken/authToken as last resort.
+  // Covers the case where ag init wrote the token to a config but the
+  // auth-token file is missing (e.g., partial state, file deleted).
+  try {
+    const { loadConfig } = await import('../config.js');
+    const config = await loadConfig();
+    return config.clientAuthToken || config.authToken || undefined;
   } catch {
     return undefined;
   }
@@ -262,7 +273,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     : getConfiguredBaseUrl(config);
 
   // Check if server is running
-  let authToken = resolveAuthToken() || config.authToken || config.clientAuthToken || undefined;
+  let authToken = await resolveAuthToken() || config.authToken || config.clientAuthToken || undefined;
   let serverRunning = await isServerHealthy(baseUrl, authToken);
 
   if (!serverRunning) {
