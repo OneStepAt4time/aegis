@@ -23,6 +23,8 @@ import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
 import { ChartFrame } from '../components/shared/ChartFrame';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { ErrorState } from '../components/ErrorState';
+import { getErrorVariant } from '../utils/getErrorVariant';
 
 type RangePreset = '7d' | '30d' | '90d';
 type Granularity = 'day' | 'hour' | 'key';
@@ -77,7 +79,7 @@ function generateCSV(data: AggregateMetricsResponse): string {
 export default function MetricsPage() {
   const t = useT();
   const [data, setData] = useState<AggregateMetricsResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ raw: unknown; message: string } | null>(null);
   const [range, setRange] = useState<RangePreset>('7d');
   const [granularity, setGranularity] = useState<Granularity>('day');
   const sseConnected = useStore((s) => s.sseConnected);
@@ -90,7 +92,7 @@ export default function MetricsPage() {
       const result = await getMetricsAggregate({ from, to: now.toISOString(), groupBy: granularity });
       setData(result);
     } catch (err) {
-      setError(sanitizeErrorMessage(err, t('metrics.loadError')));
+      setError({ raw: err, message: sanitizeErrorMessage(err, t('metrics.loadError')) });
     }
   }, [range, granularity]);
 
@@ -177,9 +179,11 @@ export default function MetricsPage() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300" role="alert">
-          {error}
-        </div>
+        <ErrorState
+          variant={getErrorVariant(error.raw)}
+          message={error.message}
+          onRetry={() => { void fetchData(); }}
+        />
       )}
 
       {/* Summary cards */}
