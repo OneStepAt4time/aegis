@@ -49,6 +49,7 @@ export interface AcpLocalStorageProfile {
   start(): Promise<void>;
   stop(signal?: AbortSignal): Promise<void>;
   health(): Promise<ServiceHealth>;
+  getPersistError(): Error | null;
 }
 
 export interface FileAcpLocalStorageProfileConfig {
@@ -101,6 +102,10 @@ export class MemoryAcpLocalStorageProfile implements AcpLocalStorageProfile {
 
   async health(): Promise<ServiceHealth> {
     return { healthy: true, details: 'memory ACP local storage profile ok' };
+  }
+
+  getPersistError(): Error | null {
+    return null;
   }
 }
 

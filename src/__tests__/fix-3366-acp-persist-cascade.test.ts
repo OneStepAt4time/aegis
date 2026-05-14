@@ -17,12 +17,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createFileAcpLocalStorageProfile } from '../services/acp/local-storage.js';
 
 function makeSession(id: string) {
+  const now = Date.now();
   return {
     id,
+    conversationId: `conv-${id}`,
+    transcriptId: `transcript-${id}`,
+    tenantId: 'test-tenant',
+    ownerKeyId: 'test-key',
     runnerType: 'acp' as const,
-    status: 'pending' as const,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    status: 'initializing' as const,
+    createdAt: now,
+    updatedAt: now,
     metadata: {},
   };
 }
