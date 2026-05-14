@@ -130,7 +130,7 @@ async function waitForServer(baseUrl: string, authToken: string | undefined, tim
  * Issue #3261: Use AuthManager to create a proper key in keys.json,
  * not a random token that the server won't recognize.
  */
-async function ensureConfig(configPath: string, stateDir: string): Promise<string | undefined> {
+async function ensureConfig(configPath: string, stateDir: string, port?: number): Promise<string | undefined> {
   const existing = await readConfigFile(configPath);
   if (existing) {
     return existing.authToken || existing.clientAuthToken || undefined;
@@ -146,7 +146,7 @@ async function ensureConfig(configPath: string, stateDir: string): Promise<strin
 
   const config: Partial<Config> = {
     authToken: token,
-    baseUrl: 'http://127.0.0.1:9100',
+    baseUrl: port ? `http://127.0.0.1:${port}` : 'http://127.0.0.1:9100',
     dashboardEnabled: true,
     acpEnabled: true,
   };
@@ -282,7 +282,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     // Ensure config exists (creates proper key in keys.json via AuthManager)
     if (!existingConfig) {
       writeLine(io.stdout, '  ⏳ No config found — bootstrapping with defaults...');
-      const generatedToken = await ensureConfig(configPath, config.stateDir);
+      const generatedToken = await ensureConfig(configPath, config.stateDir, portOverride ?? undefined);
       if (generatedToken) authToken = generatedToken;
       writeLine(io.stdout, `  ✅ Config created: ${configPath}`);
     }
