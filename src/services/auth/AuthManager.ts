@@ -328,7 +328,13 @@ export class AuthManager {
     const key = this.store.keys.find(k => k.id === id);
     if (!key) return null;
 
-    if (updates.name !== undefined) key.name = updates.name;
+    if (updates.name !== undefined) {
+      // #3364: Validate key name — alphanumeric, hyphens, underscores only.
+      if (!/^[a-zA-Z0-9_-]+$/.test(updates.name)) {
+        throw new Error('Key name must contain only alphanumeric characters, hyphens, and underscores');
+      }
+      key.name = updates.name;
+    }
     if (updates.role !== undefined) {
       key.role = updates.role;
       // When role changes without explicit permissions, reset to role defaults
