@@ -106,7 +106,7 @@ export default function CalendarGrid({
         <div className="flex items-center gap-1">
           <button type="button"
             onClick={handleToday}
-            className="px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded"
+            className="min-h-[44px] px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded"
             aria-label={t("aria.goToToday")}
           >
             Today

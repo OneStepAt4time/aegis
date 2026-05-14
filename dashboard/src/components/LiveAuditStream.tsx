@@ -87,16 +87,16 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
       {/* Header — filter tabs + live indicator */}
       <div className="flex items-center justify-between mb-4 gap-2">
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 rounded-lg bg-white/5 p-1">
+        <div className="flex items-center gap-1 rounded-lg bg-[var(--color-void-light)] p-1">
           {(['all', 'errors', 'actions'] as FilterMode[]).map((mode) => (
             <button
               key={mode}
               type="button"
               onClick={() => setFilterMode(mode)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${
+              className={`min-h-[44px] px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-all ${
                 filterMode === mode
-                  ? 'bg-slate-200 text-slate-900 shadow-inner dark:bg-white/10 dark:text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-300'
+                  ? 'bg-[var(--color-accent)] text-white shadow-sm'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
               }`}
             >
               {mode === 'errors' ? '⚠ Errors' : mode === 'actions' ? '⚡ Actions' : 'All'}
