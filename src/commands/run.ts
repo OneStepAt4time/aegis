@@ -261,6 +261,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   const portOverride = portIdx !== -1 ? parseIntSafe(args[portIdx + 1], 9100) : null;
 
   const noStream = args.includes('--no-stream');
+  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y');
 
   writeLine(io.stdout, `  🚀 ag run: ${brief.slice(0, 60)}${brief.length > 60 ? '...' : ''}`);
 
@@ -366,6 +367,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
         workDir: cwd,
         prompt: brief,
         name: `run-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`,
+        ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}),
       }),
     });
 
