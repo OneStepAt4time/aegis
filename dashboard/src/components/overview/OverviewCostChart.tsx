@@ -21,7 +21,7 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 shadow-lg">
+    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
       <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
       <p className="text-sm font-semibold text-[var(--color-text-primary)]">
         ${payload[0].value.toFixed(2)}
@@ -51,7 +51,7 @@ export function OverviewCostChart({ data }: OverviewCostChartProps) {
           stroke="var(--color-void-lighter)"
         />
         <Tooltip content={<ChartTooltip />} />
-        <Bar dataKey="cost" name="Daily Cost" fill="var(--color-accent-cyan)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="cost" name="Daily Cost" fill="var(--color-accent-cyan)" radius={[4, 4, 0, 0]} animationDuration={500} />
       </BarChart>
     </ResponsiveContainer>
   );
