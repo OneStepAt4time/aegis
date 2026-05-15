@@ -33,6 +33,9 @@ User=aegis
 Group=aegis
 WorkingDirectory=/opt/aegis
 
+# Build fresh dist/ before starting (prevents stale code after merges)
+ExecStartPre=/bin/bash -c 'cd /opt/aegis && npm run build 2>&1 | while read line; do echo "build: $line"; done'
+
 # Server
 ExecStart=/usr/bin/node dist/server.js
 # Wait for health endpoint to respond (max 15s) before marking service as active
@@ -54,7 +57,7 @@ ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 NoNewPrivileges=yes
-ReadWritePaths=/opt/aegis/state /opt/aegis/logs
+ReadWritePaths=/opt/aegis/state /opt/aegis/logs /opt/aegis/dist
 
 # Logging
 StandardOutput=journal
