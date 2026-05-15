@@ -51,6 +51,7 @@ ag run "Build a REST API for managing tasks" --cwd .
 ag run "Fix the auth bug"                     # Uses current directory
 ag run "Refactor the utils" --no-stream       # Print curl commands instead of streaming
 ag run "Debug the tests" --port 3000          # Custom server port
+ag run "Fix CI" --yes                        # Non-interactive (CI-friendly)
 ```
 
 **What it does:**

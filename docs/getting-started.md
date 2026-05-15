@@ -42,6 +42,7 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--no-stream` | Don't stream output; print curl commands instead |
 | `--model <provider/model>` | Override the default model for this session |
 | `--name <name>` | Set a display name for the session |
+| `--yes` | Suppress all status messages for non-interactive/CI usage |
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
 
 > **Note:** `ag run --help` currently shows the general help. For `ag run` flags, refer to this table.
