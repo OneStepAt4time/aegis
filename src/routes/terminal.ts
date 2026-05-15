@@ -2,6 +2,7 @@
  * routes/terminal.ts — ACP terminal debug endpoints (Issue #2617).
  *
  * Provides REST endpoints for ACP terminal extension operations:
+ *   GET  /v1/sessions/:id/terminal/content
  *   POST /v1/sessions/:id/terminal/open
  *   POST /v1/sessions/:id/terminal/input
  *   POST /v1/sessions/:id/terminal/resize
@@ -17,6 +18,18 @@ import {
   requirePermission,
   resolveRequestAuditActor,
 } from './context.js';
+
+/**
+ * Response for GET /v1/sessions/:id/terminal/content (#3429).
+ * Returns terminal snapshot when available; graceful empty otherwise.
+ */
+export interface TerminalContentResponse {
+  content: string;
+  terminalId?: string;
+  columns?: number;
+  rows?: number;
+  source: 'terminal_bridge' | 'unavailable';
+}
 
 const terminalInputSchema = z.object({
   terminalId: z.string().min(1),
@@ -35,6 +48,47 @@ const terminalIdSchema = z.object({
 
 export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy>[0], ctx: RouteContext): void {
   const { auth, getAuditLogger } = ctx;
+
+  // GET /v1/sessions/:id/terminal/content
+  // Issue #3429: Dashboard LiveTerminal needs terminal content. Returns
+  // snapshot via ACP terminal bridge (reconnect) when a terminalId is
+  // provided, otherwise a graceful empty response.
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/terminal/content', withSessionOwnership(ctx, async (req, reply, session) => {
+    const bridge = ctx.terminalBridge;
+    if (!bridge) {
+      return reply.send({
+        content: '',
+        source: 'unavailable' as const,
+      } satisfies TerminalContentResponse);
+    }
+
+    const query = req.query as { terminalId?: string } | undefined;
+    const terminalId = query?.terminalId;
+    if (!terminalId) {
+      return reply.send({
+        content: '',
+        source: 'unavailable' as const,
+      } satisfies TerminalContentResponse);
+    }
+
+    const scope = { tenantId: req.tenantId ?? session.tenantId ?? 'default', ownerKeyId: req.authKeyId ?? session.ownerKeyId ?? 'master' };
+    try {
+      const snapshot = await bridge.reconnectTerminal({ sessionId: session.id, terminalId, ...scope });
+      return reply.send({
+        content: snapshot.replayedOutput,
+        terminalId: snapshot.terminalId,
+        columns: snapshot.columns,
+        rows: snapshot.rows,
+        source: 'terminal_bridge' as const,
+      } satisfies TerminalContentResponse);
+    } catch {
+      // Terminal not open or reconnect failed — graceful empty.
+      return reply.send({
+        content: '',
+        source: 'unavailable' as const,
+      } satisfies TerminalContentResponse);
+    }
+  }));
 
   // POST /v1/sessions/:id/terminal/open
   registerWithLegacy(app, 'post', '/v1/sessions/:id/terminal/open', withSessionOwnership(ctx, async (req, reply, session) => {

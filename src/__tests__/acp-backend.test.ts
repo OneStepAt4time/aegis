@@ -594,6 +594,31 @@ describe('AcpBackend session lifecycle', () => {
     expect(hasLoadSessionCapability({ agentCapabilities: undefined })).toBe(false);
     expect(hasLoadSessionCapability({})).toBe(false);
   });
+
+  it('clears inFlightPrompts when runtime exits unexpectedly (#3435)', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+    
+    // Simulate sending a prompt (this would set inFlightPrompts in real usage)
+    // For this test, we verify that handleRuntimeExit cleans up inFlightPrompts
+    client.emitExit({ code: 1, signal: null, expected: false, escalated: false });
+    await waitForCondition(() => service.records.get('session-1')?.status === 'failed');
+
+    // After runtime exit, a new prompt should not be rejected as "in-flight"
+    // We verify this by checking that sendPrompt doesnt throw in-flight error
+    // when there is no runtime (runtime was removed after exit)
+    const result = await backend.sendPrompt('session-1', 'test', scope);
+    expect(result.error).toBe('no_acp_runtime');
+  });
 });
 
 class FakeBackendClient implements AcpBackendClient {

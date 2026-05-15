@@ -438,8 +438,8 @@ export function getSessionLatency(id: string): Promise<SessionLatency> {
 
 // ── Session Pane ────────────────────────────────────────────────
 
-export function getSessionPane(id: string): Promise<PaneResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/pane`);
+export function getSessionPane(id: string, terminalId?: string): Promise<PaneResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/terminal/content${terminalId ? `?terminalId=${encodeURIComponent(terminalId)}` : ''}`).then((res) => ({ pane: (res as { content: string }).content }));
 }
 
 // ── Actions ─────────────────────────────────────────────────────
