@@ -52,7 +52,7 @@ describe('AcpBackend session lifecycle', () => {
         return client;
       },
       backendRunIdProvider: () => 'backend-run-1',
-      onRawNotification: notification => rawNotifications.push(notification),
+      onRawNotification: (notification, _ctx) => rawNotifications.push(notification),
       onRawRequest: request => rawRequests.push(request),
     });
 
@@ -529,7 +529,7 @@ describe('AcpBackend session lifecycle', () => {
       sessionService: service,
       clientFactory: () => client,
       backendRunIdProvider: () => 'backend-run-load',
-      onRawNotification: notification => rawNotifications.push(notification),
+      onRawNotification: (notification, _ctx) => rawNotifications.push(notification),
     });
 
     const loaded = await backend.loadSession({

@@ -76,6 +76,7 @@ import {
   AcpSessionService,
   AcpTerminalBridge,
   createFileAcpLocalStorageProfile,
+  mapAcpJsonRpcNotificationToEvent,
   type AcpLocalStorageProfile,
 } from './services/acp/index.js';
 import {
@@ -814,9 +815,34 @@ async function main(): Promise<void> {
   acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
+  // Issue #3422: Wire ACP notifications to event store so /read and /transcript
+  // return data for ACP sessions. Without this, CC notifications are received but never persisted.
+  const acpEventStore = acpLocalProfile.eventStore;
   acpBackend = new AcpBackend({
     sessionService: acpSessionService,
     jsonRpcClientOptions: { requestTimeoutMs: config.acpPromptTimeoutMs },
+    onRawNotification: (notification, context) => {
+      try {
+        const event = mapAcpJsonRpcNotificationToEvent(notification, {
+          sessionId: context.sessionId,
+          tenantId: context.tenantId,
+          ownerKeyId: context.ownerKeyId,
+        });
+        void acpEventStore.append(event).catch(err => {
+          logger.info({
+            component: 'server',
+            operation: 'acp_event_append_failed',
+            attributes: { sessionId: context.sessionId, error: String(err) },
+          });
+        });
+      } catch (err) {
+        logger.info({
+          component: 'server',
+          operation: 'acp_event_map_failed',
+          attributes: { sessionId: context.sessionId, error: String(err) },
+        });
+      }
+    },
   });
   acpTerminalBridge = new AcpTerminalBridge({
     sessionResolver: {
