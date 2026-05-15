@@ -156,6 +156,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   let sessionId: string;
   try {
     const res = await fetch(`${baseUrl}/v1/sessions`, {
+      signal: AbortSignal.timeout(30_000),
       method: 'POST',
       headers,
       body: JSON.stringify({ workDir: cwd, name: sessionName, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
@@ -172,18 +173,24 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, `  ✅ Session created: ${session.displayName}`);
     writeLine(io.stdout, `     ID: ${sessionId}`);
   } catch (e: unknown) {
-    const cause = (e as { cause?: { code?: string } }).cause;
-    if (cause?.code === 'ECONNREFUSED') {
-      writeLine(io.stderr, `  ❌ Cannot connect to Aegis at ${baseUrl}.`);
-      writeLine(io.stderr, '     Start the server first: ag');
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      writeLine(io.stderr, '  ❌ Session creation timed out after 30s.');
+      writeLine(io.stderr, '     The server may be slow to respond. Try again or check server health.');
     } else {
-      writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
+      const cause = (e as { cause?: { code?: string } }).cause;
+      if (cause?.code === 'ECONNREFUSED') {
+        writeLine(io.stderr, `  ❌ Cannot connect to Aegis at ${baseUrl}.`);
+        writeLine(io.stderr, '     Start the server first: ag');
+      } else {
+        writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
+      }
     }
     return 1;
   }
 
   try {
     const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/send`, {
+      signal: AbortSignal.timeout(60_000),
       method: 'POST',
       headers,
       body: JSON.stringify({ text: brief }),
