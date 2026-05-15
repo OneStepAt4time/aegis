@@ -588,6 +588,7 @@ export class AcpBackend {
       await previous.client.shutdown();
       this.disposeRuntime(previous);
       this.runtimes.delete(input.sessionId);
+      this.inFlightPrompts.delete(input.sessionId);
     }
 
     const backendRunId = this.backendRunIdProvider();
@@ -949,6 +950,7 @@ export class AcpBackend {
     } finally {
       this.disposeRuntime(runtime);
       this.runtimes.delete(session.id);
+      this.inFlightPrompts.delete(session.id);
     }
   }
 
@@ -969,6 +971,7 @@ export class AcpBackend {
     } finally {
       this.disposeRuntime(runtime);
       this.runtimes.delete(runtime.sessionId);
+      this.inFlightPrompts.delete(runtime.sessionId);
     }
   }
 

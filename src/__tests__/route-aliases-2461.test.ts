@@ -248,7 +248,7 @@ describe('Issue #2461: Route alias registrations', () => {
       }, reply);
 
       expect(sessions.killSession).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111');
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: true, status: "killed" });
     });
 
     it('rejects without kill permission', async () => {
@@ -290,7 +290,7 @@ describe('Issue #2461: Route alias registrations', () => {
       }, reply);
 
       expect(sessions.killSession).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111');
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: true, status: "killed" });
     });
   });
 
@@ -316,7 +316,7 @@ describe('Issue #2461: Route alias registrations', () => {
       }, reply);
 
       expect(sessions.killSession).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111');
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: true, status: "killed" });
     });
   });
 

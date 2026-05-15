@@ -72,7 +72,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         response.reason = result.error ?? 'no_active_transport';
       }
       if (currentStallInfo.stalled) response.stall = currentStallInfo;
-      return response;
+      return reply.send(response);
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
@@ -264,7 +264,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id, req.tenantId);
       await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
-      return { ok: true };
+      return reply.status(200).send({ ok: true, status: "killed" });
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }
