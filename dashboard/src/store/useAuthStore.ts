@@ -16,6 +16,7 @@ import {
   verifyToken,
   type DashboardSessionIdentity,
 } from '../api/client.js';
+import { probePublicAccess } from '../api/client.js';
 import { useStore } from './useStore.js';
 
 type AuthMode = 'token' | 'oidc' | null;
@@ -197,7 +198,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // No bearer token is persisted. If /auth/session did not restore an
-      // HttpOnly dashboard cookie, fall back to the login page.
+      // HttpOnly dashboard cookie, probe for zero-config (no-auth) mode.
+      // #3490: Try accessing an authenticated endpoint without credentials.
+      // If the server is in strictRBAC:false mode on localhost, it will succeed.
+      const publicAccess = await probePublicAccess().catch(() => false);
+      if (publicAccess) {
+        set({
+          authMode: null,
+          isAuthenticated: true,
+          isVerifying: false,
+        });
+        return;
+      }
       clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return;
     }

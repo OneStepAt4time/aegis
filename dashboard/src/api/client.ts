@@ -221,6 +221,28 @@ export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
   return request('/v1/health', { schema: HealthResponseSchema, schemaContext: 'getHealth', signal });
 }
 
+/**
+ * Probe whether the server requires authentication.
+ * Returns true if an authenticated endpoint (/v1/sessions) responds without a Bearer token.
+ * Used by the zero-config flow to skip login on localhost.
+ */
+export async function probePublicAccess(): Promise<boolean> {
+  try {
+    const token = tokenAccessor();
+    const res = await fetch(`${BASE_URL}/v1/sessions?limit=1`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface UpdateCheckResult {
   currentVersion: string;
   latestVersion: string;
