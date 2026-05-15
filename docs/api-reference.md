@@ -1499,7 +1499,7 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** `{ "ok": true }`
+**Response:** `{ "ok": true, "status": "killed" }`
 
 | Status | Error |
 |--------|-------|
@@ -2354,6 +2354,52 @@ When ACP backend is not configured: `{ "driver": null, "observers": [], "activeC
 
 ACP terminal debug endpoints for programmatic terminal access (open, input, resize, reconnect, close).
 These complement the WebSocket terminal streaming documented in the WebSocket section below.
+
+#### Get Terminal Content
+
+```
+GET /v1/sessions/:id/terminal/content
+```
+
+Returns a snapshot of terminal content for a session. When a `terminalId` query param is provided and the ACP terminal bridge is active, returns the current terminal output. Otherwise returns a graceful empty response.
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/terminal/content?terminalId=term-1 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Query parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `terminalId` | string | no | Terminal session ID. If omitted, returns empty content. |
+
+**Response:**
+
+```json
+{
+  "content": "...terminal output...",
+  "terminalId": "term-1",
+  "columns": 120,
+  "rows": 40,
+  "source": "terminal_bridge"
+}
+```
+
+When no terminal bridge or no `terminalId`:
+
+```json
+{
+  "content": "",
+  "source": "unavailable"
+}
+```
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 404 | Session not found |
 
 #### Open Terminal
 
