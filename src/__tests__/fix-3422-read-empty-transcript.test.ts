@@ -16,7 +16,7 @@ import type { SessionTranscripts } from '../session-transcripts.js';
 import { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 
-function makeNotification(method: string, params: Record<string, unknown>): AcpJsonRpcNotification {
+function makeNotification(method: string, params: unknown): AcpJsonRpcNotification {
   return {
     jsonrpc: '2.0',
     method,
@@ -112,27 +112,27 @@ describe('Issue #3422: ACP events persisted from onRawNotification', () => {
       async append(input: AcpAppendEventInput) {
         storedEvents.push(input);
         return {
-          seq: storedEvents.length,
           sessionId: input.sessionId,
-          tenantId: input.tenantId,
-          ownerKeyId: input.ownerKeyId,
+          eventSeq: storedEvents.length,
+          eventId: `evt-${storedEvents.length}`,
           eventType: input.eventType,
           payload: input.payload,
           occurredAt: input.occurredAt ?? new Date(),
-        };
+          ingestedAt: new Date(),
+        } as AcpEventRecord;
       },
-      async list(input) {
+      async list(input: AcpListEventsInput) {
         return storedEvents
           .filter(e => e.sessionId === input.sessionId)
           .map((e, i) => ({
-            seq: i + 1,
             sessionId: e.sessionId,
-            tenantId: e.tenantId,
-            ownerKeyId: e.ownerKeyId,
+            eventSeq: i + 1,
+            eventId: `evt-${i + 1}`,
             eventType: e.eventType,
             payload: e.payload,
             occurredAt: e.occurredAt ?? new Date(),
-          }));
+            ingestedAt: new Date(),
+          } as AcpEventRecord));
       },
     };
 
@@ -165,7 +165,7 @@ describe('Issue #3422: ACP events persisted from onRawNotification', () => {
     expect(storedEvents[2].eventType).toBe('tool.started');
 
     // Verify events can be listed back
-    const events = await eventStore.list({ sessionId: 'test-session-1' });
+    const events = await eventStore.list({ sessionId: 'test-session-1', afterEventSeq: 0 });
     expect(events).toHaveLength(3);
   });
 });
