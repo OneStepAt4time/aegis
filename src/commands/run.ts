@@ -291,6 +291,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   const portOverride = portIdx !== -1 ? parseIntSafe(args[portIdx + 1], 9100) : null;
 
   const noStream = args.includes('--no-stream');
+  const skipPrompts = args.includes('--yes');
   const acceptPerms = args.includes('--accept-permissions') || args.includes('-y');
 
   writeLine(io.stdout, `  🚀 ag run: ${brief.slice(0, 60)}${brief.length > 60 ? '...' : ''}`);
@@ -308,14 +309,17 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   let serverRunning = await isServerHealthy(baseUrl, authToken);
 
   if (!serverRunning) {
-    writeLine(io.stdout, '  ⏳ Server not running — starting...');
+    if (!skipPrompts) writeLine(io.stdout, '  ⏳ Server not running — starting...');
 
     // Ensure config exists (creates proper key in keys.json via AuthManager)
     if (!existingConfig) {
-      writeLine(io.stdout, '  ⏳ No config found — bootstrapping with defaults...');
+      if (!skipPrompts) writeLine(io.stdout, '  ⏳ No config found — bootstrapping with defaults...');
       const generatedToken = await ensureConfig(configPath, config.stateDir, portOverride ?? undefined);
       if (generatedToken) authToken = generatedToken;
-      writeLine(io.stdout, `  ✅ Config created: ${configPath}`);
+      if (!skipPrompts) {
+        writeLine(io.stdout, `  ✅ Config created: ${configPath}`);
+        writeLine(io.stdout, `  📊 Dashboard: ${baseUrl.replace("/v1", "")}`);
+      }
     }
 
     // Start server
@@ -323,21 +327,21 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     startServer(serverDir, portOverride ?? undefined);
 
     // Wait for server
-    writeLine(io.stdout, '  ⏳ Waiting for server...');
+    if (!skipPrompts) writeLine(io.stdout, '  ⏳ Waiting for server...');
     const started = await waitForServer(baseUrl, authToken, 15_000);
     if (!started) {
       // Issue #3067: Race condition — an existing Aegis server may be on the port
       // but was in a crash loop when we first checked. Retry health check once
       // more before giving up — the existing server may have recovered.
-      writeLine(io.stdout, '  ⏳ Retrying health check (existing server may have recovered)...');
+      if (!skipPrompts) writeLine(io.stdout, '  ⏳ Retrying health check (existing server may have recovered)...');
       if (await isServerHealthy(baseUrl, authToken)) {
-        writeLine(io.stdout, '  ✅ Connected to existing server');
+        if (!skipPrompts) writeLine(io.stdout, '  ✅ Connected to existing server');
       } else {
         writeLine(io.stderr, '  ❌ Server failed to start within 15 seconds.');
         writeLine(io.stderr, '     Try starting manually: ag');
         return 1;
       }
-    } else {
+    } else if (!skipPrompts) {
       writeLine(io.stdout, '  ✅ Server started');
     }
   }
