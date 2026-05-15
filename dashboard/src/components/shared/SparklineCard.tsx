@@ -1,10 +1,13 @@
 /**
  * components/shared/SparklineCard.tsx — Metric card with inline 7-day sparkline.
  * Uses Recharts for visualization. Hover shows exact value for that day.
+ *
+ * @ticket #3399 — chart polish with design tokens
  */
 
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatNumber } from '../../utils/formatNumber';
+import { CHART_COLORS, CHART_STROKE, CHART_ANIMATION, TOOLTIP_STYLE } from '../../utils/chartTheme';
 
 interface SparklineCardProps {
   label: string;
@@ -20,14 +23,14 @@ function SparklineTooltip({ active, payload }: { active?: boolean; payload?: Arr
   const { value, payload: dataPoint } = payload[0];
   
   return (
-    <div className="rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text-primary)] shadow-lg">
-      <p className="font-medium">{dataPoint.day}</p>
+    <div className={`${TOOLTIP_STYLE.container} px-2 py-1 text-xs`}>
+      <p className="font-medium text-[var(--color-text-primary)]">{dataPoint.day}</p>
       <p className="text-[var(--color-text-muted)]">{formatNumber(value, { maximumFractionDigits: 2 })}</p>
     </div>
   );
 }
 
-export function SparklineCard({ label, value, data, color = 'var(--color-accent-cyan)', className = '' }: SparklineCardProps) {
+export function SparklineCard({ label, value, data, color = CHART_COLORS.cyan, className = '' }: SparklineCardProps) {
   return (
     <div className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4 ${className}`}>
       <div className="mb-2 text-xs text-[var(--color-text-muted)]">{label}</div>
@@ -42,9 +45,9 @@ export function SparklineCard({ label, value, data, color = 'var(--color-accent-
                 type="monotone" 
                 dataKey="value" 
                 stroke={color}
-                strokeWidth={2}
+                strokeWidth={CHART_STROKE.width}
                 dot={false}
-                animationDuration={300}
+                animationDuration={Math.round(CHART_ANIMATION.duration * 0.6)}
               />
             </LineChart>
           </ResponsiveContainer>

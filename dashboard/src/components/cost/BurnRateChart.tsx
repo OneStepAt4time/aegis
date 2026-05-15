@@ -6,8 +6,8 @@
  */
 
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -16,6 +16,12 @@ import {
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
 import { ChartFrame } from '../shared/ChartFrame';
+import {
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, CHART_DOT, CHART_ACTIVE_DOT, CHART_STROKE,
+  GradientDefs, TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export interface BurnRateDataPoint {
   date: string;
@@ -50,8 +56,8 @@ function CustomTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-1 text-xs font-medium text-[var(--color-text-primary)]">
+    <div className={TOOLTIP_STYLE.container}>
+      <p className={TOOLTIP_STYLE.label}>
         {label ? formatDateShort(label) : ''}
       </p>
       <p className="text-sm font-mono font-medium text-[var(--color-accent-cyan)]">
@@ -111,30 +117,32 @@ export function BurnRateChart({ data, loading = false, className = '' }: BurnRat
       </div>
       <ChartFrame className="h-72 min-w-0" label="Burn rate chart loading">
         {({ width, height }) => (
-          <LineChart width={width} height={height} data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+          <AreaChart width={width} height={height} data={chartData}>
+            <CartesianGrid {...CHART_GRID} />
             <XAxis
               dataKey="date"
               tickFormatter={formatDateShort}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <YAxis
               tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Line
+            <GradientDefs gradients={['cyan']} />
+            <Area
               type="monotone"
               dataKey="cost"
-              stroke="var(--color-accent-cyan)"
-              strokeWidth={2}
-              dot={{ r: 3, fill: 'var(--color-accent-cyan)' }}
-              activeDot={{ r: 5, fill: 'var(--color-accent-cyan)' }}
-              animationDuration={500}
+              stroke={CHART_COLORS.cyan}
+              strokeWidth={CHART_STROKE.width}
+              fill="url(#gradientCyan)"
+              dot={{ r: CHART_DOT.r, fill: CHART_COLORS.cyan }}
+              activeDot={{ r: CHART_ACTIVE_DOT.r, fill: CHART_COLORS.cyan }}
+              animationDuration={CHART_ANIMATION.duration}
             />
-          </LineChart>
+          </AreaChart>
         )}
       </ChartFrame>
     </section>

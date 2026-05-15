@@ -18,6 +18,12 @@ import {
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
 import { ChartFrame } from '../shared/ChartFrame';
+import {
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, CHART_STROKE,
+  TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 import { useT } from '../../i18n/context';
 
 export interface ForecastChartProps {
@@ -112,14 +118,14 @@ function CustomTooltip({ active, payload, label }: {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">
+    <div className={TOOLTIP_STYLE.container}>
+      <p className={TOOLTIP_STYLE.label}>
         {label ? formatDateShort(label) : ''}
       </p>
       {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-4 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
+        <div key={index} className={TOOLTIP_STYLE.row}>
+          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
+          <span className={TOOLTIP_STYLE.rowValue}>
             {formatCurrency(entry.value)}
           </span>
         </div>
@@ -178,17 +184,17 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
       <ChartFrame className="h-72 min-w-0" label="Cost forecast loading">
         {({ width, height }) => (
           <LineChart width={width} height={height} data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+            <CartesianGrid {...CHART_GRID} />
             <XAxis
               dataKey="date"
               tickFormatter={formatDateShort}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <YAxis
               tickFormatter={(value) => `$${value.toFixed(2)}`}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
@@ -198,27 +204,27 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
               type="monotone"
               dataKey="actual"
               name="Actual Spend"
-              stroke="var(--color-accent-cyan)"
-              strokeWidth={2}
-              dot={{ r: 3, fill: 'var(--color-accent-cyan)' }}
+              stroke={CHART_COLORS.cyan}
+              strokeWidth={CHART_STROKE.width}
+              dot={{ r: 3, fill: CHART_COLORS.cyan }}
               connectNulls={false}
-              animationDuration={500}
+              animationDuration={CHART_ANIMATION.duration}
             />
             <Line
               type="monotone"
               dataKey="projected"
               name="Projected"
-              stroke="var(--color-accent-cyan)"
-              strokeWidth={2}
+              stroke={CHART_COLORS.cyan}
+              strokeWidth={CHART_STROKE.width}
               strokeDasharray="8 4"
               dot={false}
               connectNulls={false}
-              animationDuration={500}
+              animationDuration={CHART_ANIMATION.duration}
             />
             {monthlyCap > 0 && (
               <ReferenceLine
                 y={monthlyCap}
-                stroke="var(--color-danger)"
+                stroke={CHART_COLORS.danger}
                 strokeDasharray="4 4"
                 label={{
                   value: `Cap: ${formatCurrency(monthlyCap)}`,

@@ -5,12 +5,18 @@
  * for each agent. Part of issue #3269: agent git identity tracking.
  *
  * Mock data until backend provides per-agent git identity (#3269 backend).
+ * @ticket #3399 — chart polish with design tokens
  */
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { ChartFrame } from '../shared/ChartFrame';
 import { formatCompact } from '../../utils/formatNumber';
 import { GitBranch, GitCommit, GitPullRequest, Users } from 'lucide-react';
+import {
+  AGENT_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export interface AgentContribution {
   agent: string;
@@ -26,18 +32,6 @@ export interface AgentContributionsPanelProps {
   loading?: boolean;
   className?: string;
 }
-
-const AGENT_COLORS: Record<string, string> = {
-  'Daedalus': 'var(--color-accent-cyan)',
-  'Hephaestus': 'var(--color-accent-purple)',
-  'Argus': 'var(--color-success)',
-  'Athena': 'var(--color-warning)',
-  'Scribe': 'var(--color-info)',
-  'Hermes': 'var(--color-warning)',
-  'Orpheus': 'var(--color-accent-cyan)',
-  'Themis': 'var(--color-danger)',
-  other: 'var(--color-text-muted)',
-};
 
 const MOCK_DATA: AgentContribution[] = [
   { agent: 'Hephaestus', commits: 87, additions: 12840, deletions: 3210, prs: 12, role: 'Backend' },
@@ -55,14 +49,14 @@ function CustomTooltip({ active, payload }: {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
+    <div className={TOOLTIP_STYLE.container}>
       <p className="mb-1 text-sm font-medium text-[var(--color-text-primary)]">
         {point.agent}
         <span className="ml-2 text-xs text-[var(--color-text-muted)]">{point.role}</span>
       </p>
       <div className="mt-2 space-y-1 text-xs">
         <div className="flex justify-between gap-6">
-          <span className="text-[var(--color-text-muted)]">Commits</span>
+          <span className={TOOLTIP_STYLE.rowLabel}>Commits</span>
           <span className="font-mono font-medium text-[var(--color-text-primary)]">{point.commits}</span>
         </div>
         <div className="flex justify-between gap-6">
@@ -70,7 +64,7 @@ function CustomTooltip({ active, payload }: {
           <span className="text-[var(--color-danger)]">-{formatCompact(point.deletions)}</span>
         </div>
         <div className="flex justify-between gap-6">
-          <span className="text-[var(--color-text-muted)]">PRs</span>
+          <span className={TOOLTIP_STYLE.rowLabel}>PRs</span>
           <span className="font-mono font-medium text-[var(--color-text-primary)]">{point.prs}</span>
         </div>
       </div>
@@ -179,21 +173,21 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
       <ChartFrame className="h-56 min-w-0" label="Agent commits chart loading">
         {({ width, height }) => (
           <BarChart width={width} height={height} data={contributions} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" horizontal={false} />
+            <CartesianGrid {...CHART_GRID} horizontal={false} />
             <XAxis
               type="number"
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <YAxis
               type="category"
               dataKey="agent"
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
               width={90}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="commits" radius={[0, 4, 4, 0]} animationDuration={500}>
+            <Bar dataKey="commits" radius={[0, 4, 4, 0]} animationDuration={CHART_ANIMATION.duration}>
               {contributions.map((entry) => (
                 <Cell
                   key={entry.agent}
