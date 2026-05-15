@@ -222,7 +222,7 @@ export interface AcpBackendOptions {
   clientCapabilities?: AcpJsonObject;
   childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
   jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
-  onRawNotification?: (notification: AcpJsonRpcNotification) => void;
+  onRawNotification?: (notification: AcpJsonRpcNotification, context: { sessionId: string } & AcpSessionScope) => void;
   onRawRequest?: (request: AcpJsonRpcInboundRequest) => void;
   onRuntimeExit?: (event: AcpBackendRuntimeExitEvent) => void;
   restartBackoff?: (context: AcpBackendRestartBackoffContext) => number;
@@ -774,7 +774,7 @@ export class AcpBackend {
   private bindRuntime(runtime: AcpBackendRuntime): AcpBackendRuntime {
     runtime.disposers.push(
       runtime.client.onNotification(notification => {
-        this.options.onRawNotification?.(notification);
+        this.options.onRawNotification?.(notification, { sessionId: runtime.sessionId, ...runtime.scope });
       }),
       runtime.client.onRequest(request => {
         if (request.method === 'session/request_permission') {
