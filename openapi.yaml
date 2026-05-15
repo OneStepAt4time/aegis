@@ -4419,6 +4419,96 @@ paths:
 
 
 
+  "/v1/sessions/{id}/approval/approve":
+    post:
+      summary: "Approve permission request"
+      operationId: "postV1SessionsIdApprovalApprove"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+
+                required:
+                  - "ok"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
+  "/v1/sessions/{id}/approval/reject":
+    post:
+      summary: "Reject permission request"
+      operationId: "postV1SessionsIdApprovalReject"
+      tags:
+        - "Session Actions"
+
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Session UUID"
+          schema:
+            type: "string"
+            format: "uuid"
+            pattern: "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+
+
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  ok:
+                    type: "boolean"
+
+
+                required:
+                  - "ok"
+
+                additionalProperties: false
+
+
+
+
+        "404":
+          description: "Not found"
+
+
+
+
 
 components:
   securitySchemes:

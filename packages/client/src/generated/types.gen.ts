@@ -3362,3 +3362,63 @@ export type GetV1SessionsIdEventsSchemaResponses = {
 };
 
 export type GetV1SessionsIdEventsSchemaResponse = GetV1SessionsIdEventsSchemaResponses[keyof GetV1SessionsIdEventsSchemaResponses];
+
+export type PostV1SessionsIdApprovalApproveData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/approval/approve';
+};
+
+export type PostV1SessionsIdApprovalApproveErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type PostV1SessionsIdApprovalApproveResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+    };
+};
+
+export type PostV1SessionsIdApprovalApproveResponse = PostV1SessionsIdApprovalApproveResponses[keyof PostV1SessionsIdApprovalApproveResponses];
+
+export type PostV1SessionsIdApprovalRejectData = {
+    body?: never;
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/approval/reject';
+};
+
+export type PostV1SessionsIdApprovalRejectErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type PostV1SessionsIdApprovalRejectResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+    };
+};
+
+export type PostV1SessionsIdApprovalRejectResponse = PostV1SessionsIdApprovalRejectResponses[keyof PostV1SessionsIdApprovalRejectResponses];

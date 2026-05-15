@@ -207,7 +207,7 @@ curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 
 ## 6. Send a Follow-Up
 
-> **Endpoint note:** Follow-up messages use `/send` (or `/input` alias) with a `text` field. There is no `/prompt` endpoint — `prompt` is only a field during session creation.
+> **Endpoint note:** Follow-up messages use `/send`, `/input`, or `/prompt` with a `text` field. The `prompt` field is only for the initial message during session creation.
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/a1b2c3d4/send \
