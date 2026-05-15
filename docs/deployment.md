@@ -71,7 +71,45 @@ ngrok setups plus security guidance.
 
 ### Systemd Service
 
-Create `/etc/systemd/system/aegis.service`:
+Aegis ships with `scripts/install-systemd.sh` — a parameterized installer that generates the systemd unit file and a pre-start script with the correct paths for your deployment.
+
+```bash
+# Production defaults: /opt/aegis, user=aegis
+sudo ./scripts/install-systemd.sh
+
+# Development machine (custom path and user)
+sudo ./scripts/install-systemd.sh /home/user/projects/aegis user
+
+# Preview without writing files
+sudo ./scripts/install-systemd.sh /opt/aegis aegis --dry-run
+```
+
+**What it generates:**
+
+| File | Location | Purpose |
+|------|----------|----------|
+| `aegis.service` | `/etc/systemd/system/` | Systemd unit with correct `User`, `WorkingDirectory`, `ExecStartPre` |
+| `aegis-pre-start.sh` | `/usr/local/bin/` | Runs `npm run build` + cleans stale PID files, tmux sockets, processes |
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Print generated files without writing |
+| `--skip-build` | Omit `npm run build` from the pre-start script |
+
+After running the installer:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable aegis
+sudo systemctl start aegis
+```
+
+<details>
+<summary>Manual setup (advanced)</summary>
+
+If you prefer to create the unit file manually:
 
 ```ini
 [Unit]
@@ -98,6 +136,8 @@ sudo systemctl enable aegis
 sudo systemctl start aegis
 ```
 
+</details>
+
 ### Crash Alerting (systemd)
 
 Aegis includes systemd alerting for bare-metal/VM deployments. When the server
@@ -106,8 +146,7 @@ exhausts restart attempts or fails health checks, a webhook notification is sent
 **Setup:**
 
 ```bash
-# Copy unit files and scripts
-sudo cp deploy/systemd/aegis.service /etc/systemd/system/
+# Copy unit files and scripts (or use install-systemd.sh above for automated setup)
 sudo cp deploy/systemd/aegis-failure-notify.* /etc/systemd/system/
 sudo cp deploy/systemd/aegis-healthcheck.* /etc/systemd/system/
 sudo cp deploy/systemd/aegis-failure-notify.sh /usr/local/bin/
