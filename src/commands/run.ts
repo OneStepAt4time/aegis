@@ -137,7 +137,7 @@ async function ensureConfig(configPath: string, stateDir: string, port?: number)
     if (port !== undefined) {
       const { writeConfigFile, serializeConfigFile } = await import('../config.js');
       const updated = { ...existing, baseUrl: `http://127.0.0.1:${port}` };
-      await writeConfigFile(configPath, serializeConfigFile(updated, configPath));
+      await writeConfigFile(configPath, updated);
     }
     return existing.authToken || existing.clientAuthToken || undefined;
   }
