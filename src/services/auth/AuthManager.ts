@@ -10,7 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { timingSafeStringEqual } from '../../crypto-utils.js';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { authStoreSchema } from '../../validation.js';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import { SYSTEM_TENANT } from '../../config.js';
@@ -495,6 +495,11 @@ export class AuthManager {
    * Issue #1944: tenantId is set from the API key (admin/master = undefined = bypass).
    */
   validate(token: string): { valid: boolean; keyId: string | null; rateLimited: boolean; reason?: AuthRejectReason; tenantId?: string } {
+    // #3484: Proactively pick up external edits to keys.json before the lookup.
+    // Without this, a key freshly appended to keys.json only activates after
+    // an initial 401 wakes up the post-fail async reload.
+    this.reloadSyncIfChanged();
+
     // No auth configured and no keys → allow all
     if (!this.masterToken && this.store.keys.length === 0) {
       // #1080: SECURITY FIX — when binding to a non-localhost interface without auth,
@@ -644,6 +649,61 @@ export class AuthManager {
     } finally {
       this.reloading = false;
     }
+  }
+
+  /**
+   * #3484: Synchronous reload when keys.json mtime has advanced.
+   * Called from validate() to guarantee freshly-written keys activate on the
+   * first request, instead of needing a wasted 401 to trigger the post-fail
+   * async reload. Returns true when keys were refreshed.
+   *
+   * Mirrors the validation/normalization done by load() but skips the
+   * normalize-induced save — the next async save() (createKey, revoke,
+   * lastUsedAt sweep) will persist any cleanups.
+   */
+  reloadSyncIfChanged(): boolean {
+    if (this.reloading) return false;
+    if (!existsSync(this.keysFile)) return false;
+    if (!this._keysFileChanged()) return false;
+    try {
+      const raw = readFileSync(this.keysFile, 'utf-8');
+      const parsed = JSON.parse(raw) as unknown;
+      const storeParsed = authStoreSchema.safeParse(parsed);
+      if (storeParsed.success) {
+        this.store = {
+          keys: storeParsed.data.keys.map((key) => this.normalizeStoredKey(key).key),
+        };
+      }
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { graceKeys?: unknown }).graceKeys)) {
+        const now = Date.now();
+        this.graceKeys = ((parsed as { graceKeys: GraceKeyEntry[] }).graceKeys).filter(
+          (entry) => entry.graceExpiresAt > now,
+        );
+      }
+      return true;
+    } catch {
+      // Corrupted or unreadable — keep in-memory keys, retry on next mtime bump.
+      return false;
+    }
+  }
+
+  /**
+   * #3356/#3484: Compare a plaintext token (e.g. from ~/.aegis/auth-token)
+   * against the in-memory key store and the master token. Used by server
+   * startup to detect orphaned client-token files that no longer correspond
+   * to any registered key.
+   */
+  checkClientToken(token: string): { matched: boolean; via: 'master' | 'key' | null } {
+    const trimmed = token.trim();
+    if (!trimmed) return { matched: false, via: null };
+    if (this.masterToken && timingSafeStringEqual(trimmed, this.masterToken)) {
+      return { matched: true, via: 'master' };
+    }
+    const hash = AuthManager.hashKey(trimmed);
+    if (this.store.keys.some((k) => k.hash === hash)) {
+      return { matched: true, via: 'key' };
+    }
+    return { matched: false, via: null };
   }
 
   /** #3367: Check if keys.json mtime has changed. */

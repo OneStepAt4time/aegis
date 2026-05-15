@@ -44,17 +44,16 @@ describe('Issue #3367: Auth state recovery after state directory loss', () => {
     const { key: newKey } = await newAuth.createKey('new-key', 100, undefined, 'admin');
     await newAuth.save();
 
-    // Step 5: Old key still works (in-memory), new key doesn't
-    expect(auth.validate(oldKey).valid).toBe(true);
-    expect(auth.validate(newKey).valid).toBe(false);
-
-    // Step 6: Reload should pick up new keys
-    const reloaded = await auth.reload();
-    expect(reloaded).toBe(true);
-
-    // Step 7: New key should now work, old key should not
+    // Step 5: With proactive reload (#3484), the very first validate() call
+    // after newAuth recreated keys.json already picks up the new state.
+    // The new key works; the old key no longer matches any registered hash.
     expect(auth.validate(newKey).valid).toBe(true);
     expect(auth.validate(oldKey).valid).toBe(false);
+
+    // Step 6: An explicit reload() is now a no-op because validate()
+    // already advanced lastKeysMtime.
+    const reloaded = await auth.reload();
+    expect(reloaded).toBe(false);
   });
 
   it('reload() does nothing if keys.json has not changed', async () => {
