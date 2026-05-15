@@ -1,13 +1,13 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-14 | **Source:** Issues #3013, #3014, #3016, #3003, #3004, #3216, #3236 + ECC analysis (Orpheus) + deep competitive research (Scribe)
+> **Last updated:** 2026-05-15 | **Source:** Issues #3013, #3014, #3016, #3003, #3004, #3216, #3236 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
 
 ## Executive Summary
 
-The Claude Code orchestration space is **crowded and moving fast**. 8+ competitors with 200×–470× Aegis's star count. The market is bifurcating into **simple developer tools** (win on ease-of-use) and **enterprise platforms** (win on depth and governance). Aegis is an enterprise platform — the moat is real but the **simplicity gap is existential**.
+The Claude Code orchestration space is **crowded and moving fast**. 10+ competitors with 200×–470× Aegis's star count. The market is bifurcating into **simple developer tools** (win on ease-of-use) and **enterprise platforms** (win on depth and governance). Aegis is an enterprise platform — the moat is real but the **simplicity gap is existential**.
 
 **Bottom line:** We cannot out-feature ruflo (47K ⭐, 98 agents, 314 MCP tools). We cannot out-simplify oh-my-claudecode (33K ⭐, zero-config install). We *can* own the **enterprise orchestration middleware** niche — API-first, compliant, auditable — if we close the install friction gap and ship multi-agent support.
 
@@ -29,6 +29,8 @@ The Claude Code orchestration space is **crowded and moving fast**. 8+ competito
 | #8 | **ECC** | 177K | 🟢 OPPORTUNITY | Config library | N/A (skills) | N/A | ❌ | ❌ | ❌ |
 | #9 | **ClaudeClaw** | 1 | 🟡 MEDIUM | `curl \| bash` | 1 (CC hooks) | Telegram | ❌ | ❌ | ❌ |
 | #10 | **Verdent AI** | N/A (closed) | 🟠 HIGH | Mac app download | Parallel agents | Telegram, Slack | ❌ | Desktop app | ❌ |
+| #11 | **Roo Code** | ~~30K~~ 💀 | ⬛ DEAD | — | — | — | — | — | — | Shut down May 15, 2026. IDE-first tool killed by platform shift. |
+| #12 | **Cline** | 61K | 🟡 MEDIUM | VS Code ext | 1 (local) | UI only | ❌ | ❌ | Building SSO/RBAC/telemetry (Cline Enterprise) |
 | — | **ccusage-dashboard** | 1 | 🟢 ADJACENT | Self-hosted | N/A (analytics) | N/A | ❌ | 9-panel React | ❌ |
 | — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
@@ -91,6 +93,15 @@ No single competitor has ALL of these. This is the enterprise wedge:
 > **"ECC makes your agents smart. Aegis makes them accessible."** — Orpheus
 
 This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise middleware** — the layer between "someone typed a message" and "code shipped to production." The moat is compliance, governance, observability. Don't compete on agent count. Compete on trust.
+
+
+## Market Pulse — 2026-05-15
+
+**Roo Code shuts down (May 15, 2026):** Roo Code (~30K stars, 3M+ downloads) shut down today. IDE-first tool killed by platform shift. Lesson: client-side/IDE-dependent tools are vulnerable when platforms change. Server-side middleware (like Aegis) is runtime-agnostic and survives platform shifts. Roo users are migrating now — monitor where they land.
+
+**Cline Enterprise launching (61K stars):** Cline is building SSO, RBAC, and telemetry for enterprise. Currently client-side config only. If they expand to server-side governance, they become a direct competitor. Aegis positioning ("server-side control plane") is the correct defensive play.
+
+**Strategic note:** Aegis is Claude Code only today, but server-side architecture means we could theoretically wrap any agent runtime in future phases. No positioning change — this is an internal option, not external messaging.
 
 ## Market Pulse — 2026-05-12
 
@@ -263,4 +274,4 @@ ccusage-dashboard is an **analytics visualization layer**, not an orchestration 
 
 ---
 
-*Maintained by Scribe 📝 — last deep dive: 2026-05-14 (added Verdent AI, ccusage-dashboard), star counts updated: 2026-05-12. Update on each competitive scan.*
+*Maintained by Scribe 📝 — last deep dive: 2026-05-15 (added Verdent AI, ccusage-dashboard), star counts updated: 2026-05-12. Update on each competitive scan.*
