@@ -71,11 +71,11 @@ export function SessionHealthBanner({ errorRates, loading }: SessionHealthBanner
   const isCritical = level === 'critical';
 
   const bgColor = isCritical
-    ? 'bg-red-500/10 border-red-500/30'
-    : 'bg-yellow-500/10 border-yellow-500/30';
+    ? 'bg-[var(--color-danger)]/10 border-[var(--color-danger)]/30'
+    : 'bg-[var(--color-warning)]/10 border-[var(--color-warning)]/30';
   const textColor = isCritical
-    ? 'text-red-400'
-    : 'text-yellow-400';
+    ? 'text-[var(--color-danger)]'
+    : 'text-[var(--color-warning)]';
   const Icon = isCritical ? AlertCircle : AlertTriangle;
 
   const title = isCritical
@@ -126,10 +126,10 @@ export function SessionHealthDot({ errorRates, loading }: SessionHealthBannerPro
   const ratePercent = (failureRate * 100).toFixed(1);
 
   const dotColor = level === 'critical'
-    ? 'bg-red-500'
+    ? 'bg-[var(--color-danger)]'
     : level === 'warning'
-      ? 'bg-yellow-500'
-      : 'bg-green-500';
+      ? 'bg-[var(--color-warning)]'
+      : 'bg-[var(--color-success)]';
 
   if (level === 'healthy') return null;
 

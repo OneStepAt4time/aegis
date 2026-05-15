@@ -71,13 +71,13 @@ export default function RoutineCard({
               className={`
                 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
                 ${isActive
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-amber-500/20 text-amber-400'
+                  ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
+                  : 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
                 }
               `}
               aria-label={isActive ? 'Active' : 'Paused'}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-400' : 'bg-amber-400'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[var(--color-success)]' : 'bg-[var(--color-warning)]'}`} />
               {isActive ? 'Active' : 'Paused'}
             </span>
           </div>
@@ -102,8 +102,8 @@ export default function RoutineCard({
             className={`
               p-1.5 rounded transition-colors
               ${isActive
-                ? 'text-amber-400 hover:bg-amber-500/10'
-                : 'text-green-400 hover:bg-green-500/10'
+                ? 'text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10'
+                : 'text-[var(--color-success)] hover:bg-[var(--color-success)]/10'
               }
             `}
             aria-label={isActive ? 'Pause routine' : 'Resume routine'}
@@ -113,7 +113,7 @@ export default function RoutineCard({
           </button>
           <button type="button"
             onClick={() => onTriggerNow?.(routine.id)}
-            className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"
+            className="p-1.5 rounded text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
             aria-label={t("aria.triggerRoutine")}
             title="Run now"
           >
@@ -121,7 +121,7 @@ export default function RoutineCard({
           </button>
           <button type="button"
             onClick={() => onDelete?.(routine.id)}
-            className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1.5 rounded text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
             aria-label={t("aria.deleteRoutine")}
             title="Delete"
           >

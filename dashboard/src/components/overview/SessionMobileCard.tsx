@@ -31,7 +31,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
   onKill,
 }: SessionRowProps) {
   return (
-    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-cyan-500 ring-1 ring-cyan-500/30' : ''}`}>
+    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-cyan-500/30' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
@@ -50,7 +50,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
               >
                 {session.displayName || session.id}
               </Link>
-              {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
+              {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-danger)]" />}
             </div>
             <div className="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">
               {truncateDir(session.workDir, 50)}
@@ -64,7 +64,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
               aria-label={`Approve session ${session.displayName || session.id}`}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-[var(--color-success)] transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
               <Play className="h-4 w-4" />
@@ -74,7 +74,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
             aria-label={`Interrupt session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-yellow-400 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-[var(--color-warning)] transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
             <Ban className="h-4 w-4" />
@@ -83,7 +83,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
             aria-label={`Kill session ${session.displayName || session.id}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-red-400 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-[var(--color-danger)] transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
             <XCircle className="h-4 w-4" />
@@ -100,7 +100,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
           </span>
         )}
         {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-green-400">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-[var(--color-success)]">
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
           </span>
         ) : (

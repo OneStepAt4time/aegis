@@ -108,7 +108,7 @@ export function AcpSessionShell({
       {/* Error state */}
       {error && (
         <div className="flex items-center justify-center p-4">
-          <div className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400" role="alert">
+          <div className="rounded-lg bg-[var(--color-danger)]/10 px-4 py-3 text-sm text-[var(--color-danger)]" role="alert">
             {error}
           </div>
         </div>
@@ -157,13 +157,13 @@ export function AcpSessionShell({
                     <Icon className="h-4 w-4" />
                     {tab.label}
                     {tab.badge !== undefined && (
-                      <span className="ml-1 rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">
+                      <span className="ml-1 rounded-full bg-[var(--color-accent)]/20 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-accent)]">
                         {tab.badge}
                       </span>
                     )}
                     {/* Active indicator */}
                     {isActive && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-blue-500" />
+                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--color-accent)]" />
                     )}
                   </button>
                 );

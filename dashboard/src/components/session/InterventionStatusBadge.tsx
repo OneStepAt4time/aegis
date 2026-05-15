@@ -16,20 +16,20 @@ export interface InterventionStatusBadgeProps {
 const STATUS_CONFIG = {
   paused: {
     label: 'Paused',
-    bg: 'bg-amber-500/20',
-    text: 'text-amber-400',
+    bg: 'bg-[var(--color-warning)]/20',
+    text: 'text-[var(--color-warning)]',
     icon: Pause,
   },
   intervening: {
     label: 'Intervening',
-    bg: 'bg-blue-500/20',
-    text: 'text-blue-400',
+    bg: 'bg-[var(--color-accent)]/20',
+    text: 'text-[var(--color-accent)]',
     icon: Hand,
   },
   resumed: {
     label: 'Resumed',
-    bg: 'bg-green-500/20',
-    text: 'text-green-400',
+    bg: 'bg-[var(--color-success)]/20',
+    text: 'text-[var(--color-success)]',
     icon: Play,
   },
 } as const;

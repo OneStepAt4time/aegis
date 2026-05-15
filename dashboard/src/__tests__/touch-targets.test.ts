@@ -38,7 +38,7 @@ describe('Mobile touch targets (issue #2350)', () => {
   it('Theme toggle button has min-h-[44px] and min-w-[44px]', () => {
     const src = readSrc('components/Layout.tsx');
     // The theme toggle className should have min-h-[44px]
-    expect(src).toMatch(/min-h-\[44px\].*min-w-\[44px\].*text-slate-500.*transition-colors.*hover:bg-slate-100/s);
+    expect(src).toMatch(/min-h-\[44px\].*min-w-\[44px\].*(text-slate-500|text-\[var\(--color-text-muted\)\]).*transition-colors.*(hover:bg-slate-100|hover:bg-\[var\(--color-surface-hover\)\])/s);
   });
 
   it('Sign out button has min-h-[44px]', () => {

@@ -112,7 +112,7 @@ function ApproveButton({
       onClick={(e) => onApprove(e, session.id)}
       disabled={currentAction === 'approve'}
       aria-label={`Approve session ${session.displayName || session.id}`}
-      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-green-400 transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
       title="Approve"
     >
       <Play className="h-3 w-3" />
@@ -164,7 +164,7 @@ function VirtualizedRow(props: {
       style={{ ...style, gridTemplateColumns: GRID_COLUMNS }}
       className={`grid border-b border-white/5 transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
-          ? 'bg-cyan-950/30 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+          ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
           : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'
       }`}
       data-session-id={session.id}
@@ -181,7 +181,7 @@ function VirtualizedRow(props: {
       </div>
       <div className="flex items-center px-2">
         <StatusDot status={session.status} health={health} />
-        {!isAlive && <XCircle className="h-3.5 w-3.5 text-red-400" />}
+        {!isAlive && <XCircle className="h-3.5 w-3.5 text-[var(--color-danger)]" />}
       </div>
       <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-[var(--color-text-muted)]">
         {session.ownerKeyId
@@ -207,7 +207,7 @@ function VirtualizedRow(props: {
       </div>
       <div className="flex items-center px-3">
         {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-[var(--color-success)]">
             <CheckCircle2 className="h-3 w-3" />
             {session.permissionMode}
           </span>
@@ -222,7 +222,7 @@ function VirtualizedRow(props: {
       </div>
       <div className="flex items-center gap-1 px-3">
         {currentAction === 'working' && (
-          <span className="inline-flex items-center gap-1 rounded bg-cyan-900/30 px-1.5 py-0.5 text-xs text-cyan-400">
+          <span className="inline-flex items-center gap-1 rounded bg-cyan-900/30 px-1.5 py-0.5 text-xs text-[var(--color-accent-cyan)]">
             <Play className="h-2.5 w-2.5" />
             running
           </span>
@@ -232,7 +232,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${session.displayName || session.id}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
           title="Interrupt"
         >
           <Ban className="h-3.5 w-3.5" />
@@ -241,7 +241,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${session.displayName || session.id}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-400/10 transition-colors"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
           title="Kill"
         >
           <XCircle className="h-3.5 w-3.5" />

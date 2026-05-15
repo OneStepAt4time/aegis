@@ -217,7 +217,7 @@ export default function AnalyticsPage() {
             <div
               role="status"
               aria-live="polite"
-              className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200"
+              className="flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 px-4 py-3 text-sm text-amber-200"
             >
               <span aria-hidden="true">⚠</span>
               <span>
@@ -529,8 +529,8 @@ function MetricBox({ label, value }: { label: string; value: string }) {
 
 function RateBar({ label, value, detail, color }: { label: string; value: number; detail: string; color: 'red' | 'green' }) {
   const pct = Math.min(value * 100, 100);
-  const barColor = color === 'red' ? 'bg-red-500' : 'bg-emerald-500';
-  const textColor = color === 'red' ? 'text-red-400' : 'text-emerald-400';
+  const barColor = color === 'red' ? 'bg-[var(--color-danger)]' : 'bg-emerald-500';
+  const textColor = color === 'red' ? 'text-[var(--color-danger)]' : 'text-emerald-400';
 
   return (
     <div>

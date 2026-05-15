@@ -134,7 +134,7 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
         <div
           className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
             isUser
-              ? 'bg-blue-500/15 text-[var(--color-text-primary)] border border-blue-500/20'
+              ? 'bg-[var(--color-accent)]/15 text-[var(--color-text-primary)] border border-[var(--color-accent)]/20'
               : isSystem
                 ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-border-strong)]'
                 : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border-strong)]'
@@ -190,7 +190,7 @@ function TokenMeter({ usage }: { usage: AcpSessionTokenUsage }) {
       {usage.cacheReadTokens > 0 && (
         <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
           <span>Cache:</span>
-          <span className="font-mono text-green-400">{usage.cacheReadTokens.toLocaleString()}</span>
+          <span className="font-mono text-[var(--color-success)]">{usage.cacheReadTokens.toLocaleString()}</span>
         </div>
       )}
       <div className="ml-auto flex items-center gap-1">
@@ -282,7 +282,7 @@ export function AcpChatView({
               onKeyDown={handleKeyDown}
               placeholder="Send a prompt to the agent..."
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-blue-500/50 focus:outline-none"
+              className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus:outline-none"
               disabled={!isDriver}
               aria-label={t("aria.messageInput")}
             />
@@ -290,7 +290,7 @@ export function AcpChatView({
               <button
                 type="button"
                 onClick={onStop}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20"
                 aria-label={t("aria.stopGeneration")}
               >
                 ⏹
@@ -300,7 +300,7 @@ export function AcpChatView({
                 type="button"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/20 text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={t("aria.sendMessage")}
               >
                 <Send className="h-4 w-4" />

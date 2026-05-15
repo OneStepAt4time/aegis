@@ -157,7 +157,7 @@ export default function SettingsPage() {
       </div>
 
       {saveError && (
-        <div role="alert" className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
+        <div role="alert" className="flex items-start gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 p-4 text-sm text-amber-200">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">{t('settings.saveErrorTitle')}</p>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                     title={description}
                     className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                       theme === value || (theme === 'auto' && value === 'light')
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/10 dark:text-blue-300'
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)]'
                         : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                     }`}
                   >
@@ -260,7 +260,7 @@ export default function SettingsPage() {
                   title={description}
                   className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                     readingFont === value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/10 dark:text-blue-300'
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)]'
                       : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                   }`}
                 >

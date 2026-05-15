@@ -182,7 +182,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     'waiting-permission': {
       title: 'Waiting for permission prompt',
       description: 'Claude Code will ask for permission before running commands. Watch for the permission prompt status.',
-      icon: <Shield className="h-12 w-12 text-amber-400 animate-pulse" />,
+      icon: <Shield className="h-12 w-12 text-[var(--color-warning)] animate-pulse" />,
     },
     approved: {
       title: 'Approve the permission',
@@ -201,12 +201,12 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     killing: {
       title: 'Clean up the session',
       description: 'Now let\'s clean up by killing the tutorial session. This stops the session and removes it from the active list.',
-      icon: <Trash2 className="h-12 w-12 text-red-400" />,
+      icon: <Trash2 className="h-12 w-12 text-[var(--color-danger)]" />,
       action: (
         <button
           type="button"
           onClick={handleKill}
-          className="px-6 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 font-medium transition-colors hover:bg-red-500/20"
+          className="px-6 py-2.5 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-red-300 font-medium transition-colors hover:bg-[var(--color-danger)]/20"
         >
           Kill Session
         </button>
@@ -272,7 +272,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
             </p>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
+              <div className="mb-4 p-3 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-sm text-red-300">
                 {error}
               </div>
             )}

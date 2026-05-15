@@ -68,7 +68,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-4 sm:p-8">
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
-          <Shield className="h-10 w-10 text-blue-500" />
+          <Shield className="h-10 w-10 text-[var(--color-accent)]" />
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Aegis</h1>
           <p className="text-sm text-[var(--color-text-muted)]">
             {oidcAvailable ? 'Sign in with your identity provider to continue' : 'Enter your API token to continue'}
@@ -77,13 +77,13 @@ export default function LoginPage() {
 
         {checkingAuthMode ? (
           <div className="flex justify-center py-2" aria-label={t("aria.checkingAuth")}>
-            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
+            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-[var(--color-accent)]" />
           </div>
         ) : oidcAvailable ? (
           <button
             type="button"
             onClick={handleOidcLogin}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-accent)]"
           >
             <LogIn className="h-4 w-4" />
             <span>Sign in with SSO</span>
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 placeholder="API token"
                 autoFocus
                 autoComplete="current-password"
-                className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2.5 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-blue-500 focus:outline-none touch-action-manipulation"
+                className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2.5 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none touch-action-manipulation"
               />
               <button
                 type="button"
@@ -114,13 +114,13 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-red-400">{error}</p>
+              <p className="text-sm text-[var(--color-danger)]">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || !token.trim()}
-              className="min-h-[44px] rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? t('login.verifying') : t('login.signInButton')}
             </button>

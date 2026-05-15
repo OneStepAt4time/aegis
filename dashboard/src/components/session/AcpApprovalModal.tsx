@@ -127,11 +127,11 @@ export function AcpApprovalModal({
             </span>
           )}
           {countdown !== null && countdown !== undefined && (
-            <div className={`rounded-full border px-2.5 py-0.5 text-right ${isExpired ? 'border-red-500/30 bg-red-500/10' : 'border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10'}`}>
+            <div className={`rounded-full border px-2.5 py-0.5 text-right ${isExpired ? 'border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10' : 'border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10'}`}>
               <div className="text-[10px] uppercase tracking-wider text-[var(--color-warning)]">
                 TTL
               </div>
-              <div className={`font-mono text-xs ${isExpired ? 'text-red-400' : 'text-[var(--color-text-primary)]'}`}>
+              <div className={`font-mono text-xs ${isExpired ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-primary)]'}`}>
                 {isExpired ? 'Expired' : countdown}
               </div>
             </div>
@@ -149,7 +149,7 @@ export function AcpApprovalModal({
 
       {/* Expired warning */}
       {isExpired && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
+        <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>This approval request has expired.</span>
         </div>
@@ -157,10 +157,10 @@ export function AcpApprovalModal({
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
+        <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button type="button" onClick={onClearError} className="text-red-400 hover:text-red-300" aria-label={t("aria.dismissError")}>
+            <button type="button" onClick={onClearError} className="text-[var(--color-danger)] hover:text-red-300" aria-label={t("aria.dismissError")}>
               ✕
             </button>
           )}
@@ -246,7 +246,7 @@ export function AcpApprovalModal({
                     type="button"
                     onClick={handleReject}
                     disabled={isLoading}
-                    className="flex items-center gap-1 rounded-md bg-red-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-400 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-md bg-[var(--color-danger)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-danger)] disabled:opacity-50"
                     aria-label={t("aria.confirmRejection")}
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}

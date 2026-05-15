@@ -75,12 +75,12 @@ export function DriverControlBar({
     >
       {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-2 rounded bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
+        <div className="flex items-center gap-2 rounded bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
             <button type="button"
               onClick={onClearError}
-              className="text-red-400 hover:text-red-300"
+              className="text-[var(--color-danger)] hover:text-red-300"
               aria-label={t("aria.dismissError")}
             >
               ✕
@@ -92,7 +92,7 @@ export function DriverControlBar({
       {/* Current driver indicator */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Gamepad2 className="h-4 w-4 text-blue-400" />
+          <Gamepad2 className="h-4 w-4 text-[var(--color-accent)]" />
           {hasDriver ? (
             <span className="text-sm text-[var(--color-text-primary)]">
               Driver: <span className="font-medium">{participants!.driver!.subscriberId}</span>
@@ -123,7 +123,7 @@ export function DriverControlBar({
           <button type="button"
             onClick={() => onClaim?.()}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={t("aria.claimDriver")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gamepad2 className="h-4 w-4" />}
@@ -145,7 +145,7 @@ export function DriverControlBar({
             <button type="button"
               onClick={() => setShowTransferForm(true)}
               disabled={!canAct}
-              className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-md bg-[var(--color-warning)]/20 px-3 py-2 text-sm font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning)]/30 disabled:opacity-50"
               aria-label={t("aria.transferDriver")}
             >
               <ArrowRightLeft className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function DriverControlBar({
           <button type="button"
             onClick={() => setShowTransferForm(true)}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-warning)]/20 px-3 py-2 text-sm font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning)]/30 disabled:opacity-50"
             aria-label={t("aria.requestTransfer")}
           >
             <ArrowRightLeft className="h-4 w-4" />
@@ -199,7 +199,7 @@ export function DriverControlBar({
             <button type="button"
               onClick={handleTransfer}
               disabled={!transferTarget.trim() || isLoading}
-              className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md bg-[var(--color-warning)] px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-[var(--color-warning)] disabled:opacity-50"
               aria-label={t("aria.confirmTransfer")}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}

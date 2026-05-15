@@ -157,9 +157,9 @@ export default function CalendarGrid({
               onClick={() => onSelectDate(day)}
               disabled={!inCurrentMonth}
               className={`
-                relative p-2 min-h-[4rem] text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+                relative p-2 min-h-[4rem] text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-inset
                 ${!inCurrentMonth ? 'opacity-30 cursor-default' : 'hover:bg-[var(--color-void-dark)] cursor-pointer'}
-                ${isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : ''}
+                ${isSelected ? 'bg-[var(--color-accent)]/10 ring-1 ring-[var(--color-accent)]/30' : ''}
               `}
               aria-label={`${format(day, 'EEEE, MMMM d, yyyy')}${hasRoutines ? `, ${dayRoutines.length} routine${dayRoutines.length > 1 ? 's' : ''}` : ''}`}
               aria-current={today ? 'date' : undefined}
@@ -167,7 +167,7 @@ export default function CalendarGrid({
               <span
                 className={`
                   text-sm font-medium
-                  ${today ? 'text-blue-400' : inCurrentMonth ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}
+                  ${today ? 'text-[var(--color-accent)]' : inCurrentMonth ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}
                 `}
               >
                 {format(day, 'd')}
@@ -179,7 +179,7 @@ export default function CalendarGrid({
                       key={r.id}
                       className={`
                         text-[10px] leading-tight truncate px-1 py-0.5 rounded
-                        ${r.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}
+                        ${r.status === 'active' ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]' : 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'}
                       `}
                     >
                       {r.title}

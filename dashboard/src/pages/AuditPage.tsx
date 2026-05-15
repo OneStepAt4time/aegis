@@ -133,13 +133,13 @@ function actionBadgeClass(action: string): string {
     return 'border border-rose-500/30 bg-rose-500/10 text-rose-300';
   }
   if (action.includes('reject')) {
-    return 'border border-amber-500/30 bg-amber-500/10 text-amber-300';
+    return 'border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 text-amber-300';
   }
   if (action.includes('approve') || action.includes('allowed')) {
     return 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
   }
   if (action.includes('create') || action.includes('authenticated')) {
-    return 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-300';
+    return 'border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-cyan-300';
   }
   return 'border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)]/40 text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)]';
 }
@@ -278,8 +278,8 @@ interface IntegrityState {
 function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
   if (state.error) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
-        <ShieldAlert className="h-4 w-4 text-amber-400" />
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-xs">
+        <ShieldAlert className="h-4 w-4 text-[var(--color-warning)]" />
         <span className="text-amber-300">Integrity check failed: {state.error}</span>
       </div>
     );
@@ -835,12 +835,12 @@ export default function AuditPage() {
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
-          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
-          <p className="font-medium text-red-400">Failed to load audit logs</p>
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-[var(--color-danger)]" />
+          <p className="font-medium text-[var(--color-danger)]">Failed to load audit logs</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
           <button type="button"
             onClick={() => { void fetchData(); }}
-            className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20"
+            className="mt-4 rounded border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-4 py-2 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20"
           >
             Retry
           </button>

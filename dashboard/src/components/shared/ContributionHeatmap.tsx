@@ -52,10 +52,10 @@ export interface ContributionHeatmapProps {
 /* ------------------------------------------------------------------ */
 
 const DEFAULT_COLOR_SCALE = [
-  'rgba(6, 182, 212, 0.08)',   // level 0 — near-invisible // token-ok
-  'rgba(6, 182, 212, 0.25)',   // level 1 // token-ok
-  'rgba(6, 182, 212, 0.50)',   // level 2 // token-ok
-  'rgba(6, 182, 212, 0.75)',   // level 3 // token-ok
+  'rgba(var(--color-accent-cyan-rgb, 6, 182, 212), 0.08)',   // level 0 — near-invisible // token-ok
+  'rgba(var(--color-accent-cyan-rgb, 6, 182, 212), 0.25)',   // level 1 // token-ok
+  'rgba(var(--color-accent-cyan-rgb, 6, 182, 212), 0.50)',   // level 2 // token-ok
+  'rgba(var(--color-accent-cyan-rgb, 6, 182, 212), 0.75)',   // level 3 // token-ok
   'rgba(6, 182, 212, 1.00)',   // level 4 — full intensity // token-ok
 ];
 
@@ -144,7 +144,7 @@ export function ContributionHeatmap({
   data,
   label,
   unit = '',
-  emptyColor = 'rgba(6, 182, 212, 0.06)', // token-ok
+  emptyColor = 'rgba(var(--color-accent-cyan-rgb, 6,182,212), 0.06)', // token-ok
   colorScale = DEFAULT_COLOR_SCALE,
   weeks = 0,
   cellSize = 11,

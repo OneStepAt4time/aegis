@@ -106,8 +106,8 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
         {/* Live indicator */}
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${sseConnected ? 'bg-cyan-400' : 'bg-[var(--color-void-lighter)]'}`} />
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-cyan-400 shadow-[0_0_6px_#67e8f9]' : 'bg-[var(--color-void-lighter)]'}`} />
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${sseConnected ? 'bg-[var(--color-accent-cyan)]' : 'bg-[var(--color-void-lighter)]'}`} />
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-[var(--color-accent-cyan)] shadow-[0_0_6px_#67e8f9]' : 'bg-[var(--color-void-lighter)]'}`} />
           </span>
           {sseConnected ? (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[var(--color-accent-cyan)]">
@@ -137,7 +137,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
           <div
             className="absolute left-[13px] top-2 bottom-2 w-px"
             style={{
-              background: 'linear-gradient(to bottom, var(--color-trace-line, rgba(103,232,249,0.3)), rgba(103,232,249,0.05) 60%, transparent)',
+              background: 'linear-gradient(to bottom, var(--color-trace-line, rgba(var(--color-accent-cyan-rgb, 103,232,249), 0.3)), rgba(var(--color-accent-cyan-rgb, 103,232,249), 0.05) 60%, transparent)',
             }}
           />
 

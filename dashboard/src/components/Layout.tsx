@@ -430,7 +430,7 @@ export default function Layout() {
               onClick={closeMobile}
               tabIndex={hiddenMobileSidebarControlTabIndex}
               disabled={isMobileSidebarHidden}
-              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
               aria-label={t("aria.closeMenu")}
               aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
             >
@@ -443,7 +443,7 @@ export default function Layout() {
           {NAV_GROUPS.map((group) => (
             <div key={group.label} className="flex flex-col gap-1">
               {!isCollapsed && (
-                <span className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 select-none">
+                <span className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] select-none">
                   {group.label}
                 </span>
               )}
@@ -458,7 +458,7 @@ export default function Layout() {
                     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                       isActive
                         ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
                     } ${isCollapsed ? 'justify-center' : ''}`
                   }
                   title={isCollapsed ? label : undefined}
@@ -475,8 +475,8 @@ export default function Layout() {
         <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
           {identityLabel && identityDetailLabel && !isCollapsed && (
             <div className="px-3 py-2" aria-label={t("aria.signedInUser")}>
-              <p className="truncate text-xs font-medium text-slate-700 dark:text-[var(--color-text-primary)]">{identityLabel}</p>
-              <p className="truncate text-[11px] text-slate-500 dark:text-[var(--color-text-muted)]">
+              <p className="truncate text-xs font-medium text-[var(--color-text-primary)] dark:text-[var(--color-text-primary)]">{identityLabel}</p>
+              <p className="truncate text-[11px] text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]">
                 {identityDetailLabel}
               </p>
             </div>
@@ -491,7 +491,7 @@ export default function Layout() {
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                 isActive
                   ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
               } ${isCollapsed ? 'justify-center' : ''}`
             }
             title={isCollapsed ? 'Settings' : undefined}
@@ -504,7 +504,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
+            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -521,7 +521,7 @@ export default function Layout() {
             type="button"
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             aria-label={t("aria.signOut")}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -542,7 +542,7 @@ export default function Layout() {
                 onClick={toggleMobile}
                 tabIndex={isMobileDrawerOpen ? -1 : undefined}
                 aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
-                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
+                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
                 aria-label={t("aria.openMenu")}
               >
                 <Menu className="h-5 w-5" />
@@ -554,7 +554,7 @@ export default function Layout() {
 
             <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
-              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-0">
+              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-[var(--color-accent)]/50 dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)] dark:ring-0">
                 PREVIEW
               </span>
 
@@ -564,7 +564,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label={t("aria.newSessionCmd")}
                 title="New Session (⌘N)"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -573,7 +573,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
@@ -581,11 +581,11 @@ export default function Layout() {
               </button>
 
               {/* Version + theme toggle */}
-              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-slate-200 bg-white px-1.5 py-1 sm:px-2 text-xs text-slate-700 dark:border-void-lighter dark:bg-void dark:text-[var(--color-text-primary)]">
+              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-void-lighter dark:bg-void dark:text-[var(--color-text-primary)]">
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -599,7 +599,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-slate-100 dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-slate-700 dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-[var(--color-text-primary)] dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -661,13 +661,13 @@ export default function Layout() {
                   className={`status-dot shrink-0 ${sseConnected ? 'status-dot--idle' : ''}`}
                   style={sseConnected ? undefined : { backgroundColor: '#666' }}
                 />
-                <span className="text-[11px] text-slate-500 truncate">{sseIndicatorLabel}</span>
+                <span className="text-[11px] text-[var(--color-text-muted)] truncate">{sseIndicatorLabel}</span>
               </>
             )}
           </div>
 
           {/* Center: version — hidden on very small screens */}
-          <span className="hidden sm:block text-[11px] text-slate-600 font-mono">aegis v{aegisVersion}</span>
+          <span className="hidden sm:block text-[11px] text-[var(--color-text-muted)] font-mono">aegis v{aegisVersion}</span>
 
           {/* Right: keyboard hint — desktop only */}
           <button
@@ -680,7 +680,7 @@ export default function Layout() {
           </button>
 
           {/* Mobile: compact version on the right */}
-          <span className="sm:hidden text-[11px] text-slate-600 font-mono truncate">v{aegisVersion}</span>
+          <span className="sm:hidden text-[11px] text-[var(--color-text-muted)] font-mono truncate">v{aegisVersion}</span>
         </footer>
       </div>
       {/* Toast notifications */}

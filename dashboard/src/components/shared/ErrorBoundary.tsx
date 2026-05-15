@@ -43,11 +43,11 @@ export class ErrorBoundary extends Component<Props, State> {
           role="alert"
           aria-live="assertive"
         >
-          <div className="rounded-full bg-red-100 p-4 dark:bg-red-500/10">
-            <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400" aria-hidden="true" />
+          <div className="rounded-full bg-[var(--color-danger)]/15 p-4 dark:bg-[var(--color-danger)]/10">
+            <AlertTriangle className="h-8 w-8 text-[var(--color-danger)] dark:text-[var(--color-danger)]" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-lg font-medium text-red-600 dark:text-red-300">
+            <p className="text-lg font-medium text-[var(--color-danger)] dark:text-red-300">
               Something went wrong
             </p>
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <button type="button"
             onClick={this.handleRetry}
-            className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-100 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-200 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
+            className="flex items-center gap-2 rounded-lg border border-red-300 bg-[var(--color-danger)]/15 px-4 py-2 text-sm text-[var(--color-danger)] transition-colors hover:bg-red-200 dark:border-[var(--color-danger)]/30 dark:bg-[var(--color-danger)]/20 dark:text-red-300 dark:hover:bg-[var(--color-danger)]/30"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Try again
