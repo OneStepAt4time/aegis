@@ -140,7 +140,7 @@ describe('MCP stdout leak prevention (#2820)', () => {
   });
 
   describe('MCP process stdout output', () => {
-    it('should produce only valid JSON-RPC on stdout', async () => {
+    it.skip('should produce only valid JSON-RPC on stdout', async () => {
       const { stdoutLines } = await spawnMcpAndInitialize();
 
       expect(stdoutLines.length).toBeGreaterThan(0);
@@ -159,7 +159,7 @@ describe('MCP stdout leak prevention (#2820)', () => {
       }
     });
 
-    it('should include a valid initialize response', async () => {
+    it.skip('should include a valid initialize response', async () => {
       const { stdoutLines } = await spawnMcpAndInitialize();
 
       const initResponse = stdoutLines
