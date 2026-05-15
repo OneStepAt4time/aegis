@@ -378,7 +378,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
             deps.eventBus.emitStatus(sessionId, 'idle', 'Claude finished (hook: Stop)');
           }
           // Issue #3427: Record session completion in metrics from hook path
-          deps.metrics?.sessionCompleted(sessionId);
+          if (typeof deps.metrics?.sessionCompleted === "function") deps.metrics.sessionCompleted(sessionId);
           break;
         }
         case 'PreToolUse': {
@@ -445,9 +445,9 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
     // Issue #3427: Record metrics for completion/failure hook events not handled above
     if (eventName === 'TaskCompleted' || eventName === 'SessionEnd') {
-      deps.metrics?.sessionCompleted(sessionId);
+      if (typeof deps.metrics?.sessionCompleted === "function") deps.metrics.sessionCompleted(sessionId);
     } else if (eventName === 'StopFailure') {
-      deps.metrics?.sessionFailed(sessionId);
+      if (typeof deps.metrics?.sessionFailed === "function") deps.metrics.sessionFailed(sessionId);
     }
 
     // Decision events need a response body that CC uses
