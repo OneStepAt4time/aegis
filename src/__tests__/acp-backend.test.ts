@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AcpJsonRpcTimeoutError,
   AcpBackend,
   AcpSessionNotFoundError,
   hasLoadSessionCapability,
@@ -619,6 +620,70 @@ describe('AcpBackend session lifecycle', () => {
     const result = await backend.sendPrompt('session-1', 'test', scope);
     expect(result.error).toBe('no_acp_runtime');
   });
+
+  it('sendPrompt uses request() with short ack timeout (#3479)', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+    const result = await backend.sendPrompt('session-1', 'hello', scope);
+
+    // Should have used request() not notify()
+    expect(result.delivered).toBe(true);
+    expect(result.attempts).toBe(1);
+    expect(client.requests.some(r => r.method === 'session/prompt')).toBe(true);
+    const promptReq = client.requests.find(r => r.method === 'session/prompt');
+    expect(promptReq?.params).toEqual({
+      sessionId: 'acp-agent-session-1',
+      prompt: [{ type: 'text', text: 'hello' }],
+    });
+  });
+
+  it('sendPrompt treats ack timeout as delivered (#3479)', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeTimeoutClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+    const result = await backend.sendPrompt('session-1', 'hello', scope);
+
+    // Timeout is acceptable — CC likely received the prompt
+    expect(result.delivered).toBe(true);
+    expect(result.attempts).toBe(1);
+    expect(result.error).toBeUndefined();
+  });
+
+  it('sendPrompt surfaces -32601 Method not found errors (#3479)', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeErrorClient(new Error('Method not found: session/prompt'));
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    await backend.createSession({ ...scope, cwd });
+    const result = await backend.sendPrompt('session-1', 'hello', scope);
+
+    // Actual errors must be surfaced (not silently swallowed)
+    expect(result.delivered).toBe(false);
+    expect(result.error).toContain('Method not found');
+  });
 });
 
 class FakeBackendClient implements AcpBackendClient {
@@ -868,4 +933,47 @@ async function waitForCondition(predicate: () => boolean): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   throw new Error('condition was not met');
+}
+
+class FakeTimeoutClient extends FakeBackendClient {
+  async request<T = AcpJsonValue>(
+    method: string,
+    params?: AcpJsonValue,
+    _options?: AcpJsonRpcRequestOptions
+  ): Promise<AcpJsonRpcSuccess<T>> {
+    this.requests.push({ method, params });
+    // Simulate timeout for session/prompt
+    if (method === 'session/prompt') {
+      const err = new AcpJsonRpcTimeoutError({ id: 'test', method, timeoutMs: 5000 });
+      throw err;
+    }
+    return {
+      jsonrpc: '2.0',
+      id: `${method}-request`,
+      result: this.results.get(method) as T,
+    };
+  }
+}
+
+class FakeErrorClient extends FakeBackendClient {
+  private readonly error: Error;
+  constructor(error: Error) {
+    super();
+    this.error = error;
+  }
+  async request<T = AcpJsonValue>(
+    method: string,
+    params?: AcpJsonValue,
+    _options?: AcpJsonRpcRequestOptions
+  ): Promise<AcpJsonRpcSuccess<T>> {
+    this.requests.push({ method, params });
+    if (method === 'session/prompt') {
+      throw this.error;
+    }
+    return {
+      jsonrpc: '2.0',
+      id: `${method}-request`,
+      result: this.results.get(method) as T,
+    };
+  }
 }
