@@ -1,0 +1,179 @@
+task_id	commit	status	description	approach	time_min	lessons
+issue-6	fb3d8f9	keep	Fix stale claudeSessionId reuse (3 guards: written_at, archived path, mtime)	Zeus D51 reproduction, 11 tests added, 158 total pass
+issue-7	9a7b610	keep	Retry tmux window creation + session health check + Claude process verification	9 tests added, 176 total pass
+issue-1	75564a1	keep	Prompt delivery verification via capture-pane + retry 3x	16 tests added, 208 total pass
+issue-3	merged	keep	Rename manus→aegis with full backward compat (MANUS_* env, ~/.manus/ paths)	24 config tests, 226 total pass
+issue-2	merged	keep	Session health check endpoint (alive, windowExists, claudeRunning, status)	11 tests added, 248 total pass
+issue-4	merged	keep	Per-session stall detection (5min default, configurable)	13 tests added, 274 total pass
+issue-5	26efc49	keep	CLI entry point (npx aegis-bridge), dep checks, banner, --help	274 tests pass, npm publish pending
+issue-15	merged	keep	StopFailure hook support (stop_signals.json, status.error event)	8 tests added, 290 total pass
+issue-16	merged	keep	--bare flag detection, filesystem-based discovery fallback	7 tests added, 306 total pass
+issue-23	merged	keep	Env vars leak fix: temp file + source + rm instead of send-keys export	10 tests added, 360 total pass
+issue-48	15cb368	keep	MCP server mode — 5 tools via @modelcontextprotocol/sdk stdio	15 new tests, CI green, PR #49 merged
+tg-style	4b70b60	keep	Telegram style guide + formatting rework	18 new tests, edit-in-place progress, blockquote expandable, PR #50 merged
+prompt-v2	3fdc4af	keep	Prompt delivery v2 — state-change detection	PR #53 merged, graduated verification, no blind re-send
+issue-6-v2	1570f4e	keep	Session reuse v2 — --session-id as primary defense	PR #54 merged, CI green
+prompt-delivery-v2	ff9d1c5	keep	Prompt delivery v2 — state-change detection	sendKeysVerified: pre-state capture, conditional re-send, graduated verification (3 checks), 850 tests
+session-reuse-v2	059082c	keep	Session reuse v2 — --session-id primary defense	--session-id fresh UUID forces new CC session, archival as backup, claudeSessionId known immediately, 850 tests
+smart-stall-detection	9faa677	keep	Smart stall detection — 4 stall types	JSONL/permission/unknown/extended stall with graduated thresholds, state tracking resets on idle, 878 tests
+permission-settings-override	909cc3a	keep	Neutralize project-level bypassPermissions when autoApprove=false	settings.local.json overrides CLI flag; backup/patch/restore pattern
+p0-prompt-delivery	c3aa0b2	keep	sendInitialPrompt retry with exponential backoff	60s timeout, 2 retries, prompt metrics, +24 tests
+p1-dead-session-detection	6065bdc	keep	Monitor detects dead tmux windows	emits status.dead, cleans up session state, +6 tests
+p0-prompt-delivery\tc3aa0b2\tkeep\tsendInitialPrompt retry with exponential backoff\t60s timeout, 2 retries, prompt metrics, +24 tests, merged as PR #61
+dashboard-mvp\t6a9e939\tkeep\tAegis Dashboard MVP\tOverview+SessionDetail+Dark theme, React+Vite+Tailwind+Zustand, 7957 lines, TSC+Vite clean
+issue-98	a8160a8	keep	acceptEdits permission mode	6 files, permission-guard now supports targetMode for all non-bypass modes
+issue-72	5ab0307	keep	Error state in terminal parser	2 files, 46+ lines, UIState error pattern
+issue-67	812a46b	keep	Tmux mutex serialization	2 files, 102+ lines, promise-chain queue
+issue-70	9787c55	keep	Stall detection rate-limit	3 files, 100+ lines, rateLimitedSessions set
+issue-73	896e23a	keep	Terminal parser improvements	2 files, 98+ lines, M5/M6/M20/M21 fixes
+issue-76	d610456	keep	Permission system M7+M9	4 files, 527+ lines, 3 settings locations + smart approve
+issue-78	fdafa6d	keep	Channel reliability M10+M11	3 files, 205+ lines, circuit breaker + jitter
+2026-03-26T00:05:00Z	#162	fix/eaddrinuse-race-162	fix	P0	completed	185+/11-	1236 tests	PR #164
+1774485836	2026-03-26T01:43:56+01:00	162	fix/eaddrinuse-pidfile-lock	completed	PR #165	1246 tests
+1774486413	2026-03-26T01:53:33+01:00	161-phase1	feat/cc-hooks-161	completed	PR #166	1246 tests
+1774487151	2026-03-26T02:05:51+01:00	162-race-fix	fix/eaddrinuse-pidfile-race	completed	PR #167	1246 tests
+2026-03-26	01:20	#155	fix/permission-request-contenttype	PR #168 opened	1246	✅
+2026-03-26T08:33:01+01:00	#129	type-assertions	tech-debt	idle	pending
+2026-03-26	09:10	#142 (ApprovalBanner expand)	Added click-to-expand for permission prompt.	fix/approval-banner-expand	PR #177	3m	Approved
+2026-03-26	09:20	#154 (Polling consolidation)	Created useSessionPolling hook. SSE-driven updates replace 3 polling loops (5s, 2-5s, 10s). Debounce pane+metrics refetch at 1s on message events.	fix/polling-consolidation	PR #179	9m	Approved
+2026-03-26	09:17	#156 (ARIA accessibility)	Added role/tablist, aria-selected, aria-pressed, Escape key, focus management.	fix/aria-accessibility	PR #180	15m	Approved
+2026-03-26	10:10	#139 (Toast notifications)	Created ToastContainer + useToastStore. Wired error toasts into all empty catch blocks across dashboard (Layout, SessionDetailPage, SessionTable, MetricCards, useSessionPolling). Auto-dismiss 5s, slide-in animation.	fix/toast-and-error-handling	PR #181	8m	Approved
+2026-03-26	11:10	#169 Phase 1 (HTTP hook endpoints)	POST /v1/hooks/:eventName receives CC events, forwards to SSE. 20 new tests (1264 total).	feat/http-hooks-phase1	PR #184	6m	Approved
+2026-03-26	11:28	#169 Phase 2 (CC settings injection)	Generate per-session settings.json with HTTP hooks. --settings flag isolation. Cleanup on kill. 30 new tests (1294 total).	feat/http-hooks-phase2	PR #185	7m	Approved
+2026-03-26	11:40	#169 Phase 3 (Hook-driven status)	Hook events are primary status signal. Monitor polling 2s→30s adaptive. SSE events on status change. 22 new tests (1316 total).	feat/hooks-driven-monitor	PR #186	5m	Approved
+2026-03-26	11:00	#169 Phase 1-4 + v1.3.0 tag	HTTP hooks architecture complete. 52 new tests (1316 total). Polling 2s→30s adaptive. v1.3.0 tagged, needs restart to deploy.	main	v1.3.0	120m	Approved
+2026-03-26T16:22:08+01:00	feat/agent-swarm-awareness	#81	KEEP	26 tests	257+141 lines	1410 tests
+2026-03-26T16:22:08+01:00	feat/telegram-swarm-awareness	#71	KEEP	185 lines	/	1410 tests
+2026-03-26T17:43:21+01:00	tech-debt-final-batch	#89	L14+L15+L28	KEEP	256 lines	1566 tests
+2026-03-27T00:02:00Z	issue-284	fix	P0	complete	45	0	Hook-based permission approval via CC HTTP hooks — replaces unreliable tmux send-keys
+2026-03-27T00:08:00Z	issue-285	fix	P0	complete	15	0	Prompt delivery reliability: sendMessageDirect now uses sendKeysVerified with 3 retries
+2026-03-27T01:22:32Z	issue-320	320	fix/320-permission-default	merge	PR #322 merged — default permission mode bypassPermissions + fixed console.time placement. 1712 tests pass.	0
+2026-03-27T01:32:46Z	issue-294	294	fix/294-dashboard-crash	merge	PR #323 merged — dashboard crash fix (null guard sessionId + filter events without sessionId). 1712 tests pass.	0
+2026-03-27T01:41:23Z	issue-307	307	fix/307-dashboard-sse-types	merge	PR #324 merged — added missing SSE event types (system, hook, subagent_start/stop, session_subagent_start/stop), emittedAt field, EVENT_META entries. 1712 tests + dashboard build pass.	0
+2026-03-27T01:48:10Z	issue-304	304	fix/304-stale-closure	merge	PR #325 merged — MetricCards useCallback fix. Backend 2610 tests pass. Dashboard build clean.	0
+2026-03-27T01:55:01Z	issue-305	305	fix/305-unsafe-any-cast	merge	PR #326 merged — type guard for 404 detection replaces unsafe as any. CI green.	0
+2026-03-27T03:12:24Z	issue-306	306	fix/306-dashboard-race-conditions	merge	PR #327 merged — 4 race condition fixes (SessionTable health, O(n) dedup, SSE flicker, orphan abort). CI green after vitest config split.	0
+2026-03-27T03:59:09Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook maps to permission_prompt instead of ask_question. CI green first try.	0
+2026-03-27T03:59:52Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook maps to permission_prompt. Auto-approve + stall detection fixed.	0
+2026-03-27T04:18:00Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook maps to permission_prompt. 4 files, 870 tests pass.	0
+2026-03-27T04:39:02Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook now maps to permission_prompt instead of ask_question. Fixes auto-approve, stall detection, SSE broadcasts.	0
+2026-03-27T04:57:12Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook mapped to permission_prompt instead of ask_question. Fixes auto-approve, stall detection, and status broadcasts.	0
+2026-03-27T05:04:06Z	issue-258	258	fix/258-statesince-cleanup	merge	PR #329 merged — stateSince entries cleaned on non-idle transitions. Prevents false stall notifications and premature permission auto-rejection. 6 new tests.	0
+2026-03-27T05:09:56Z	issue-257	257	fix/257-permission-request-mapping	merge	PR #328 merged — PermissionRequest hook mapped to permission_prompt. Also fixed #258 (stateSince cleanup) in PR #329. Both P0 high bugs.	0
+2026-03-27T05:16:45Z	issue-295	295	fix/295-cors-dashboard-api	merge	PR #330 merged — CORS fix: dashboard BASE_URL defaults to relative path. CI green first try.	0
+2026-03-27T05:48:09Z	issue-296	296	fix/296-session-messages-memory-leak	merge	PR #331 merged — removed dead sessionMessages, capped at 500 messages. CI green first try.	0
+2026-03-27T07:44:31Z	issue-308	308	fix/308-sse-robustness	merge	PR #332 merged — 7 commits: emitter cleanup race, idle timeout, legacy route removal, Last-Event-ID, circuit-breaker, async emit. CI green.	0
+2026-03-27T08:12:12Z	issue-302	302	fix/308-sse-robustness	merge	PR #333 merged — SSEWriter class with back-pressure handling, 3-strike disconnect, 9 tests. CI green.	0
+2026-03-27T08:42:13Z	issue-298-299	298,299	fix/298-299-dashboard-timers	merge	PR #334 merged — AbortError retry guard via isRetryableError(), stale debounce via generation counter. 16 tests, CI green.	0
+2026-03-27T09:24:29Z	issue-301	301	fix/301-event-buffer	merge	PR #335 merged — global event ring buffer (50 events) with Last-Event-ID replay. 7 tests, CI green.	0
+2026-03-27T10:00:14Z	test-ws-terminal	null	test/ws-terminal	merge	22 ws-terminal tests merged to main. 920 total tests passing.	0
+2026-03-27T11:17:08Z	issue-310	310	feat-310-live-terminal	merge	PR #337 merged — Live terminal with xterm.js + WebSocket, ResilientWebSocket utility, connection state indicators. CI green.	0
+2026-03-27T11:45:42Z	issue-312	312	feat-310-live-terminal	merge	PR #338 merged — batch session creation UI with tabs, shared prompt, per-row overrides, results view. CI green.	0
+2026-03-27T13:21:51Z	PR-340	feat: add pipeline management page	#311	accepted	merged
+2026-03-27T13:52:08Z	PR-341	fix: merge project settings into hook settings file	#339	accepted	merged
+2026-03-27T13:52:58Z	PR-341	fix: merge project settings into hook settings file	#339	accepted	merged
+2026-03-27T14:56:45Z	PR-342	feat: headless question answering via PreToolUse hook	#336	accepted	merged
+2026-03-27T15:49:00Z	PR-343	fix: add SSE connection limits	#300	accepted	merged
+2026-03-27T16:30:37Z	PR-344	fix: WS terminal security hardening	#303	accepted	merged
+2026-03-27T16:50:47Z	PR-345	fix: short-lived SSE tokens	#297	accepted	merged
+353	fix/swarm-parent-matching-353	PR#367	merged	2026-03-27T19:40	swarm parent PID matching, 6 fixes, 5 tests, 975/975 pass
+356	fix/monitor-stall-edge-cases	PR#368	merged	2026-03-27T19:57	7 fixes in monitor.ts, 975/975 pass
+361	fix/graceful-shutdown-361	PR#369	merged	2026-03-27T20:18	9 fixes across 5 files, 132 ins, 975/975 pass
+359	fix/input-validation-359	PR#374	merged	2026-03-27T21:08	Zod schemas for 9 routes, +452/-84, 1028 tests (+53)
+362	fix/terminal-parser-edge-cases-362	PR#375	merged	2026-03-27T21:30	5 parser fixes, +147/-33, 1036 tests (+8)
+358	fix/shell-injection-tmux-358	PR#376	merged	2026-03-27T21:48	3 shell injection fixes, +22/-7, 1036 tests
+347	fix/hook-injection-347	PR#377	merged	2026-03-27T22:09	TMUX_PANE validation + execFileSync, 11 tests, 1047 pass
+346	fix/ssrf-webhook-validation-346	PR#379	merged	2026-03-27T22:55	SSRF utility + webhook/screenshot validation, +633/-49, 1047 tests
+349	fix/349-auth-bypass	PR#380	merged	2026-03-27T23:25	Auth bypass fixes, workDir allowlist, CSP, bodyLimit, hook validation, +263/-17, 1157 tests
+348	fix/348-telegram-auth	PR#381	merged	2026-03-27T23:38	TG user ID allowlist, callback validation, token redaction, +244/-4, 1176 tests
+357	fix/357-memory-leaks	PR#382	merged	2026-03-28T00:16	9 memory/perf fixes, +194/-61, 1176 tests
+363	fix/363-tmux-latency	PR#383	merged	2026-03-28T00:36	Atomic serialize, direct methods guard, DCS regex, backoff, +128/-82, 1176 tests
+363	fix/363-tmux-latency	PR#383	merged	2026-03-28T00:35	Atomic name check, direct methods guard, DCS regex, backoff, 1176 tests
+364	fix/364-package-hygiene	PR#384	merged	2026-03-28T00:58	Package hygiene for npm, +12/-1, 1176 tests
+360	feature/360-test-coverage	PR#385	merged	2026-03-28T01:20	5 test files for core modules, +1414 tests
+360	test-coverage-360	PR#385	merged	2026-03-28T01:10	Test coverage part 1 — events, pipeline, stall, dead sessions, swarm changes, 1414 tests (+238)
+365	feature/365-release-pipeline	PR#386	merged	2026-03-28T01:38	Automated release pipeline (npm publish + GitHub Releases)
+366	fix/366-security-audit	PR#387	merged	2026-03-28T01:55	Security audit hardening, CI blocking audit, lockfile lint
+2026-03-28T04:22:00Z	release-v1.4.0	completed	10 tests (8 pass, 2 partial), 2 issues opened (#390, #391), GitHub Release published
+2026-03-28T05:58:14+01:00	fix-396	bug	PR#400	merged	13 insertions 19 deletions	README brief→prompt + badges + config
+2026-03-28T06:09:07+01:00	fix-394	security	PR#401	merged	12 insertions 1 deletion + 219 test lines	Hook auth bypass fixed with session validation
+2026-03-28T13:37:09+01:00	fix-434-435	security+bug	PR#438	merged	93 insertions 2 deletions	Path traversal + DELETE 404
+2026-03-28T14:31:03+01:00	fix-453	cleanup	blocked	PR branch has files from main that should be removed
+CC fails on PR CI because git ls-files finds blacklisted patterns
+Manudis23介入待处理
+2026-03-28T14:54:11+01:00	chore-453	cleanup	PR#454	merged	15 insertions 3 deletions	Repo hygiene: removed junk files, updated .gitignore, CI audit step
+2026-03-28T14:54:11+01:00	fix-453	cleanup	PR#454+4481cec	merged	junk files removed + CI audit step
+Files removed: should, results.tsv, state/, dashboard/tsconfig.tsbuildinfo
+.gitignore: +results.tsv, +state/, +*.tsbuildinfo, +.claude/worktrees/
+CI audit step added (passes on both Node 20/22)
+@tranhoangtu-it pinged on PR #439
+2026-03-28T15:24:01+01:00	feat-441	mcp	PR#455	merged	736 insertions 3 deletions	MCP tool completeness: 5→21 tools, 34 tests
+2026-03-28T15:25:28+01:00	feat-441	mcp	PR#455	merged	16 new tools 34 tests	MCP tool completeness: 5→21 tools, all REST endpoints covered
+2026-03-28T15:47:31+01:00	feat-442	mcp	PR#456	merged	306 insertions	MCP Resources: 4 resources via server.resource()
+2026-03-28T15:47:31+01:00	feat-443	mcp	PR#457	merged	222 insertions	MCP Prompts: 3 prompts via server.prompt()
+2026-03-28T16:21:22+01:00	feat-442	mcp	PR#456	merged	305 insertions	MCP Resources: 4 resources via server.resource()
+2026-03-28T16:21:22+01:00	feat-443	mcp	PR#457	merged	224 insertions	MCP Prompts: 3 prompts via server.prompt()
+2026-03-28T18:03:41+01:00	feat-444	mcp	PR#459	merged	641 insertions	MCP test suite + README docs
+2026-03-28T18:39:29+01:00	fix-458	bug	PR#461	merged	86 insertions	400 INVALID_WORKDIR when workDir missing
+2026-03-28T18:39:35+01:00	fix-458	bug	PR#461	merged	86 insertions	400 INVALID_WORKDIR for non-existent workDir
+2026-03-28T18:40:39+01:00	fix-458	bug	PR#461	merged	86 insertions	400 INVALID_WORKDIR when workDir missing
+2026-03-28T18:55:58+01:00	fix-458	bug	PR#461	merged	86 insertions	workDir validation 400 INVALID_WORKDIR
+2026-03-28T19:10:22+01:00	fix-458	bug	PR#461	merged	workdir validation	Return 400 when workDir does not exist
+2026-03-28T19:25:28+01:00	fix-458	bug	PR#461	merged		return 400 INVALID_WORKDIR when workDir missing
+2026-03-28T19:42:31+01:00	fix-458	bug	PR#461	merged	fix: return 400 INVALID_WORKDIR	workDir validation
+2026-03-28T19:47:48+01:00	fix-458	bug	PR#461	merged	workdir validation	POST /v1/sessions returns 400 when workDir missing
+2026-03-28T19:51:28+01:00	fix-458	bug	PR#461	merged	already-done	workDir validation 400
+2026-03-28T20:27:53+01:00	fix-445	mcp	PR#471	merged	156 insertions	MCP polish — version, auth, errors, graceful degradation
+2026-03-28T20:42:49+01:00	fix-435	security	PR#472	merged	303 insertions	Path traversal fix — validateWorkDir extracted + 23 tests
+2026-03-28T20:50:37+01:00	fix-402	security	PR#473	merged	74 insertions	timingSafeEqual for token comparison
+2026-03-28T21:14:40+01:00	fix-408	security	PR#474	merged	145 insertions	SSE bearer token fallback replaced with retry+backoff
+2026-03-28T21:14:40+01:00	investigate-406	security	comment	N/A	N/A	XSS in MessageBubble — React auto-escapes, not exploitable
+2026-03-29T00:59:19+01:00	chore-462	dx	PR#475	merged	-7486 lines	Cleaned up 23 internal dev artifacts from docs/
+2026-03-29	issue-415	fix: shutdown race condition	PR #490 merged	3 test added, CI green
+2026-03-29	issue-460	repo protection + community files	PR #477 merged	428 additions, dependabot + stale + codeql
+2026-03-29	release	v2.0.0 tag + GitHub Release	https://github.com/OneStepAt4time/aegis/releases/tag/v2.0.0	changelog backfilled
+2026-03-29	issue-476	release automation	release-please + PR title lint	merged
+2026-03-29	dependabot	7 deps merged + 1 open	TS6, vitest, MCP SDK, checkout, setup-node, stale, semantic-pr, codeql	zod 4 CI fail (left open)
+423	fix-423-typecasting	fix: runtime type guards ActivityStream	PR #493	2026-03-29T06:08:00Z	merged	CC session	18 tests, safeStr helper
+416	fix-416-sse-leak	fix: close SSE connection on async unmount	PR #494	2026-03-29T06:35:00Z	merged	CC session + manual fix	AbortController pattern, resolve(undefined) fix
+416	fix-416-sse-leak	fix: close SSE connection on async component unmount	PR #495	2026-03-29T06:30:00Z	merged	CC session + manual push	AbortController pattern
+416	fix-416-sse-leak	fix: SSE connection leak on unmount	PR #494/#495	2026-03-29T06:20:00Z	merged	CC session	cancelled flag pattern, 151 lines tests
+409	fix-409-readfile-sync	fix: async I/O for transcript scanning	PR #496	2026-03-29T06:47:00Z	merged	CC session	65 tests, 4KB buffer
+404	fix-404-monitor-rejections	fix: catch handlers fire-and-forget	PR #497	2026-03-29T06:57:00Z	merged	CC session	347 tests, 353 lines
+406	fix-406-xss-messagebubble	fix: DOMPurify XSS sanitization	PR #498	2026-03-29T07:10:00Z	merged	CC session	70 tests, DOMPurify dep
+403	fix-403-tmux-race	fix: atomic serialize tmux window creation	PR #499	2026-03-29T07:26:00Z	merged	CC session	243 lines, 5 tests, 14m
+405	fix-405-memory-leak	fix: cleanupSession clears tracking maps	PR #500	2026-03-29T07:35:00Z	merged	CC session	308 lines, 14 tests, 9m
+407	fix-407-dashboard-zod	fix: Zod schemas getSessionMessages+getMetrics	PR #501	2026-03-29T07:48:00Z	merged	CC session	193 insertions, 100 tests
+390	fix-390-crash-detection	fix: PID liveness check for crash detection	PR #502	2026-03-29T07:56:00Z	merged	CC session	112 lines, PID check
+2026-03-30T03:00:00Z	security-sweep-413-412-411	#413,#412,#411	PR #565	PR open - awaiting Argus review	tsc:pass,build:pass,test:1699pass	45min,1retry	v2.2.3
+2026-03-30T06:18:00Z	fix-561-prompt-delivery	#561	PR #567	PR open - awaiting Argus review	tsc:pass,build:pass,test:1710pass(+11new)	CC session crash, picked up worktree	v2.2.5
+2026-03-30T11:39:28Z	597	560,562	fix/mcp-kill-stall	merged	2.2.6
+2026-03-31T00:42:43Z	602	397	fix/tmux-crash-recovery	merged	2.3.1
+2026-03-31T00:52:35Z	602	397	fix/tmux-crash-recovery	merged	2.3.0
+2026-04-01T02:00:00Z	issue-585	fix(types): remove double-cast escape hatches	PR #755	accepted	green
+2026-04-01T02:17:00Z	issue-592	fix: restrict permissionMode to known enum values	PR #756	accepted	green
+2026-04-01T02:30:00Z	issue-584	fix(type-safety): replace non-null assertion on getDeadLetterQueue	PR #757	accepted	green
+2026-04-01T02:45:00Z	issue-596	fix(terminal-parser): make spinner search window configurable	PR #758	accepted	green
+2026-04-01T03:03:00Z	issue-591	ci: add bundle size check to CI pipeline	PR #760	accepted	green
+2026-04-01T03:20:00Z	issue-595	refactor: eliminate duplicate route handlers	PR #761	accepted	green
+2026-04-01T03:55:00Z	issue-666	fix: replace as any cast in config env overrides	PR #762	accepted	green
+2026-04-01T04:26:00Z	issue-667	fix: replace unsafe error cast in monitor catch	PR #763	accepted	green
+2026-04-01T04:32:00Z	issue-665	fix: add Zod schema validation for hook request body	PR #764	accepted	green
+2026-04-01T04:32:00Z	issue-668	fix: hydrate sessions with proper Set conversion at load time	PR #765	accepted	green
+2026-04-01T05:12:00Z	issue-689	fix: clean up globalEmitter when subscriber count drops to zero	PR #769	accepted	green
+2026-04-01T06:03:00Z	issue-687	fix: fail copy-dashboard.mjs when dist is missing in publish context	PR #770	accepted	green
+2026-04-01T06:15:00Z	issue-686	fix: remove dead master branch from CodeQL workflow	PR #771	accepted	green
+2026-04-01T06:25:00Z	issue-685	fix: disable sourceMap generation (maps never shipped)	PR #772	accepted	green
+2026-04-01T06:35:00Z	issue-682	fix(security): write auth key store with 0o600 permissions	PR #773	accepted	green
+2026-04-01T06:50:00Z	issue-683	fix(ssrf): block broadcast, multicast, documentation, benchmarking IPs	PR #775	accepted	green
+2026-04-01T07:05:00Z	issue-675	fix(security): eliminate TOCTOU race in readNewEntries	PR #779	accepted	green
+2026-04-01T07:30:00Z	issue-673	fix: validate role query param in transcript endpoint	PR #782	accepted	green
+2026-04-01T07:46:00Z	issue-676	fix: remove redundant includes check in swarm socket discovery	PR #789	accepted	green
+2026-04-01T08:10:00Z	issue-653	fix: use npm ci instead of npm install in build:dashboard	PR #790	accepted	green
+2026-04-01T09:42:00Z	issue-655	fix: add tsc typecheck to publish-npm job in release workflow	PR #791	accepted	green
+2026-04-01T12:06:00Z	issue-648	fix: unpredictable tmp dir + restrictive perms for hook settings	PR #799	accepted	green
+2026-04-01T12:06:00Z	issue-652	fix: add forceConsistentCasingInFileNames and noFallthroughCasesInSwitch to root tsconfig	PR #800	accepted	green
+2026-04-02T18:00:00Z	924	632	fix: auth rate limiting	MERGED	v2.6.1	2h	Rebased, fixed TS conflict with #633, removed orphaned test
+2026-04-02T18:30:00Z	925	625,641,640	fix: metrics+xterm+SSE reconnect	MERGED	v2.6.1	1.5h	Fixed TS narrowing test, fixed reconnect mock timing
+2026-04-02T19:00:00Z	927	564	fix: CC version validation	OPEN	v2.6.1	0.5h	Awaiting Argus review
+2026-04-08T00:09:32Z\tcompetitor-deep-read\t#1314\tcompleted\tDeep reading agent-of-empires source for enterprise features gap analysis. Found: OAuth (Keychain), Docker isolation, profile management. NO: SSO/RBAC/audit/compliance/billing/observability.\t

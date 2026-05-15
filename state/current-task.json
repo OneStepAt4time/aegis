@@ -1,0 +1,8 @@
+{
+  "updated": "2026-05-15T06:14Z",
+  "task": "fix/3429-terminal-content",
+  "status": "PR_OPENED",
+  "issue": 3429,
+  "pr": 3448,
+  "notes": "PR #3448 opened. GET /v1/sessions/:id/terminal/content replaces legacy /pane. Emergency direct impl exception (prompt delivery #3271 broken)."
+}
