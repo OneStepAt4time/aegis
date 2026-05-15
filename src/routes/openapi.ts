@@ -469,7 +469,7 @@ export function registerOpenApiSpec(): void {
 
   registerOpenApiPath({
     method: 'post',
-    path: '/v1/sessions/{id}/approve',
+    path: '/v1/sessions/{id}/approval/approve',
     summary: 'Approve permission request',
     tags: ['Session Actions'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
@@ -478,7 +478,7 @@ export function registerOpenApiSpec(): void {
 
   registerOpenApiPath({
     method: 'post',
-    path: '/v1/sessions/{id}/reject',
+    path: '/v1/sessions/{id}/approval/reject',
     summary: 'Reject permission request',
     tags: ['Session Actions'],
     parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
