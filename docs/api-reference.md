@@ -3481,7 +3481,10 @@ curl -X POST "http://localhost:9100/v1/hooks/Stop?sessionId=<session-uuid>" \
 | Status | Condition |
 |--------|-----------|
 | 400 | Unknown event name, missing session ID, invalid body |
+| 400 | Invalid session ID format (must be UUID) |
+| 401 | No valid session ID provided (must use `X-Session-Id` header or `?sessionId=` query param) |
 | 401 | Invalid hook secret |
+| 401 | Hook secret sent via query param in header-only mode |
 | 404 | Session not found |
 
 ---

@@ -116,6 +116,80 @@ Two hook events require a response body that Claude Code acts on:
 
 All other events receive `{ ok: true }` and are processed asynchronously.
 
+## Quick Reference: curl Examples
+
+All hook calls use the same endpoint pattern. The key differences are the event name in the URL and the response body for decision events.
+
+### Required Headers
+
+| Header | When | Value |
+|--------|------|-------|
+| `X-Session-Id` | Always | UUID of the Aegis session (also accepts `?sessionId=` query param) |
+| `X-Hook-Secret` | If secret is configured | The hook secret for this session |
+| `Content-Type` | Always | `application/json` |
+
+> **Tip:** In local development without a configured secret, omit `X-Hook-Secret`.
+
+### Informational Event (e.g. `Stop`, `SessionStart`)
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/Stop" \
+  -H "X-Session-Id: <session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Response: `{ "ok": true }`
+
+### PreToolUse — Approve a Tool Call
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/PreToolUse" \
+  -H "X-Session-Id: <session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool_name": "Bash",
+    "tool_input": { "command": "npm test" }
+  }'
+```
+
+Aegis evaluates the tool against the session's permission profile and returns:
+
+```json
+{ "decision": "allow" }
+```
+
+Other possible decisions: `"deny"`, `"ask"` (escalate to human).
+
+### PermissionRequest — Handle a Permission Dialog
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/PermissionRequest" \
+  -H "X-Session-Id: <session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool_name": "Write",
+    "tool_input": { "file_path": "/etc/config.yml", "content": "..." }
+  }'
+```
+
+In auto-approve modes, Aegis responds immediately. In manual modes, the request is queued for human review via dashboard or chat channels. The response depends on the session's permission configuration.
+
+### Error Responses
+
+| Status | Error | Fix |
+|--------|-------|-----|
+| `400` | `Missing session ID — provide X-Session-Id header or sessionId query param` | Add `X-Session-Id` header |
+| `400` | `Invalid session ID — must be a UUID` | Check the session UUID format |
+| `400` | `Unknown event name` | Check the event name spelling (see [Event Reference](#complete-event-reference)) |
+| `401` | `Unauthorized — hook endpoint requires valid session ID` | Verify the session UUID exists in Aegis |
+| `401` | `Unauthorized — invalid hook secret` | Check `X-Hook-Secret` matches the session's configured secret |
+| `401` | `Unauthorized — hook secret must be sent via X-Hook-Secret header` | Stop using `?secret=` query param (header-only mode is enabled) |
+| `404` | Session not found | Verify the session UUID is correct and the session hasn't been killed |
+
 ## Configuration
 
 ### Hook Secret
@@ -127,6 +201,18 @@ AEGIS_HOOK_SECRET=your-secret-here ag
 ```
 
 Hooks must include `X-Hook-Secret: your-secret-here` header. Without a configured secret, hooks are accepted without authentication (suitable for local development only).
+
+#### Where to Find Your Hook Secret
+
+Aegis generates a per-session hook secret automatically and injects it into Claude Code's settings. You can retrieve it from the session details:
+
+```bash
+# Get session details (includes hookSecret)
+curl http://localhost:9100/v1/sessions/<session-uuid> \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Look for the `hookSecret` field in the response. This is the value to use in `X-Hook-Secret`.
 
 ### Header-Only Mode
 
