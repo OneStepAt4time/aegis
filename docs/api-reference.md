@@ -1413,9 +1413,9 @@ POST /v1/sessions/:id/send
 
 Sends a text message to the Claude Code session.
 
-**Alias:** `POST /v1/sessions/:id/input` — identical behavior.
+**Aliases:** `POST /v1/sessions/:id/input` and `POST /v1/sessions/:id/prompt` — identical behavior.
 
-> **Note:** There is no `/v1/sessions/:id/prompt` endpoint. Session creation accepts a `prompt` field for the initial message; for follow-up messages, use `/send` or `/input` with the `text` field.
+> **Note:** Session creation accepts a `prompt` field for the initial message; for follow-up messages, use `/send`, `/input`, or `/prompt` with the `text` field.
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions/abc123/send \
