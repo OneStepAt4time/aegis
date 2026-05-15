@@ -209,7 +209,8 @@ export async function registerDashboardStatic(
 
   // #3227: Periodic prune to evict stale IP buckets (mirrors server.ts pattern)
   const pruneInterval = setInterval(() => limiter.prune(), 60_000);
-  pruneInterval.unref();
+  // Guard: some CI/test environments return interval objects without .unref()
+  if (typeof pruneInterval.unref === 'function') pruneInterval.unref();
 
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url ?? '/';
