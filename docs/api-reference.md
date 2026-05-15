@@ -1951,6 +1951,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/approval/approve \
 
 | Status | Condition |
 |--------|------------|
+| 500 | No pending permission request for the given approval ID |
 | 501 | ACP backend not configured |
 
 #### Reject Permission
@@ -1981,6 +1982,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/approval/reject \
 
 | Status | Condition |
 |--------|------------|
+| 500 | No pending permission request for the given approval ID |
 | 501 | ACP backend not configured |
 
 #### Get Pending Approvals

@@ -33,6 +33,7 @@ import type {
 } from './types.js';
 
 const DEFAULT_PROTOCOL_VERSION = 1;
+const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
 const PACKAGE_VERSION = readPackageVersion();
 
 export interface AcpBackendClient {
@@ -435,8 +436,7 @@ export class AcpBackend {
     } catch (err) {
       // Issue #3223: Log timeout details for BYO-LLM proxy diagnosis
       if (err instanceof Error && err.message.includes('timed out')) {
-        const timeoutMs = this.options.jsonRpcClientOptions?.requestTimeoutMs ?? 60_000;
-        console.warn(`[ACP prompt timeout] session=${sessionId} method=session/prompt timeout=${timeoutMs}ms`);
+        console.warn(`[ACP prompt timeout] session=${sessionId} method=session/prompt notify=true`);
       }
       return { delivered: false, attempts: 1, error: (err as Error).message };
     } finally {
@@ -814,12 +814,15 @@ export class AcpBackend {
       const response = await runtime.client.request<AcpJsonValue>('session/prompt', {
         sessionId: acpSessionId,
         prompt: [{ type: 'text', text }],
-      });
+      }, { timeoutMs: ACP_PROMPT_REQUEST_TIMEOUT_MS });
       await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'run_completed',
       });
       return { resultMetadata: primitiveResultMetadata(response.result) };
     } catch (error) {
+      if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {
+        console.warn(`[ACP prompt timeout] session=${sessionId} action=${action.actionId} method=session/prompt timeout=${ACP_PROMPT_REQUEST_TIMEOUT_MS}ms`);
+      }
       await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'runtime_failed',
       });
