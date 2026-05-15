@@ -22,6 +22,11 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import {
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+} from '../utils/chartTheme';
+
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
@@ -353,23 +358,23 @@ export default function CostPage() {
           <ChartFrame className="h-64 min-w-0" label={t("cost.loadingDailySpend")}>
             {({ width, height }) => (
               <BarChart width={width} height={height} data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   tickFormatter={(value) => `$${value.toFixed(2)}`}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
                   dataKey="estimatedCostUsd"
                   name={t("cost.dailyCost")}
-                  fill="var(--color-accent-cyan)"
+                  fill={CHART_COLORS.cyan}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

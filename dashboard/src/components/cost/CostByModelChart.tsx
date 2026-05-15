@@ -16,6 +16,11 @@ import {
 } from 'recharts';
 import { formatCurrency } from '../../utils/formatNumber';
 import { ChartFrame } from '../shared/ChartFrame';
+import {
+  MODEL_COLORS as THEME_MODEL_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export interface CostByModelDataPoint {
   model: string;
@@ -28,14 +33,7 @@ export interface CostByModelChartProps {
   className?: string;
 }
 
-const MODEL_COLORS: Record<string, string> = {
-  'claude-opus-4.7': 'var(--color-accent-purple)',
-  'claude-sonnet-4.6': 'var(--color-accent-cyan)',
-  'claude-haiku-4.5': 'var(--color-success)',
-  'gpt-5.4': 'var(--color-warning)',
-  'gpt-4.1': 'var(--color-info)',
-  other: 'var(--color-text-muted)',
-};
+const MODEL_COLORS = THEME_MODEL_COLORS;
 
 const MOCK_DATA: CostByModelDataPoint[] = [
   { model: 'claude-opus-4.7', cost: 47.82 },
@@ -52,7 +50,7 @@ function CustomTooltip({ active, payload }: {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
+    <div className={TOOLTIP_STYLE.container}>
       <p className="mb-1 text-xs font-mono text-[var(--color-text-muted)]">
         {point.model}
       </p>
@@ -128,22 +126,22 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
       <ChartFrame className="h-64 min-w-0" label="Cost by model chart loading">
         {({ width, height }) => (
           <BarChart width={width} height={height} data={chartData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" horizontal={false} />
+            <CartesianGrid {...CHART_GRID} horizontal={false} />
             <XAxis
               type="number"
               tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <YAxis
               type="category"
               dataKey="model"
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
               width={120}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="cost" radius={[0, 4, 4, 0]} animationDuration={500}>
+            <Bar dataKey="cost" radius={[0, 4, 4, 0]} animationDuration={CHART_ANIMATION.duration}>
               {chartData.map((entry) => (
                 <Cell
                   key={entry.model}

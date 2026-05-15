@@ -17,6 +17,11 @@ import {
 import { formatCompact } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
 import { ChartFrame } from '../shared/ChartFrame';
+import {
+  TOKEN_COLORS as THEME_TOKEN_COLORS, TOKEN_LABELS as THEME_TOKEN_LABELS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_BAR_RADIUS, TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export interface TokenBreakdownDataPoint {
   date: string;
@@ -32,19 +37,9 @@ export interface TokenBreakdownChartProps {
   className?: string;
 }
 
-const TOKEN_COLORS = {
-  inputTokens: 'var(--color-accent-cyan)',
-  outputTokens: 'var(--color-accent-purple)',
-  cacheReadTokens: 'var(--color-success)',
-  cacheWriteTokens: 'var(--color-warning)',
-} as const;
+const TOKEN_COLORS = THEME_TOKEN_COLORS;
 
-const TOKEN_LABELS: Record<string, string> = {
-  inputTokens: 'Input',
-  outputTokens: 'Output',
-  cacheReadTokens: 'Cache Read',
-  cacheWriteTokens: 'Cache Write',
-};
+const TOKEN_LABELS = THEME_TOKEN_LABELS;
 
 function generateMockData(days: number): TokenBreakdownDataPoint[] {
   const today = new Date();
@@ -71,16 +66,16 @@ function CustomTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">
+    <div className={TOOLTIP_STYLE.container}>
+      <p className={TOOLTIP_STYLE.label}>
         {label ? formatDateShort(label) : ''}
       </p>
       {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-4 text-xs">
-          <span className="text-[var(--color-text-muted)]">
+        <div key={index} className={TOOLTIP_STYLE.row}>
+          <span className={TOOLTIP_STYLE.rowLabel}>
             {TOKEN_LABELS[entry.name] ?? entry.name}:
           </span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
+          <span className={TOOLTIP_STYLE.rowValue}>
             {formatCompact(entry.value)}
           </span>
         </div>
@@ -159,24 +154,24 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
       <ChartFrame className="h-72 min-w-0" label="Token breakdown chart loading">
         {({ width, height }) => (
           <BarChart width={width} height={height} data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+            <CartesianGrid {...CHART_GRID} />
             <XAxis
               dataKey="date"
               tickFormatter={formatDateShort}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <YAxis
               tickFormatter={(v: number) => formatCompact(v)}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              stroke="var(--color-void-lighter)"
+              tick={CHART_TICK}
+              {...CHART_AXIS}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend content={<CustomLegend />} />
             <Bar dataKey="inputTokens" stackId="tokens" fill={TOKEN_COLORS.inputTokens} radius={[0, 0, 0, 0]} />
             <Bar dataKey="outputTokens" stackId="tokens" fill={TOKEN_COLORS.outputTokens} />
             <Bar dataKey="cacheReadTokens" stackId="tokens" fill={TOKEN_COLORS.cacheReadTokens} />
-            <Bar dataKey="cacheWriteTokens" stackId="tokens" fill={TOKEN_COLORS.cacheWriteTokens} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="cacheWriteTokens" stackId="tokens" fill={TOKEN_COLORS.cacheWriteTokens} radius={CHART_BAR_RADIUS} />
           </BarChart>
         )}
       </ChartFrame>

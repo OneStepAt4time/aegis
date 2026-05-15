@@ -15,6 +15,11 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import {
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+} from '../utils/chartTheme';
+
 import { getMetricsAggregate, type AggregateMetricsResponse } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useT } from '../i18n/context';
@@ -267,31 +272,31 @@ export default function MetricsPage() {
           <ChartFrame className="h-64 min-w-0" label="Loading sessions and cost chart">
             {({ width, height }) => (
               <BarChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   yAxisId="sessions"
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   yAxisId="cost"
                   orientation="right"
                   tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
                   yAxisId="sessions"
                   dataKey="sessions"
                   name="Sessions"
-                  fill="var(--color-accent-cyan)"
+                  fill={CHART_COLORS.cyan}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -309,24 +314,24 @@ export default function MetricsPage() {
           <ChartFrame className="h-48 min-w-0" label="Loading token cost trend chart">
             {({ width, height }) => (
               <LineChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="tokenCostUsd"
                   name="Token Cost"
-                  stroke="var(--color-accent-purple)"
+                  stroke={CHART_COLORS.purple}
                   strokeWidth={2}
                   dot={false}
                 />
