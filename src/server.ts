@@ -11,7 +11,8 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
-import { watch, type FSWatcher } from 'node:fs';
+import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
+import { homedir } from 'node:os';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -930,6 +931,23 @@ async function main(): Promise<void> {
   container.register('authManager', auth, {
     start: async () => {
       await auth.load();
+      // #3356/#3484: Detect an orphaned ~/.aegis/auth-token whose content no
+      // longer matches any registered key. CLI usage via that file will fail
+      // silently otherwise.
+      const clientTokenFile = path.join(homedir(), '.aegis', 'auth-token');
+      if (existsSync(clientTokenFile)) {
+        try {
+          const fileToken = readFileSync(clientTokenFile, 'utf-8').trim();
+          if (fileToken && !auth.checkClientToken(fileToken).matched) {
+            console.warn(
+              `[auth] ${clientTokenFile} contains a token that does not match any registered key — ` +
+              `CLI auth via that file will fail. Run 'ag init' to refresh or delete the file.`,
+            );
+          }
+        } catch {
+          // Unreadable — ignore, the CLI will surface its own auth error.
+        }
+      }
     },
     stop: async () => {},
     health: async () => ({ healthy: auth.isHealthy(), details: auth.isHealthy() ? undefined : "keys.json missing — state dir may have been wiped" }),
