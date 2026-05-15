@@ -36,7 +36,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/escape` | Bearer | Send Escape key |
 | `POST` | `/v1/sessions/{id}/interrupt` | Bearer | Send Ctrl+C (interrupt) |
 | `DELETE` | `/v1/sessions/{id}` | Bearer | Kill session |
-| `GET` | `/v1/sessions/{id}/pane` | Bearer | Capture raw terminal pane (tmux only — returns 501 in ACP mode) |
+| `GET` | `/v1/sessions/{id}/terminal/content` | Bearer | Get terminal content snapshot (ACP terminal bridge; graceful empty when unavailable) |
 | `GET` | `/v1/sessions/{id}/children` | Bearer | Get child sessions |
 | `POST` | `/v1/sessions/{id}/spawn` | Bearer | Spawn a child session |
 | `POST` | `/v1/sessions/{id}/fork` | Bearer | Fork the session |
@@ -72,6 +72,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 
 | Method | Path | Auth | Summary |
 |--------|------|------|--------|
+| `GET` | `/v1/sessions/{id}/terminal/content` | Bearer | Get terminal content snapshot (ACP terminal bridge) |
 | `POST` | `/v1/sessions/{id}/terminal/open` | Bearer | Open terminal session |
 | `POST` | `/v1/sessions/{id}/terminal/input` | Bearer | Send terminal input |
 | `POST` | `/v1/sessions/{id}/terminal/resize` | Bearer | Resize terminal |
