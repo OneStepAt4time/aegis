@@ -19,9 +19,18 @@ import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
+import {
+  LearningType,
+  LearningSource,
+  isValidLearningKey,
+  isValidConfidence,
+  isRelativePath,
+  KEY_MIN_WORDS,
+  KEY_MAX_WORDS,
+  AUTO_CAPTURE_CONFIDENCE_GATE,
+} from './learnings-common.js';
 
-export type LearningType = 'pattern' | 'pitfall' | 'preference' | 'architecture' | 'tool';
-export type LearningSource = 'auto' | 'agent-stated' | 'user-stated' | 'human-correction';
+// Types imported from learnings-common.ts
 
 export interface StructuredLearning {
   key: string;          // 2-5 word kebab-case identifier
@@ -51,22 +60,9 @@ export interface LearningsQuery {
 }
 
 const LEARNINGS_DIR = join(homedir(), '.aegis', 'learnings');
-const KEY_MIN_WORDS = 2;
-const KEY_MAX_WORDS = 5;
-const AUTO_CAPTURE_CONFIDENCE_GATE = 7;
+// KEY_MIN_WORDS, KEY_MAX_WORDS, AUTO_CAPTURE_CONFIDENCE_GATE imported from learnings-common.ts
 
-function isValidLearningKey(key: string): boolean {
-  const words = key.split('-');
-  return words.length >= KEY_MIN_WORDS && words.length <= KEY_MAX_WORDS && /^[a-z0-9-]+$/.test(key);
-}
-
-function isValidConfidence(confidence: number): boolean {
-  return Number.isInteger(confidence) && confidence >= 1 && confidence <= 10;
-}
-
-function isRelativePath(path: string): boolean {
-  return !path.startsWith('/') && !path.startsWith('\\') && !path.includes('..');
-}
+// Validation functions imported from learnings-common.ts
 
 export function isStructuredLearning(value: unknown): value is StructuredLearning {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -196,8 +192,9 @@ export class ProjectLearningsStore {
 
   /**
    * Query learnings with filtering and scoring.
+   * @param opts.skipStaleCheck — skip the existsSync() staleness check for performance
    */
-  query(query: LearningsQuery): LearningSearchResult[] {
+  query(query: LearningsQuery, opts?: { skipStaleCheck?: boolean }): LearningSearchResult[] {
     const results: LearningSearchResult[] = [];
     for (const entry of this.entries) {
       let score = 0;
@@ -218,7 +215,7 @@ export class ProjectLearningsStore {
       if (query.tag && !entry.tags?.includes(query.tag)) continue;
 
       // Staleness check (skip stale entries unless explicitly requested)
-      if (!query.stale && entry.files && entry.files.length > 0) {
+      if (!query.stale && !opts?.skipStaleCheck && entry.files && entry.files.length > 0) {
         const hasStaleFiles = entry.files.some(f => !existsSync(f));
         if (hasStaleFiles) continue;
       }
