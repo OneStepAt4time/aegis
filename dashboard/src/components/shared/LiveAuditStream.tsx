@@ -75,7 +75,7 @@ export default function LiveAuditStream() {
       {/* Header */}
       <div className="shrink-0 border-b border-white/5 px-4 py-3 flex items-center gap-2">
         <Activity className="h-4 w-4 text-[var(--color-accent-cyan)]" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Live Stream</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Live Stream</span>
         {sseConnected && (
           <span className="ml-auto h-2 w-2 rounded-full bg-[var(--color-success)] shadow-[0_0_6px_var(--color-success)]" />
         )}

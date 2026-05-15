@@ -49,12 +49,12 @@ function actionIcon(action: string): typeof CheckCircle {
 function actionColor(action: string): string {
   const a = action.toLowerCase();
   if (a.includes('approve') || a.includes('permission_granted'))
-    return 'text-green-400';
+    return 'text-[var(--color-success)]';
   if (a.includes('reject') || a.includes('deny') || a.includes('permission_denied'))
-    return 'text-red-400';
+    return 'text-[var(--color-danger)]';
   if (a.includes('prompt') || a.includes('request'))
-    return 'text-amber-400';
-  return 'text-slate-400';
+    return 'text-[var(--color-warning)]';
+  return 'text-[var(--color-text-muted)]';
 }
 
 function actionBg(action: string): string {
@@ -83,7 +83,7 @@ export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProp
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-900/30 bg-red-950/20 p-4 text-red-400 text-sm">
+      <div className="rounded-lg border border-red-900/30 bg-red-950/20 p-4 text-[var(--color-danger)] text-sm">
         Failed to load audit trail: {error}
       </div>
     );

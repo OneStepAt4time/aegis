@@ -38,12 +38,12 @@ export function ApprovalBanner({
 
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.98, background: 'rgba(245, 158, 11, 0.05)' }}
+      initial={{ opacity: 0, scale: 0.98, background: 'rgba(var(--color-warning-rgb, 245,158,11), 0.05)' }}
       animate={{ 
         opacity: 1, 
         scale: 1,
-        boxShadow: ['0 0 0px rgba(245, 158, 11, 0)', '0 0 15px rgba(245, 158, 11, 0.2)', '0 0 0px rgba(245, 158, 11, 0)'],
-        borderColor: ['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.5)', 'rgba(245, 158, 11, 0.2)']
+        boxShadow: ['0 0 0px rgba(var(--color-warning-rgb, 245,158,11), 0)', '0 0 15px rgba(var(--color-warning-rgb, 245,158,11), 0.2)', '0 0 0px rgba(var(--color-warning-rgb, 245,158,11), 0)'],
+        borderColor: ['rgba(var(--color-warning-rgb, 245,158,11), 0.2)', 'rgba(var(--color-warning-rgb, 245,158,11), 0.5)', 'rgba(var(--color-warning-rgb, 245,158,11), 0.2)']
       }}
       transition={{ 
         boxShadow: { repeat: Infinity, duration: 3, ease: 'easeInOut' },
@@ -100,7 +100,7 @@ export function ApprovalBanner({
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={onReject}
-          className="min-h-[44px] rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold tracking-wide text-red-400 transition-colors hover:bg-red-500/20 hover:border-red-500/50"
+          className="min-h-[44px] rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-4 py-2 text-xs font-semibold tracking-wide text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20 hover:border-[var(--color-danger)]/50"
         >
           REJECT
         </motion.button>

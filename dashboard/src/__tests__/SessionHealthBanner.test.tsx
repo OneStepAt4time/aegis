@@ -111,13 +111,13 @@ describe('SessionHealthDot', () => {
     expect(screen.getByText('12.0% failure rate')).toBeTruthy();
     const dot = document.querySelector('.animate-pulse');
     expect(dot).toBeTruthy();
-    expect(dot?.className).toContain('bg-yellow-500');
+    expect(dot?.className).toContain('bg-[var(--color-warning)]');
   });
 
   it('renders pulsing dot with critical color at 94.5%', () => {
     render(<SessionHealthDot errorRates={mockCriticalRates} loading={false} />);
     expect(screen.getByText('94.5% failure rate')).toBeTruthy();
     const dot = document.querySelector('.animate-pulse');
-    expect(dot?.className).toContain('bg-red-500');
+    expect(dot?.className).toContain('bg-[var(--color-danger)]');
   });
 });

@@ -236,7 +236,7 @@ export default function MetricsPage() {
 
       {/* Anomaly alerts */}
       {data && data.anomalies?.length > 0 && (
-        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" aria-label={t("aria.anomalousSessions")}>
+        <section className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-4" aria-label={t("aria.anomalousSessions")}>
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
             <div>
@@ -249,7 +249,7 @@ export default function MetricsPage() {
               <div className="mt-2 space-y-1">
                 {data.anomalies.map((a) => (
                   <div key={a.sessionId} className="flex items-center gap-2 text-xs">
-                    <span className="inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-amber-200">
+                    <span className="inline-flex rounded bg-[var(--color-warning)]/20 px-1.5 py-0.5 font-mono text-amber-200">
                       {a.sessionId.slice(0, 12)}
                     </span>
                     <span className="text-amber-300/80">

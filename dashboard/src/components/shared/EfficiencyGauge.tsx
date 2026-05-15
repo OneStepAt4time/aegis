@@ -41,12 +41,12 @@ function getEfficiencyGradient(ratio: number, thresholds: [number, number]): str
   const [, high] = thresholds;
 
   if (ratio >= high) {
-    return 'linear-gradient(90deg, rgba(34,197,94,0.6), rgba(34,197,94,1))'; // token-ok
+    return 'linear-gradient(90deg, rgba(var(--color-success-rgb, 34,197,94), 0.6), rgba(var(--color-success-rgb, 34,197,94), 1))'; // token-ok
   }
   if (ratio >= thresholds[0]) {
-    return 'linear-gradient(90deg, rgba(234,179,8,0.6), rgba(234,179,8,1))'; // token-ok
+    return 'linear-gradient(90deg, rgba(var(--color-warning-rgb, 234,179,8), 0.6), rgba(var(--color-warning-rgb, 234,179,8), 1))'; // token-ok
   }
-  return 'linear-gradient(90deg, rgba(239,68,68,0.6), rgba(239,68,68,1))'; // token-ok
+  return 'linear-gradient(90deg, rgba(var(--color-danger-rgb, 239,68,68), 0.6), rgba(var(--color-danger-rgb, 239,68,68), 1))'; // token-ok
 }
 
 export function EfficiencyGauge({

@@ -50,7 +50,7 @@ import { useT } from '../i18n/context';
 function TabLoadingFallback() {
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-accent)]" />
     </div>
   );
 }
@@ -747,7 +747,7 @@ export default function SessionDetailPage() {
                   />
                   </Suspense>
                   {timelineError && (
-                    <div className="absolute bottom-2 left-2 right-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                    <div className="absolute bottom-2 left-2 right-2 rounded-md bg-[var(--color-danger)]/10 px-3 py-2 text-xs text-[var(--color-danger)]">
                       {timelineError}
                       <button
                         type="button"

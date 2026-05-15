@@ -157,7 +157,7 @@ export function NewSessionDrawer() {
               {/* Work Directory */}
               <div>
                 <label htmlFor="drawer-workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Working Directory <span className="text-red-400">*</span>
+                  Working Directory <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   ref={firstInputRef}

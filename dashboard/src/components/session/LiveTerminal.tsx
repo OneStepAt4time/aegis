@@ -60,7 +60,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
         foreground: 'var(--color-success)',
         cursor: 'var(--color-success)',
         cursorAccent: 'var(--color-void-deep)',
-        selectionBackground: 'rgba(59, 130, 246, 0.25)',
+        selectionBackground: 'rgba(var(--color-accent-rgb, 59,130,246), 0.25)',
       },
       convertEol: true,
       scrollback: 1000,
@@ -197,7 +197,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
               className="w-1.5 h-1.5 rounded-full"
               style={{
                 backgroundColor: isConnected ? 'var(--color-accent)' : connectionState === 'reconnecting' ? 'var(--color-warning)' : '#666',
-                boxShadow: isConnected ? '0 0 4px rgba(59, 130, 246, 0.25)' : 'none',
+                boxShadow: isConnected ? '0 0 4px rgba(var(--color-accent-rgb, 59,130,246), 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             />

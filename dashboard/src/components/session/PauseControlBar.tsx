@@ -86,12 +86,12 @@ export function PauseControlBar({
     >
       {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-2 rounded bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
+        <div className="flex items-center gap-2 rounded bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
             <button type="button"
               onClick={onClearError}
-              className="text-red-400 hover:text-red-300"
+              className="text-[var(--color-danger)] hover:text-red-300"
               aria-label={t("aria.dismissError")}
             >
               ✕
@@ -107,7 +107,7 @@ export function PauseControlBar({
             <button type="button"
               onClick={() => setShowPauseForm(true)}
               disabled={!canAct}
-              className="flex items-center gap-2 rounded-md bg-amber-500/20 px-3 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 rounded-md bg-[var(--color-warning)]/20 px-3 py-2 text-sm font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label={t("aria.pauseSession")}
             >
               <Pause className="h-4 w-4" />
@@ -126,14 +126,14 @@ export function PauseControlBar({
                   onChange={(e) => setPauseReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handlePause()}
                   placeholder="e.g., security review needed"
-                  className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-amber-500/50 focus:outline-none"
+                  className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-warning)]/50 focus:outline-none"
                   autoFocus
                 />
               </div>
               <button type="button"
                 onClick={handlePause}
                 disabled={!pauseReason.trim() || isLoading}
-                className="flex items-center gap-1 rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md bg-[var(--color-warning)] px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-[var(--color-warning)] disabled:opacity-50"
                 aria-label={t("aria.confirmPause")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
@@ -154,13 +154,13 @@ export function PauseControlBar({
       {/* Paused state — intervene or resume */}
       {isPaused && (
         <div className="flex items-center gap-2">
-          <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-400">
+          <span className="rounded bg-[var(--color-warning)]/20 px-2 py-1 text-xs font-medium text-[var(--color-warning)]">
             Paused
           </span>
           <button type="button"
             onClick={() => onIntervene?.()}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50"
             aria-label={t("aria.startIntervention")}
           >
             <Hand className="h-4 w-4" />
@@ -169,7 +169,7 @@ export function PauseControlBar({
           <button type="button"
             onClick={() => onResume?.()}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-success)]/20 px-3 py-2 text-sm font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/30 disabled:opacity-50"
             aria-label={t("aria.resumeSession")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -182,14 +182,14 @@ export function PauseControlBar({
       {isIntervening && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-400">
+            <span className="rounded bg-[var(--color-accent)]/20 px-2 py-1 text-xs font-medium text-[var(--color-accent)]">
               Intervening
             </span>
             {!showGuidanceForm && (
               <button type="button"
                 onClick={() => setShowGuidanceForm(true)}
                 disabled={!canAct}
-                className="flex items-center gap-2 rounded-md bg-blue-500/20 px-3 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50"
                 aria-label={t("aria.completeWithGuidance")}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -208,7 +208,7 @@ export function PauseControlBar({
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
                 placeholder="Provide instructions for the agent to follow after resuming..."
-                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-blue-500/50 focus:outline-none resize-y"
+                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-accent)]/50 focus:outline-none resize-y"
                 rows={3}
                 autoFocus
               />
@@ -216,7 +216,7 @@ export function PauseControlBar({
                 <button type="button"
                   onClick={handleComplete}
                   disabled={isLoading}
-                  className="flex items-center gap-1 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent)] disabled:opacity-50"
                   aria-label={t("aria.submitGuidance")}
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -237,7 +237,7 @@ export function PauseControlBar({
             <button type="button"
               onClick={() => onResume?.()}
               disabled={!canAct}
-              className="flex items-center gap-2 self-start rounded-md bg-green-500/20 px-3 py-2 text-sm font-medium text-green-400 transition-colors hover:bg-green-500/30 disabled:opacity-50"
+              className="flex items-center gap-2 self-start rounded-md bg-[var(--color-success)]/20 px-3 py-2 text-sm font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/30 disabled:opacity-50"
               aria-label={t("aria.resumeWithoutGuidance")}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}

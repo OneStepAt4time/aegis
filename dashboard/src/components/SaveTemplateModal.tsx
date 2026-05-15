@@ -114,7 +114,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="p-3 rounded bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 text-[var(--color-danger)] text-sm">
               {error}
             </div>
           )}

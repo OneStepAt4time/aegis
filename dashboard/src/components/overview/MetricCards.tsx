@@ -86,7 +86,7 @@ export default function MetricCards() {
 
   if (loadError && !metrics && !health) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200">
+      <div className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-6 text-sm text-amber-200">
         {loadError}
       </div>
     );
@@ -151,13 +151,13 @@ export default function MetricCards() {
       {failedSessions > 0 && (
         <div className="card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col gap-2">
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
-            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertTriangle className="h-4 w-4 text-[var(--color-danger)]" />
             Failed Sessions
           </div>
-          <p className="font-mono text-2xl text-red-400 font-bold">{failedSessions}</p>
+          <p className="font-mono text-2xl text-[var(--color-danger)] font-bold">{failedSessions}</p>
           <NavLink
             to="/audit"
-            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors"
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-danger)] hover:text-red-300 transition-colors"
           >
             <ExternalLink className="h-3 w-3" />
             View Error Logs
@@ -196,7 +196,7 @@ export default function MetricCards() {
                 )}
                 {promptsFailed > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-red-400">{promptsFailed}</p>
+                    <p className="text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Failed</p>
                   </div>
                 )}

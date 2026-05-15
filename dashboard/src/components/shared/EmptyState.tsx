@@ -35,13 +35,13 @@ export default function EmptyState({
       titleColor: 'text-[var(--color-text-primary)]',
     },
     'empty-error': {
-      container: 'border border-red-500/20 bg-red-500/5',
-      iconBg: 'bg-red-500/10',
+      container: 'border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/5',
+      iconBg: 'bg-[var(--color-danger)]/10',
       titleColor: 'text-red-300',
     },
     'feature-unavailable': {
-      container: 'border border-amber-500/20 bg-amber-500/5',
-      iconBg: 'bg-amber-500/10',
+      container: 'border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5',
+      iconBg: 'bg-[var(--color-warning)]/10',
       titleColor: 'text-amber-300',
     },
   };

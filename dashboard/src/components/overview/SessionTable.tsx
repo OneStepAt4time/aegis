@@ -442,7 +442,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
   if (loadError && sessions.length === 0) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6">
+      <div className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-amber-200">{loadError}</p>
           <button
@@ -549,7 +549,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 : ` of ${pagination.total} session${pagination.total === 1 ? '' : 's'}`}
             </div>
             {searchCapped && (
-              <div className="mt-1 text-amber-400">
+              <div className="mt-1 text-[var(--color-warning)]">
                 Search scans the first {SEARCH_SCAN_LIMIT} sessions in the selected status.
               </div>
             )}
@@ -614,7 +614,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
            <div className="w-64 h-3 bg-white/5 rounded-full" />
         </div>
       ) : sessions.length === 0 ? (
-        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]">
+        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
           {/* Ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
@@ -627,7 +627,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
             {hasActiveFilters ? 'No Matching Directives' : 'Agent Standby Mode'}
           </h3>
-          <p className="relative z-10 max-w-sm text-sm text-[var(--color-text-muted)] dark:text-slate-400 leading-relaxed mb-6">
+          <p className="relative z-10 max-w-sm text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] leading-relaxed mb-6">
             {hasActiveFilters
               ? 'No sessions match your current filter. Try broadening the search scope.'
               : 'The orchestrator is online. No agents are currently deployed.'}
@@ -638,7 +638,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('aegis:create-session'))}
-                className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:bg-[var(--color-accent-cyan)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95"
               >
                 <span className="text-base leading-none">⊕</span>
                 Deploy New Agent
@@ -651,12 +651,12 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <button
                 type="button"
                 onClick={handleSurpriseMe}
-                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-4 py-2 text-sm font-medium text-cyan-300 transition-all hover:bg-cyan-500/10 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/5 px-4 py-2 text-sm font-medium text-cyan-300 transition-all hover:bg-[var(--color-accent-cyan)]/10 active:scale-95"
               >
                 <Sparkles className="h-4 w-4" />
                 Surprise me
               </button>
-              <code className="mt-2 px-4 py-2 font-mono text-xs text-cyan-300/70 bg-cyan-950/20 border border-cyan-900/40 rounded-lg">
+              <code className="mt-2 px-4 py-2 font-mono text-xs text-cyan-300/70 bg-[var(--color-accent-cyan)]/20 border border-cyan-900/40 rounded-lg">
                 $ ag create "brief"
               </code>
             </div>

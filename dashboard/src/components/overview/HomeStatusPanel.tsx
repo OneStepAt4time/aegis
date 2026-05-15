@@ -37,8 +37,8 @@ function getErrorMessage(prefix: string, error: unknown): string {
 function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCardProps) {
   const toneStyles: Record<StatusTone, { border: string; icon: string; value: string }> = {
     blue: {
-      border: 'border-cyan-500/20',
-      icon: 'text-cyan-400',
+      border: 'border-[var(--color-accent-cyan)]/20',
+      icon: 'text-[var(--color-accent-cyan)]',
       value: 'text-cyan-300',
     },
     green: {
@@ -47,13 +47,13 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
       value: 'text-emerald-300',
     },
     amber: {
-      border: 'border-amber-500/20',
-      icon: 'text-amber-400',
+      border: 'border-[var(--color-warning)]/20',
+      icon: 'text-[var(--color-warning)]',
       value: 'text-amber-300',
     },
     red: {
-      border: 'border-red-500/40 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.15),0_20px_40px_-15px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-red-500/20',
-      icon: 'text-red-400',
+      border: 'border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 shadow-[0_0_20px_rgba(239,68,68,0.15),0_20px_40px_-15px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-[var(--color-danger)]/20',
+      icon: 'text-[var(--color-danger)]',
       value: 'text-red-300',
     },
   };
@@ -89,7 +89,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
             type="button"
             onClick={actionButton.onClick}
             className={`ml-11 sm:ml-14 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-              tone === 'red' ? 'text-red-400 hover:text-red-300' : 'text-amber-400 hover:text-amber-300'
+              tone === 'red' ? 'text-[var(--color-danger)] hover:text-red-300' : 'text-[var(--color-warning)] hover:text-amber-300'
             }`}
           >
             <ExternalLink className="h-3 w-3" />
@@ -247,7 +247,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
       </div>
 
       {showFirstSessionCta && (
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+        <div className="rounded-xl border border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Create your first session</h3>
@@ -258,7 +258,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
             <button
               type="button"
               onClick={onCreateFirstSession}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-400 px-4 py-2.5 text-sm font-medium text-slate-950 transition-opacity hover:opacity-90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2.5 text-sm font-medium text-slate-950 transition-opacity hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
               Create first session

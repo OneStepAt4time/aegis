@@ -78,15 +78,15 @@ function buildTimeline(record: AcpPauseInterventionRecord): TimelineEntry[] {
 }
 
 const TONE_STYLES = {
-  amber: 'border-amber-500/30 bg-amber-500/5',
-  blue: 'border-blue-500/30 bg-blue-500/5',
-  green: 'border-green-500/30 bg-green-500/5',
+  amber: 'border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5',
+  blue: 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5',
+  green: 'border-[var(--color-success)]/30 bg-[var(--color-success)]/5',
 } as const;
 
 const TONE_ICON_STYLES = {
-  amber: 'text-amber-400',
-  blue: 'text-blue-400',
-  green: 'text-green-400',
+  amber: 'text-[var(--color-warning)]',
+  blue: 'text-[var(--color-accent)]',
+  green: 'text-[var(--color-success)]',
 } as const;
 
 export function InterventionHistoryPanel({ sessionId }: InterventionHistoryPanelProps) {

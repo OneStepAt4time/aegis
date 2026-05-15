@@ -23,14 +23,14 @@ const CATEGORY_CONFIG: Record<AcpTimelineCategory, {
   color: string;
   dotColor: string;
 }> = {
-  driver:       { label: 'Driver',       icon: User,          color: 'text-blue-400',          dotColor: 'bg-blue-400' },
+  driver:       { label: 'Driver',       icon: User,          color: 'text-[var(--color-accent)]',          dotColor: 'bg-[var(--color-accent-cyan)]' },
   prompt:       { label: 'Prompt',       icon: Terminal,      color: 'text-[var(--color-text-primary)]', dotColor: 'bg-[var(--color-text-primary)]' },
-  tool:         { label: 'Tool',         icon: Wrench,        color: 'text-amber-400',         dotColor: 'bg-amber-400' },
+  tool:         { label: 'Tool',         icon: Wrench,        color: 'text-[var(--color-warning)]',         dotColor: 'bg-[var(--color-warning)]' },
   approval:     { label: 'Approval',     icon: Shield,        color: 'text-emerald-400',       dotColor: 'bg-emerald-400' },
   session:      { label: 'Session',      icon: Pause,         color: 'text-[var(--color-text-muted)]', dotColor: 'bg-[var(--color-text-muted)]' },
-  intervention: { label: 'Intervention', icon: AlertTriangle, color: 'text-orange-400',        dotColor: 'bg-orange-400' },
+  intervention: { label: 'Intervention', icon: AlertTriangle, color: 'text-[var(--color-warning)]',        dotColor: 'bg-[var(--color-warning)]' },
   system:       { label: 'System',       icon: Server,        color: 'text-[var(--color-text-muted)]', dotColor: 'bg-[var(--color-text-muted)]' },
-  error:        { label: 'Error',        icon: AlertTriangle, color: 'text-red-400',           dotColor: 'bg-red-400' },
+  error:        { label: 'Error',        icon: AlertTriangle, color: 'text-[var(--color-danger)]',           dotColor: 'bg-[var(--color-danger)]' },
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_CONFIG) as AcpTimelineCategory[];
@@ -120,7 +120,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
             {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
           </span>
           {errorCount > 0 && (
-            <span className="text-xs text-red-400 font-medium">
+            <span className="text-xs text-[var(--color-danger)] font-medium">
               {errorCount} error{errorCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -238,7 +238,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
                     {details.durationMs !== undefined && (
                       <div className="flex gap-2 pt-1 border-t border-[var(--color-void-lighter)]">
                         <span className="text-[var(--color-text-muted)]">duration:</span>
-                        <span className="text-amber-400 font-mono">{(Number(details.durationMs) / 1000).toFixed(1)}s</span>
+                        <span className="text-[var(--color-warning)] font-mono">{(Number(details.durationMs) / 1000).toFixed(1)}s</span>
                       </div>
                     )}
                   </div>

@@ -39,16 +39,16 @@ function formatTokens(n: number): string {
 
 function getUsageColor(percentage: number): string {
   if (percentage < 0.5) return 'bg-emerald-500';
-  if (percentage < 0.75) return 'bg-yellow-500';
-  if (percentage < 0.9) return 'bg-orange-500';
-  return 'bg-red-500';
+  if (percentage < 0.75) return 'bg-[var(--color-warning)]';
+  if (percentage < 0.9) return 'bg-[var(--color-warning)]';
+  return 'bg-[var(--color-danger)]';
 }
 
 function getUsageTextColor(percentage: number): string {
   if (percentage < 0.5) return 'text-emerald-400';
-  if (percentage < 0.75) return 'text-yellow-400';
-  if (percentage < 0.9) return 'text-orange-400';
-  return 'text-red-400';
+  if (percentage < 0.75) return 'text-[var(--color-warning)]';
+  if (percentage < 0.9) return 'text-[var(--color-warning)]';
+  return 'text-[var(--color-danger)]';
 }
 
 function getWarningLevel(percentage: number): 'ok' | 'warning' | 'critical' {

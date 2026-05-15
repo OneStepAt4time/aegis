@@ -108,7 +108,7 @@ export default function NewSessionPage() {
         {/* Work Directory */}
         <div>
           <label htmlFor="workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-            {t('newSession.workDir')} <span className="text-red-400">*</span>
+            {t('newSession.workDir')} <span className="text-[var(--color-danger)]">*</span>
           </label>
           <input
             id="workDir"
