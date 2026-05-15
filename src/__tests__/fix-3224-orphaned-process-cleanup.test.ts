@@ -81,7 +81,7 @@ describe('Issue #3224 — orphaned process cleanup on single-session kill', () =
         url: `/v1/sessions/${SESSION_ID}`,
       });
 
-      expect(response.json()).toEqual({ ok: true });
+      expect(response.json()).toEqual({ ok: true, status: "killed" });
 
       // The critical assertion: shutdownSession must be called
       expect(shutdownSession).toHaveBeenCalledTimes(1);
