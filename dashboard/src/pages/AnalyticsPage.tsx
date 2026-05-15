@@ -34,13 +34,17 @@ import type { AnalyticsSummary, RateLimitAnalyticsResponse } from '../types';
 import { RateLimitChart } from '../components/analytics/RateLimitChart';
 import { RateLimitForecastCard } from '../components/analytics/RateLimitForecastCard';
 import { AgentContributionsPanel } from '../components/analytics/AgentContributionsPanel';
+import {
+  MODEL_COLORS as CHART_MODEL_COLORS,
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, CHART_DOT, CHART_STROKE,
+  CHART_BAR_RADIUS, TOOLTIP_STYLE,
+} from '../utils/chartTheme';
 
-const MODEL_COLORS: Record<string, string> = {
-  'claude-sonnet-4.6': 'var(--color-accent-cyan)',
-  'claude-opus-4.7': 'var(--color-accent-purple)',
-  'claude-haiku-4.5': 'var(--color-success)',
-  other: 'var(--color-text-muted)',
-};
+
+// Model colors centralized in chartTheme.ts (#3399)
+const MODEL_COLORS = CHART_MODEL_COLORS;
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -65,12 +69,12 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload) return null;
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
+    <div className={TOOLTIP_STYLE.container}>
+      <p className={TOOLTIP_STYLE.label}>{label}</p>
       {payload.map((entry, i) => (
-        <div key={i} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
+        <div key={i} className={TOOLTIP_STYLE.row}>
+          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
+          <span className={TOOLTIP_STYLE.rowValue}>
             {typeof entry.value === 'number' && entry.name?.toLowerCase().includes('cost')
               ? formatCurrency(entry.value)
               : typeof entry.value === 'number' && entry.name?.toLowerCase().includes('duration')
@@ -268,16 +272,16 @@ export default function AnalyticsPage() {
           {data.sessionVolume.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.sessionVolume}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                   allowDecimals={false}
                 />
                 <Tooltip content={<ChartTooltip />} />
@@ -285,9 +289,9 @@ export default function AnalyticsPage() {
                   type="monotone"
                   dataKey="created"
                   name="Sessions"
-                  stroke="var(--color-accent-cyan)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }} animationDuration={500} 
+                  stroke={CHART_COLORS.cyan}
+                  strokeWidth={CHART_STROKE.width}
+                  dot={CHART_DOT} animationDuration={CHART_ANIMATION.duration} 
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -359,24 +363,24 @@ export default function AnalyticsPage() {
           {data.costTrends.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <BarChart data={data.costTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   tickFormatter={(v) => `$${v.toFixed(2)}`}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar
                   dataKey="cost"
                   name="Daily Cost"
-                  fill="var(--color-accent-cyan)"
-                  radius={[4, 4, 0, 0]} animationDuration={500} 
+                  fill={CHART_COLORS.cyan}
+                  radius={CHART_BAR_RADIUS} animationDuration={CHART_ANIMATION.duration} 
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -423,26 +427,26 @@ export default function AnalyticsPage() {
           {data.durationTrends.length > 0 ? (
             <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
               <LineChart data={data.durationTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" />
+                <CartesianGrid {...CHART_GRID} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateShort}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <YAxis
                   tickFormatter={(v) => formatDuration(v as number)}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                  stroke="var(--color-void-lighter)"
+                  tick={CHART_TICK}
+                  {...CHART_AXIS}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="avgDurationSec"
                   name="Avg Duration"
-                  stroke="var(--color-accent-purple)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
+                  stroke={CHART_COLORS.purple}
+                  strokeWidth={CHART_STROKE.width}
+                  dot={CHART_DOT}
                 />
               </LineChart>
             </ResponsiveContainer>

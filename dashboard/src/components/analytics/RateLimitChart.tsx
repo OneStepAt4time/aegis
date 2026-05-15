@@ -3,6 +3,8 @@
  *
  * Bar chart showing sessions, tokens, and spend usage per API key
  * with color-coded thresholds: <66% cyan, 66-90% amber, >90% red.
+ *
+ * @ticket #3399 — chart polish with design tokens
  */
 
 import {
@@ -17,16 +19,16 @@ import {
 } from 'recharts';
 import type { RateLimitKeyUsage } from '../../types';
 import { useT } from '../../i18n/context';
-
-/** Color thresholds matching the plan spec — CSS vars so they work with recharts Cell fill. */
-const COLOR_CYAN = 'var(--color-accent-cyan)';
-const COLOR_AMBER = 'var(--color-warning)';
-const COLOR_RED = 'var(--color-danger)';
+import {
+  CHART_COLORS,
+  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_ANIMATION, TOOLTIP_STYLE,
+} from '../../utils/chartTheme';
 
 export function barColor(ratio: number): string {
-  if (ratio >= 0.9) return COLOR_RED;
-  if (ratio >= 0.66) return COLOR_AMBER;
-  return COLOR_CYAN;
+  if (ratio >= 0.9) return CHART_COLORS.danger;
+  if (ratio >= 0.66) return CHART_COLORS.warning;
+  return CHART_COLORS.cyan;
 }
 
 export interface RateLimitChartProps {
@@ -86,23 +88,23 @@ function ChartTooltip({ active, payload, label }: {
   if (!row) return null;
 
   return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl" role="tooltip">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
+    <div className={TOOLTIP_STYLE.container} role="tooltip">
+      <p className={TOOLTIP_STYLE.label}>{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
-          <span className="text-[var(--color-text-muted)]">Sessions:</span>
+          <span className={TOOLTIP_STYLE.rowLabel}>Sessions:</span>
           <span className="font-mono text-[var(--color-text-primary)]">
             {row.sessions}{row.sessionsMax != null ? ` / ${row.sessionsMax}` : ''}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-[var(--color-text-muted)]">Tokens:</span>
+          <span className={TOOLTIP_STYLE.rowLabel}>Tokens:</span>
           <span className="font-mono text-[var(--color-text-primary)]">
             {formatTokenCount(row.tokens)}{row.tokensMax != null ? ` / ${formatTokenCount(row.tokensMax)}` : ''}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-[var(--color-text-muted)]">Spend:</span>
+          <span className={TOOLTIP_STYLE.rowLabel}>Spend:</span>
           <span className="font-mono text-[var(--color-text-primary)]">
             {formatUsd(row.spend)}{row.spendMax != null ? ` / ${formatUsd(row.spendMax)}` : ''}
           </span>
@@ -142,15 +144,15 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
       {/* Dimension legend */}
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-[var(--color-text-muted)]">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLOR_CYAN }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.cyan }} />
           Sessions
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLOR_AMBER }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.warning }} />
           Tokens
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLOR_RED }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.danger }} />
           Spend
         </span>
       </div>
@@ -162,19 +164,19 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
           layout="vertical"
           margin={{ left: 0, right: 20, top: 5, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-void-lighter)" horizontal={false} />
+          <CartesianGrid {...CHART_GRID} horizontal={false} />
           <XAxis
             type="number"
             domain={[0, 1]}
             tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-            tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-            stroke="var(--color-void-lighter)"
+            tick={CHART_TICK}
+            {...CHART_AXIS}
           />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fill: 'var(--color-text-primary)', fontSize: 12 }}
-            stroke="var(--color-void-lighter)"
+            tick={{ ...CHART_TICK, fill: 'var(--color-text-primary)' }}
+            {...CHART_AXIS}
             width={100}
           />
           <Tooltip content={<ChartTooltip />} />
@@ -183,7 +185,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Sessions"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.sessionUsage")}
-            animationDuration={500}
+            animationDuration={CHART_ANIMATION.duration}
           >
             {data.map((row, i) => (
               <Cell key={`s-${i}`} fill={barColor(row.sessionRatio)} />
@@ -194,7 +196,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Tokens"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.tokenUsage")}
-            animationDuration={500}
+            animationDuration={CHART_ANIMATION.duration}
           >
             {data.map((row, i) => (
               <Cell key={`t-${i}`} fill={barColor(row.tokenRatio)} />
@@ -205,7 +207,7 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
             name="Spend"
             radius={[0, 4, 4, 0]}
             aria-label={t("aria.spendUsage")}
-            animationDuration={500}
+            animationDuration={CHART_ANIMATION.duration}
           >
             {data.map((row, i) => (
               <Cell key={`sp-${i}`} fill={barColor(row.spendRatio)} />
