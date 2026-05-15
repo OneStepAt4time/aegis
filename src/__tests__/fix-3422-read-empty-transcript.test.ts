@@ -10,18 +10,15 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mapAcpJsonRpcNotificationToEvent } from '../services/acp/event-mapper.js';
-import type { AcpJsonRpcNotification } from '../services/acp/json-rpc-client.js';
-import type { AcpEventStore, AcpAppendEventInput } from '../services/acp/event-store.js';
-import type { SessionTranscripts } from '../session-transcripts.js';
-import { SessionManager } from '../session.js';
-import type { SessionInfo } from '../session.js';
+import type { AcpJsonRpcNotification, AcpJsonValue } from '../services/acp/json-rpc-client.js';
+import type { AcpEventStore, AcpAppendEventInput, AcpEventRecord, AcpListEventsInput } from '../services/acp/event-store.js';
 
-function makeNotification(method: string, params: unknown): AcpJsonRpcNotification {
+function makeNotification(method: string, params?: Record<string, unknown>): AcpJsonRpcNotification {
   return {
     jsonrpc: '2.0',
     method,
-    ...(Object.keys(params).length > 0 ? { params } : {}),
-    raw: { jsonrpc: '2.0', method, params },
+    ...(params && Object.keys(params).length > 0 ? { params: params as AcpJsonValue } : {}),
+    raw: { jsonrpc: '2.0', method, params: (params ?? null) as AcpJsonValue },
   };
 }
 
@@ -109,30 +106,34 @@ describe('Issue #3422: ACP events persisted from onRawNotification', () => {
     // Simulate the wiring: notification -> map -> append -> list -> readFromAcpEvents
     const storedEvents: AcpAppendEventInput[] = [];
     const eventStore: AcpEventStore = {
-      async append(input: AcpAppendEventInput) {
+      async append(input: AcpAppendEventInput): Promise<AcpEventRecord> {
         storedEvents.push(input);
         return {
           sessionId: input.sessionId,
+          tenantId: input.tenantId,
+          ownerKeyId: input.ownerKeyId,
           eventSeq: storedEvents.length,
           eventId: `evt-${storedEvents.length}`,
           eventType: input.eventType,
-          payload: input.payload,
           occurredAt: input.occurredAt ?? new Date(),
           ingestedAt: new Date(),
-        } as AcpEventRecord;
+          payload: input.payload,
+        };
       },
-      async list(input: AcpListEventsInput) {
+      async list(input: AcpListEventsInput): Promise<AcpEventRecord[]> {
         return storedEvents
           .filter(e => e.sessionId === input.sessionId)
           .map((e, i) => ({
             sessionId: e.sessionId,
+            tenantId: e.tenantId,
+            ownerKeyId: e.ownerKeyId,
             eventSeq: i + 1,
             eventId: `evt-${i + 1}`,
             eventType: e.eventType,
-            payload: e.payload,
             occurredAt: e.occurredAt ?? new Date(),
             ingestedAt: new Date(),
-          } as AcpEventRecord));
+            payload: e.payload,
+          }));
       },
     };
 
@@ -165,7 +166,11 @@ describe('Issue #3422: ACP events persisted from onRawNotification', () => {
     expect(storedEvents[2].eventType).toBe('tool.started');
 
     // Verify events can be listed back
-    const events = await eventStore.list({ sessionId: 'test-session-1', afterEventSeq: 0 });
+    const events = await eventStore.list({
+      sessionId: 'test-session-1',
+      tenantId: 'default',
+      ownerKeyId: 'key-1',
+    });
     expect(events).toHaveLength(3);
   });
 });
