@@ -34,6 +34,7 @@ import type {
 
 const DEFAULT_PROTOCOL_VERSION = 1;
 const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
+const ACP_PROMPT_ACK_TIMEOUT_MS = 5_000;
 const PACKAGE_VERSION = readPackageVersion();
 
 export interface AcpBackendClient {
@@ -425,19 +426,35 @@ export class AcpBackend {
         return { delivered: false, attempts: 0, error: 'no_agent_session' };
       }
 
-      // #3423: Use notify (fire-and-forget) instead of request.
-      // request() blocks until Claude finishes responding (up to 60s timeout),
-      // causing /v1/sessions/:id/send to hang with an empty response body.
-      await runtime.client.notify('session/prompt', {
-        sessionId: acpSessionId,
-        prompt: [{ type: 'text', text }],
-      });
+      // #3479: Revert notify() back to request() with a short ack timeout.
+      // #3423's notify() fix silently swallowed CC's -32601 "Method not found"
+      // error because JSON-RPC notifications have no response. Using request()
+      // with a 5s timeout: if CC acks within 5s → confirmed delivered. If it
+      // times out → CC likely received it but hasn't responded yet → mark as
+      // delivered (same behavior as notify, but with a chance to catch errors).
+      // If CC returns an actual error (e.g. -32601) → surface it properly.
+      try {
+        await runtime.client.request('session/prompt', {
+          sessionId: acpSessionId,
+          prompt: [{ type: 'text', text }],
+        }, { timeoutMs: ACP_PROMPT_ACK_TIMEOUT_MS });
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
+          // Timeout is acceptable — CC likely received the prompt but hasn't
+          // responded yet. Log and continue as delivered.
+          console.warn(`[ACP prompt ack timeout] session=${sessionId} — treating as delivered`);
+        } else {
+          // Actual error (e.g. -32601 Method not found) — surface it
+          throw err;
+        }
+      }
       return { delivered: true, attempts: 1 };
     } catch (err) {
-      // Issue #3223: Log timeout details for BYO-LLM proxy diagnosis
-      if (err instanceof Error && err.message.includes('timed out')) {
-        console.warn(`[ACP prompt timeout] session=${sessionId} method=session/prompt notify=true`);
+      if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
+        // Handled above — should not reach here, but defensive
+        return { delivered: true, attempts: 1 };
       }
+      console.warn(`[ACP prompt error] session=${sessionId} method=session/prompt error=${(err as Error).message}`);
       return { delivered: false, attempts: 1, error: (err as Error).message };
     } finally {
       this.inFlightPrompts.delete(sessionId);
