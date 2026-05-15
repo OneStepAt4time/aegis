@@ -18,7 +18,7 @@ import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { validateWorkdirPath } from './tenant-workdir.js';
-import { neutralizeBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
+import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
@@ -641,7 +641,13 @@ export class SessionManager {
       ?? this.config.defaultPermissionMode
       ?? 'default';
     let settingsPatched = false;
-    if (effectivePermissionMode !== 'bypassPermissions') {
+    if (effectivePermissionMode === 'bypassPermissions') {
+      // Issue #3436: When bypassPermissions is requested, we must write it to the
+      // project-level settings.local.json so the ACP agent picks it up. The ACP
+      // reads permissionMode from SettingsManager (settings files), NOT from
+      // session/new params. Without this, Claude always spawns with --permission-mode default.
+      settingsPatched = await activateBypassPermissions(opts.workDir);
+    } else {
       settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);
     }
 

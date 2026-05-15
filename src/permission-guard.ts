@@ -183,6 +183,55 @@ export async function restoreSettings(workDir: string, homeDir?: string): Promis
 }
 
 /**
+ * Activate bypassPermissions in the project-level settings.local.json.
+ * Issue #3436: The ACP agent reads permissionMode from SettingsManager (settings files),
+ * not from session/new params. To actually spawn Claude with bypassPermissions,
+ * we must write it to .claude/settings.local.json before the session starts.
+ *
+ * Returns true if the file was created or patched.
+ */
+export async function activateBypassPermissions(workDir: string, homeDir?: string): Promise<boolean> {
+  const localSettings = settingsPath(workDir);
+  const bp = backupPath(workDir, homeDir);
+
+  try {
+    let settings: Record<string, any> = {};
+
+    // Read existing file if present
+    if (existsSync(localSettings)) {
+      const raw = await readFile(localSettings, 'utf-8');
+      try { settings = JSON.parse(raw); } catch { settings = {}; }
+
+      // Back up original before modifying
+      mkdirSync(join(bp, '..'), { recursive: true });
+      await writeFile(bp, raw);
+    } else {
+      // Ensure .claude directory exists
+      mkdirSync(join(localSettings, '..'), { recursive: true });
+    }
+
+    // Set bypassPermissions
+    if (!settings.permissions) settings.permissions = {};
+    if (settings.permissions.defaultMode === 'bypassPermissions') {
+      // Already set — no patch needed
+      return false;
+    }
+    settings.permissions.defaultMode = 'bypassPermissions';
+
+    // Atomic write
+    const tmpFile = `${localSettings}.tmp.${process.pid}`;
+    await writeFile(tmpFile, JSON.stringify(settings, null, 2) + '\n');
+    await rename(tmpFile, localSettings);
+
+    console.log(`Permission guard: activated bypassPermissions in ${localSettings}`);
+    return true;
+  } catch (e) {
+    console.error(`Permission guard: failed to activate bypassPermissions in ${localSettings}: ${(e as Error).message}`);
+    return false;
+  }
+}
+
+/**
  * Clean up any orphaned backups (e.g. from a crash).
  * Restores all 3 settings files from their backups.
  *
