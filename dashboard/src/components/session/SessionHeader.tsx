@@ -1,3 +1,4 @@
+import { formatSessionName } from '../../utils/formatSessionName';
 import { useState, useRef, useEffect } from 'react';
 import { GitFork, MoreHorizontal } from 'lucide-react';
 import type { SessionHealth, SessionInfo } from '../../types';
@@ -156,8 +157,8 @@ export function SessionHeader({
       <div className="mb-2 flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="truncate text-base font-semibold text-[var(--color-text-primary)] sm:text-lg">
-              {session.displayName || 'Untitled Session'}
+            <h1 className="truncate text-base font-semibold text-[var(--color-text-primary)] sm:text-lg" title={session.displayName || undefined}>
+              {formatSessionName(session.displayName)}
             </h1>
             <SessionStateBadge status={badgeStatus} />
           </div>

@@ -1,3 +1,4 @@
+import { formatSessionName } from '../../utils/formatSessionName';
 /**
  * SessionMobileCard — mobile card view for session rows.
  * Extracted from SessionTable for maintainability.
@@ -36,7 +37,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
             type="checkbox"
-            aria-label={`Select session ${session.displayName || session.id}`}
+            aria-label={`Select session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             checked={selected}
             onChange={(e) => onToggleSelect(session.id, e.target.checked)}
             className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
@@ -48,7 +49,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
                 to={`/sessions/${encodeURIComponent(session.id)}`}
                 className="inline-flex min-h-[44px] items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
               >
-                {session.displayName || session.id}
+                {formatSessionName(session.displayName, session.id.slice(0, 8))}
               </Link>
               {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-danger)]" />}
             </div>
@@ -63,7 +64,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             <button type="button"
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
-              aria-label={`Approve session ${session.displayName || session.id}`}
+              aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-[var(--color-success)] transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
@@ -73,7 +74,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
           <button type="button"
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
-            aria-label={`Interrupt session ${session.displayName || session.id}`}
+            aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-[var(--color-warning)] transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Interrupt"
           >
@@ -82,7 +83,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
           <button type="button"
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
-            aria-label={`Kill session ${session.displayName || session.id}`}
+            aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-[var(--color-danger)] transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
