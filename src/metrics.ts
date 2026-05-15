@@ -112,6 +112,8 @@ export class MetricsCollector {
   private perSession = new Map<string, SessionMetrics>();
   private latency = new Map<string, SessionLatency>();
   private sessionStartTimes = new Map<string, number>();
+  /** Issue #3427: Track settled sessions to avoid double-counting. */
+  private readonly settledSessions = new Set<string>();
   private startTime = Date.now();
 
   /** Maximum samples per latency type per session (rolling window). */
@@ -176,12 +178,18 @@ export class MetricsCollector {
   }
 
   sessionCompleted(sessionId: string): void {
+    // Issue #3427: Idempotent — only count once per session
+    if (this.settledSessions.has(sessionId)) return;
+    this.settledSessions.add(sessionId);
     this.global.sessionsCompleted++;
     sessionsCompletedTotal.inc();
     this.finalizeSessionDuration(sessionId);
   }
 
   sessionFailed(sessionId: string): void {
+    // Issue #3427: Idempotent — only count once per session
+    if (this.settledSessions.has(sessionId)) return;
+    this.settledSessions.add(sessionId);
     this.global.sessionsFailed++;
     sessionsFailedTotal.inc();
     this.finalizeSessionDuration(sessionId);
