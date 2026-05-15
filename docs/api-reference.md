@@ -1507,43 +1507,7 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123 \
 
 ---
 
-### Approve Permission Request
 
-```
-POST /v1/sessions/:id/approve
-```
-
-Approves a pending permission request from Claude Code.
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/approve \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"permissionId": "perm-1"}'
-```
-
-**Response:** `{ "ok": true }`
-
----
-
-### Reject Permission Request
-
-```
-POST /v1/sessions/:id/reject
-```
-
-Rejects a pending permission request from Claude Code.
-
-```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/reject \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"permissionId": "perm-1"}'
-```
-
-**Response:** `{ "ok": true }`
-
----
 
 ### Answer Pending Question
 
