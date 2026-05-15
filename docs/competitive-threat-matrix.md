@@ -30,7 +30,7 @@ The Claude Code orchestration space is **crowded and moving fast**. 10+ competit
 | #9 | **ClaudeClaw** | 1 | 🟡 MEDIUM | `curl \| bash` | 1 (CC hooks) | Telegram | ❌ | ❌ | ❌ |
 | #10 | **Verdent AI** | N/A (closed) | 🟠 HIGH | Mac app download | Parallel agents | Telegram, Slack | ❌ | Desktop app | ❌ |
 | #11 | **Roo Code** | ~~30K~~ 💀 | ⬛ DEAD | — | — | — | — | — | — | Shut down May 15, 2026. IDE-first tool killed by platform shift. |
-| #12 | **Cline** | 61K | 🟡 MEDIUM | VS Code ext | 1 (local) | UI only | ❌ | ❌ | Building SSO/RBAC/telemetry (Cline Enterprise) |
+| #12 | **Cline** | 61K | 🟡 MEDIUM | VS Code ext + Kanban + CLI | 1+ (Kanban workers) | UI only | ✅ SDK (`@cline/sdk`) | 🟢 Kanban board | SSO, 3-tier RBAC, OTel, prompt storage (Enterprise) |
 | — | **ccusage-dashboard** | 1 | 🟢 ADJACENT | Self-hosted | N/A (analytics) | N/A | ❌ | 9-panel React | ❌ |
 | — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
@@ -97,11 +97,22 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 
 ## Market Pulse — 2026-05-15
 
-**Roo Code shuts down (May 15, 2026):** Roo Code (~30K stars, 3M+ downloads) shut down today. IDE-first tool killed by platform shift. Lesson: client-side/IDE-dependent tools are vulnerable when platforms change. Server-side middleware (like Aegis) is runtime-agnostic and survives platform shifts. Roo users are migrating now — monitor where they land.
+**Roo Code shuts down (May 15, 2026):** Roo Code (~30K stars, 3M+ downloads, SOC2 Type 2) shut down today. All products (Extension, Cloud, Router) sunsetting. They explicitly recommend Cline as replacement and are pivoting to roomote.dev (unclear direction). IDE-first tool killed by platform shift.
+- **Lesson:** Being model-agnostic isn't enough (Roo had that). SOC2 compliance alone doesn't save a product. 3M extension downloads doesn't guarantee survival. Server-side middleware survives platform shifts.
+- **Action:** Don't invest more analysis. Monitor roomote.dev. Roo users migrating now — Cline is the primary beneficiary.
 
-**Cline Enterprise launching (61K stars):** Cline is building SSO, RBAC, and telemetry for enterprise. Currently client-side config only. If they expand to server-side governance, they become a direct competitor. Aegis positioning ("server-side control plane") is the correct defensive play.
+**Cline Enterprise launching (61K stars, Apache 2.0):** Cline is the dominant open-source AI coding agent (VS Code, JetBrains, Cursor, Neovim). Enterprise layer includes SSO, 3-tier RBAC (Member/Admin/Owner), model/tool controls, OpenTelemetry export, usage tracking, and prompt storage to S3/R2. Also shipping Kanban (parallel task execution) and a CLI for headless/CI automation.
+- **Key distinction:** Cline = client-side governance (settings pushed to IDEs). Aegis = server-side control (central API gateway with interception, audit, permission queues). Not direct competitors today — complementary. Aegis could theoretically wrap Cline.
+- **Risk:** If Cline expands to server-side governance, they become a direct competitor. Monitor closely.
+- **Distribution advantage:** 61K stars, VS Code marketplace presence, `@cline/sdk`. They reach devs before we do.
 
 **Strategic note:** Aegis is Claude Code only today, but server-side architecture means we could theoretically wrap any agent runtime in future phases. No positioning change — this is an internal option, not external messaging.
+
+**Verdent AI (proprietary, Mac-only):** Mac-native conversation-first platform. Key differentiator: Plan Mode (natural language → structured parallel task plans). Published SEAlign at ICSE 2026 (Distinguished Paper). Added Eco Mode, BYOK, PAYG pricing recently. Targets individual devs, not enterprise.
+- **First-run gap:** Verdent's 4-step onboarding (download → sign in → describe task → watch) beats our empty dashboard experience. Recommendation: add "Getting Started" card to OverviewPage when sessions < 3.
+- **Task decomposition:** Kanban shows parent-child tasks with real-time parallel execution. Aegis has no equivalent — but this is Phase 4 scope (Session Groups / Workflow View).
+- **What we beat them on:** Web-first (any OS), RBAC + audit, multi-tenant, PWA, open source (MIT), persistent named agents.
+- **What we should NOT copy:** Conversation-first UI (our users want data/control), Mac-only, consumer pricing, ephemeral workers, AI-generated dashboards.
 
 ## Market Pulse — 2026-05-12
 

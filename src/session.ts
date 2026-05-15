@@ -921,10 +921,20 @@ export class SessionManager {
   }
 
   /** Approve permission (ACP stub — handled by hooks). */
-  async approve(_id: string): Promise<void> {}
+  async approve(id: string): Promise<void> {
+    const resolved = this.permissionRequests.resolvePendingPermission(id, 'allow');
+    if (!resolved) {
+      throw new Error('No pending permission request');
+    }
+  }
 
   /** Reject permission (ACP stub — handled by hooks). */
-  async reject(_id: string): Promise<void> {}
+  async reject(id: string): Promise<void> {
+    const resolved = this.permissionRequests.resolvePendingPermission(id, 'deny');
+    if (!resolved) {
+      throw new Error('No pending permission request');
+    }
+  }
 
   /** Escape session (ACP stub). */
   async escape(_id: string): Promise<void> {}
