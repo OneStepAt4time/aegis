@@ -12,14 +12,11 @@
 </p>
 
 > ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
-> Current release channel is `preview`.
 >
-> **Phase 3 (Team & Early-Enterprise) is now active.** Phase 2 is complete. See the [roadmap](./ROADMAP.md) for what's next.
->
-> 📦 **Package renamed:** `aegis-bridge` → [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis). See [ACP Migration Guide](docs/acp-migration-guide.md) if you're upgrading.
+> 📦 **Package:** [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis) on npm. See [ACP Migration Guide](docs/acp-migration-guide.md) if upgrading from `aegis-bridge`.
 
 <p align="center">
-  <strong>Enterprise orchestration middleware for Claude Code — REST API, MCP, SSE, webhooks, and dashboard.</strong>
+  <strong>Run Claude Code agents from your terminal. Approve from your phone. See everything on one dashboard.</strong>
 </p>
 
 <p align="center">
@@ -30,36 +27,76 @@
 
 ## Quick Start
 
-Two commands from zero to a running Claude Code session:
+> 🚧 **Upcoming** — This flow tracks [#3489](https://github.com/OneStepAt4time/aegis/issues/3489) (Zero-Config Epic). See the [current getting-started guide](docs/getting-started.md) for the step-by-step setup that works today.
+
+One command. Zero config. Claude Code responds in your terminal.
 
 ```bash
-# 1. Run Aegis (no install needed — npx handles everything)
-npx --package=@onestepat4time/aegis ag run "Build a login page with email/password fields." --cwd /path/to/project
+npx --package=@onestepat4time/aegis ag run "Summarize this folder and suggest improvements" --cwd ./my-project
 ```
 
-That's it. `ag run` bootstraps config, starts the server, creates a session, and streams output to your terminal.
+That's it. Aegis:
+1. Bootstraps its config (first run only)
+2. Starts the server
+3. Creates a Claude Code session
+4. Streams Claude's response to your terminal
 
-> **If `ag run` hangs** without creating a session, use the step-by-step setup below instead — it separates server start from session creation and gives clearer error output.
+When Claude needs permission to run a command or edit a file, you'll see a prompt in your terminal. Approve or deny right there.
 
 <details>
-<summary>With a global install (optional)</summary>
+<summary>What you'll see</summary>
 
-```bash
-npm install -g @onestepat4time/aegis
-ag run "Build a login page with email/password fields." --cwd /path/to/project
+```
+$ npx --package=@onestepat4time/aegis ag run "Build a login page" --cwd ./my-project
+
+  Aegis v0.7.0
+  ✓ Claude Code found
+  ✓ Server started → http://127.0.0.1:9100/dashboard
+  ✓ Session created: cc-build-a-login-page
+
+  [Claude] I'll build a login page with email and password fields...
+  [Claude] ├── Creating src/components/LoginForm.tsx
+  [Claude] └── Creating src/pages/Login.tsx
+
+  🔔 Permission required: Write to src/components/LoginForm.tsx
+  Allow? [Y/n] >
 ```
 
 </details>
 
 <details>
-<summary>Step-by-step setup</summary>
+<summary>Global install (optional — faster on repeated use)</summary>
 
 ```bash
-ag init                    # Bootstrap config (use --force to overwrite, --model <model> for non-interactive)
-ag                         # Start server
-ag create "Your prompt" --cwd /path/to/project  # Create session
-ag doctor                  # Verify setup
+npm install -g @onestepat4time/aegis
+ag run "Your prompt here" --cwd ./my-project
 ```
+
+</details>
+
+### Next Steps
+
+After your first session, you might want to:
+
+- **Dashboard** — open <http://127.0.0.1:9100/dashboard> to see sessions, cost analytics, and audit trails
+- **Telegram** — approve agent actions from your phone: `ag setup telegram` (one guided setup)
+- **MCP** — let Claude Code control Aegis: `claude mcp add --scope user aegis -- ag mcp`
+- **Multiple sessions** — `ag run "fix the tests" & ag run "update the README"` (parallel agents)
+
+<details>
+<summary>Configuration (optional)</summary>
+
+Aegis works out of the box. If you want to customize:
+
+```bash
+ag init              # Interactive setup (token, model, Telegram, etc.)
+ag init --defaults    # Non-interactive — use all defaults
+ag init --force       # Overwrite existing config
+```
+
+Configuration file: `~/.aegis/config.yaml`. All settings have sensible defaults for local development.
+
+See [Getting Started](docs/getting-started.md) for the full configuration reference.
 
 </details>
 
@@ -75,20 +112,22 @@ Built-in templates: `code-reviewer`, `ci-runner`, `pr-reviewer`, `docs-writer`.
 
 </details>
 
-> **Prerequisites:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). Aegis bundles `claude-agent-acp` — no separate install needed.
+> **Prerequisites:** [Node.js ≥ 20](https://nodejs.org/) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). That's it.
 
-> **CLI naming:** the primary command is `ag` (e.g. `ag`, `ag mcp`, `ag create "brief"`). The legacy name `aegis` is preserved as an alias, so any existing scripts using `aegis` keep working.
+> **CLI naming:** the primary command is `ag`. The legacy name `aegis` is preserved as an alias.
 
-### Windows Setup
+### Windows
 
 ```powershell
 npm install -g @onestepat4time/aegis
-ag
+ag run "Your prompt here" --cwd C:\my-project
 ```
 
-For full setup, verification, and troubleshooting, see [Windows Setup](docs/windows-setup.md).
+For troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
-For a full walkthrough from install to first session, see [Getting Started](docs/getting-started.md). For known bugs and workarounds, see [Known Issues](docs/known-issues.md). For advanced features (pipelines, Memory Bridge, templates), see [Advanced Features](docs/advanced.md). For OpenAI-compatible provider setup (GLM, OpenRouter, LM Studio, Ollama, Azure OpenAI), see [BYO LLM](docs/byo-llm.md). For deployment and secure access away from localhost, see [Deployment Guide](docs/deployment.md) and [Remote Access](docs/remote-access.md). For the full MCP tools reference, see [MCP Tools](docs/mcp-tools.md).
+---
+
+**Learn more:** [Getting Started](docs/getting-started.md) · [MCP Tools](docs/mcp-tools.md) · [BYO LLM](docs/byo-llm.md) · [Advanced Features](docs/advanced.md) · [Deployment Guide](docs/deployment.md)
 
 ---
 
@@ -101,7 +140,7 @@ Aegis bridges Claude Code sessions through the Agent Client Protocol (ACP) and e
 3. Receives structured ACP events — text deltas, tool calls, approvals, usage updates
 4. Maps ACP events into normalized Aegis domain events for replay and fanout
 5. Fans out events to Telegram, Slack, Email, webhooks, and SSE streams
-6. Stores session state, events, and actions in a pluggable backend (file-backed for local dev, PostgreSQL + Redis for team/enterprise)
+6. Stores session state, events, and actions locally (file-backed by default)
 
 ```mermaid
 graph LR
