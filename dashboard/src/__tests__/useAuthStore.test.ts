@@ -12,6 +12,8 @@ const mockGetDashboardSession = vi.fn();
 const mockLogoutDashboardSession = vi.fn();
 const mockGetOidcLoginUrl = vi.fn();
 
+const mockProbePublicAccess = vi.fn().mockResolvedValue(false);
+
 vi.mock('../api/client', () => ({
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
   setUnauthorizedHandler: (...args: unknown[]) => mockSetUnauthorizedHandler(...args),
@@ -19,6 +21,7 @@ vi.mock('../api/client', () => ({
   getDashboardSession: (...args: unknown[]) => mockGetDashboardSession(...args),
   logoutDashboardSession: (...args: unknown[]) => mockLogoutDashboardSession(...args),
   getOidcLoginUrl: (...args: unknown[]) => mockGetOidcLoginUrl(...args),
+  probePublicAccess: (...args: unknown[]) => mockProbePublicAccess(...args),
 }));
 
 // Lazy import so mock is in place
@@ -31,6 +34,7 @@ describe('useAuthStore', () => {
     mockGetDashboardSession.mockResolvedValue({ oidcAvailable: false, authenticated: false });
     mockLogoutDashboardSession.mockResolvedValue('logged-out');
     mockGetOidcLoginUrl.mockReturnValue('/auth/login');
+  mockProbePublicAccess.mockResolvedValue(false);
     localStorage.removeItem('aegis_token');
     sessionStorage.clear();
     useAuthStore.setState({
@@ -406,3 +410,32 @@ describe('useAuthStore', () => {
       expect(mockGetDashboardSession).not.toHaveBeenCalled();
       expect(useAuthStore.getState().oidcAvailable).toBe(false);
     });
+
+describe('useAuthStore', () => {
+  // ... existing tests above ...
+
+  describe('init', () => {
+    it('enters zero-config mode when probePublicAccess succeeds (#3490)', async () => {
+      mockGetDashboardSession.mockResolvedValue({ oidcAvailable: false, authenticated: false });
+      mockProbePublicAccess.mockResolvedValue(true);
+
+      await useAuthStore.getState().init();
+
+      const state = useAuthStore.getState();
+      expect(state.isAuthenticated).toBe(true);
+      expect(state.authMode).toBeNull();
+      expect(state.isVerifying).toBe(false);
+    });
+
+    it('falls back to login when probePublicAccess fails', async () => {
+      mockGetDashboardSession.mockResolvedValue({ oidcAvailable: false, authenticated: false });
+      mockProbePublicAccess.mockResolvedValue(false);
+
+      await useAuthStore.getState().init();
+
+      const state = useAuthStore.getState();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.isVerifying).toBe(false);
+    });
+  });
+});

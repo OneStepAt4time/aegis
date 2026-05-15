@@ -451,6 +451,11 @@ describe('dashboard cookie-backed API requests (#2351)', () => {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }))
+      // #3490: probePublicAccess call from init() — returns 401 (auth required)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ valid: true, role: 'admin' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -482,11 +487,11 @@ describe('dashboard cookie-backed API requests (#2351)', () => {
     await expect(useAuthStore.getState().login('my-token')).resolves.toBe(true);
     await expect(getHealth()).resolves.toMatchObject({ version: '2.4.1' });
 
-    const verifyInit = fetchMock.mock.calls[1][1] as RequestInit;
+    const verifyInit = fetchMock.mock.calls[2][1] as RequestInit;
     expect(verifyInit.credentials).toBe('include');
 
-    const healthInit = fetchMock.mock.calls[3][1] as RequestInit;
-    expect(fetchMock.mock.calls[3][0]).toBe('/v1/health');
+    const healthInit = fetchMock.mock.calls[4][1] as RequestInit;
+    expect(fetchMock.mock.calls[4][0]).toBe('/v1/health');
     expect(healthInit.credentials).toBe('include');
     expect(healthInit.headers).toEqual(expect.not.objectContaining({ Authorization: expect.anything() }));
     expect(useAuthStore.getState().token).toBeNull();
