@@ -133,6 +133,12 @@ async function waitForServer(baseUrl: string, authToken: string | undefined, tim
 async function ensureConfig(configPath: string, stateDir: string, port?: number): Promise<string | undefined> {
   const existing = await readConfigFile(configPath);
   if (existing) {
+    // #3343: Update baseUrl in existing config when --port is specified
+    if (port !== undefined) {
+      const { writeConfigFile, serializeConfigFile } = await import('../config.js');
+      const updated = { ...existing, baseUrl: `http://127.0.0.1:${port}` };
+      await writeConfigFile(configPath, serializeConfigFile(updated, configPath));
+    }
     return existing.authToken || existing.clientAuthToken || undefined;
   }
 
@@ -161,11 +167,13 @@ async function ensureConfig(configPath: string, stateDir: string, port?: number)
 }
 
 /** Start the server as a detached child process. */
-function startServer(cwd: string): ChildProcess {
+function startServer(cwd: string, port?: number): ChildProcess {
+  const env = { ...process.env };
+  if (port !== undefined) env.AEGIS_PORT = String(port);
   const child = spawn(process.execPath, [join(cwd, 'dist/cli.js'), 'start', '--foreground'], {
     detached: true,
     stdio: 'ignore',
-    env: { ...process.env },
+    env,
   });
   child.unref();
   return child;
@@ -312,7 +320,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
 
     // Start server
     const serverDir = join(import.meta.dirname || __dirname, '..');
-    startServer(serverDir);
+    startServer(serverDir, portOverride ?? undefined);
 
     // Wait for server
     writeLine(io.stdout, '  ⏳ Waiting for server...');
