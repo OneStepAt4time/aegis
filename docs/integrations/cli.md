@@ -125,6 +125,23 @@ claude mcp add aegis -- ag mcp
 
 For other MCP hosts (Cursor, Windsurf), see the [Cursor integration](./cursor.md) or [Windsurf integration](./windsurf.md).
 
+### `ag auth migrate` — Migrate Auth Token
+
+Migrate a `clientAuthToken` from `config.yaml` to the canonical auth-token file (single source of truth).
+
+```bash
+ag auth migrate
+```
+
+**What it does:**
+
+1. Reads `clientAuthToken` from `.aegis/config.yaml`
+2. Writes the token to the canonical auth-token path
+3. Removes `clientAuthToken` from config.yaml
+4. Reports what was migrated
+
+Run this after upgrading from a version that stored tokens in config. If the token is already in the canonical location, it reports that and exits cleanly.
+
 ### `ag list` — List Sessions
 
 List active and recent sessions.
