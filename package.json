@@ -27,7 +27,8 @@
     "scripts",
     "templates",
     "!dist/__tests__",
-    "!dist/**/*.map"
+    "!dist/**/*.map",
+    "!scripts/docs-walkthrough/node_modules"
   ],
   "scripts": {
     "build": "tsc && npm run build:openapi && npm run build:dashboard && npm run build:copy-dashboard",
