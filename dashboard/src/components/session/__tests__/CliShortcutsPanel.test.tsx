@@ -10,10 +10,14 @@ const SESSION_ID = 'abcdef1234567890';
 const SHORT_ID = SESSION_ID.slice(0, 8); // 'abcdef12'
 
 describe('CliShortcutsPanel', () => {
+  let mockExecCommand: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
+    mockExecCommand = vi.fn().mockReturnValue(true);
+    document.execCommand = mockExecCommand as unknown as typeof document.execCommand;
   });
 
   it('renders all 5 commands with correct command text', () => {
@@ -80,8 +84,7 @@ describe('CliShortcutsPanel', () => {
     expect(codeEl.closest('[title]')?.getAttribute('title')).toBe(`ag read ${SESSION_ID}`);
   });
 
-  it('handles clipboard write failure gracefully without crashing', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('shows Copied! feedback when clipboard API fails but textarea fallback succeeds', async () => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError')) },
     });
@@ -96,18 +99,14 @@ describe('CliShortcutsPanel', () => {
       fireEvent.click(copyButtons[0]);
     });
 
-    // Should not crash — try-catch handles the rejection
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`ag read ${SESSION_ID}`);
-    // Should NOT show "Copied!" feedback on failure
-    expect(screen.queryByText('Copied!')).toBeNull();
-    // Panel should still be rendered and functional
+    // Should have fallen back to textarea copy and show feedback
+    expect(mockExecCommand).toHaveBeenCalledWith('copy');
+    expect(screen.getByText('Copied!')).toBeDefined();
+    // Panel still functional
     expect(screen.getByText(`ag read ${SHORT_ID}`)).toBeDefined();
-
-    consoleError.mockRestore();
   });
 
-  it('handles missing navigator.clipboard without crashing', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('shows Copied! feedback when navigator.clipboard is missing and textarea fallback succeeds', async () => {
     // @ts-expect-error — testing missing clipboard API
     delete navigator.clipboard;
 
@@ -121,9 +120,30 @@ describe('CliShortcutsPanel', () => {
       fireEvent.click(copyButtons[0]);
     });
 
-    // Should not crash — try-catch handles missing clipboard
-    expect(screen.getByText(`ag read ${SHORT_ID}`)).toBeDefined();
+    // Textarea fallback should succeed
+    expect(mockExecCommand).toHaveBeenCalledWith('copy');
+    expect(screen.getByText('Copied!')).toBeDefined();
+  });
 
-    consoleError.mockRestore();
+  it('does not show Copied! when both clipboard API and textarea fallback fail', async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('fail')) },
+    });
+    mockExecCommand.mockReturnValue(false);
+
+    render(<CliShortcutsPanel sessionId={SESSION_ID} />);
+
+    const toggle = screen.getByRole('button', { name: /CLI Shortcuts/i });
+    fireEvent.click(toggle);
+
+    const copyButtons = screen.getAllByRole('button', { name: /copy/i });
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    // Should NOT show "Copied!" when both paths fail
+    expect(screen.queryByText('Copied!')).toBeNull();
+    // Panel still functional
+    expect(screen.getByText(`ag read ${SHORT_ID}`)).toBeDefined();
   });
 });

@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useT } from '../../i18n/context.js';
 import { Rocket, X, ArrowRight, Copy, Check } from 'lucide-react';
+import { copyToClipboard } from '../../utils/clipboard.js';
 
 interface GettingStartedCardProps {
   totalSessions: number;
@@ -34,12 +35,10 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
   };
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(CLI_COMMAND);
+    const ok = await copyToClipboard(CLI_COMMAND);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard API unavailable (non-HTTPS mobile)
     }
   };
 
