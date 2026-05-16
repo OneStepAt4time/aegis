@@ -225,7 +225,11 @@ describe('E2E Dogfood Gate', () => {
       });
 
       // Accept 201 or 202 — session may be created immediately or queued
-      expect([201, 202]).toContain(res.status);
+      // Include response body in failure message for macOS/Windows CI debugging (#3552)
+      if (![201, 202].includes(res.status)) {
+        const errorBody = await res.clone().json().catch(() => res.clone().text().catch(() => 'unparseable'));
+        expect.fail('Expected 201/202 but got ' + res.status + ': ' + JSON.stringify(errorBody));
+      }
 
       const body = await res.json();
       expect(body).toHaveProperty('id');
