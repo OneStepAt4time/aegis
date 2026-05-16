@@ -729,6 +729,11 @@ export class AuthManager {
     return true;
   }
 
+  /** #3567: Expose master token for auth-token file auto-repair. */
+  getMasterToken(): string {
+    return this.masterToken;
+  }
+
   /** Hash a key with SHA-256. */
   static hashKey(key: string): string {
     return createHash('sha256').update(key).digest('hex');

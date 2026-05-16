@@ -12,7 +12,7 @@ import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
-import { getAuthTokenFilePath } from './utils/auth-token-path.js';
+import { getAuthTokenFilePath, persistAuthTokenFile } from './utils/auth-token-path.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -932,21 +932,27 @@ async function main(): Promise<void> {
   container.register('authManager', auth, {
     start: async () => {
       await auth.load();
-      // #3356/#3484: Detect an orphaned ~/.aegis/auth-token whose content no
-      // longer matches any registered key. CLI usage via that file will fail
-      // silently otherwise.
+      // #3356/#3484/#3567: Detect and auto-repair an orphaned ~/.aegis/auth-token
+      // whose content no longer matches any registered key. Auto-repair by
+      // persisting the current master token so the CLI keeps working after restarts.
       const clientTokenFile = getAuthTokenFilePath();
-      if (existsSync(clientTokenFile)) {
+      const currentMaster = auth.getMasterToken();
+      if (currentMaster) {
         try {
-          const fileToken = readFileSync(clientTokenFile, 'utf-8').trim();
-          if (fileToken && !auth.checkClientToken(fileToken).matched) {
-            console.warn(
-              `[auth] ${clientTokenFile} contains a token that does not match any registered key — ` +
-              `CLI auth via that file will fail. Run 'ag init' to refresh or delete the file.`,
-            );
+          const fileToken = existsSync(clientTokenFile)
+            ? readFileSync(clientTokenFile, 'utf-8').trim()
+            : '';
+          if (!fileToken || !auth.checkClientToken(fileToken).matched) {
+            persistAuthTokenFile(currentMaster);
+            if (fileToken) {
+              console.warn(
+                `[auth] ${clientTokenFile} desynced from config — auto-repaired with current master token.`,
+              );
+            }
           }
         } catch {
-          // Unreadable — ignore, the CLI will surface its own auth error.
+          // Unreadable — try to persist anyway
+          persistAuthTokenFile(currentMaster);
         }
       }
     },
