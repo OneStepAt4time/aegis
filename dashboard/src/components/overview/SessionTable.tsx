@@ -15,6 +15,7 @@ import {
   FolderOpen,
   Search,
   Sparkles,
+  Filter,
 } from 'lucide-react';
 import {
   approve,
@@ -103,7 +104,17 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const navigate = useNavigate();
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [groupByDir, setGroupByDir] = useState(true);
+  const [workDirFilter, setWorkDirFilter] = useState<string>('all');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const uniqueWorkDirs = useMemo(() => {
+    const dirs = new Map<string, string>();
+    for (const s of sessions) {
+      const key = extractDirKey(s.workDir);
+      if (!dirs.has(key)) dirs.set(key, s.workDir);
+    }
+    return Array.from(dirs.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sessions]);
 
   // Keyboard shortcuts: arrows navigate, Enter opens, Delete kills
   useEffect(() => {
@@ -392,7 +403,11 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     : '';
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
-    const baseSessions = maxRows ? sessions.slice(0, maxRows) : sessions;
+    let source = sessions;
+    if (workDirFilter !== 'all') {
+      source = source.filter((s) => extractDirKey(s.workDir) === workDirFilter || s.workDir === workDirFilter);
+    }
+    const baseSessions = maxRows ? source.slice(0, maxRows) : source;
     return baseSessions.map((session, idx) => {
       const health = healthMap[session.id];
       return {
@@ -404,7 +419,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         isFocused: idx === focusedIndex,
       };
     });
-  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex, maxRows]);
+  }, [actionLoading, healthMap, selectedIdSet, sessions, focusedIndex, maxRows, workDirFilter]);
 
   const groupedRowModels = useMemo(() => {
     if (!groupByDir) return null;
@@ -515,6 +530,28 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 <FolderOpen className="h-3.5 w-3.5" />
                 {groupByDir ? 'Ungroup' : 'By Directory'}
               </button>
+
+              {uniqueWorkDirs.length > 1 && (
+                <label className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                  <Filter className="h-3.5 w-3.5" />
+                  <select
+                    value={workDirFilter}
+                    onChange={(e) => {
+                      setWorkDirFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    aria-label={t("aria.filterByDirectory")}
+                    className="min-h-[36px] rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-cyan max-w-[180px]"
+                  >
+                    <option value="all">{t("aria.allDirectories")} ({sessions.length})</option>
+                    {uniqueWorkDirs.map(([key, full]) => (
+                      <option key={key} value={key} title={full}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2" role="group" aria-label={t("aria.filterByStatusGroup")}>
