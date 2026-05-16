@@ -683,4 +683,9 @@ export const it = {
     copyCommand: 'Copia comando',
     copied: 'Copiato!',
   },
+
+  modelBadge: {
+    title: 'Modello',
+    effortTitle: 'Sforzo',
+  },
 };
