@@ -209,7 +209,7 @@ const app = Fastify({
   // Issue #1416: UUID-v4 request IDs for log correlation across components
   requestIdHeader: 'x-request-id',
   genReqId: () => crypto.randomUUID(),
-  // Issue #3500: Suppress pino JSON request logs unless --json-logs is set
+  // Issue #3500: Full pino logs when --json-logs set; error-only otherwise so app.log.error still works
   logger: isJsonLogsEnabled() ? {
     // #230: Redact auth tokens and hook secrets from request logs
     // #1393: Also redact ?secret= query param used by hook auth fallback
@@ -225,7 +225,7 @@ const app = Fastify({
         };
       },
     },
-  } : false,
+  } : { level: "error" },
 });
 
 const GLOBAL_RATE_LIMIT_CONFIG = {
