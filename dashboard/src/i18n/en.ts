@@ -570,6 +570,8 @@ export const en = {
     searchSessions: 'Search sessions',
     searchPipelines: 'Search pipelines',
     filterByStatus: 'Filter by status',
+    filterByDirectory: 'Filter by directory',
+    allDirectories: 'All directories',
     filterByStatusGroup: 'Filter sessions by status',
     bulkActions: 'Bulk actions',
     clearSelection: 'Clear selection',

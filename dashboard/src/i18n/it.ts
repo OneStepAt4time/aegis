@@ -567,6 +567,8 @@ export const it = {
     searchSessions: 'Cerca sessioni',
     searchPipelines: 'Cerca pipeline',
     filterByStatus: 'Filtra per stato',
+    filterByDirectory: 'Filtra per cartella',
+    allDirectories: 'Tutte le cartelle',
     filterByStatusGroup: 'Filtra sessioni per stato',
     bulkActions: 'Azioni collettive',
     clearSelection: 'Cancella selezione',
