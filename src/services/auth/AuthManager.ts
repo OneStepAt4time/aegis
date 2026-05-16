@@ -14,6 +14,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { secureFilePermissions } from '../../file-utils.js';
 import { SYSTEM_TENANT } from '../../config.js';
+import { isLocalhost } from '../../utils/localhost.js';
 import type { AuditLogger } from '../../audit.js';
 import type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
 import {
@@ -115,9 +116,9 @@ export class AuthManager {
     return this.host;
   }
 
-  /** #1080: Returns true when Aegis is bound to a localhost interface (127.0.0.1 or ::1). */
+  /** #1080: Returns true when Aegis is bound to a localhost interface. */
   get isLocalhostBinding(): boolean {
-    return this.host === '127.0.0.1' || this.host === '::1' || this.host === 'localhost';
+    return isLocalhost(this.host);
   }
 
   /** Load keys from disk. */

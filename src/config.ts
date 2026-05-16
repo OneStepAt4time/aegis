@@ -188,7 +188,6 @@ const defaults: Config = {
   port: 9100,
   host: detectDocker() ? '0.0.0.0' : '127.0.0.1', // Issue #2795: 0.0.0.0 inside Docker
   authToken: '',
-  clientAuthToken: '',
   stateDir: join(homedir(), '.aegis'),
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
   maxSessionAgeMs: 2 * 60 * 60 * 1000, // 2 hours
@@ -639,9 +638,6 @@ function resolveStateDir(config: Config): Config {
 
 function finalizeDerivedConfig(config: Config): Config {
   config.baseUrl = getConfiguredBaseUrl(config);
-  if (config.clientAuthToken === undefined) {
-    config.clientAuthToken = '';
-  }
   if (config.dashboardEnabled === undefined) {
     config.dashboardEnabled = true;
   }

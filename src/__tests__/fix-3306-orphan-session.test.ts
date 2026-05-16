@@ -42,6 +42,12 @@ vi.mock('../services/auth/index.js', () => ({
   })),
 }));
 
+vi.mock('../utils/auth-token-path.js', () => ({
+  readAuthTokenFile: vi.fn(() => null),
+  getAuthTokenFilePath: vi.fn(() => '/tmp/.aegis/auth-token'),
+  persistAuthTokenFile: vi.fn(),
+}));
+
 import { handleRun } from '../commands/run.js';
 
 function makeIO() {

@@ -6,7 +6,7 @@
  * Also handles `--list-templates` and `--from-template`.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -17,6 +17,8 @@ import { getConfiguredBaseUrl, getDashboardUrl, normalizeBaseUrl } from '../base
 import { loadConfig, readConfigFile, serializeConfigFile, writeConfigFile, type Config } from '../config.js';
 import { AuthManager } from '../services/auth/index.js';
 import { buildEnvSchema, ENV_BYO_LLM_WHITELIST, getErrorMessage } from '../validation.js';
+import { persistAuthTokenFile, readAuthTokenFile } from '../utils/auth-token-path.js';
+import { isLocalhost } from '../utils/localhost.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -47,32 +49,11 @@ interface InitSummary {
   identityScaffolded: boolean;
 }
 
-/**
- * Persist the auth token to ~/.aegis/auth-token for easy access.
- * File is created with 0600 permissions (owner read/write only).
- * Non-fatal on failure — token remains in config.yaml as clientAuthToken.
- */
-function persistAuthTokenFile(token: string): void {
-  const tokenDir = join(homedir(), '.aegis');
-  const tokenPath = join(tokenDir, 'auth-token');
-  try {
-    if (!existsSync(tokenDir)) mkdirSync(tokenDir, { recursive: true });
-    writeFileSync(tokenPath, token, { encoding: 'utf-8', mode: 0o600 });
-  } catch {
-    // Non-fatal — token is still in config.yaml as clientAuthToken
-  }
-}
 
 
 
 
-/**
- * #3496: Check if a host address is a localhost interface.
- * Mirrors AuthManager.isLocalhostBinding logic.
- */
-function isLocalhostHost(host: string): boolean {
-  return host === '127.0.0.1' || host === '::1' || host === 'localhost';
-}
+
 
 type TemplateType = 'agent' | 'skill' | 'slash-command';
 
@@ -311,6 +292,9 @@ function filterByoEnv(env: Record<string, string> | undefined): Record<string, s
 }
 
 function resolveExistingToken(config: Partial<Config> | null): string {
+  // #3497: Canonical auth-token file is the primary source of truth
+  const fileToken = readAuthTokenFile();
+  if (fileToken) return fileToken;
   if (!config) return '';
   return config.clientAuthToken || config.authToken || '';
 }
@@ -614,7 +598,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   }
 
   // #3496: On localhost, default to no token creation (zero-config).
-  const isLocal = isLocalhostHost(currentConfig.host);
+  const isLocal = isLocalhost(currentConfig.host);
   if (isLocal && !existingToken && !force) {
     writeLine(io.stdout, '  ℹ️  Localhost detected — skipping auth setup (zero-config mode).');
   }

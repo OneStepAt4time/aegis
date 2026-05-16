@@ -12,6 +12,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+vi.mock('../utils/auth-token-path.js', () => ({
+  readAuthTokenFile: vi.fn(() => null),
+  getAuthTokenFilePath: vi.fn(() => '/tmp/.aegis/auth-token'),
+  persistAuthTokenFile: vi.fn(),
+}));
+
 const AUTH_MANAGER_PATH = '../services/auth/index.js';
 const CONFIG_PATH = '../config.js';
 

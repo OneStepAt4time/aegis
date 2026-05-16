@@ -19,6 +19,7 @@ import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-u
 import { AuthManager } from '../services/auth/index.js';
 import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
 import { getErrorMessage, parseIntSafe } from '../validation.js';
+import { readAuthTokenFile } from '../utils/auth-token-path.js';
 
 interface CliIO {
   stdin: NodeJS.ReadableStream;
@@ -34,13 +35,9 @@ async function resolveAuthToken(): Promise<string | undefined> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
   if (envToken) return envToken;
 
-  // #3369: Check ~/.aegis/auth-token file as fallback
-  try {
-    const tokenPath = join(homedir(), '.aegis', 'auth-token');
-    return readFileSync(tokenPath, 'utf-8').trim() || undefined;
-  } catch {
-    // File doesn't exist — continue to config search
-  }
+  // #3369: Check auth-token file as fallback (respects AEGIS_STATE_DIR)
+  const fileToken = readAuthTokenFile();
+  if (fileToken) return fileToken;
 
   // #3340: Search config files for clientAuthToken/authToken as last resort.
   // Covers the case where ag init wrote the token to a config but the
