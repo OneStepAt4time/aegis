@@ -779,7 +779,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided). For follow-up messages after creation, use `POST /v1/sessions/:id/send` with `text` field. |
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
-| `model` | string | no | Model name for analytics grouping (max 200 chars) |
+| `model` | string | no | Model name for analytics grouping and per-session model override (max 200 chars). When set, passed to the CC session via `--model` flag. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
 | `env` | object | no | Environment variables (subject to denylist) |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
@@ -787,6 +787,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
 | `parentId` | string (UUID) | no | Set parent session — child appears in parent's `/children` |
 | `memoryKeys` | string[] | no | Pre-load memory entries into session (max 50) |
+| `effort` | string | no | Reasoning effort level: `low`, `medium`, or `high`. Passed to the CC session via `--effort` flag. *(Proposed — awaiting backend implementation, #3560)* |
 | `systemPrompt` | string | no | Per-session custom system prompt passed via ACP `_meta.systemPrompt` (max 100k chars; ACP only) |
 
 > **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key.
@@ -800,8 +801,13 @@ curl -X POST http://localhost:9100/v1/sessions \
   "workDir": "/home/user/my-project",
   "status": "working",
   "createdAt": 1712650800000,
-  "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" }
+  "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" },
+  "model": "opus-4.7",
+  "effort": "high"
 }
+```
+
+> **Note:** `model` and `effort` fields appear in the response when provided at creation time. Both are optional. When the backend implementation lands (#3560), these will also be populated from CC session metadata.
 ```
 
 **`promptDelivery` fields:**
