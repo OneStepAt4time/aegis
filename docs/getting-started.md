@@ -29,7 +29,9 @@ npx --package=@onestepat4time/aegis ag run "Analyze this project and list the ma
 
 If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
 
-> **Auth note:** If you previously configured an API token during `ag init`, set `AEGIS_AUTH_TOKEN` before running CLI commands:
+> **Zero-config on localhost:** When the server host is `localhost`, `127.0.0.1`, or `::1`, `ag init` skips admin token creation — no auth is needed. The server automatically allows unauthenticated requests from localhost when no tokens exist.
+>
+> **Auth note:** If you previously configured an API token during `ag init` (or are running on a public host like `0.0.0.0`), set `AEGIS_AUTH_TOKEN` before running CLI commands:
 > ```bash
 > export AEGIS_AUTH_TOKEN=your-secret-token
 > ```
@@ -64,9 +66,11 @@ npm install -g @onestepat4time/aegis
 ag init
 ```
 
+> **Zero-config on localhost:** On `localhost`, `127.0.0.1`, or `::1`, `ag init` skips admin token creation by default. No auth setup needed.
+>
 > **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and regenerates auth keys. **You must restart the server** for the new keys to take effect — the running server does not hot-reload keys from disk. Without a restart, CLI commands will return `401 Unauthorized` with the new token.
 >
-> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session.
+> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
 
 ```bash
 ag
