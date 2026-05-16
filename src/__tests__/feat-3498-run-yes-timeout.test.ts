@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock child_process to avoid real claude CLI check
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(() => ({ unref: vi.fn() })),
-  execFile: vi.fn((_cmd: string, _args: string[], opts: any, cb: Function) => {
+  execFile: vi.fn((_cmd: string, _args: string[], opts: any, cb: (err: null, stdout: string, stderr: string) => void) => {
     // Simulate claude CLI present and authenticated
     cb(null, 'claude 1.0.0', '');
   }),
