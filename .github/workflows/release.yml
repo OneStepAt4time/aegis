@@ -979,6 +979,14 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: .
+      - uses: actions/download-artifact@v8
+        with:
+          name: helm-chart
+          path: deploy/helm/aegis
       - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v4
         with:
