@@ -679,6 +679,12 @@ export const en = {
     copied: 'Copied!',
     copy: 'Copy',
   },
+  gettingStarted: {
+    title: 'Welcome to Aegis',
+    description: 'Create your first session to start managing Claude Code with audit logs, permissions, and real-time monitoring. Or run ag create in your terminal.',
+    createFirstSession: 'Create First Session',
+    dismiss: 'Dismiss getting started card',
+  },
 } as const;
 
 export type Messages = typeof en;
