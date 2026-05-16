@@ -21,6 +21,11 @@ import { handleLogin } from './commands/login.js';
 import { handleLogout } from './commands/logout.js';
 import { handleWhoami } from './commands/whoami.js';
 import { handleRun } from './commands/run.js';
+import { handleList } from './commands/list.js';
+import { handleRead } from './commands/read.js';
+import { handleKill } from './commands/kill.js';
+import { handleStatus } from './commands/status.js';
+import { handleTail } from './commands/tail.js';
 import {
   AcpBinaryResolutionError,
   resolveClaudeAgentAcpBinary,
@@ -210,12 +215,11 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   }
 
   writeLine(io.stdout);
-  // Issue #2996: Include auth header in curl output when auth is configured.
-  const curlAuth = authToken ? ` -H "Authorization: Bearer ${authToken}"` : '';
   writeLine(io.stdout, '  Next steps:');
-  writeLine(io.stdout, `    Status:   curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/health`);
-  writeLine(io.stdout, `    Read:     curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/read`);
-  writeLine(io.stdout, `    Kill:     curl -X DELETE${curlAuth} ${baseUrl}/v1/sessions/${sessionId}`);
+  writeLine(io.stdout, `    Status:   ag status`);
+  writeLine(io.stdout, `    Read:     ag read ${sessionId}`);
+  writeLine(io.stdout, `    Tail:     ag tail ${sessionId}`);
+  writeLine(io.stdout, `    Kill:     ag kill ${sessionId}`);
   return 0;
 }
 
@@ -257,6 +261,15 @@ function printHelp(io: CliIO): void {
     ag mcp                 Start MCP stdio server
     ag mcp --port 3000     Custom Aegis API port
     claude mcp add aegis -- ag mcp
+
+  Sessions:
+    ag list                 List active sessions
+    ag list --status active  Filter by status
+    ag read <id>            Read session output
+    ag tail <id>            Follow session output in real-time
+    ag kill <id>            Terminate a session
+    ag status               Show server health + session summary
+
 
   Auth (OAuth2 device flow):
     ag login               Authenticate via your IdP (requires OIDC config)
@@ -344,8 +357,25 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     return handleRun(argv.slice(1), io);
   }
 
-  // Issue #3079: Reject single-word args that look like unknown commands.
-  // Known subcommands are handled above; single-word non-flag args are likely
+  if (argv[0] === 'list') {
+    return handleList(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'read') {
+    return handleRead(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'kill') {
+    return handleKill(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'status') {
+    return handleStatus(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'tail') {
+    return handleTail(argv.slice(1), io);
+  }
   // typos (e.g. "ag status", "ag health") rather than intentional prompts.
   // Multi-word args or quoted strings are treated as prompts (backward compat).
   if (argv.length === 1 && !argv[0].startsWith('-') && !argv[0].includes(' ')) {
