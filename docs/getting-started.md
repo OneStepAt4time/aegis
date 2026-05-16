@@ -46,6 +46,7 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--name <name>` | Set a display name for the session |
 | `--yes` | Suppress all status messages for non-interactive/CI usage |
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
+| `--passthrough` | Same as `--accept-permissions` — bypass all permissions (alias) |
 
 > **Note:** `ag run --help` currently shows the general help. For `ag run` flags, refer to this table.
 
