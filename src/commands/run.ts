@@ -188,14 +188,16 @@ function defaultConfigPath(): string {
   return join(homedir(), '.aegis', 'config.yaml');
 }
 
-/** Stream session transcript/output to terminal using polling. */
-async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO): Promise<void> {
+/** Stream session transcript/output to terminal using polling.
+ *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 30_000 for --yes mode.
+ *  @returns true if output was received, false if timed out without output. */
+async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxIdleMs: number = 120_000): Promise<boolean> {
   const headers: Record<string, string> = {};
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
   let lastLineCount = 0;
-  const maxIdleMs = 120_000; // 2 min idle timeout
   let lastActivity = Date.now();
+  let receivedAnyOutput = false;
 
   writeLine(io.stdout);
   writeLine(io.stdout, '  📡 Streaming session output (Ctrl+C to stop)...');
@@ -233,6 +235,7 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
         }
         lastLineCount = entries.length;
         lastActivity = Date.now();
+        receivedAnyOutput = true;
       }
 
       // Check if session is done
@@ -247,6 +250,9 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
   } catch (e) {
     writeLine(io.stderr, `  ⚠️  Stream interrupted: ${getErrorMessage(e)}`);
   }
+
+  // Return whether we received any output (for --yes timeout detection)
+  return receivedAnyOutput;
 }
 
 export async function handleRun(args: string[], io: CliIO): Promise<number> {
@@ -433,7 +439,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
 
     // Issue #3243: Poll for async prompt delivery if pending
     if (session.promptDelivery?.status === 'pending') {
-      writeLine(io.stdout, '  ⏳ Delivering prompt...');
+      writeLine(io.stdout, '  ⏳ Delivering prompt (agent starting up)...');
       const pollStart = Date.now();
       const pollTimeout = 180_000; // 3 min max wait for prompt delivery
       while (Date.now() - pollStart < pollTimeout) {
@@ -491,6 +497,26 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   }
 
   // Stream output
-  await streamOutput(baseUrl, sessionId, authToken, io);
+  // Issue #3498: Use 30s idle timeout in --yes mode for fast failure
+  const streamTimeoutMs = skipPrompts ? 30_000 : 120_000;
+  const receivedOutput = await streamOutput(baseUrl, sessionId, authToken, io, streamTimeoutMs);
+
+  // Issue #3498: If --yes mode timed out without output, show actionable error
+  if (!receivedOutput && skipPrompts) {
+    writeLine(io.stderr);
+    writeLine(io.stderr, '  ⚠️  No output received within 30 seconds.');
+    writeLine(io.stderr, '  This usually means Claude Code could not start or is not responding.');
+    writeLine(io.stderr);
+    writeLine(io.stderr, '  Possible causes:');
+    writeLine(io.stderr, '    • Claude Code is not installed or not in PATH');
+    writeLine(io.stderr, '    • Claude Code is not authenticated (run: claude)');
+    writeLine(io.stderr, '    • The Aegis server cannot communicate with Claude Code');
+    writeLine(io.stderr);
+    writeLine(io.stderr, '  Troubleshoot:');
+    writeLine(io.stderr, `    Session: ag read ${sessionId}`);
+    writeLine(io.stderr, `    Logs:    curl ${baseUrl}/v1/sessions/${sessionId}/health`);
+    return 1;
+  }
+
   return 0;
 }
