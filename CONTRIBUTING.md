@@ -303,6 +303,7 @@ ci: add concurrency group to cancel overlapping runs
 - [ ] Commit messages follow Conventional Commits
 - [ ] No merge conflicts with `main`
 - [ ] **Docs updated** if the change is user-facing (API, CLI, config, workflow)
+- [ ] **Test changes included** for non-trivial source changes (new flags, commands, modules, runtime behavior, logger/server logic)
 
 ## PR Review Process
 
@@ -310,6 +311,9 @@ ci: add concurrency group to cancel overlapping runs
 2. Reviews use `gh api` with bot identity (`aegis-gh-agent[bot]`)
 3. A PR with `CHANGES_REQUESTED` must be re-approved before merge
 4. Squash merge is the default
+5. **Non-trivial PRs must include test changes** — any PR that adds a new CLI flag, command, module, runtime behavior, or changes logger/server logic MUST include at least one test file. Reviewers MUST block (request changes) on PRs that touch non-trivial source without corresponding test changes.
+
+   **Exceptions:** Pure documentation PRs, version bumps, i18n-only changes to already-tested components.
 
 ## Documentation PRs
 
