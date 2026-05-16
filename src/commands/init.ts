@@ -64,6 +64,16 @@ function persistAuthTokenFile(token: string): void {
 }
 
 
+
+
+/**
+ * #3496: Check if a host address is a localhost interface.
+ * Mirrors AuthManager.isLocalhostBinding logic.
+ */
+function isLocalhostHost(host: string): boolean {
+  return host === '127.0.0.1' || host === '::1' || host === 'localhost';
+}
+
 type TemplateType = 'agent' | 'skill' | 'slash-command';
 
 interface TemplateManifestEntry {
@@ -603,7 +613,12 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  let createAdminToken = !existingToken || force;
+  // #3496: On localhost, default to no token creation (zero-config).
+  const isLocal = isLocalhostHost(currentConfig.host);
+  if (isLocal && !existingToken && !force) {
+    writeLine(io.stdout, '  ℹ️  Localhost detected — skipping auth setup (zero-config mode).');
+  }
+  let createAdminToken = (!isLocal && !existingToken) || force;
   let baseUrl = existingConfig?.baseUrl
     ? normalizeBaseUrl(existingConfig.baseUrl)
     : getConfiguredBaseUrl(currentConfig);
@@ -618,13 +633,15 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       writeLine(io.stdout, `  Bootstrap config: ${displayConfigPath}`);
       writeLine(io.stdout);
       userName = await promptLine(prompter, 'Your name (for agent identity)', '');
+      // #3496: On localhost, default to NOT creating a token (zero-config).
+      const tokenPromptDefault = isLocal ? false : !existingToken;
       createAdminToken = await promptBoolean(
         prompter,
         io,
         existingToken
           ? 'Create a fresh admin API token for dashboard + CLI access?'
           : 'Create an admin API token for dashboard + CLI access?',
-        !existingToken,
+        tokenPromptDefault,
       );
       baseUrl = await promptBaseUrl(prompter, io, baseUrl);
       byoEnv = await promptByoEnv(prompter, io, existingByoEnv);

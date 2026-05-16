@@ -124,7 +124,7 @@ describe('ag init', () => {
     expect(result.stdout).toContain(config.clientAuthToken!);
   });
 
-  it('supports non-interactive --yes bootstrap', async () => {
+  it('supports non-interactive --yes bootstrap (zero-config on localhost)', async () => {
     const result = await runInit(['init', '--yes']);
     const configPath = join(projectDir, '.aegis', 'config.yaml');
     const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
@@ -137,9 +137,10 @@ describe('ag init', () => {
     expect(result.code).toBe(0);
     expect(config.baseUrl).toBe('http://127.0.0.1:9100');
     expect(config.dashboardEnabled).toBe(true);
-    expect(config.clientAuthToken?.startsWith('aegis_')).toBe(true);
+    // #3496: localhost defaults to zero-config — no token created
+    expect(config.clientAuthToken).toBeFalsy();
     expect(config.defaultSessionEnv).toBeUndefined();
-    expect(result.stdout).toContain('Created admin API token');
+    expect(result.stdout).toContain('zero-config');
   });
 
   it('does not overwrite an existing config without confirmation', async () => {
@@ -296,11 +297,11 @@ describe('ag init --model flag', () => {
   });
 
   it('replaces existing admin key on --force (issue #3351)', async () => {
-    // First init creates a key
+    // First init with --force creates a key (even on localhost)
     let stdin = new PassThrough();
     let stdout = new CaptureStream();
     let stderr = new CaptureStream();
-    let runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+    let runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
     let code = await runPromise;
     expect(code).toBe(0);
@@ -325,5 +326,94 @@ describe('ag init --model flag', () => {
     const token2 = config2.clientAuthToken;
     expect(token2).toBeTruthy();
     expect(token2).not.toBe(token1);
+  });
+
+  describe('#3496 — zero-config localhost', () => {
+    it('skips token creation on localhost with --yes (zero-config)', async () => {
+      process.env.AEGIS_HOST = '127.0.0.1';
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      const out = stdout.text();
+      // Should show zero-config message
+      expect(out).toContain('zero-config');
+      // Should NOT have created a token
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+      expect(config.clientAuthToken).toBeFalsy();
+      // No auth-token file
+      const authTokenPath = join(
+        process.env.HOME || '/tmp',
+        '.aegis',
+        'auth-token',
+      );
+      // (auth-token file may exist from other tests, so we don't assert its absence globally)
+    });
+
+    it('creates token on public host with --yes', async () => {
+      process.env.AEGIS_HOST = '0.0.0.0';
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as { clientAuthToken: string };
+      expect(config.clientAuthToken).toBeTruthy();
+    });
+
+    it('creates token on localhost with --force (explicit override)', async () => {
+      process.env.AEGIS_HOST = '127.0.0.1';
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as { clientAuthToken: string };
+      // --force should still create a token even on localhost
+      expect(config.clientAuthToken).toBeTruthy();
+    });
+
+    it('skips token creation on localhost with hostname "localhost"', async () => {
+      process.env.AEGIS_HOST = 'localhost';
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+      expect(config.clientAuthToken).toBeFalsy();
+    });
+
+    it('skips token creation on IPv6 localhost ::1', async () => {
+      process.env.AEGIS_HOST = '::1';
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+      expect(config.clientAuthToken).toBeFalsy();
+    });
   });
 });
