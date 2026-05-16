@@ -27,7 +27,6 @@
 
 ## Quick Start
 
-> 🚧 **Upcoming** — This flow tracks [#3489](https://github.com/OneStepAt4time/aegis/issues/3489) (Zero-Config Epic). See the [current getting-started guide](docs/getting-started.md) for the step-by-step setup that works today.
 
 One command. Zero config. Claude Code responds in your terminal.
 
