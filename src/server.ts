@@ -12,7 +12,7 @@ import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
-import { homedir } from 'node:os';
+import { getAuthTokenFilePath } from './utils/auth-token-path.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -934,7 +934,7 @@ async function main(): Promise<void> {
       // #3356/#3484: Detect an orphaned ~/.aegis/auth-token whose content no
       // longer matches any registered key. CLI usage via that file will fail
       // silently otherwise.
-      const clientTokenFile = path.join(homedir(), '.aegis', 'auth-token');
+      const clientTokenFile = getAuthTokenFilePath();
       if (existsSync(clientTokenFile)) {
         try {
           const fileToken = readFileSync(clientTokenFile, 'utf-8').trim();

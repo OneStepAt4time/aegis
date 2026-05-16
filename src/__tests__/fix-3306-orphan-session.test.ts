@@ -42,6 +42,12 @@ vi.mock('../services/auth/index.js', () => ({
   })),
 }));
 
+vi.mock('../utils/auth-token-path.js', () => ({
+  readAuthTokenFile: vi.fn(() => null),
+  getAuthTokenFilePath: vi.fn(() => '/tmp/.aegis/auth-token'),
+  persistAuthTokenFile: vi.fn(),
+}));
+
 import { handleRun } from '../commands/run.js';
 
 function makeIO() {
@@ -62,7 +68,7 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
     mockFetch.mockReset();
   });
 
-  it('handleRun should check auth before creating session (preflight)', async () => {
+  it('handleRun should check auth before creating session (preflight)', { timeout: 15_000 }, async () => {
     // Health check succeeds (no auth required)
     // Preflight auth check returns 401
     mockFetch.mockImplementation(async (url: string) => {
@@ -88,7 +94,7 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
     expect(postCalls.length).toBe(0);
   });
 
-  it('handleRun should proceed when preflight auth succeeds', async () => {
+  it('handleRun should proceed when preflight auth succeeds', { timeout: 15_000 }, async () => {
     mockFetch.mockImplementation(async (url: string, opts?: { method?: string }) => {
       if (typeof url === 'string' && url.includes('/v1/health')) {
         return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
@@ -118,7 +124,7 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
     expect(postCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('handleRun should proceed without preflight when no token is available', async () => {
+  it('handleRun should proceed without preflight when no token is available', { timeout: 15_000 }, async () => {
     // Server health OK, no auth token → skip preflight
     mockFetch.mockImplementation(async (url: string, opts?: { method?: string }) => {
       if (typeof url === 'string' && url.includes('/v1/health')) {

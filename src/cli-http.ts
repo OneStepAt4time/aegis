@@ -6,13 +6,11 @@
  * `ag tail` don't duplicate boilerplate.
  */
 
-import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 import { deriveBaseUrl, getConfiguredBaseUrl } from './base-url.js';
 import { loadConfig } from './config.js';
 import { parseIntSafe } from './validation.js';
+import { readAuthTokenFile } from './utils/auth-token-path.js';
 
 export interface CliIO {
   stdin: NodeJS.ReadableStream;
@@ -29,12 +27,9 @@ export async function resolveAuthToken(): Promise<string> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
   if (envToken) return envToken;
 
-  // ~/.aegis/auth-token file
-  try {
-    const tokenPath = join(homedir(), '.aegis', 'auth-token');
-    const token = readFileSync(tokenPath, 'utf-8').trim();
-    if (token) return token;
-  } catch { /* not found */ }
+  // Auth-token file (respects AEGIS_STATE_DIR — #3511)
+  const fileToken = readAuthTokenFile();
+  if (fileToken) return fileToken;
 
   try {
     const config = await loadConfig();

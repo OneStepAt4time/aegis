@@ -17,6 +17,8 @@ import { deriveBaseUrl, getConfiguredBaseUrl } from './base-url.js';
 import { loadConfig } from './config.js';
 import { runDoctorCommand } from './doctor.js';
 import { handleInit, findStarterTemplateFiles, handleStarterTemplateDoctor } from './commands/init.js';
+import { handleAuthMigrate } from './commands/auth.js';
+import { readAuthTokenFile } from './utils/auth-token-path.js';
 import { handleLogin } from './commands/login.js';
 import { handleLogout } from './commands/logout.js';
 import { handleWhoami } from './commands/whoami.js';
@@ -70,6 +72,9 @@ function printBanner(io: CliIO, _port: number): void {
 async function resolveAuthToken(): Promise<string> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
   if (envToken) return envToken;
+
+  const fileToken = readAuthTokenFile();
+  if (fileToken) return fileToken;
 
   const config = await loadConfig();
   if (config.clientAuthToken) return config.clientAuthToken;
@@ -371,6 +376,15 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'status') {
     return handleStatus(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'auth') {
+    const sub = argv[1];
+    if (sub === 'migrate') {
+      return handleAuthMigrate(argv.slice(2), io);
+    }
+    writeLine(io.stderr, '  Unknown auth subcommand. Usage: ag auth migrate');
+    return 1;
   }
 
   if (argv[0] === 'tail') {

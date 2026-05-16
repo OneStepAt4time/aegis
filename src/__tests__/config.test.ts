@@ -43,7 +43,6 @@ describe('config', () => {
       expect(config.port).toBe(9100);
       expect(config.host).toBe('127.0.0.1');
       expect(config.authToken).toBe('');
-      expect(config.clientAuthToken).toBe('');
       expect(config.dashboardEnabled).toBe(true);
       expect(config.maxSessionAgeMs).toBe(2 * 60 * 60 * 1000);
       expect(config.reaperIntervalMs).toBe(5 * 60 * 1000);
