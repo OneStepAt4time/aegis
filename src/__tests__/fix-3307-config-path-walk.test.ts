@@ -7,14 +7,29 @@
  * Fix: defaultConfigPath() now uses findConfigFilePath() to search for
  * existing configs (CWD .aegis/config.yaml, home dir, etc.) before
  * falling back to the hardcoded home path.
+ *
+ * Issue #3548: Tests leaked host ~/.aegis/config.yaml. Fixed by mocking
+ * os.homedir() via vi.mock so the host home config is never found.
  */
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const CONFIG_PATH = '../config.js';
+
+// Overrideable homedir mock — defaults to the real homedir,
+// individual tests can set mockHomedirReturnValue to a tmp dir.
+let mockHomedirReturnValue: string | undefined;
+
+vi.mock('node:os', async (importOriginal) => {
+  const original = await importOriginal<typeof import('node:os')>();
+  return {
+    ...original,
+    homedir: () => mockHomedirReturnValue ?? original.homedir(),
+  };
+});
 
 describe('Issue #3307: defaultConfigPath finds project-local config', () => {
   let tmpDir: string;
@@ -24,11 +39,13 @@ describe('Issue #3307: defaultConfigPath finds project-local config', () => {
     origCwd = process.cwd();
     tmpDir = join(tmpdir(), `aegis-test-3307-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
     mkdirSync(tmpDir, { recursive: true });
+    mockHomedirReturnValue = undefined;
   });
 
   afterEach(() => {
     process.chdir(origCwd);
     rmSync(tmpDir, { recursive: true, force: true });
+    mockHomedirReturnValue = undefined;
   });
 
   it('findConfigFilePath finds .aegis/config.yaml in CWD', async () => {
@@ -47,9 +64,14 @@ describe('Issue #3307: defaultConfigPath finds project-local config', () => {
   });
 
   it('findConfigFilePath finds .aegis/config.yaml in nested subdirectory via CWD', async () => {
+    // Use a separate "fake home" with no .aegis/ inside, different from tmpDir
+    const fakeHome = join(tmpdir(), `aegis-fakehome-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+    mkdirSync(fakeHome, { recursive: true });
+    mockHomedirReturnValue = fakeHome;
+
     const { findConfigFilePath } = await import(CONFIG_PATH);
 
-    // Create project-local config
+    // Create project-local config in tmpDir
     const aegisDir = join(tmpDir, '.aegis');
     mkdirSync(aegisDir, { recursive: true });
     writeFileSync(join(aegisDir, 'config.yaml'), 'port: 9200\n');
@@ -63,27 +85,23 @@ describe('Issue #3307: defaultConfigPath finds project-local config', () => {
     // So from a nested dir, it won't find the parent's config
     // This test documents the current behavior
     const found = findConfigFilePath();
-    // Current behavior: does NOT walk up, only checks CWD
-    // If a home config exists, it might return that instead
-    // The fix is that run.ts at least checks CWD first
     expect(found).toBeNull();
+
+    rmSync(fakeHome, { recursive: true, force: true });
   });
 
   it('findConfigFilePath returns null when no config exists anywhere', async () => {
+    // Mock os.homedir() to return tmpDir (which has no .aegis/ subdir)
+    mockHomedirReturnValue = tmpDir;
+
     const { findConfigFilePath } = await import(CONFIG_PATH);
 
-    // Use an isolated tmp dir with no config
     process.chdir(tmpDir);
-    // Note: this test may pass or fail depending on whether ~/.aegis/config.yaml exists
-    // We test the function works, not the exact return value in all envs
     const result = findConfigFilePath();
-    // In a clean tmp dir with no home config override, should be null or point to home
-    expect(typeof result === 'string' || result === null).toBe(true);
+    expect(result).toBeNull();
   });
 
   it('run.ts defaultConfigPath prefers project-local config over home', async () => {
-    // Test that the defaultConfigPath function uses findConfigFilePath
-    // We verify this indirectly by checking the function implementation
     const { findConfigFilePath } = await import(CONFIG_PATH);
 
     const aegisDir = join(tmpDir, '.aegis');
