@@ -80,7 +80,16 @@ Start the Aegis HTTP server (port 9100).
 ag                     # Default: port 9100, 127.0.0.1
 ag --port 3000         # Custom port
 ag --host 0.0.0.0      # Bind to all interfaces
+ag --json-logs         # Structured JSON logs (for CI/programmatic use)
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--port <number>` | HTTP server port override |
+| `--host <addr>` | Bind address |
+| `--json-logs` | Output structured JSON logs instead of human-friendly hints (for CI/programmatic use) |
 
 Requires `AEGIS_AUTH_TOKEN` for production use:
 
