@@ -715,6 +715,28 @@ function isUnderOrEqual(childPath: string, parentPath: string): boolean {
  *     - If allowedWorkDirs is configured, use that list.
  *     - Otherwise, use default safe dirs (home, cwd).
  *  Returns the resolved real path on success, or an error object on failure. */
+/**
+ * On Windows, detect Unix-style paths (e.g. from Git Bash / MSYS2 / Cygwin)
+ * and attempt to normalize them to Windows-native form before validation.
+ * If the path cannot be resolved, include a suggestion in the error message.
+ * (Issue #3502)
+ */
+function normalizeWindowsUnixPath(inputPath: string): string {
+  // Only relevant on win32; Unix-style paths starting with / are unusual
+  if (process.platform !== 'win32') return inputPath;
+  // Only applies to absolute Unix-style paths
+  if (!inputPath.startsWith('/')) return inputPath;
+  // Try path.win32.normalize which converts forward slashes to backslashes.
+  // For MSYS2-style /c/Users/... paths, map to C:\Users\...
+  const win32Normalized = path.win32.normalize(inputPath);
+  // Heuristic: MSYS2 paths like /c/foo → C:\foo
+  const msysMatch = win32Normalized.match(/^\\([a-zA-Z])\\(.*)$/);
+  if (msysMatch) {
+    return `${msysMatch[1].toUpperCase()}:\\${msysMatch[2]}`;
+  }
+  return win32Normalized;
+}
+
 export async function validateWorkDir(
   workDir: string,
   allowedWorkDirs: readonly string[] = [],
@@ -725,6 +747,17 @@ export async function validateWorkDir(
   // Step 1: Reject path traversal in raw/mixed/decoded forms before resolution.
   if (containsTraversalSegment(workDir)) {
     return { error: 'workDir must not contain path traversal components (..)', code: 'INVALID_WORKDIR' };
+  }
+
+  // Step 1b (Issue #3502): On Windows, normalize Unix-style paths from Git Bash / MSYS2 / Cygwin.
+  let normalizedWorkDir = workDir;
+  let windowsSuggestion: string | undefined;
+  if (process.platform === 'win32' && workDir.startsWith('/')) {
+    const converted = normalizeWindowsUnixPath(workDir);
+    if (converted !== workDir) {
+      normalizedWorkDir = converted;
+    }
+    windowsSuggestion = converted;
   }
 
   const safeDirCandidates = allowedWorkDirs.length > 0
@@ -741,10 +774,11 @@ export async function validateWorkDir(
   const candidateSafeDirs = Array.from(new Set([...safeDirCandidates, ...safeDirs]));
 
   // Step 2: Resolve to absolute path and enforce lexical allowlist before touching the filesystem.
-  const resolved = path.resolve(workDir);
+  const resolved = path.resolve(normalizedWorkDir);
   const preAllowed = candidateSafeDirs.some((dir) => isUnderOrEqual(resolved, dir));
   if (!preAllowed) {
-    return { error: `workDir ${resolved} is not in the allowed directories list`, code: 'INVALID_WORKDIR' };
+    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
   // Step 3: Follow symlinks.
@@ -752,13 +786,15 @@ export async function validateWorkDir(
   try {
     realPath = await fs.realpath(resolved);
   } catch { /* path does not exist on disk */
-    return { error: `workDir does not exist: ${resolved}`, code: 'INVALID_WORKDIR' };
+    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    return { error: `workDir does not exist: ${resolved}.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
   // Step 4: Canonical allowlist check after symlink resolution.
   const allowed = candidateSafeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
-    return { error: `workDir ${resolved} is not in the allowed directories list`, code: 'INVALID_WORKDIR' };
+    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
   // Step 5: Ensure workDir is a directory, not a file.
