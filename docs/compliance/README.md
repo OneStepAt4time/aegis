@@ -2,7 +2,7 @@
 
 > **Status:** Pre-compliance (Phase 4 — Enterprise GA, not yet active)
 >
-> **Last reviewed:** 2026-05-11 | **Aegis version:** 0.6.7-preview.1
+> **Last reviewed:** 2026-05-11 | **Aegis version:** 0.6.7
 
 This directory contains Aegis's compliance documentation, organized for SOC 2 Type II audit preparation, GDPR adherence, and enterprise security reviews.
 

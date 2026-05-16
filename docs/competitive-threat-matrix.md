@@ -122,7 +122,7 @@ Live star counts and release velocity as of May 12:
 |-----------|---------|-------------|----------------|-------------------|-------------|
 | **Ruflo** | 49,305 | +2,300 | v3.7.0-alpha.23 (May 11) | 56,915 | Multiple/day (alpha) |
 | **oh-my-claudecode** | 33,491 | +400 | v4.13.7 (May 9) | 7,341 | Weekly |
-| **Aegis** | ~10 | — | v0.6.7-preview.1 (May 11) | 162 | 5–10 PRs/day |
+| **Aegis** | ~10 | — | v0.6.7 (May 11) | 162 | 5–10 PRs/day |
 
 **Key signals:**
 - Ruflo gained 2,300 stars in 3 days — accelerating. Still pre-stable (alpha releases).
