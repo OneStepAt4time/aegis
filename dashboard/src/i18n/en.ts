@@ -668,6 +668,17 @@ export const en = {
     allSessions: 'All sessions',
     checkingAuth: 'Checking authentication',
   },
+
+  cliShortcuts: {
+    title: 'CLI Shortcuts',
+    viewOutput: 'View output',
+    streamLive: 'Stream live',
+    checkStatus: 'Check status',
+    killSession: 'Kill session',
+    listAll: 'List all sessions',
+    copied: 'Copied!',
+    copy: 'Copy',
+  },
 } as const;
 
 export type Messages = typeof en;

@@ -26,6 +26,7 @@ import { useSessionPolling } from '../hooks/useSessionPolling';
 import { useSessionIntervention } from '../hooks/useSessionIntervention';
 import { useSessionApproval } from '../hooks/useSessionApproval';
 import { SessionHeader } from '../components/session/SessionHeader';
+import { CliShortcutsPanel } from '../components/session/CliShortcutsPanel';
 import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
@@ -806,6 +807,8 @@ export default function SessionDetailPage() {
               )}
             </AnimatePresence>
           </div>
+
+          <CliShortcutsPanel sessionId={s.id} createdAt={s.createdAt} />
 
           {/* Desktop session composer */}
           <div className="hidden rounded-b-lg border border-t-0 border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-3 sm:block animate-bento-reveal">
