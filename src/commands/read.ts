@@ -49,7 +49,7 @@ export async function handleRead(args: string[], io: CliIO): Promise<number> {
 
   for (const msg of messages) {
     const role = msg.role ?? 'unknown';
-    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content ?? null) ?? '';
     const prefix = role === 'assistant' ? '🤖' : role === 'user' ? '👤' : '⚙️';
     // Truncate long messages for terminal readability
     const lines = content.split('\n');
