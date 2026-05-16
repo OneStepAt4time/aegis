@@ -4,6 +4,10 @@
  * Connects to GET /v1/sessions/:id/events SSE stream and prints events.
  * Uses SIGINT on Unix and a readline keypress fallback on Windows for Ctrl+C.
  * Includes a 30-minute max-duration safeguard so the process never hangs forever.
+ *
+ * #3566: On SSE routes, the server requires short-lived SSE tokens (prefixed `sse_`).
+ * If the initial SSE request returns 401, the CLI fetches an SSE token via
+ * POST /v1/auth/sse-token and reconnects with ?token=<sse-token>.
  */
 
 import { platform } from 'node:os';
@@ -12,6 +16,34 @@ import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLin
 
 /** Maximum tail duration before auto-disconnect (30 minutes). */
 const MAX_TAIL_DURATION_MS = 30 * 60 * 1000;
+
+/**
+ * #3566: Fetch a short-lived SSE token from the server.
+ * The caller must provide a valid bearer token (already authenticated).
+ * Returns the SSE token string, or null if the request fails.
+ */
+async function fetchSSEToken(
+  baseUrl: string,
+  bearerToken: string,
+  signal?: AbortSignal,
+): Promise<{ token: string; expiresAt: number } | null> {
+  try {
+    const res = await fetch(`${baseUrl}/v1/auth/sse-token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${bearerToken}`,
+        'Content-Type': 'application/json',
+      },
+      signal,
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return await res.json() as { token: string; expiresAt: number };
+  } catch {
+    return null;
+  }
+}
 
 export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const sessionId = args.find(a => !a.startsWith('-'));
@@ -73,9 +105,13 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
   // Don't prevent Node.js from exiting naturally.
   maxDurationTimer.unref();
 
+  // #3566: Build SSE URL — optionally includes ?token= for SSE-token auth.
+  let sseUrl = `${baseUrl}/v1/sessions/${sessionId}/events`;
+  let usedSSEToken = false;
+
   let res: Response;
   try {
-    res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/events`, {
+    res = await fetch(sseUrl, {
       headers,
       signal: abortController.signal,
     });
@@ -87,16 +123,60 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
     throw e;
   }
 
+  // #3566: If 401 and we haven't tried SSE token yet, fetch one and retry.
+  if (res.status === 401 && !usedSSEToken && authToken) {
+    writeLine(io.stdout, '  🔑 SSE token required — fetching…');
+
+    const sseTokenResult = await fetchSSEToken(baseUrl, authToken, abortController.signal);
+    if (!sseTokenResult) {
+      writeLine(io.stderr, '  ❌ Failed to obtain SSE token — your bearer token may be invalid or expired.');
+      writeLine(io.stderr, '     Run `ag login` to refresh your credentials.');
+      clearTimeout(maxDurationTimer);
+      process.removeListener('SIGINT', onSigInt);
+      keypressCleanup?.();
+      return 1;
+    }
+
+    // Reconnect with ?token=<sse-token> query param
+    sseUrl = `${baseUrl}/v1/sessions/${sessionId}/events?token=${encodeURIComponent(sseTokenResult.token)}`;
+    usedSSEToken = true;
+
+    try {
+      res = await fetch(sseUrl, {
+        headers: { 'Accept': 'text/event-stream' },
+        signal: abortController.signal,
+      });
+    } catch (e: unknown) {
+      if ((e as Error).name === 'AbortError') {
+        clearTimeout(maxDurationTimer);
+        return 0;
+      }
+      throw e;
+    }
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
+    const errMsg = ((err as { error?: string }).error) || res.statusText;
+
+    // #3566: Surface specific guidance for SSE-related 401 errors
+    if (res.status === 401) {
+      writeLine(io.stderr, `  ❌ Unauthorized — ${errMsg}`);
+      writeLine(io.stderr, '     SSE token authentication failed. Run `ag login` to refresh credentials.');
+    } else {
+      writeLine(io.stderr, `  ❌ ${errMsg}`);
+    }
     clearTimeout(maxDurationTimer);
+    process.removeListener('SIGINT', onSigInt);
+    keypressCleanup?.();
     return 1;
   }
 
   if (!res.body) {
     writeLine(io.stderr, '  ❌ No response body — SSE not supported.');
     clearTimeout(maxDurationTimer);
+    process.removeListener('SIGINT', onSigInt);
+    keypressCleanup?.();
     return 1;
   }
 
