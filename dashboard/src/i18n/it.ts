@@ -661,4 +661,15 @@ export const it = {
     allSessions: 'Tutte le sessioni',
     checkingAuth: 'Verifica autenticazione',
   },
+
+  cliShortcuts: {
+    title: 'Scorciatoie CLI',
+    viewOutput: 'Visualizza output',
+    streamLive: 'Stream in diretta',
+    checkStatus: 'Controlla stato',
+    killSession: 'Termina sessione',
+    listAll: 'Elenca tutte le sessioni',
+    copied: 'Copiato!',
+    copy: 'Copia',
+  },
 };
