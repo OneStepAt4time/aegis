@@ -963,7 +963,16 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          npx clawhub@latest publish skill/ --slug onestep-aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration"
+          set +e
+          OUTPUT=$(npx clawhub@latest publish skill/ --slug onestep-aegis --name "Aegis Bridge" --version "$VERSION" --changelog "Release v$VERSION - HTTP/MCP Claude Code orchestration" 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $STATUS -ne 0 ] && echo "$OUTPUT" | grep -qi "already exists"; then
+            echo "::notice::ClawHub version $VERSION already exists — skipping."
+          elif [ $STATUS -ne 0 ]; then
+            exit $STATUS
+          fi
 
   # H1: SLSA build provenance attestation.
   # Generates machine-readable provenance for every release artifact.
