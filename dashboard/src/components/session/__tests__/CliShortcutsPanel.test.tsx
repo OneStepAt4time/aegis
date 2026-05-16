@@ -79,4 +79,51 @@ describe('CliShortcutsPanel', () => {
     const codeEl = screen.getByText(`ag read ${SHORT_ID}`);
     expect(codeEl.closest('[title]')?.getAttribute('title')).toBe(`ag read ${SESSION_ID}`);
   });
+
+  it('handles clipboard write failure gracefully without crashing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError')) },
+    });
+
+    render(<CliShortcutsPanel sessionId={SESSION_ID} />);
+
+    const toggle = screen.getByRole('button', { name: /CLI Shortcuts/i });
+    fireEvent.click(toggle);
+
+    const copyButtons = screen.getAllByRole('button', { name: /copy/i });
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    // Should not crash — try-catch handles the rejection
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`ag read ${SESSION_ID}`);
+    // Should NOT show "Copied!" feedback on failure
+    expect(screen.queryByText('Copied!')).toBeNull();
+    // Panel should still be rendered and functional
+    expect(screen.getByText(`ag read ${SHORT_ID}`)).toBeDefined();
+
+    consoleError.mockRestore();
+  });
+
+  it('handles missing navigator.clipboard without crashing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // @ts-expect-error — testing missing clipboard API
+    delete navigator.clipboard;
+
+    render(<CliShortcutsPanel sessionId={SESSION_ID} />);
+
+    const toggle = screen.getByRole('button', { name: /CLI Shortcuts/i });
+    fireEvent.click(toggle);
+
+    const copyButtons = screen.getAllByRole('button', { name: /copy/i });
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    // Should not crash — try-catch handles missing clipboard
+    expect(screen.getByText(`ag read ${SHORT_ID}`)).toBeDefined();
+
+    consoleError.mockRestore();
+  });
 });

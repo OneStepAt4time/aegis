@@ -76,4 +76,63 @@ describe('GettingStartedCard', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CLI_COMMAND);
     expect(screen.getByLabelText('Copied!')).toBeTruthy();
   });
+
+  // --- #3530: i18n coverage ---
+
+  it('renders title via i18n key (not hardcoded)', () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    // Title comes from t('gettingStarted.title') which resolves to 'Welcome to Aegis'
+    expect(screen.getByText('Welcome to Aegis')).toBeTruthy();
+  });
+
+  it('renders description via i18n key', () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    // Description from t('gettingStarted.description')
+    expect(screen.getByText(/Create your first session to start managing Claude Code/)).toBeTruthy();
+  });
+
+  it('dismiss button aria-label uses i18n key', () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    // aria-label={t('gettingStarted.dismiss')} resolves to 'Dismiss getting started card'
+    const dismissBtn = screen.getByLabelText('Dismiss getting started card');
+    expect(dismissBtn).toBeTruthy();
+  });
+
+  it('copy button aria-label uses i18n keys for default and copied states', async () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    // Default: aria-label={t('gettingStarted.copyCommand')} = 'Copy command'
+    const copyBtn = screen.getByLabelText('Copy command');
+    expect(copyBtn).toBeTruthy();
+
+    // After copy: aria-label={t('gettingStarted.copied')} = 'Copied!'
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+    expect(screen.getByLabelText('Copied!')).toBeTruthy();
+  });
+
+  // --- #3530: clipboard failure ---
+
+  it('handles clipboard write failure gracefully without crashing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError')) },
+    });
+
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    const copyBtn = screen.getByLabelText('Copy command');
+
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    // Should not crash — try-catch handles the rejection
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CLI_COMMAND);
+    // Card should still be rendered
+    expect(screen.getByText('Welcome to Aegis')).toBeTruthy();
+    // Should NOT show copied state
+    expect(screen.queryByLabelText('Copied!')).toBeNull();
+
+    consoleError.mockRestore();
+  });
 });
