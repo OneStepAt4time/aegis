@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, Copy, Check } from 'lucide-react';
 import { useT } from '../../i18n/context.js';
+import { copyToClipboard } from '../../utils/clipboard.js';
 
 export interface CliShortcutsPanelProps {
   sessionId: string;
@@ -30,12 +31,10 @@ export function CliShortcutsPanel({ sessionId, createdAt }: CliShortcutsPanelPro
   ];
 
   const handleCopy = async (cmd: Command) => {
-    try {
-      await navigator.clipboard.writeText(cmd.fullCmd);
+    const ok = await copyToClipboard(cmd.fullCmd);
+    if (ok) {
       setCopiedKey(cmd.labelKey);
       setTimeout(() => setCopiedKey(null), 2000);
-    } catch {
-      // Clipboard API unavailable (non-HTTPS mobile) — fail silently
     }
   };
 
