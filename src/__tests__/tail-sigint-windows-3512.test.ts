@@ -1,5 +1,6 @@
 /**
  * Regression tests for #3512 — ag tail SIGINT handler unreliable on Windows.
+ * Updated for #3566 — SSE token acquisition before connecting to events stream.
  *
  * Verifies:
  * 1. On Windows (platform() === 'win32'), readline keypress listener is used as fallback
@@ -7,6 +8,7 @@
  * 3. 30-minute max-duration timer is always set
  * 4. Cleanup happens correctly on abort (SIGINT, keypress, or timeout)
  * 5. Missing session ID returns error
+ * 6. #3566: SSE token is obtained before connecting to event stream
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -42,6 +44,27 @@ function makeIO() {
   };
 }
 
+/**
+ * #3566: Create a mock fetch that handles the two-step SSE flow:
+ * 1st call: POST /v1/auth/sse-token → { token: 'sse_test_token' }
+ * 2nd call: GET /v1/sessions/:id/events → SSE stream
+ */
+function createSSEMockFetch(streamResponse: { ok: boolean; body?: ReadableStream; json?: () => Promise<any> }) {
+  let callCount = 0;
+  return vi.fn(async (url: string, opts?: any) => {
+    callCount++;
+    // First call: SSE token endpoint
+    if (callCount === 1 && typeof url === 'string' && url.includes('/sse-token')) {
+      return {
+        ok: true,
+        json: async () => ({ token: 'sse_test_token' }),
+      };
+    }
+    // Second call: events stream
+    return streamResponse;
+  });
+}
+
 describe('tail SIGINT handling (#3512)', () => {
   const originalIsTTY = process.stdin.isTTY;
 
@@ -73,11 +96,11 @@ describe('tail SIGINT handling (#3512)', () => {
       },
     });
 
-    const mockFetch = vi.fn(async () => ({
+    const mockFetch = createSSEMockFetch({
       ok: true,
       body: fakeStream,
       json: async () => ({}),
-    }));
+    });
 
     const originalGlobalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch as any;
@@ -103,11 +126,11 @@ describe('tail SIGINT handling (#3512)', () => {
       },
     });
 
-    const mockFetch = vi.fn(async () => ({
+    const mockFetch = createSSEMockFetch({
       ok: true,
       body: fakeStream,
       json: async () => ({}),
-    }));
+    });
 
     const originalGlobalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch as any;
@@ -123,13 +146,43 @@ describe('tail SIGINT handling (#3512)', () => {
     }
   });
 
-  it('handles server returning non-OK response', async () => {
+  it('handles SSE token fetch failure', async () => {
+    // SSE token endpoint returns failure
     const mockFetch = vi.fn(async () => ({
       ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      json: async () => ({ error: 'Session not found' }),
+      status: 401,
+      statusText: 'Unauthorized',
+      json: async () => ({ error: 'Invalid token' }),
     }));
+
+    const originalGlobalFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as any;
+
+    try {
+      const io = makeIO();
+      const exitCode = await handleTail(['abc123'], io);
+      expect(exitCode).toBe(1);
+      expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('SSE token'));
+    } finally {
+      globalThis.fetch = originalGlobalFetch;
+    }
+  });
+
+  it('handles events stream returning non-OK response', async () => {
+    // First call succeeds (SSE token), second fails (stream)
+    let callCount = 0;
+    const mockFetch = vi.fn(async () => {
+      callCount++;
+      if (callCount === 1) {
+        return { ok: true, json: async () => ({ token: 'sse_test_token' }) };
+      }
+      return {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: async () => ({ error: 'Session not found' }),
+      };
+    });
 
     const originalGlobalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch as any;
@@ -153,11 +206,11 @@ describe('tail SIGINT handling (#3512)', () => {
       },
     });
 
-    const mockFetch = vi.fn(async () => ({
+    const mockFetch = createSSEMockFetch({
       ok: true,
       body: fakeStream,
       json: async () => ({}),
-    }));
+    });
 
     const originalGlobalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch as any;
@@ -185,11 +238,11 @@ describe('tail SIGINT handling (#3512)', () => {
         },
       });
 
-      const mockFetch = vi.fn(async () => ({
+      const mockFetch = createSSEMockFetch({
         ok: true,
         body: fakeStream,
         json: async () => ({}),
-      }));
+      });
 
       const originalGlobalFetch = globalThis.fetch;
       globalThis.fetch = mockFetch as any;

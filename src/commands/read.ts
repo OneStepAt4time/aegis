@@ -2,6 +2,7 @@
  * commands/read.ts — `ag read <id>` — Read session output.
  *
  * Wraps GET /v1/sessions/:id/read with optional pagination.
+ * Issue #3565: Handle both legacy msg.content and ParsedEntry msg.text fields.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
@@ -49,7 +50,10 @@ export async function handleRead(args: string[], io: CliIO): Promise<number> {
 
   for (const msg of messages) {
     const role = msg.role ?? 'unknown';
-    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    // #3565: /read returns ParsedEntry { text } not { content }.
+    // Handle both formats with null safety.
+    const raw = msg.text ?? msg.content;
+    const content = typeof raw === 'string' ? raw : JSON.stringify(raw ?? '') ?? '';
     const prefix = role === 'assistant' ? '🤖' : role === 'user' ? '👤' : '⚙️';
     // Truncate long messages for terminal readability
     const lines = content.split('\n');

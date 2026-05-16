@@ -2,6 +2,9 @@
  * commands/tail.ts — `ag tail <id>` — Follow session output in real-time.
  *
  * Connects to GET /v1/sessions/:id/events SSE stream and prints events.
+ * Issue #3566: SSE endpoints require short-lived sse_ tokens.
+ * The CLI first obtains an SSE token via POST /v1/auth/sse-token, then connects.
+ *
  * Uses SIGINT on Unix and a readline keypress fallback on Windows for Ctrl+C.
  * Includes a 30-minute max-duration safeguard so the process never hangs forever.
  */
@@ -12,6 +15,25 @@ import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLin
 
 /** Maximum tail duration before auto-disconnect (30 minutes). */
 const MAX_TAIL_DURATION_MS = 30 * 60 * 1000;
+
+/**
+ * Issue #3566: Obtain a short-lived SSE token via POST /v1/auth/sse-token.
+ * SSE endpoints reject long-lived bearer tokens — only sse_ prefixed tokens are accepted.
+ */
+async function obtainSSEToken(baseUrl: string, authToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl}/v1/auth/sse-token`, {
+      method: 'POST',
+      headers: buildHeaders(authToken),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { token?: string };
+    return body.token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const sessionId = args.find(a => !a.startsWith('-'));
@@ -24,7 +46,14 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const authToken = await resolveAuthToken();
   if (!(await requireServer(baseUrl, authToken, io))) return 1;
 
-  const headers = buildHeaders(authToken);
+  // Issue #3566: Obtain SSE token before connecting to the event stream.
+  const sseToken = await obtainSSEToken(baseUrl, authToken);
+  if (!sseToken) {
+    writeLine(io.stderr, '  ❌ Failed to obtain SSE token. Check your auth credentials.');
+    return 1;
+  }
+
+  const headers = buildHeaders(sseToken);
   headers['Accept'] = 'text/event-stream';
 
   writeLine(io.stdout, `  Tailing session ${sessionId.slice(0, 8)}… (Ctrl+C to stop)`);
