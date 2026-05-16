@@ -227,3 +227,28 @@ Meglio una PR buona e verificata che tre PR da correggere dopo.
 
 <!-- openclaw-memory-promotion:memory:memory/2026-05-03.md:19:19 -->
 - Athena filed 10 new backend bugs (all ready, no needs-human): [score=0.866 recalls=0 avg=0.620 source=memory/2026-05-03.md:19-19]
+
+---
+
+## Strategic Refocus — 16 May 2026
+
+### Target: Solo Dev / Small Team (1–100 CC agents, self-hosted)
+Phase 4 (enterprise) DEFERRED indefinitely. No SSO, multi-tenancy, Postgres default, K8s, billing, quotas until paying customer signs.
+
+### The Filter
+"Does this make Aegis better for the solo developer who approves agents from their phone, today?"
+- Yes → build it
+- Maybe → don't
+- Enterprise → deferred
+
+### This Week
+One feature, full team convergence. Ema picks tomorrow. Bar: value in under 5 minutes.
+
+### ADR-0024 forthcoming (supplements 0023)
+Single MIT edition. No Free/Enterprise split.
+
+### What Stays
+Bug fixes (P0/P1), security fixes, CC bridge core, local gate, branching rules, worktree convention.
+
+### Worktree Cleanup
+All agents audit + finish-or-kill their worktrees by Friday EOD. Ema kills anything remaining.
