@@ -55,10 +55,6 @@ let jsonLogsEnabled = false;
 
 export function setJsonLogsEnabled(enabled: boolean): void {
   jsonLogsEnabled = enabled;
-  // When the flag changes, switch the active sink so structured logs
-  // start flowing to stdout/stderr immediately. This keeps behavior
-  // consistent whether the flag is set via CLI or programmatically.
-  sink = jsonLogsEnabled ? defaultSink : quietSink;
 }
 
 export function isJsonLogsEnabled(): boolean {
