@@ -125,6 +125,70 @@ claude mcp add aegis -- ag mcp
 
 For other MCP hosts (Cursor, Windsurf), see the [Cursor integration](./cursor.md) or [Windsurf integration](./windsurf.md).
 
+### `ag list` — List Sessions
+
+List active and recent sessions.
+
+```bash
+ag list                        # All sessions
+ag list --status running      # Filter by status
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--status <value>` | Filter sessions by status (e.g. `running`, `idle`, `completed`) |
+
+Displays each session as a compact row with truncated ID, status, and display name.
+
+### `ag read <id>` — Read Session Output
+
+Fetch messages from a session.
+
+```bash
+ag read abc12345               # First 200 messages
+ag read abc12345 --limit 50    # Last 50 messages
+ag read abc12345 --page 2      # Paginate
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--page <number>` | Page number (default: 1) |
+| `--limit <number>` | Messages per page (default: 200) |
+
+### `ag kill <id>` — Terminate a Session
+
+Kill a running session by ID.
+
+```bash
+ag kill abc12345
+```
+
+Sends `DELETE /v1/sessions/:id` and confirms termination. Sessions in terminal states (`killed`, `completed`, `crashed`) return `404`.
+
+### `ag status` — Server Health
+
+Show server health and session summary.
+
+```bash
+ag status
+```
+
+Displays version, status, uptime, port, and active/total session counts.
+
+### `ag tail <id>` — Follow Session in Real-Time
+
+Stream session events as they arrive (SSE).
+
+```bash
+ag tail abc12345
+```
+
+Connects to the session's event stream and prints output live. Press `Ctrl+C` to stop.
+
 ### `ag create "brief"` — Quick Session
 
 Create a session and send a brief in one command.
@@ -216,10 +280,15 @@ ag init                Bootstrap .aegis/config.yaml
 ag init --list-templates
 ag init --from-template code-reviewer
 ag run "prompt"        Zero-to-session (bootstrap + start + create + stream)
-ag doctor              Validate starter scaffolds
-ag --port 3000         Custom port
-ag mcp                 Start MCP server
+ag list                List sessions
+ag read <id>           Read session output
+ag kill <id>           Terminate a session
+ag status              Server health + session summary
+ag tail <id>           Follow session events in real-time
 ag create "brief"      Create + send
+ag doctor              Validate starter scaffolds
+ag mcp                 Start MCP server
+ag --port 3000         Custom port
 ag --help              Show all options
 ag --version           Show version
 ```
