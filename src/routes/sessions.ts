@@ -358,6 +358,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
 
+    // Issue #3552: Reject promptless creations to avoid accidental empty sessions.
+    // Allow session creation without a prompt only when resuming an existing session
+    // via resumeSessionId (or when explicitly allowed via other flags in future).
+    if (!prompt && !resumeSessionId) {
+      return reply.status(400).send({ error: 'prompt is required when creating a new session' });
+    }
+
     // Issue #1953: Per-key quota enforcement at session creation.
     const keyId = req.authKeyId;
     const apiKey = keyId && keyId !== 'master' ? auth.getKey(keyId) : null;
