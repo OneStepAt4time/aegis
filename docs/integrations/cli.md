@@ -70,6 +70,9 @@ If the server is already running, skips straight to session creation. Existing c
 |------|-------------|
 | `--cwd <path>` | Working directory (default: current directory) |
 | `--port <number>` | Server port override |
+| `--yes` | Suppress status messages for non-interactive/CI usage |
+| `--accept-permissions` / `-y` | Auto-approve all permission prompts |
+| `--passthrough` | Bypass all permissions (alias for `--accept-permissions`) |
 | `--no-stream` | Don't stream output; print curl commands instead |
 
 ### `ag` — Start Server
