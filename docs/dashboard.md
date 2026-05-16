@@ -66,6 +66,14 @@ Export filtered session records as CSV from the Sessions page:
 
 The CSV includes all visible columns: ID, name, status, created date, and last activity.
 
+### Model & Effort Columns *(Proposed — awaiting backend implementation, #3560)*
+
+Once the backend exposes `model` and `effort` per session (from CC `--model` and `--effort` flags), the dashboard will surface:
+
+- **Session Table:** optional `model` and `effort` columns (hidden by default, toggleable via column picker)
+- **Session Detail:** model badge and effort indicator in the session header metadata row
+- **Cost Page:** per-session model attribution alongside existing cost breakdowns
+
 ### CCMeter-Inspired Overview Layout
 
 The Overview page (`/dashboard/`) uses a CCMeter-inspired terminal aesthetic with real-time analytics:
