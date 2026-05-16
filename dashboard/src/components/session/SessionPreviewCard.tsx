@@ -1,3 +1,4 @@
+import { formatSessionName } from '../../utils/formatSessionName';
 /**
  * components/session/SessionPreviewCard.tsx — Hover preview card for session rows.
  * Shows the last few transcript messages without leaving the list.
@@ -107,7 +108,7 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusDot status={session.status} />
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">{session.displayName || session.id}</span>
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">{formatSessionName(session.displayName, session.id.slice(0, 8))}</span>
         </div>
         <button type="button"
           onClick={onClose}

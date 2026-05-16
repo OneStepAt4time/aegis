@@ -1,3 +1,4 @@
+import { formatSessionName } from '../utils/formatSessionName';
 /**
  * components/ActivityStream.tsx - Real-time feed of all CC actions across sessions.
  */
@@ -164,7 +165,7 @@ export default function ActivityStream({
   const sessionNameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of sessions) {
-      m.set(s.id, s.displayName ?? s.id.slice(0, 8));
+      m.set(s.id, formatSessionName(s.displayName, s.id.slice(0, 8)));
     }
     return m;
   }, [sessions]);
@@ -191,7 +192,7 @@ export default function ActivityStream({
               <option value="">All sessions</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.displayName || s.id.slice(0, 8)}
+                  {formatSessionName(s.displayName, s.id.slice(0, 8))}
                 </option>
               ))}
             </select>

@@ -220,8 +220,8 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bravo').length).toBeGreaterThan(0);
     });
 
     fireEvent.change(screen.getByLabelText('Search sessions'), {
@@ -230,7 +230,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('alpha')).toBeNull();
-      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bravo').length).toBeGreaterThan(0);
     });
 
     expect(mockGetSessions).toHaveBeenLastCalledWith({ page: 1, limit: 100, status: undefined });
@@ -240,12 +240,12 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByLabelText('Select session alpha').length).toBeGreaterThan(0);
-      expect(screen.getAllByLabelText('Select session bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Bravo').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
-    fireEvent.click(screen.getAllByLabelText('Select session bravo')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select session Alpha')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select session Bravo')[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Interrupt 2 selected sessions' }));
 
     await waitFor(() => {
@@ -260,12 +260,12 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByLabelText('Select session alpha').length).toBeGreaterThan(0);
-      expect(screen.getAllByLabelText('Select session charlie').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Charlie').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
-    fireEvent.click(screen.getAllByLabelText('Select session charlie')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select session Alpha')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select session Charlie')[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Kill 2 selected sessions' }));
 
     // Confirm in the dialog
@@ -286,9 +286,9 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('charlie').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Charlie').length).toBeGreaterThan(0);
     });
 
     const baselineRenders = mockStatusDot.mock.calls.length;
@@ -300,7 +300,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
     });
 
     expect(mockStatusDot.mock.calls.length).toBe(baselineRenders);
@@ -310,13 +310,13 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByLabelText('Select session alpha').length).toBeGreaterThan(0);
-      expect(screen.getAllByLabelText('Select session bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText('Select session Bravo').length).toBeGreaterThan(0);
     });
 
     const baselineRenders = mockStatusDot.mock.calls.length;
 
-    fireEvent.click(screen.getAllByLabelText('Select session alpha')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select session Alpha')[0]);
 
     await waitFor(() => {
       expect(screen.getByText(/1 session selected/i)).toBeTruthy();
@@ -357,7 +357,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByRole('columnheader', { name: /Created by/i })).toBeTruthy();
@@ -367,7 +367,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
     });
 
     // alpha has ownerKeyId: 'ak_test_alpha_key' → truncated to 'ak_test_…'
@@ -378,7 +378,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('bravo').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bravo').length).toBeGreaterThan(0);
     });
 
     // bravo has no ownerKeyId → should show '—'
@@ -390,12 +390,12 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('charlie').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Charlie').length).toBeGreaterThan(0);
     });
 
     // charlie has status 'permission_prompt' so the virtualized row should
     // expose an Approve button, matching the non-virtualized SessionTable.
-    const approveButtons = screen.getAllByLabelText('Approve session charlie');
+    const approveButtons = screen.getAllByLabelText('Approve session Charlie');
     expect(approveButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(approveButtons[approveButtons.length - 1]);
@@ -409,10 +409,10 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
     });
 
-    expect(screen.queryByLabelText('Approve session alpha')).toBeNull();
-    expect(screen.queryByLabelText('Approve session bravo')).toBeNull();
+    expect(screen.queryByLabelText('Approve session Alpha')).toBeNull();
+    expect(screen.queryByLabelText('Approve session Bravo')).toBeNull();
   });
 });
