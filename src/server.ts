@@ -58,7 +58,7 @@ import { registerMemoryRoutes } from './memory-routes.js';
 
 import { killAllSessions } from './signal-cleanup-helper.js';
 
-import { logger, setStructuredLogSink } from './logger.js';
+import { logger, setStructuredLogSink, isJsonLogsEnabled } from './logger.js';
 import { initTracing, shutdownTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState } from './session-cleanup.js';
@@ -209,7 +209,8 @@ const app = Fastify({
   // Issue #1416: UUID-v4 request IDs for log correlation across components
   requestIdHeader: 'x-request-id',
   genReqId: () => crypto.randomUUID(),
-  logger: {
+  // Issue #3500: Suppress pino JSON request logs unless --json-logs is set
+  logger: isJsonLogsEnabled() ? {
     // #230: Redact auth tokens and hook secrets from request logs
     // #1393: Also redact ?secret= query param used by hook auth fallback
     serializers: {
@@ -224,7 +225,7 @@ const app = Fastify({
         };
       },
     },
-  },
+  } : false,
 });
 
 const GLOBAL_RATE_LIMIT_CONFIG = {

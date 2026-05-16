@@ -33,6 +33,7 @@ import {
   resolveClaudeAgentAcpBinary,
 } from './services/acp/binary-resolver.js';
 import { getErrorMessage, parseIntSafe } from './validation.js';
+import { setJsonLogsEnabled } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
@@ -60,13 +61,18 @@ function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
 }
 
 /** Render the startup banner shown when launching the HTTP server. */
-function printBanner(io: CliIO, _port: number): void {
+function printBanner(io: CliIO, port: number, host: string): void {
   write(io.stdout, `
   ┌─────────────────────────────────────────┐
   │          ⚡ Aegis v${VERSION}               │
   │    Claude Code Session Bridge            │
   └─────────────────────────────────────────┘
   `);
+  // Issue #3500 (F22): human-friendly startup hint
+  writeLine(io.stdout, `  → Dashboard: http://${host}:${port}/dashboard/`);
+  writeLine(io.stdout, `  → Try: ag create 'Build a hello world'`);
+  writeLine(io.stdout, `  → Telegram: set up with ag telegram`);
+  writeLine(io.stdout);
 }
 
 async function resolveAuthToken(): Promise<string> {
@@ -282,6 +288,9 @@ function printHelp(io: CliIO): void {
     ag logout --all        Clear credentials for all servers
     ag whoami              Show current identity and token status
 
+  Flags:
+    --json-logs           Emit structured JSON logs (default: quiet mode)
+
   Environment variables:
     AEGIS_BASE_URL                 Preferred API base URL for hooks + CLI
     AEGIS_PORT                     Server port (default: 9100)
@@ -402,6 +411,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     return handleCreate(argv, io);
   }
 
+  // Issue #3500: --json-logs flag to restore structured JSON log output
+  const jsonLogs = argv.includes('--json-logs');
+  setJsonLogsEnabled(jsonLogs);
+
   const portIdx = argv.indexOf('--port');
   if (portIdx !== -1 && argv[portIdx + 1]) {
     process.env.AEGIS_PORT = argv[portIdx + 1];
@@ -441,7 +454,7 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   }
 
   const config = await loadConfig();
-  printBanner(io, config.port);
+  printBanner(io, config.port, config.host);
 
   writeLine(io.stdout, '  Dependencies:');
   writeLine(io.stdout, `    runtime: ${acpRuntime.label}`);

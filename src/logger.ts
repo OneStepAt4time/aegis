@@ -46,7 +46,29 @@ const defaultSink: Required<StructuredLogSink> = {
   error: (record) => console.error(JSON.stringify(record)),
 };
 
-let sink: StructuredLogSink = defaultSink;
+/**
+ * When false (default in interactive mode), structured JSON log lines are
+ * suppressed from stdout/stderr.  Error-level records still go to stderr
+ * so that crashes remain visible.  Set to true via --json-logs CLI flag.
+ */
+let jsonLogsEnabled = false;
+
+export function setJsonLogsEnabled(enabled: boolean): void {
+  jsonLogsEnabled = enabled;
+}
+
+export function isJsonLogsEnabled(): boolean {
+  return jsonLogsEnabled;
+}
+
+const quietSink: Required<StructuredLogSink> = {
+  info: () => {},
+  warn: () => {},
+  error: (record) => console.error(JSON.stringify(record)),
+};
+
+// Start in quiet mode by default; setJsonLogsEnabled(true) restores JSON output.
+let sink: StructuredLogSink = jsonLogsEnabled ? defaultSink : quietSink;
 
 export function setStructuredLogSink(nextSink: StructuredLogSink): void {
   sink = {
