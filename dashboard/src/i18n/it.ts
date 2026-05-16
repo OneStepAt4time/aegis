@@ -678,5 +678,7 @@ export const it = {
     description: 'Crea la tua prima sessione per gestire Claude Code con log di audit, permessi e monitoraggio in tempo reale. Oppure esegui ag create nel terminale.',
     createFirstSession: 'Crea prima sessione',
     dismiss: 'Chiudi guida introduttiva',
+    copyCommand: 'Copia comando',
+    copied: 'Copiato!',
   },
 };

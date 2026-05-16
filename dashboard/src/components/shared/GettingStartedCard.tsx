@@ -1,14 +1,14 @@
 /**
  * components/shared/GettingStartedCard.tsx — Welcome card for new users.
  *
- * Shows when total sessions < 3 and user hasn't dismissed it.
- * CTA opens the CreateSessionModal.
+ * Shows when totalSessions < 3 and user hasn't dismissed it.
+ * CTA opens the CreateSessionModal. Includes inline CLI hint for zero-config flow.
  * Uses design tokens for dark/light theme compatibility.
  */
 
 import { useState } from 'react';
 import { useT } from '../../i18n/context.js';
-import { Rocket, X, ArrowRight } from 'lucide-react';
+import { Rocket, X, ArrowRight, Copy, Check } from 'lucide-react';
 
 interface GettingStartedCardProps {
   totalSessions: number;
@@ -16,12 +16,14 @@ interface GettingStartedCardProps {
 }
 
 const DISMISS_KEY = 'aegis-getting-started-dismissed';
+const CLI_COMMAND = 'ag create "Build a hello world"';
 
 export default function GettingStartedCard({ totalSessions, onCreateSession }: GettingStartedCardProps) {
   const t = useT();
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem(DISMISS_KEY) === 'true';
   });
+  const [copied, setCopied] = useState(false);
 
   // Auto-hide: if user has 3+ sessions, never show
   if (totalSessions >= 3 || dismissed) return null;
@@ -29,6 +31,16 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, 'true');
     setDismissed(true);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(CLI_COMMAND);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable (non-HTTPS mobile)
+    }
   };
 
   return (
@@ -61,6 +73,25 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             {t('gettingStarted.description')}
           </p>
+
+          {/* Inline CLI hint */}
+          <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-[var(--color-void)] px-2.5 py-1">
+            <code className="font-mono text-xs text-[var(--color-text-primary)]">
+              {CLI_COMMAND}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={copied ? t('gettingStarted.copied') : t('gettingStarted.copyCommand')}
+              className="flex items-center justify-center rounded p-0.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+            >
+              {copied ? (
+                <Check className="h-3 w-3 text-[var(--color-success)]" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* CTA */}

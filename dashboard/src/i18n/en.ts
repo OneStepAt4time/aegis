@@ -684,6 +684,8 @@ export const en = {
     description: 'Create your first session to start managing Claude Code with audit logs, permissions, and real-time monitoring. Or run ag create in your terminal.',
     createFirstSession: 'Create First Session',
     dismiss: 'Dismiss getting started card',
+    copyCommand: 'Copy command',
+    copied: 'Copied!',
   },
 } as const;
 

@@ -3,12 +3,17 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import GettingStartedCard from '../components/shared/GettingStartedCard';
+
+const CLI_COMMAND = 'ag create "Build a hello world"';
 
 describe('GettingStartedCard', () => {
   beforeEach(() => {
     localStorage.clear();
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
   it('renders when totalSessions < 3', () => {
@@ -55,5 +60,20 @@ describe('GettingStartedCard', () => {
 
     rerender(<GettingStartedCard totalSessions={2} onCreateSession={vi.fn()} />);
     expect(screen.getByText('Welcome to Aegis')).toBeTruthy();
+  });
+
+  it('renders inline CLI command hint', () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    expect(screen.getByText(CLI_COMMAND)).toBeTruthy();
+  });
+
+  it('copies CLI command to clipboard on copy button click', async () => {
+    render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
+    const copyBtn = screen.getByLabelText('Copy command');
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CLI_COMMAND);
+    expect(screen.getByLabelText('Copied!')).toBeTruthy();
   });
 });
