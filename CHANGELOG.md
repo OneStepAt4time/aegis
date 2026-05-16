@@ -62,6 +62,10 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Zero-config auth for localhost** — no token required on localhost ([#3493](https://github.com/OneStepAt4time/aegis/pull/3493), [#3496](https://github.com/OneStepAt4time/aegis/pull/3496))
 - **ag list, read, kill, status, tail subcommands** — full CLI session management ([#3499](https://github.com/OneStepAt4time/aegis/pull/3499))
 - **Friendlier session display names** — auto-generated readable names ([#3491](https://github.com/OneStepAt4time/aegis/pull/3491))
+- **Auto MCP wiring** — `ag init` detects Claude Code and offers MCP setup ([#3501](https://github.com/OneStepAt4time/aegis/pull/3501))
+- **`--json-logs` flag** — structured JSON logging for server startup ([#3500](https://github.com/OneStepAt4time/aegis/pull/3519))
+- **Dashboard CLI shortcuts panel** — copy-to-clipboard reference for common commands ([#3521](https://github.com/OneStepAt4time/aegis/pull/3521))
+- **`ag run` 30s output timeout** — fail loudly with actionable error when no output within 30s ([#3498](https://github.com/OneStepAt4time/aegis/pull/3518))
 
 ### Changed
 
@@ -202,6 +206,27 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Memory bridge** — port gstack learnings pattern ([#3452](https://github.com/OneStepAt4time/aegis/pull/3452))
 - **Flaky test isolation** — eliminate issues ([#3304](https://github.com/OneStepAt4time/aegis/pull/3304))
 - **Skip broken tests** — unblock CI ([#3454](https://github.com/OneStepAt4time/aegis/pull/3454))
+- **Active session count excludes terminal states** — killed/completed/crashed filtered out ([#3334](https://github.com/OneStepAt4time/aegis/pull/3396))
+- **--accept-permissions flag** for ag run and ag create ([#3336](https://github.com/OneStepAt4time/aegis/pull/3416))
+- **--port flag propagation** to config and server process ([#3343](https://github.com/OneStepAt4time/aegis/pull/3445))
+- **ag init --force implies --yes** — handles partial state ([#3345](https://github.com/OneStepAt4time/aegis/pull/3391))
+- **Proactive keys.json reload** + orphan auth-token detection ([#3356](https://github.com/OneStepAt4time/aegis/pull/3485))
+- **File permissions hardened** — removed info leaks in state directory ([#3360](https://github.com/OneStepAt4time/aegis/pull/3375))
+- **Auth token persistence** — write to ~/.aegis/auth-token ([#3369](https://github.com/OneStepAt4time/aegis/pull/3386))
+- **Windows workDir normalization** across shell semantics ([#3502](https://github.com/OneStepAt4time/aegis/pull/3502))
+- **MeteringService lifecycle** wired for persistent cost tracking ([#3310](https://github.com/OneStepAt4time/aegis/pull/3315))
+- **Preflight auth prevents orphaned sessions** ([#3306](https://github.com/OneStepAt4time/aegis/pull/3314))
+- **Project-local config** — ag run finds .aegis/config.yaml ([#3307](https://github.com/OneStepAt4time/aegis/pull/3313))
+- **Cost tracking API fixes** — 3 bugs in burn rate and per-session cost ([#3311](https://github.com/OneStepAt4time/aegis/pull/3311))
+- **/send returns immediately** instead of blocking ([#3430](https://github.com/OneStepAt4time/aegis/pull/3437))
+- **Wire ACP notifications** to event store for /read endpoint ([#3422](https://github.com/OneStepAt4time/aegis/pull/3463))
+- **Auth-fail rate limit reset** on successful auth ([#3072](https://github.com/OneStepAt4time/aegis/pull/3108))
+- **AuthManager auto-reload** on state directory recovery ([#3373](https://github.com/OneStepAt4time/aegis/pull/3374))
+- **Headless ag mcp smoke script** for npx/local usage ([#3328](https://github.com/OneStepAt4time/aegis/pull/3328))
+- **Design tokens system-wide** — replace hardcoded colors with CSS custom properties ([#3456](https://github.com/OneStepAt4time/aegis/pull/3456))
+- **Chart theme centralized** — Recharts theme with design tokens ([#3455](https://github.com/OneStepAt4time/aegis/pull/3455))
+- **Dashboard responsive + error boundaries** for 4 pages ([#3400](https://github.com/OneStepAt4time/aegis/pull/3406))
+- **Sessions route cleanup** — refactored with ACP backend JSDoc ([#3302](https://github.com/OneStepAt4time/aegis/pull/3305))
 
 ### Documentation
 
@@ -277,6 +302,9 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - **Zero-config localhost note** — ag init zero-config docs ([#3507](https://github.com/OneStepAt4time/aegis/pull/3507))
 - **CLI session subcommands docs** — ag list, read, kill, status, tail ([#3510](https://github.com/OneStepAt4time/aegis/pull/3510))
 - **Zero-config Quick Start** — README rewrite for 2-command install ([#3503](https://github.com/OneStepAt4time/aegis/pull/3503), [#3517](https://github.com/OneStepAt4time/aegis/pull/3517))
+- **promptDelivery synchronous docs** — updated after async revert ([#3274](https://github.com/OneStepAt4time/aegis/pull/3277))
+- **--json-logs flag docs** — CLI reference update ([#3522](https://github.com/OneStepAt4time/aegis/pull/3522))
+- **ag auth migrate docs** — CLI reference for auth migration ([#3520](https://github.com/OneStepAt4time/aegis/pull/3520))
 
 ### CI
 
@@ -295,6 +323,8 @@ The ACP (Agent Control Protocol) cutover is complete. This release removes the t
 - Added `date-fns ^4.1.0` for dashboard date formatting ([#2929](https://github.com/OneStepAt4time/aegis/pull/2929))
 - **Dashboard deps bump** — dompurify, lucide-react, react-router-dom, zod ([#3474](https://github.com/OneStepAt4time/aegis/pull/3474))
 - **OTel bump to 0.218.x** — removes protobufjs dependency ([#3476](https://github.com/OneStepAt4time/aegis/pull/3476))
+- **protobufjs override to >=8.2.0** — resolves 7 HIGH CVEs ([#3218](https://github.com/OneStepAt4time/aegis/pull/3218))
+- **hono ^4.12.18** — resolves 7 Dependabot alerts
 
 ### Internal
 
