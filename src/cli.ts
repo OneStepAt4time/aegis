@@ -40,7 +40,7 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')
 /** Current aegis version read from package.json at startup. */
 const VERSION: string = pkg.version;
 
-interface CliIO {
+export interface CliIO {
   stdin: NodeJS.ReadableStream;
   stdout: NodeJS.WritableStream;
   stderr: NodeJS.WritableStream;
@@ -61,7 +61,7 @@ function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
 }
 
 /** Render the startup banner shown when launching the HTTP server. */
-function printBanner(io: CliIO, port: number, host: string): void {
+export function printBanner(io: CliIO, port: number, host: string): void {
   write(io.stdout, `
   ┌─────────────────────────────────────────┐
   │          ⚡ Aegis v${VERSION}               │
