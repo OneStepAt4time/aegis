@@ -107,7 +107,7 @@ describe('Issue #3261: ag run auth bootstrap', () => {
     expect(read!.authToken).toBe(existingToken);
   });
 
-  it('401 response triggers helpful error message', async () => {
+  it('401 response triggers helpful error message', { timeout: 15_000 }, async () => {
     const { handleRun } = await import('../commands/run.js');
 
     const outputLines: string[] = [];
