@@ -1,6 +1,6 @@
 {
   "name": "@onestepat4time/aegis",
-  "version": "0.6.7-preview.1",
+  "version": "0.6.7",
   "type": "module",
   "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
   "main": "dist/server.js",
@@ -27,7 +27,8 @@
     "scripts",
     "templates",
     "!dist/__tests__",
-    "!dist/**/*.map"
+    "!dist/**/*.map",
+    "!scripts/docs-walkthrough/node_modules"
   ],
   "scripts": {
     "build": "tsc && npm run build:openapi && npm run build:dashboard && npm run build:copy-dashboard",

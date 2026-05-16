@@ -2,7 +2,7 @@
 
 This page documents active bugs with workarounds. Issues are removed once fixed and released.
 
-> **Last updated:** 2026-05-14 · **Aegis version:** v0.6.7-preview.1
+> **Last updated:** 2026-05-14 · **Aegis version:** v0.6.7
 
 ---
 

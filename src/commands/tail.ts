@@ -2,9 +2,16 @@
  * commands/tail.ts — `ag tail <id>` — Follow session output in real-time.
  *
  * Connects to GET /v1/sessions/:id/events SSE stream and prints events.
+ * Uses SIGINT on Unix and a readline keypress fallback on Windows for Ctrl+C.
+ * Includes a 30-minute max-duration safeguard so the process never hangs forever.
  */
 
+import { platform } from 'node:os';
+import * as readline from 'node:readline';
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
+
+/** Maximum tail duration before auto-disconnect (30 minutes). */
+const MAX_TAIL_DURATION_MS = 30 * 60 * 1000;
 
 export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const sessionId = args.find(a => !a.startsWith('-'));
@@ -22,14 +29,49 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout, `  Tailing session ${sessionId.slice(0, 8)}… (Ctrl+C to stop)`);
 
-  // Use SIGINT-wired AbortController instead of fixed timeout.
-  // tail is meant to follow long-running sessions until the user hits Ctrl+C.
   const abortController = new AbortController();
   const onSigInt = () => {
     abortController.abort();
     writeLine(io.stdout, '\n  Stopped.');
   };
-  process.once('SIGINT', onSigInt);
+
+  // Platform-specific Ctrl+C handling.
+  // On Windows, SIGINT is not reliably delivered — use readline keypress as fallback.
+  let keypressCleanup: (() => void) | null = null;
+
+  if (platform() === 'win32') {
+    if (process.stdin.isTTY) {
+      readline.emitKeypressEvents(process.stdin);
+      if (process.stdin.isRaw !== undefined) {
+        const prevRaw = process.stdin.isRaw;
+        process.stdin.setRawMode(true);
+        const onKeypress = (_str: string, key: { ctrl?: boolean; name?: string }) => {
+          if (key.ctrl && key.name === 'c') {
+            onSigInt();
+          }
+        };
+        process.stdin.on('keypress', onKeypress);
+        keypressCleanup = () => {
+          process.stdin.removeListener('keypress', onKeypress);
+          process.stdin.setRawMode(prevRaw);
+        };
+      }
+    }
+    // Also register SIGINT as a secondary mechanism on Windows (works in some terminals)
+    process.once('SIGINT', onSigInt);
+  } else {
+    process.once('SIGINT', onSigInt);
+  }
+
+  // 30-minute max-duration safeguard — ensures the process never hangs forever.
+  const maxDurationTimer = setTimeout(() => {
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+      writeLine(io.stdout, '\n  ⏱  Stopped — maximum tail duration reached (30 min).');
+    }
+  }, MAX_TAIL_DURATION_MS);
+  // Don't prevent Node.js from exiting naturally.
+  maxDurationTimer.unref();
 
   let res: Response;
   try {
@@ -38,18 +80,23 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
       signal: abortController.signal,
     });
   } catch (e: unknown) {
-    if ((e as Error).name === 'AbortError') return 0;
+    if ((e as Error).name === 'AbortError') {
+      clearTimeout(maxDurationTimer);
+      return 0;
+    }
     throw e;
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
+    clearTimeout(maxDurationTimer);
     return 1;
   }
 
   if (!res.body) {
     writeLine(io.stderr, '  ❌ No response body — SSE not supported.');
+    clearTimeout(maxDurationTimer);
     return 1;
   }
 
@@ -84,7 +131,9 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
       writeLine(io.stderr, `  Connection closed.`);
     }
   } finally {
+    clearTimeout(maxDurationTimer);
     process.removeListener('SIGINT', onSigInt);
+    keypressCleanup?.();
   }
 
   return 0;
