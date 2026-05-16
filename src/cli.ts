@@ -136,7 +136,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
     }
   }
 
-  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y');
+  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y') || args.includes('--passthrough');
 
   if (!brief) {
     writeLine(io.stderr, '  ❌ Missing brief. Usage: ag create "Build a login page"');
@@ -262,6 +262,7 @@ function printHelp(io: CliIO): void {
   Create:
     ag create "Build a login page" --cwd /path/to/project
     ag create "Fix the tests"      (uses current directory)
+    ag create "..." --passthrough   Bypass all permissions
 
   Doctor:
     ag doctor              Validate starter templates here, otherwise run local diagnostics

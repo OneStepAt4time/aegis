@@ -271,6 +271,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, '    --port <number>       Server port override (default: 9100)');
     writeLine(io.stdout, '    --no-stream           Don\'t stream output; print status only');
     writeLine(io.stdout, '    --accept-permissions  Auto-approve tool permissions (-y)');
+    writeLine(io.stdout, '    --passthrough          Run session with all permissions bypassed');
     writeLine(io.stdout, '    --model <model>       Override default Claude model');
     writeLine(io.stdout, '    -h, --help            Show this help message');
     writeLine(io.stdout);
@@ -295,7 +296,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
 
   const noStream = args.includes('--no-stream');
   const skipPrompts = args.includes('--yes');
-  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y');
+  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y') || args.includes('--passthrough');
 
   writeLine(io.stdout, `  🚀 ag run: ${brief.slice(0, 60)}${brief.length > 60 ? '...' : ''}`);
 
