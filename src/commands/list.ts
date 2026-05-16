@@ -24,7 +24,7 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as any).error) || res.statusText}`);
+    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
     return 1;
   }
 
@@ -38,7 +38,7 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout, `  Sessions (${sessions.length}):`);
   for (const s of sessions) {
-    const id = (s.id as string).slice(0, 8);
+    const id = (s.id as string)?.slice(0, 8) ?? "????????";
     const name = s.displayName ?? s.name ?? 'unnamed';
     const status = s.status ?? 'unknown';
     writeLine(io.stdout, `    ${id}…  ${status.padEnd(12)}  ${name}`);

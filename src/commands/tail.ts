@@ -22,14 +22,29 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout, `  Tailing session ${sessionId.slice(0, 8)}… (Ctrl+C to stop)`);
 
-  const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/events`, {
-    headers,
-    signal: AbortSignal.timeout(30_000),
-  });
+  // Use SIGINT-wired AbortController instead of fixed timeout.
+  // tail is meant to follow long-running sessions until the user hits Ctrl+C.
+  const abortController = new AbortController();
+  const onSigInt = () => {
+    abortController.abort();
+    writeLine(io.stdout, '\n  Stopped.');
+  };
+  process.once('SIGINT', onSigInt);
+
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/events`, {
+      headers,
+      signal: abortController.signal,
+    });
+  } catch (e: unknown) {
+    if ((e as Error).name === 'AbortError') return 0;
+    throw e;
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as any).error) || res.statusText}`);
+    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
     return 1;
   }
 
@@ -65,9 +80,11 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
       }
     }
   } catch (e: unknown) {
-    if ((e as any).name !== 'AbortError') {
+    if ((e as Error).name !== 'AbortError') {
       writeLine(io.stderr, `  Connection closed.`);
     }
+  } finally {
+    process.removeListener('SIGINT', onSigInt);
   }
 
   return 0;

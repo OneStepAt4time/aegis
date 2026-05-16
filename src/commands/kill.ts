@@ -26,7 +26,7 @@ export async function handleKill(args: string[], io: CliIO): Promise<number> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as any).error) || res.statusText}`);
+    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
     return 1;
   }
 

@@ -215,7 +215,6 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   }
 
   writeLine(io.stdout);
-  writeLine(io.stdout);
   writeLine(io.stdout, '  Next steps:');
   writeLine(io.stdout, `    Status:   ag status`);
   writeLine(io.stdout, `    Read:     ag read ${sessionId}`);
