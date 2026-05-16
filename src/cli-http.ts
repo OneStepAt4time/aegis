@@ -33,7 +33,7 @@ export async function resolveAuthToken(): Promise<string> {
 
   try {
     const config = await loadConfig();
-    if (config.authToken) return config.authToken;
+    if (config.clientAuthToken) return config.clientAuthToken;
     if (config.authToken) return config.authToken;
   } catch { /* no config */ }
 
