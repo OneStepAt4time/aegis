@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useT } from '../../i18n/context.js';
 import { Rocket, X, ArrowRight } from 'lucide-react';
 
 interface GettingStartedCardProps {
@@ -17,6 +18,7 @@ interface GettingStartedCardProps {
 const DISMISS_KEY = 'aegis-getting-started-dismissed';
 
 export default function GettingStartedCard({ totalSessions, onCreateSession }: GettingStartedCardProps) {
+  const t = useT();
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem(DISMISS_KEY) === 'true';
   });
@@ -27,10 +29,6 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, 'true');
     setDismissed(true);
-  };
-
-  const handleCreate = () => {
-    onCreateSession();
   };
 
   return (
@@ -44,7 +42,7 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
         type="button"
         onClick={handleDismiss}
         className="absolute right-3 top-3 rounded-md p-1 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)]"
-        aria-label="Dismiss getting started card"
+        aria-label={t('gettingStarted.dismiss')}
       >
         <X className="h-4 w-4" />
       </button>
@@ -58,20 +56,20 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
         {/* Content */}
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            Welcome to Aegis
+            {t('gettingStarted.title')}
           </h2>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Create your first session to start managing Claude Code with audit logs, permissions, and real-time monitoring.
+            {t('gettingStarted.description')}
           </p>
         </div>
 
         {/* CTA */}
         <button
           type="button"
-          onClick={handleCreate}
+          onClick={onCreateSession}
           className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-5 py-2.5 text-sm font-semibold text-[var(--color-accent-cyan)] transition-all hover:bg-[var(--color-accent-cyan)]/20 hover:border-[var(--color-accent-cyan)]/50"
         >
-          Create First Session
+          {t('gettingStarted.createFirstSession')}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>

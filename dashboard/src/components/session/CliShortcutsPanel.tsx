@@ -30,9 +30,13 @@ export function CliShortcutsPanel({ sessionId, createdAt }: CliShortcutsPanelPro
   ];
 
   const handleCopy = async (cmd: Command) => {
-    await navigator.clipboard.writeText(cmd.fullCmd);
-    setCopiedKey(cmd.labelKey);
-    setTimeout(() => setCopiedKey(null), 2000);
+    try {
+      await navigator.clipboard.writeText(cmd.fullCmd);
+      setCopiedKey(cmd.labelKey);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      // Clipboard API unavailable (non-HTTPS mobile) — fail silently
+    }
   };
 
   return (
