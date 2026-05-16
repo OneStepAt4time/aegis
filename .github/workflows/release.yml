@@ -394,8 +394,14 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          # Recovery releases are always triggered by tag push — tag always exists.
-          # Skip freshness check for annotated tags containing 'recovery-release: true'.
+          # Tag-push events: GitHub already rejects pushes to existing tags (unless force-pushed,
+          # which branch protection blocks). The tag was just created — freshness is guaranteed.
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            echo "::notice::Tag ${TAG} was just pushed — skipping freshness check for tag-push event."
+            exit 0
+          fi
+          # For workflow_dispatch: guard against accidentally re-running for an existing tag.
+          # Recovery releases skip this check (they always retag).
           if git cat-file -t "${TAG}" 2>/dev/null | grep -qx tag &&
              git cat-file tag "${TAG}" 2>/dev/null | grep -Fxq "recovery-release: true"; then
             echo "::notice::Tag ${TAG} is a recovery release — skipping freshness check."
