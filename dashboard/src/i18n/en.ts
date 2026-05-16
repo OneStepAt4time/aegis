@@ -689,6 +689,10 @@ export const en = {
     copyCommand: 'Copy command',
     copied: 'Copied!',
   },
+  modelBadge: {
+    title: 'Model',
+    effortTitle: 'Effort',
+  },
 } as const;
 
 export type Messages = typeof en;

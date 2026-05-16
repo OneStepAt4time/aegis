@@ -5,6 +5,9 @@
  */
 
 import { formatSessionName } from '../../utils/formatSessionName';
+import { ModelBadge } from '../shared/ModelBadge';
+import { EffortIndicator } from '../shared/EffortIndicator';
+import type { ExtendedSessionInfo } from '../../types/session-extensions';
 import { type CSSProperties, type ReactElement, useMemo } from 'react';
 import { List } from 'react-window';
 import { Link } from 'react-router-dom';
@@ -197,6 +200,8 @@ function VirtualizedRow(props: {
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
         </Link>
+        <ModelBadge model={(session as ExtendedSessionInfo).model} />
+        <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
       </div>
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
