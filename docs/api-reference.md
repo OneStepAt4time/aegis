@@ -779,7 +779,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided). For follow-up messages after creation, use `POST /v1/sessions/:id/send` with `text` field. |
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
-| `model` | string | no | Model name for analytics grouping and per-session model override (max 200 chars). When set, passed to the CC session via `--model` flag. |
+| `model` | string | no | Model name for analytics grouping and per-session model override (max 200 chars, `a-zA-Z0-9._/-` only, must start with alphanumeric). When set, passed to the CC session via `--model` flag. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
 | `env` | object | no | Environment variables (subject to denylist) |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
@@ -827,7 +827,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 | Status | Code | Condition |
 |--------|------|-----------|
-| 400 | — | Invalid request body, missing `workDir`, file path as `workDir`, empty `prompt`, disallowed characters in `name`/`label`, env denylist rejection |
+| 400 | — | Invalid request body, missing `workDir`, file path as `workDir`, empty `prompt`, disallowed characters in `name`/`label`/`model`, env denylist rejection |
 | 400 | `INVALID_WORKDIR` | workDir not in allowed directories. Default allows `$HOME` and server cwd. Set `allowedWorkDirs` in config to allow additional paths. Changes hot-reload. |
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
