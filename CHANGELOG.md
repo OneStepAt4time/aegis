@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Model string validation** — reject malformed model names on --model flag and API schema ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
 - **MCP scope detection** — fix global configs incorrectly wired as project-scoped ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
 - **Unused OTel deps removed** — strip gRPC and Fastify instrumentation deps ([#3605](https://github.com/OneStepAt4time/aegis/pull/3605))
+- **Secret redaction in ACP payloads** — API keys and credentials replaced with `[REDACTED]` before storage ([#3624](https://github.com/OneStepAt4time/aegis/pull/3624))
+- **TTL-tiered cache write pricing** — split cache costs into 5m (1.25×) and 1h (2×) tiers ([#3625](https://github.com/OneStepAt4time/aegis/pull/3625))
+- **Transcript byteOffset reset** — fix empty `/read` responses for idle/killed sessions ([#3632](https://github.com/OneStepAt4time/aegis/pull/3632))
+- **CLI prefix matching** — `ag read` accepts short IDs, `ag list --full-ids` and `--json` flags ([#3633](https://github.com/OneStepAt4time/aegis/pull/3633))
 
 ### Test Coverage
 
@@ -53,6 +57,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add 25 missing env vars to enterprise.md config reference
 - Add review gate rule for non-trivial PRs ([#3557](https://github.com/OneStepAt4time/aegis/pull/3557))
 - CC v2.1.141–143 competitive intel update ([#3561](https://github.com/OneStepAt4time/aegis/pull/3561))
+- Document CC auto-wiring in getting-started and cli reference ([#3612](https://github.com/OneStepAt4time/aegis/pull/3612))
+- ccusage-dashboard competitive research — cache pricing TTL-split gap identified ([#3236](https://github.com/OneStepAt4time/aegis/issues/3236))
+- SECURITY.md — security policy for ACP registry listing ([#3628](https://github.com/OneStepAt4time/aegis/pull/3628))
+- Model validation format docs in api-reference.md ([#3623](https://github.com/OneStepAt4time/aegis/pull/3623))
+- Billing hooks docs for TTL-tiered pricing ([#3625](https://github.com/OneStepAt4time/aegis/pull/3625))
+- CLI prefix matching and --full-ids/--json docs ([#3635](https://github.com/OneStepAt4time/aegis/pull/3635))
+
+### CI
+
+- **Post-merge rebuild hook** — auto-rebuild dist/ and restart after develop merge ([#3630](https://github.com/OneStepAt4time/aegis/pull/3630))
 - Document CC auto-wiring in getting-started and cli reference ([#3612](https://github.com/OneStepAt4time/aegis/pull/3612))
 - ccusage-dashboard competitive research — cache pricing TTL-split gap identified ([#3236](https://github.com/OneStepAt4time/aegis/issues/3236))
 
