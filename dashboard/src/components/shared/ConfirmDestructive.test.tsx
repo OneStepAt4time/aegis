@@ -2,7 +2,7 @@
  * ConfirmDestructive tests — hold-to-confirm and type-to-confirm buttons.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmDestructive } from './ConfirmDestructive';
 
 describe('ConfirmDestructive — hold mode', () => {
