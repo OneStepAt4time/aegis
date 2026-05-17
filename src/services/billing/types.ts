@@ -103,7 +103,10 @@ export interface RateTier {
   /** Cost per million output tokens in USD. */
   outputCostPerM: number;
   /** Cost per million cache creation tokens in USD. */
-  cacheWriteCostPerM: number;
+  cacheWrite5mCostPerM: number;
+  cacheWrite1hCostPerM: number;
+  /** @deprecated Use cacheWrite5mCostPerM */
+  cacheWriteCostPerM?: number;
   /** Cost per million cache read tokens in USD. */
   cacheReadCostPerM: number;
   /** Regex pattern to match model names to this tier. */

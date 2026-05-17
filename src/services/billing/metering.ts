@@ -15,7 +15,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'haiku',
     inputCostPerM: 0.80,
     outputCostPerM: 4.00,
-    cacheWriteCostPerM: 1.00,
+    cacheWrite5mCostPerM: 1.00,
+    cacheWrite1hCostPerM: 1.60,
     cacheReadCostPerM: 0.08,
     modelPattern: 'haiku',
   },
@@ -23,7 +24,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'sonnet',
     inputCostPerM: 3.00,
     outputCostPerM: 15.00,
-    cacheWriteCostPerM: 3.75,
+    cacheWrite5mCostPerM: 3.75,
+    cacheWrite1hCostPerM: 6.00,
     cacheReadCostPerM: 0.30,
     modelPattern: 'sonnet',
   },
@@ -31,7 +33,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'opus',
     inputCostPerM: 15.00,
     outputCostPerM: 75.00,
-    cacheWriteCostPerM: 18.75,
+    cacheWrite5mCostPerM: 18.75,
+    cacheWrite1hCostPerM: 30.00,
     cacheReadCostPerM: 1.50,
     modelPattern: 'opus',
   },
@@ -369,7 +372,7 @@ export class BillingMeteringService {
     return (
       (tokens.inputTokens * tier.inputCostPerM +
        tokens.outputTokens * tier.outputCostPerM +
-       tokens.cacheCreationTokens * tier.cacheWriteCostPerM +
+       tokens.cacheCreationTokens * tier.cacheWrite5mCostPerM +
        tokens.cacheReadTokens * tier.cacheReadCostPerM) / 1_000_000
     );
   }

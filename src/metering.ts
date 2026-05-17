@@ -46,8 +46,15 @@ export interface RateTier {
   inputCostPerM: number;
   /** Cost per million output tokens in USD. */
   outputCostPerM: number;
-  /** Cost per million cache creation tokens in USD. */
-  cacheWriteCostPerM: number;
+  /** Cost per million 5-min cache creation tokens in USD (1.25× base input). */
+  cacheWrite5mCostPerM: number;
+  /** Cost per million 1-hour cache creation tokens in USD (2× base input). */
+  cacheWrite1hCostPerM: number;
+  /**
+   * @deprecated Use cacheWrite5mCostPerM instead. If both are present,
+   * cacheWrite5mCostPerM takes priority.
+   */
+  cacheWriteCostPerM?: number;
   /** Cost per million cache read tokens in USD. */
   cacheReadCostPerM: number;
   /** Regex pattern to match model names to this tier. */
@@ -83,6 +90,9 @@ export interface MeteringOptions {
   /** Maximum number of records to keep. When exceeded, oldest records are evicted.
    *  Default: 100_000. Set to 0 to disable. */
   maxRecords?: number;
+  /** Default cache TTL for cost estimation: '5m' (5 minutes) or '1h' (1 hour).
+   *  Anthropic charges differently per TTL tier. Default: '5m'. */
+  defaultCacheTtl?: '5m' | '1h';
 }
 
 /** Schema version for persisted data. */
@@ -106,7 +116,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'haiku',
     inputCostPerM: 0.80,
     outputCostPerM: 4.00,
-    cacheWriteCostPerM: 1.00,
+    cacheWrite5mCostPerM: 1.00,
+    cacheWrite1hCostPerM: 1.60,
     cacheReadCostPerM: 0.08,
     modelPattern: 'haiku',
   },
@@ -114,7 +125,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'sonnet',
     inputCostPerM: 3.00,
     outputCostPerM: 15.00,
-    cacheWriteCostPerM: 3.75,
+    cacheWrite5mCostPerM: 3.75,
+    cacheWrite1hCostPerM: 6.00,
     cacheReadCostPerM: 0.30,
     modelPattern: 'sonnet',
   },
@@ -122,7 +134,8 @@ export const DEFAULT_RATE_TIERS: RateTier[] = [
     name: 'opus',
     inputCostPerM: 15.00,
     outputCostPerM: 75.00,
-    cacheWriteCostPerM: 18.75,
+    cacheWrite5mCostPerM: 18.75,
+    cacheWrite1hCostPerM: 30.00,
     cacheReadCostPerM: 1.50,
     modelPattern: 'opus',
   },
@@ -134,6 +147,7 @@ export class MeteringService {
   private records: UsageRecord[] = [];
   private nextId = 1;
   private readonly rateTiers: RateTier[];
+  private readonly defaultCacheTtl: '5m' | '1h' = '5m';
   private unsubscribeFromEvents: (() => void) | null = null;
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -157,9 +171,15 @@ export class MeteringService {
     rateTiers?: RateTier[],
     options?: MeteringOptions,
   ) {
-    this.rateTiers = rateTiers ?? [...DEFAULT_RATE_TIERS];
+    const raw = rateTiers ?? [...DEFAULT_RATE_TIERS];
+    this.rateTiers = raw.map(t => ({
+      ...t,
+      cacheWrite5mCostPerM: t.cacheWrite5mCostPerM ?? t.cacheWriteCostPerM ?? 0,
+      cacheWrite1hCostPerM: t.cacheWrite1hCostPerM ?? t.cacheWriteCostPerM ?? 0,
+    }));
     this.maxAgeMs = options?.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
     this.maxRecords = options?.maxRecords ?? DEFAULT_MAX_RECORDS;
+    this.defaultCacheTtl = options?.defaultCacheTtl ?? '5m';
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────
@@ -475,7 +495,7 @@ export class MeteringService {
     return (
       (delta.inputTokens * tier.inputCostPerM +
        delta.outputTokens * tier.outputCostPerM +
-       delta.cacheCreationTokens * tier.cacheWriteCostPerM +
+       delta.cacheCreationTokens * (this.defaultCacheTtl === '1h' ? tier.cacheWrite1hCostPerM : tier.cacheWrite5mCostPerM) +
        delta.cacheReadTokens * tier.cacheReadCostPerM) / 1_000_000
     );
   }

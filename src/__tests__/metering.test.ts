@@ -261,7 +261,8 @@ describe('MeteringService', () => {
           name: 'custom-model',
           inputCostPerM: 5.00,
           outputCostPerM: 25.00,
-          cacheWriteCostPerM: 6.25,
+          cacheWrite5mCostPerM: 6.25,
+          cacheWrite1hCostPerM: 10.00,
           cacheReadCostPerM: 0.50,
           modelPattern: 'custom',
         },
@@ -284,7 +285,8 @@ describe('MeteringService', () => {
           name: 'budget',
           inputCostPerM: 1.00,
           outputCostPerM: 5.00,
-          cacheWriteCostPerM: 1.25,
+          cacheWrite5mCostPerM: 1.25,
+          cacheWrite1hCostPerM: 2.00,
           cacheReadCostPerM: 0.10,
           modelPattern: 'budget',
         },
@@ -635,5 +637,59 @@ describe('MeteringService', () => {
       expect(result[2].date).toBe('2026-05-12');
       expect(result[2].inputTokens).toBe(300);
     });
+  });
+});
+
+// ── TTL-tiered cache write pricing (#3621) ──────────────────────────
+describe('MeteringService > TTL-tiered cache pricing (#3621)', () => {
+  let eventBus: SessionEventBus;
+  let ttlTmpDir: string;
+
+  beforeEach(async () => {
+    eventBus = new SessionEventBus();
+    ttlTmpDir = join(tmpdir(), `metering-ttl-${Date.now()}`);
+    await mkdir(ttlTmpDir, { recursive: true });
+  });
+  afterEach(async () => { try { await rm(ttlTmpDir, { recursive: true }); } catch { /* ignore */ } });
+
+  it('uses 5m cache rate by default', () => {
+    const svc = new MeteringService(
+      eventBus, () => undefined, join(ttlTmpDir, 'm1.json'),
+      [{ name: 'test', inputCostPerM: 3.00, outputCostPerM: 15.00, cacheWrite5mCostPerM: 3.75, cacheWrite1hCostPerM: 6.00, cacheReadCostPerM: 0.30, modelPattern: 'test' }],
+    );
+    svc.recordTokenUsage('s1', { inputTokens: 1, outputTokens: 0, cacheCreationTokens: 1_000_000, cacheReadTokens: 0 }, 'test-model');
+    const records = svc.getSessionUsage('s1');
+    expect(records).toHaveLength(1);
+    expect(records[0].costUsd).toBeCloseTo(3.75, 4);
+  });
+
+  it('uses 1h cache rate when configured', () => {
+    const svc = new MeteringService(
+      eventBus, () => undefined, join(ttlTmpDir, 'm2.json'),
+      [{ name: 'test', inputCostPerM: 3.00, outputCostPerM: 15.00, cacheWrite5mCostPerM: 3.75, cacheWrite1hCostPerM: 6.00, cacheReadCostPerM: 0.30, modelPattern: 'test' }],
+      { defaultCacheTtl: '1h' },
+    );
+    svc.recordTokenUsage('s2', { inputTokens: 1, outputTokens: 0, cacheCreationTokens: 1_000_000, cacheReadTokens: 0 }, 'test-model');
+    const records = svc.getSessionUsage('s2');
+    expect(records).toHaveLength(1);
+    expect(records[0].costUsd).toBeCloseTo(6.00, 4);
+  });
+
+  it('falls back to old cacheWriteCostPerM when new fields absent', () => {
+    const svc = new MeteringService(
+      eventBus, () => undefined, join(ttlTmpDir, 'm3.json'),
+      [{ name: 'legacy', inputCostPerM: 3.00, outputCostPerM: 15.00, cacheWriteCostPerM: 5.00, cacheReadCostPerM: 0.30, modelPattern: 'legacy' } as any],
+    );
+    svc.recordTokenUsage('s3', { inputTokens: 1, outputTokens: 0, cacheCreationTokens: 1_000_000, cacheReadTokens: 0 }, 'legacy-model');
+    const records = svc.getSessionUsage('s3');
+    expect(records).toHaveLength(1);
+    expect(records[0].costUsd).toBeCloseTo(5.00, 4);
+  });
+
+  it('DEFAULT_RATE_TIERS has correct TTL-tiered rates', () => {
+    for (const tier of DEFAULT_RATE_TIERS) {
+      expect(tier.cacheWrite5mCostPerM).toBeCloseTo(tier.inputCostPerM * 1.25, 4);
+      expect(tier.cacheWrite1hCostPerM).toBeCloseTo(tier.inputCostPerM * 2, 4);
+    }
   });
 });
