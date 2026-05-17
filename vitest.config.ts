@@ -15,6 +15,8 @@ export default defineConfig({
       '.worktrees/**',
       '.claude/worktrees/**',
       '.claude-internals/**',
+      // E2E requires build artifacts (dist/server.js) — use test:e2e script instead
+      'e2e/**',
     ],
     coverage: {
       provider: 'v8',
