@@ -3,6 +3,8 @@
  *
  * The /read endpoint returns ParsedEntry objects with { text } not { content }.
  * handleRead must handle both formats without crashing.
+ *
+ * Issue #3633: handleRead now resolves prefix IDs via GET /v1/sessions first.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -25,6 +27,31 @@ function makeIO() {
   };
 }
 
+/**
+ * Create a mock fetch that handles both session-list and session-read calls.
+ * Session ID "abc123..." resolves to a full UUID via prefix matching.
+ */
+function makeFetch(readResponse: any, readOk = true, readStatus = 200) {
+  const fullId = 'abc12345-dead-beef-cafe-123456789abc';
+  return vi.fn(async (url: string | URL | Request) => {
+    const urlStr = url.toString();
+    // Session list endpoint (for prefix resolution)
+    if (urlStr.includes('/v1/sessions') && !urlStr.includes('/read') && !urlStr.includes('/transcript') && !urlStr.includes('/health')) {
+      return {
+        ok: true,
+        json: async () => ({ sessions: [{ id: fullId, displayName: 'test', status: 'idle' }] }),
+      };
+    }
+    // Read endpoint
+    return {
+      ok: readOk,
+      status: readStatus,
+      statusText: readOk ? 'OK' : 'Unauthorized',
+      json: async () => readResponse,
+    };
+  });
+}
+
 describe('ag read (#3565)', () => {
   const originalFetch = globalThis.fetch;
 
@@ -44,17 +71,13 @@ describe('ag read (#3565)', () => {
   });
 
   it('handles ParsedEntry format (text field) without crashing', async () => {
-    // #3565: /read returns { text } not { content }
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        messages: [
-          { role: 'user', contentType: 'text', text: 'Say hello', timestamp: '2026-05-16T00:00:00Z' },
-          { role: 'assistant', contentType: 'text', text: 'Hello!', timestamp: '2026-05-16T00:00:01Z' },
-        ],
-        status: 'idle',
-      }),
-    })) as any;
+    globalThis.fetch = makeFetch({
+      messages: [
+        { role: 'user', contentType: 'text', text: 'Say hello', timestamp: '2026-05-16T00:00:00Z' },
+        { role: 'assistant', contentType: 'text', text: 'Hello!', timestamp: '2026-05-16T00:00:01Z' },
+      ],
+      status: 'idle',
+    });
 
     const io = makeIO();
     const exitCode = await handleRead(['abc123'], io);
@@ -64,10 +87,7 @@ describe('ag read (#3565)', () => {
   });
 
   it('handles empty messages without crashing', async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ messages: [], status: 'idle' }),
-    })) as any;
+    globalThis.fetch = makeFetch({ messages: [], status: 'idle' });
 
     const io = makeIO();
     const exitCode = await handleRead(['abc123'], io);
@@ -76,17 +96,14 @@ describe('ag read (#3565)', () => {
   });
 
   it('handles mixed content and text fields', async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        messages: [
-          { role: 'user', content: 'Old format message' },
-          { role: 'assistant', text: 'New format response' },
-          { role: 'system', text: 'System message' },
-        ],
-        status: 'idle',
-      }),
-    })) as any;
+    globalThis.fetch = makeFetch({
+      messages: [
+        { role: 'user', content: 'Old format message' },
+        { role: 'assistant', text: 'New format response' },
+        { role: 'system', text: 'System message' },
+      ],
+      status: 'idle',
+    });
 
     const io = makeIO();
     const exitCode = await handleRead(['abc123'], io);
@@ -97,30 +114,20 @@ describe('ag read (#3565)', () => {
   });
 
   it('handles messages with undefined text and content', async () => {
-    // Edge case: msg has neither text nor content
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        messages: [
-          { role: 'assistant' },
-        ],
-        status: 'idle',
-      }),
-    })) as any;
+    globalThis.fetch = makeFetch({
+      messages: [
+        { role: 'assistant' },
+      ],
+      status: 'idle',
+    });
 
     const io = makeIO();
-    // Should NOT crash with TypeError
     const exitCode = await handleRead(['abc123'], io);
     expect(exitCode).toBe(0);
   });
 
   it('handles server error response', async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: false,
-      status: 401,
-      statusText: 'Unauthorized',
-      json: async () => ({ error: 'Invalid token' }),
-    })) as any;
+    globalThis.fetch = makeFetch({ error: 'Invalid token' }, false, 401);
 
     const io = makeIO();
     const exitCode = await handleRead(['abc123'], io);

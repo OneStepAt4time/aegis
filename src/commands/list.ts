@@ -2,6 +2,7 @@
  * commands/list.ts — `ag list` — List active sessions.
  *
  * Wraps GET /v1/sessions with optional status and project (`--cwd`) filters.
+ * Issue #3633: Add --full-ids and --json flags for better CLI workflow.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
@@ -13,11 +14,20 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   const headers = buildHeaders(authToken);
   const params = new URLSearchParams();
+
+  let fullIds = false;
+  let jsonOutput = false;
+
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--status' && args[i + 1]) {
       params.set('status', args[++i]!);
     } else if (args[i] === '--cwd' && args[i + 1]) {
-      params.set('project', args[++i]!);
+      params.set('project', args[i + 1]!);
+      i++;
+    } else if (args[i] === '--full-ids' || args[i] === '--full') {
+      fullIds = true;
+    } else if (args[i] === '--json') {
+      jsonOutput = true;
     }
   }
 
@@ -33,6 +43,12 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   const body = await res.json() as { sessions?: any[]; data?: any[] };
   const sessions = body.sessions ?? body.data ?? [];
 
+  if (jsonOutput) {
+    // Machine-readable JSON output — include full IDs
+    writeLine(io.stdout, JSON.stringify(sessions, null, 2));
+    return 0;
+  }
+
   if (sessions.length === 0) {
     writeLine(io.stdout, '  No sessions found.');
     return 0;
@@ -40,10 +56,17 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout, `  Sessions (${sessions.length}):`);
   for (const s of sessions) {
-    const id = (s.id as string)?.slice(0, 8) ?? "????????";
+    const id = fullIds ? (s.id as string) : (s.id as string)?.slice(0, 8) ?? '????????';
+    const suffix = fullIds ? '' : '…';
     const name = s.displayName ?? s.name ?? 'unnamed';
     const status = s.status ?? 'unknown';
-    writeLine(io.stdout, `    ${id}…  ${status.padEnd(12)}  ${name}`);
+    writeLine(io.stdout, `    ${id}${suffix}  ${status.padEnd(12)}  ${name}`);
   }
+
+  if (!fullIds) {
+    writeLine(io.stdout, '');
+    writeLine(io.stdout, '  Tip: use --full-ids to show full UUIDs, or pipe with --json.');
+  }
+
   return 0;
 }
