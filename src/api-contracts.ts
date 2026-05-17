@@ -71,6 +71,7 @@ export interface SessionInfo {
   }>;
   ownerKeyId?: string;
   tenantId?: string;
+  model?: string;
 }
 
 export interface SessionHealth {

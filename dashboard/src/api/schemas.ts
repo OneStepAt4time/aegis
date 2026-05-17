@@ -207,6 +207,7 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
     url: z.string(),
     description: z.string(),
   })).optional(),
+  model: z.string().optional(),
 });
 
 // ── SessionsListResponse ────────────────────────────────────────

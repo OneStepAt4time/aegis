@@ -10,8 +10,6 @@
 import type { SessionInfo } from './index';
 
 export interface ExtendedSessionInfo extends SessionInfo {
-  /** AI model used for this session (e.g. "claude-opus-4.7"). Undefined for older sessions. */
-  model?: string;
   /** Effort level for this session (e.g. "high", "medium", "low", "0.8"). Undefined for older sessions. */
   effort?: string;
 }
