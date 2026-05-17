@@ -73,6 +73,8 @@ ag init
 > **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and regenerates auth keys. **You must restart the server** for the new keys to take effect — the running server does not hot-reload keys from disk. Without a restart, CLI commands will return `401 Unauthorized` with the new token.
 >
 > `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
+>
+> **Claude Code auto-wiring:** If `claude` is on your PATH, `ag init` automatically offers to register Aegis as an MCP server in Claude Code. In `--yes` mode this happens automatically. You can verify with `claude mcp list`.
 
 ```bash
 ag
