@@ -427,7 +427,7 @@ export default function SessionHistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('sessionHistory.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('sessionHistory.subtitle')}</p>
@@ -465,7 +465,7 @@ export default function SessionHistoryPage() {
 
       {/* Filters */}
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap xl:items-end xl:gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="search-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.search')}</label>
             <input
@@ -475,7 +475,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder={t('sessionHistory.searchPlaceholder')}
-              className="min-h-[44px] w-48 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
             />
           </div>
 
@@ -593,7 +593,7 @@ export default function SessionHistoryPage() {
 
           {/* Bulk action bar */}
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-b border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 px-3 sm:px-4 py-2.5">
               <span className="text-sm font-medium text-[var(--color-accent-cyan)]">{t('sessionHistory.selected', { count: selectedIds.size })}</span>
               <button type="button"
                 onClick={() => void handleExport()}
@@ -746,7 +746,7 @@ export default function SessionHistoryPage() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-void-lighter)] px-4 py-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[var(--color-void-lighter)] px-4 py-3">
             <div className="text-xs text-[var(--color-text-muted)]">
               {t('sessionHistory.showingPage', { page, totalPages, total })}
             </div>
@@ -791,7 +791,7 @@ export default function SessionHistoryPage() {
 
       {confirmDeleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-sm rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-6 shadow-xl">
+          <div className="w-full max-w-sm mx-4 sm:mx-0 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
               {t('sessionHistory.killDialogTitle', { count: selectedIds.size })}
             </h3>
