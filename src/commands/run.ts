@@ -30,23 +30,7 @@ interface CliIO {
 
 
 
-/** Issue #3631: Patterns that indicate a rate-limit or quota-exhaustion error
- *  from the Claude API. Used to surface actionable advice in `ag run`. */
-const RATE_LIMIT_PATTERNS = [
-  /rate.?limit/i,
-  /hit your limit/i,
-  /quota exceeded/i,
-  /too many requests/i,
-  /usage limit/i,
-  /capacity/i,
-  /overloaded/i,
-  /reset.*\d+:\d+/i,           // "resets 6:20pm"
-  /try again in\s+\d/i,        // "try again in 30 minutes"
-];
-
-function isRateLimitError(text: string): boolean {
-  return RATE_LIMIT_PATTERNS.some(p => p.test(text));
-}
+import { isRateLimitError } from '../rate-limit.js';
 
 function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
   stream.write(`${text}\n`);

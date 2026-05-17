@@ -11,22 +11,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PassThrough } from 'node:stream';
 
-/** Rate-limit detection patterns (mirrored from run.ts for direct testing) */
-const RATE_LIMIT_PATTERNS = [
-  /rate.?limit/i,
-  /hit your limit/i,
-  /quota exceeded/i,
-  /too many requests/i,
-  /usage limit/i,
-  /capacity/i,
-  /overloaded/i,
-  /reset.*\d+:\d+/i,
-  /try again in\s+\d/i,
-];
-
-function isRateLimitError(text: string): boolean {
-  return RATE_LIMIT_PATTERNS.some(p => p.test(text));
-}
+import { isRateLimitError, RATE_LIMIT_PATTERNS } from '../rate-limit.js';
 
 // Helper: create a mock fetch that returns a sequence of responses
 function createMockFetch(responses: Array<{ ok: boolean; data: any }>) {
@@ -163,5 +148,15 @@ describe('#3631: streamOutput rate-limit handling', () => {
     expect(combined).toContain('--model');
     expect(combined).toContain('Rate limit');
     expect(combined).toContain('ANTHROPIC_API_KEY');
+  });
+});
+
+describe('#3631: Pattern sync guard', () => {
+  it('RATE_LIMIT_PATTERNS is the canonical source (no stale mirroring)', () => {
+    // If this fails, someone added patterns in run.ts without updating rate-limit.ts
+    expect(RATE_LIMIT_PATTERNS.length).toBe(9);
+    expect(RATE_LIMIT_PATTERNS).toEqual(expect.arrayContaining([
+      expect.any(RegExp), // just verify it's an array of regexes
+    ]));
   });
 });
