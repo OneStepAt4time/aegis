@@ -181,7 +181,7 @@ export function SessionHeader({
           {truncateMiddle(session.id, 16)}
           <CopyButton value={session.id} label="session ID" size={16} />
         </span>
-        <ModelBadge model={(session as ExtendedSessionInfo).model} className="hidden sm:inline-flex" />
+        <ModelBadge model={session.model} className="hidden sm:inline-flex" />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} className="hidden sm:inline-flex" />
         {session.ownerKeyId && (
           <span className="group hidden font-mono sm:inline-flex items-center gap-1">

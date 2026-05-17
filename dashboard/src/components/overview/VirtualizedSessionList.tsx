@@ -200,7 +200,7 @@ function VirtualizedRow(props: {
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
         </Link>
-        <ModelBadge model={(session as ExtendedSessionInfo).model} />
+        <ModelBadge model={session.model} />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
       </div>
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
