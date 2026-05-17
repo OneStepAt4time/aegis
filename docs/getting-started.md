@@ -46,6 +46,7 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--name <name>` | Set a display name for the session |
 | `--yes` | Suppress all status messages for non-interactive/CI usage |
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
+| `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
 | `--passthrough` | Same as `--accept-permissions` — bypass all permissions (alias) |
 
 > **Note:** `ag run --help` shows the general help (which includes `ag run` in the usage section). For the full list of `ag run` flags, refer to the table above.
@@ -190,6 +191,29 @@ Next steps:
 Save the `id` — you'll need it for follow-up commands.
 
 > **Note:** `workDir` must be under an allowed directory. By default, Aegis allows `$HOME` and the server's current working directory. System temp dirs (`/tmp`, `/var/tmp`) are intentionally excluded for security. To allow additional directories, set `allowedWorkDirs` in `.aegis/config.yaml` (or `aegis.config.json`). Changes are hot-reloaded without restart.
+
+### CLI: List Sessions
+
+```bash
+ag list                           # List all sessions
+ag list --cwd /path/to/project    # Filter by working directory
+ag list --status working          # Filter by status
+```
+
+| Flag | Description |
+|------|-------------|
+| `--cwd <path>` | Filter sessions by working directory |
+| `--status <state>` | Filter by status (`working`, `idle`, `completed`, etc.) |
+| `--port <number>` | Server port override |
+
+Other useful CLI commands:
+
+```bash
+ag status <session-id>   # Get session status
+ag read <session-id>     # Read session output
+ag tail <session-id>     # Stream session output live
+ag kill <session-id>     # Kill a running session
+```
 
 ## 5. Monitor Progress
 
