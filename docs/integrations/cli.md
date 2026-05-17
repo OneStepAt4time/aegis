@@ -73,6 +73,8 @@ If the server is already running, skips straight to session creation. Existing c
 | `--yes` | Suppress status messages for non-interactive/CI usage |
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts |
 | `--passthrough` | Bypass all permissions (alias for `--accept-permissions`) |
+| `--model <provider/model>` | Override the default model for this session |
+| `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
 | `--no-stream` | Don't stream output; print curl commands instead |
 
 ### `ag` — Start Server
@@ -168,6 +170,7 @@ ag list --status running      # Filter by status
 | Flag | Description |
 |------|-------------|
 | `--status <value>` | Filter sessions by status (e.g. `running`, `idle`, `completed`) |
+| `--cwd <path>` | Filter sessions by working directory |
 
 Displays each session as a compact row with truncated ID, status, and display name.
 
@@ -232,6 +235,8 @@ ag create "Fix the failing tests"                     # Uses current directory
 | Flag | Description |
 |------|-------------|
 | `--cwd <dir>` | Working directory for the session |
+| `--model <provider/model>` | Override the default model for this session |
+| `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
 | `--port <port>` | Aegis API port (default: `AEGIS_PORT` or `9100`) |
 
 This is a convenience wrapper that:
