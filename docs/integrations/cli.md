@@ -163,8 +163,10 @@ Run this after upgrading from a version that stored tokens in config. If the tok
 List active and recent sessions.
 
 ```bash
-ag list                        # All sessions
+ag list                        # All sessions (truncated IDs)
 ag list --status running      # Filter by status
+ag list --full-ids            # Show full UUIDs
+ag list --json                # Machine-readable JSON output
 ```
 
 **Flags:**
@@ -173,8 +175,10 @@ ag list --status running      # Filter by status
 |------|-------------|
 | `--status <value>` | Filter sessions by status (e.g. `running`, `idle`, `completed`) |
 | `--cwd <path>` | Filter sessions by working directory |
+| `--full-ids` | Show full UUIDs instead of truncated 8-char IDs |
+| `--json` | Output session data as JSON (full IDs included), pipeable to `jq` |
 
-Displays each session as a compact row with truncated ID, status, and display name.
+By default, displays each session as a compact row with truncated 8-char ID, status, and display name.
 
 ### `ag read <id>` — Read Session Output
 
@@ -184,7 +188,10 @@ Fetch messages from a session.
 ag read abc12345               # First 200 messages
 ag read abc12345 --limit 50    # Last 50 messages
 ag read abc12345 --page 2      # Paginate
+ag read a9e0                   # Prefix match (8+ chars)
 ```
+
+**Prefix matching:** `ag read` accepts truncated session IDs (8+ characters). If the prefix is unique, it resolves automatically. If ambiguous or missing, an error is shown.
 
 **Flags:**
 
