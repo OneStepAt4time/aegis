@@ -118,6 +118,8 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   effort?: string;               // Issue #3545: Reasoning effort level
+  /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
+  isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
@@ -186,6 +188,34 @@ function parseNumberedApprovalOptions(paneText: string): NumberedApprovalOption[
 
 function normalizeApprovalLabel(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** Detect session isolation mode from project or global Claude Code settings. */
+async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none' | undefined> {
+  const candidates = [
+    join(workDir, '.claude', 'settings.local.json'),
+    join(workDir, '.claude', 'settings.json'),
+    join(homedir(), '.claude', 'settings.local.json'),
+    join(homedir(), '.claude', 'settings.json'),
+  ];
+
+  for (const p of candidates) {
+    try {
+      if (!existsSync(p)) continue;
+      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
+      if (!raw) continue;
+      let obj: any;
+      try { obj = JSON.parse(raw); } catch { continue; }
+      const val = obj?.worktree?.bgIsolation;
+      if (typeof val === 'string') {
+        if (val === 'none') return 'none';
+        if (val === 'worktree') return 'worktree';
+      }
+    } catch (_) {
+      // ignore and continue
+    }
+  }
+  return undefined;
 }
 
 function pickNumberedApprovalOption(
@@ -657,6 +687,10 @@ export class SessionManager {
     const hookSecret = randomBytes(32).toString('hex');
 
     // Issue #169 Phase 2: Generate HTTP hook settings for this session.
+    // Detect isolation mode from project/global Claude settings (Issue #3590)
+    const detectedIsolation = await detectIsolationMode(opts.workDir).catch(() => undefined);
+    const isolationMode = detectedIsolation ?? 'worktree';
+
     // Writes a temp file with hooks pointing to Aegis's hook receiver.
       // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
       // This prevents CC from loading dead hook URLs on restart.
@@ -723,6 +757,7 @@ export class SessionManager {
       // before the first hook event arrives. Hooks may override this later.
       model: opts.model,
       effort: opts.effort,
+      isolationMode: isolationMode,
     };
 
     this.state.sessions[id] = session;

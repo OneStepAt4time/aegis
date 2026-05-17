@@ -302,6 +302,9 @@ export const persistedStateSchema = z.record(
     lastHookReceivedAt: z.number().optional(),
     lastHookEventAt: z.number().optional(),
     model: z.string().optional(),
+    effort: z.string().optional(),
+    /** Issue #3590: Session isolation mode */
+    isolationMode: z.enum(['worktree','none']).optional(),
     lastDeadAt: z.number().optional(),
     ccPid: z.number().optional(),
     parentId: z.string().uuid().optional(),

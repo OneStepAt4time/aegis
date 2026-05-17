@@ -8,6 +8,8 @@ import { formatSessionName } from '../../utils/formatSessionName';
 import { ModelBadge } from '../shared/ModelBadge';
 import { EffortIndicator } from '../shared/EffortIndicator';
 import type { ExtendedSessionInfo } from '../../types/session-extensions';
+import { IsolationModeBadge } from '../shared/IsolationModeBadge';
+import type { IsolationSessionInfo } from '../../types/session-isolation';
 import { type CSSProperties, type ReactElement, useMemo } from 'react';
 import { List } from 'react-window';
 import { Link } from 'react-router-dom';
@@ -202,6 +204,7 @@ function VirtualizedRow(props: {
         </Link>
         <ModelBadge model={session.model} />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
+        <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} />
       </div>
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
