@@ -34,7 +34,7 @@ function makeIO() {
 function makeFetch(readResponse: any, readOk = true, readStatus = 200) {
   const fullId = 'abc12345-dead-beef-cafe-123456789abc';
   return vi.fn(async (url: string | URL | Request) => {
-    const urlStr = url.toString();
+    const urlStr = url.toString() as any;
     // Session list endpoint (for prefix resolution)
     if (urlStr.includes('/v1/sessions') && !urlStr.includes('/read') && !urlStr.includes('/transcript') && !urlStr.includes('/health')) {
       return {
@@ -49,25 +49,25 @@ function makeFetch(readResponse: any, readOk = true, readStatus = 200) {
       statusText: readOk ? 'OK' : 'Unauthorized',
       json: async () => readResponse,
     };
-  });
+  }) as any;
 }
 
 describe('ag read (#3565)', () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks() as any;
+  }) as any;
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-  });
+  }) as any;
 
   it('returns error when session ID is missing', async () => {
-    const io = makeIO();
-    const exitCode = await handleRead([], io);
-    expect(exitCode).toBe(1);
-    expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Missing session ID'));
+    const io = makeIO() as any;
+    const exitCode = await handleRead([], io) as any;
+    expect(exitCode).toBe(1) as any;
+    expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Missing session ID')) as any;
   });
 
   it('handles ParsedEntry format (text field) without crashing', async () => {
@@ -77,19 +77,19 @@ describe('ag read (#3565)', () => {
         { role: 'assistant', contentType: 'text', text: 'Hello!', timestamp: '2026-05-16T00:00:01Z' },
       ],
       status: 'idle',
-    });
+    }) as any;
 
-    const io = makeIO();
-    const exitCode = await handleRead(['abc123'], io);
-    expect(exitCode).toBe(0);
-    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('👤 Say hello'));
-    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 Hello!'));
+    const io = makeIO() as any;
+    const exitCode = await handleRead(['abc123'], io) as any;
+    expect(exitCode).toBe(0) as any;
+    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('👤 Say hello')) as any;
+    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 Hello!')) as any;
   });
 
   it('handles empty messages without crashing', async () => {
-    globalThis.fetch = makeFetch({ messages: [], status: 'idle' });
+    globalThis.fetch = makeFetch({ messages: [], status: 'idle' }) as any;
 
-    const io = makeIO();
+    const io = makeIO() as any;
     const exitCode = await handleRead(['abc123'], io);
     expect(exitCode).toBe(0);
     expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('No messages'));
@@ -103,13 +103,13 @@ describe('ag read (#3565)', () => {
         { role: 'system', text: 'System message' },
       ],
       status: 'idle',
-    });
+    }) as any;
 
-    const io = makeIO();
-    const exitCode = await handleRead(['abc123'], io);
-    expect(exitCode).toBe(0);
-    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('👤 Old format message'));
-    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 New format response'));
+    const io = makeIO() as any;
+    const exitCode = await handleRead(['abc123'], io) as any;
+    expect(exitCode).toBe(0) as any;
+    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('👤 Old format message')) as any;
+    expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 New format response')) as any;
     expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('⚙️ System message'));
   });
 
@@ -119,7 +119,7 @@ describe('ag read (#3565)', () => {
         { role: 'assistant' },
       ],
       status: 'idle',
-    });
+    }) as any;
 
     const io = makeIO();
     const exitCode = await handleRead(['abc123'], io);
@@ -127,9 +127,9 @@ describe('ag read (#3565)', () => {
   });
 
   it('handles server error response', async () => {
-    globalThis.fetch = makeFetch({ error: 'Invalid token' }, false, 401);
+    globalThis.fetch = makeFetch({ error: 'Invalid token' }, false, 401) as any;
 
-    const io = makeIO();
+    const io = makeIO() as any;
     const exitCode = await handleRead(['abc123'], io);
     expect(exitCode).toBe(1);
     expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Invalid token'));
