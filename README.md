@@ -255,8 +255,14 @@ All endpoints under `/v1/`.
 |-------|---------|--------|
 | `working` | Actively generating | Wait or poll `/read` |
 | `idle` | Waiting for input | Send via `/send` |
-| `permission_prompt` | Awaiting approval | `/approve` or `/reject` |
-| `asking` | Claude asked a question | Read `/read`, respond `/send` |
+| `waiting_for_input` | Claude finished, awaiting user reply | Read `/read`, respond `/send` |
+| `permission_prompt` | Awaiting tool approval | `/approve` or `/reject` |
+| `bash_approval` | Awaiting bash command approval | `/approve` or `/reject` |
+| `ask_question` | Claude asked a question | Read `/read`, respond `/send` |
+| `plan_mode` | Claude is in plan mode | Review plan, respond |
+| `compacting` | Compressing context | Automatic, no action needed |
+| `context_warning` | Context window near limit | Consider starting a new session |
+| `settings` | Claude opened settings | Automatic, no action needed |
 | `pending` | Initial state, connecting to ACP runtime | Wait a moment and re-poll |
 | `error` | Session error | Check diagnostics, recreate |
 | `rate_limit` | Rate limited by provider | Wait and retry |
