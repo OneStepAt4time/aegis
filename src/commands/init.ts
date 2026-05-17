@@ -942,7 +942,8 @@ async function offerClaudeCodeMcpWiring(args: string[], io: CliIO, configPath: s
 
   // Determine scope: project-level if configPath is local, global otherwise
   const configDir = dirname(configPath);
-  const isProjectConfig = !configPath.includes(homedir()) || configPath.includes('.aegis');
+  const globalAegisDir = join(homedir(), '.aegis');
+  const isProjectConfig = !configPath.startsWith(globalAegisDir);
 
   const wireArgs = isProjectConfig
     ? ['mcp', 'add', '--scope', 'project', 'aegis', '--', 'ag', 'mcp']

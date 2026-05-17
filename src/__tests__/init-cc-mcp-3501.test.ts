@@ -25,12 +25,26 @@ other: npx other-mcp`;
     expect(output.includes('aegis')).toBe(false);
   });
 
-  it('should use project scope for .aegis config paths', () => {
+  // #3614 regression: isProjectConfig must distinguish global vs project config
+  it('should identify global ~/.aegis/config.yaml as NOT project config', () => {
+    const configPath = '/home/user/.aegis/config.yaml';
+    const globalAegisDir = '/home/user/.aegis';
+    const isProjectConfig = !configPath.startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(false);
+  });
+
+  it('should identify project-local .aegis/config.yaml as project config', () => {
     const configPath = '/home/user/projects/myapp/.aegis/config.yaml';
-    const configDir = configPath.substring(0, configPath.lastIndexOf('/'));
-    const isProjectConfig = !configPath.includes('/home/user/') === false && configPath.includes('.aegis');
-    // Project config: includes .aegis
-    expect(configPath.includes('.aegis')).toBe(true);
+    const globalAegisDir = '/home/user/.aegis';
+    const isProjectConfig = !configPath.startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(true);
+  });
+
+  it('should identify non-home-dir config as project config', () => {
+    const configPath = '/opt/projects/myapp/.aegis/config.yaml';
+    const globalAegisDir = '/home/user/.aegis';
+    const isProjectConfig = !configPath.startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(true);
   });
 
   it('should build correct wire args for project scope', () => {
