@@ -132,8 +132,6 @@
     "vitest": "^4.1.5"
   },
   "optionalDependencies": {
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.218.0",
-    "@opentelemetry/instrumentation-fastify": "^0.57.0",
     "@opentelemetry/resources": "^2.7.1",
     "@opentelemetry/semantic-conventions": "^1.36.0",
     "ioredis": "^5.10.1",
