@@ -67,8 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### CI
 
 - **Post-merge rebuild hook** — auto-rebuild dist/ and restart after develop merge ([#3630](https://github.com/OneStepAt4time/aegis/pull/3630))
-- Document CC auto-wiring in getting-started and cli reference ([#3612](https://github.com/OneStepAt4time/aegis/pull/3612))
-- ccusage-dashboard competitive research — cache pricing TTL-split gap identified ([#3236](https://github.com/OneStepAt4time/aegis/issues/3236))
 
 ---
 
