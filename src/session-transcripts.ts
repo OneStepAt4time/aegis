@@ -104,6 +104,15 @@ export class SessionTranscripts {
         const result = await readNewEntries(session.jsonlPath, session.byteOffset);
         messages = result.entries;
         session.byteOffset = result.newOffset;
+        // Issue #3632: When a session is idle/killed (completed) and readMessages
+        // returns empty, the byteOffset was consumed during the session by prior
+        // reads (dashboard polling, MCP getTranscript, etc.). Reset to 0 and
+        // re-read so the caller gets the full transcript.
+        if (messages.length === 0 && (status === 'idle' || status === 'killed') && session.byteOffset > 0) {
+          const fullResult = await readNewEntries(session.jsonlPath, 0);
+          messages = fullResult.entries;
+          session.byteOffset = fullResult.newOffset;
+        }
       } catch {
         // File may not exist yet
       }
