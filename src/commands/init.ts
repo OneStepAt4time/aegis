@@ -728,6 +728,8 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       identityScaffolded: false,
       wroteConfig: false,
     });
+    // #3501: Offer Claude Code MCP auto-wiring
+    await offerClaudeCodeMcpWiring(args, io, configPath);
     return 0;
   }
 
@@ -825,6 +827,10 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     identityScaffolded,
     wroteConfig: true,
   });
+
+  // #3501: Offer Claude Code MCP auto-wiring
+  await offerClaudeCodeMcpWiring(args, io, configPath);
+
   return 0;
 }
 
@@ -871,4 +877,90 @@ export async function handleStarterTemplateDoctor(
     writeLine(io.stdout, `  ✅ Checked ${filesToCheck.length} starter template file(s).`);
   }
   return failed ? 1 : 0;
+}
+
+// ── #3501: Claude Code MCP auto-wiring ─────────────────────────────────────
+
+const CC_DETECT_TIMEOUT_MS = 2000;
+const CC_MCP_LIST_TIMEOUT_MS = 5000;
+const CC_MCP_ADD_TIMEOUT_MS = 10000;
+
+/**
+ * Detect Claude Code on PATH and offer to wire Aegis as an MCP server.
+ * Non-blocking: all operations have short timeouts and failures are swallowed silently.
+ */
+async function offerClaudeCodeMcpWiring(args: string[], io: CliIO, configPath: string): Promise<void> {
+  // Skip in CI/test environments
+  if (process.env.CI || process.env.VITEST) return;
+
+  const yes = args.includes('--yes') || args.includes('-y');
+  const force = args.includes('--force') || args.includes('-f');
+
+  // Check if claude is on PATH (fast, 2s timeout)
+  const { execFile } = await import('node:child_process');
+  const claudePath = await new Promise<string | null>((resolve) => {
+    const cmd = process.platform === 'win32' ? 'where' : 'which';
+    execFile(cmd, ['claude'], { timeout: CC_DETECT_TIMEOUT_MS }, (err, stdout) => {
+      resolve(err ? null : stdout.trim().split('\n')[0] || null);
+    });
+  });
+
+  if (!claudePath) return; // Not installed — skip silently
+
+  writeLine(io.stdout);
+  writeLine(io.stdout, `  🔗 Claude Code detected at: ${claudePath}`);
+
+  // Check if aegis is already wired (5s timeout)
+  const alreadyWired = await new Promise<boolean>((resolve) => {
+    execFile('claude', ['mcp', 'list'], { timeout: CC_MCP_LIST_TIMEOUT_MS }, (err, stdout) => {
+      if (err) { resolve(false); return; }
+      resolve(stdout.includes('aegis'));
+    });
+  });
+
+  if (alreadyWired) {
+    writeLine(io.stdout, '  ✅ Aegis MCP already wired into Claude Code');
+    return;
+  }
+
+  let shouldWire: boolean;
+  if (yes || force) {
+    shouldWire = true;
+  } else {
+    const prompter = createPrompter(io);
+    try {
+      shouldWire = await promptBoolean(prompter, io, 'Wire Aegis MCP into Claude Code?', true);
+    } finally {
+      prompter.close();
+    }
+  }
+
+  if (!shouldWire) {
+    writeLine(io.stdout, '  ℹ️  Skipped MCP wiring. Run manually: claude mcp add aegis -- ag mcp');
+    return;
+  }
+
+  // Determine scope: project-level if configPath is local, global otherwise
+  const configDir = dirname(configPath);
+  const isProjectConfig = !configPath.includes(homedir()) || configPath.includes('.aegis');
+
+  const wireArgs = isProjectConfig
+    ? ['mcp', 'add', '--scope', 'project', 'aegis', '--', 'ag', 'mcp']
+    : ['mcp', 'add', 'aegis', '--', 'ag', 'mcp'];
+
+  const wired = await new Promise<boolean>((resolve) => {
+    execFile('claude', wireArgs, { timeout: CC_MCP_ADD_TIMEOUT_MS, cwd: configDir }, (err) => {
+      if (err) {
+        writeLine(io.stderr, `  ⚠️  MCP wiring failed: ${err.message}`);
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+
+  if (wired) {
+    writeLine(io.stdout, '  ✅ Wired Aegis MCP into Claude Code');
+    writeLine(io.stdout, '     Verify with: claude mcp list');
+  }
 }
