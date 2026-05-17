@@ -206,7 +206,7 @@ async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none'
       if (!raw) continue;
       let obj: any;
       try { obj = JSON.parse(raw); } catch { continue; }
-      const val = obj?.worktree?.bgIsolation ?? obj?.worktree?.bgIsolation ?? undefined;
+      const val = obj?.worktree?.bgIsolation;
       if (typeof val === 'string') {
         if (val === 'none') return 'none';
         if (val === 'worktree') return 'worktree';
