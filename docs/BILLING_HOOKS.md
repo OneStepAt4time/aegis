@@ -141,11 +141,11 @@ const sessionRecords = billing.getSessionUsage('session-id');
 
 Cost is estimated using configurable rate tiers. Default tiers follow Anthropic's public pricing:
 
-| Tier   | Input $/M | Output $/M | Cache Write $/M | Cache Read $/M |
-|--------|-----------|------------|-----------------|----------------|
-| Haiku  | $0.80     | $4.00      | $1.00           | $0.08          |
-| Sonnet | $3.00     | $15.00     | $3.75           | $0.30          |
-| Opus   | $15.00    | $75.00     | $18.75          | $1.50          |
+| Tier   | Input $/M | Output $/M | Cache Write 5m $/M | Cache Write 1h $/M | Cache Read $/M |
+|--------|-----------|------------|---------------------|---------------------|----------------|
+| Haiku  | $0.80     | $4.00      | $1.00               | $1.60               | $0.08          |
+| Sonnet | $3.00     | $15.00     | $3.75               | $6.00               | $0.30          |
+| Opus   | $15.00    | $75.00     | $18.75              | $30.00              | $1.50          |
 
 ### Custom Rate Tiers
 
@@ -157,11 +157,16 @@ const billing = new BillingMeteringService([
     name: 'glm-5',
     inputCostPerM: 2.00,
     outputCostPerM: 10.00,
-    cacheWriteCostPerM: 2.50,
+    cacheWrite5mCostPerM: 2.50,   // 5-min cache TTL (1.25× base input)
+    cacheWrite1hCostPerM: 4.00,   // 1-hour cache TTL (2× base input)
     cacheReadCostPerM: 0.20,
     modelPattern: 'glm',
+    defaultCacheTtl: '5m',        // '5m' (default) or '1h'
   },
 ]);
+
+// Backward compat: cacheWriteCostPerM still accepted (maps to 5m tier)
+// cacheWrite5mCostPerM takes priority when both are present.
 
 // Or update at runtime
 billing.setRateTiers([...newTiers]);
