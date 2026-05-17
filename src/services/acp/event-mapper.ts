@@ -48,6 +48,45 @@ const TOKEN_USAGE_CONTAINER_KEY_RE = /^token[_-]?usage$/i;
 const TOKEN_USAGE_COUNTER_KEY_RE =
   /^(input[_-]?tokens|prompt[_-]?tokens|output[_-]?tokens|completion[_-]?tokens|total[_-]?tokens|cache[_-]?creation[_-]?(input[_-]?)?tokens|cache[_-]?read[_-]?(input[_-]?)?tokens)$/i;
 
+/**
+ * Issue #3617: Value-level secret patterns found in tool output text.
+ * These regex patterns match actual secret formats that appear in string values
+ * (tool output, file contents, HTTP responses) — not just key names.
+ * Each pattern captures the secret value for replacement with [REDACTED].
+ */
+const SECRET_VALUE_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
+  // GitHub tokens
+  { pattern: /\bghp_[a-zA-Z0-9]{36}\b/g, label: 'github-pat' },
+  { pattern: /\bgho_[a-zA-Z0-9]{36}\b/g, label: 'github-oauth' },
+  { pattern: /\bghu_[a-zA-Z0-9]{36}\b/g, label: 'github-user' },
+  { pattern: /\bghs_[a-zA-Z0-9]{36}\b/g, label: 'github-app' },
+  { pattern: /\bghr_[a-zA-Z0-9]{36}\b/g, label: 'github-refresh' },
+  // OpenAI / Anthropic keys (sk-ant must come before generic sk- to avoid partial match)
+  { pattern: /\bsk-ant-[a-zA-Z0-9\-]{20,}/g, label: 'anthropic-key' },
+  { pattern: /\bsk-[a-zA-Z0-9\-]{20,}/g, label: 'openai-key' },
+  // Generic Bearer tokens in Authorization headers (must have base64-like content after Bearer)
+  { pattern: /\bBearer\s+[a-zA-Z0-9\-._~+/]{20,}=*/gi, label: 'bearer-token' },
+  // Slack tokens
+  { pattern: /\bxox[bpsa]-[a-zA-Z0-9\-]+/g, label: 'slack-token' },
+  // GitLab PATs
+  { pattern: /\bglpat-[a-zA-Z0-9\-]{20,}\b/g, label: 'gitlab-pat' },
+  // AWS keys
+  { pattern: /\b(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b/g, label: 'aws-key-id' },
+  // Private keys (PEM header)
+  { pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g, label: 'private-key' },
+  // Connection strings with embedded passwords
+  { pattern: /\b(?:mongodb|postgres|mysql|redis|amqp)(?:\+[a-z]+)?:\/\/[^:\s]+:[^@\s]+@[\S]+/gi, label: 'connection-string' },
+];
+
+/** Issue #3617: Redact known secret patterns from a string value. */
+export function redactSecretsFromText(text: string): string {
+  let result = text;
+  for (const { pattern, label } of SECRET_VALUE_PATTERNS) {
+    result = result.replace(pattern, `[REDACTED:${label}]`);
+  }
+  return result;
+}
+
 export function mapAcpJsonRpcNotificationToEvent(
   notification: AcpJsonRpcNotification,
   context: AcpEventMapperContext
@@ -220,9 +259,13 @@ function mapTextDelta(
     });
   }
 
+  // Issue #3617: Redact secrets from agent text before storage.
+  // CC may reference API keys, tokens, or connection strings in messages/thinking.
+  const redactedText = redactSecretsFromText(text);
+
   return storeEvent(context, eventType, {
     schemaVersion: 1,
-    text,
+    text: redactedText,
     ...cleanObject({ messageId: readString(update.messageId) }),
     acp,
   });
@@ -383,7 +426,10 @@ function readToolText(content: unknown): string | undefined {
     const block = asObject(wrapper.content);
     if (block?.type === 'text') {
       const text = readString(block.text);
-      if (text !== undefined) return text;
+      // Issue #3617: Redact secrets from tool output before storage.
+      // Tool output can contain Bearer tokens, API keys, connection strings
+      // and other secrets captured from file reads and HTTP responses.
+      if (text !== undefined) return redactSecretsFromText(text);
     }
   }
   return undefined;
