@@ -263,8 +263,6 @@ export async function handleLogin(args: string[], io: CliIO, fetchFn: typeof fet
     // Try to open browser (best-effort, silently ignore failure)
     if (!noOpen && deviceAuth.verification_uri_complete) {
       try {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error — 'open' is an optional dependency
         const { default: open } = await import('open');
         await open(deviceAuth.verification_uri_complete);
       } catch {
