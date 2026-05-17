@@ -23,7 +23,7 @@ Include:
 - Affected versions
 - Potential impact
 
-We aim to acknowledge reports within **24 hours** and provide a fix or mitigation within **72 hours** for critical issues. Valid reports are credited in the CHANGELOG and advisory unless you request anonymity.
+We aim to acknowledge reports within **24 hours**. Fix timelines are communicated upon triage — we target resolution of critical issues within **7 days** and provide mitigations where possible in the interim. Valid reports are credited in the CHANGELOG and advisory unless you request anonymity.
 
 ## Security Features
 
@@ -50,7 +50,7 @@ Three roles with principle-of-least-privilege:
 
 ### Secret Redaction
 
-- ACP payloads are sanitized before logging — API keys, tokens, and credentials are replaced with `[REDACTED]`
+- ACP event payloads are sanitized before storage — API keys, tokens, and credentials are replaced with `[REDACTED]` in the local JSON file and event stream
 - Sensitive environment variables are stripped from process telemetry
 - Environment denylist blocks injection of `ANTHROPIC_API_KEY`, `PATH`, `HOME`, `LD_PRELOAD`, and other security-sensitive keys via session creation
 
