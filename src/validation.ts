@@ -945,3 +945,15 @@ export const eventReplaySchema = z.object({
   afterSeq: z.number().int().nonnegative().optional(),
   limit: z.number().int().min(1).max(1000).optional(),
 }).strict();
+
+
+/** Issue #3545: Validate --effort CLI flag value.
+ *  Accepts "low", "medium", "high", or a numeric string 0.0-1.0.
+ *  Returns the normalized value or null if invalid. */
+export function validateEffort(value: string): string | null {
+  const lower = value.toLowerCase();
+  if (lower === "low" || lower === "medium" || lower === "high") return lower;
+  const num = parseFloat(value);
+  if (!isNaN(num) && num >= 0 && num <= 1) return String(num);
+  return null;
+}

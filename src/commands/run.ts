@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-url.js';
 import { AuthManager } from '../services/auth/index.js';
 import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
-import { getErrorMessage, parseIntSafe } from '../validation.js';
+import { getErrorMessage, parseIntSafe, validateEffort } from '../validation.js';
 import { readAuthTokenFile } from '../utils/auth-token-path.js';
 
 interface CliIO {
@@ -272,7 +272,8 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, '    --no-stream           Don\'t stream output; print status only');
     writeLine(io.stdout, '    --accept-permissions  Auto-approve tool permissions (-y)');
     writeLine(io.stdout, '    --passthrough          Run session with all permissions bypassed');
-    writeLine(io.stdout, '    --model <model>       Override default Claude model');
+    writeLine(io.stdout, '    --model <model>       Set Claude model');
+    writeLine(io.stdout, '    --effort <level>      Set reasoning effort (low, medium, high, 0.0-1.0)');
     writeLine(io.stdout, '    -h, --help            Show this help message');
     writeLine(io.stdout);
     return 0;
@@ -293,6 +294,24 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   // Extract --port
   const portIdx = args.indexOf('--port');
   const portOverride = portIdx !== -1 ? parseIntSafe(args[portIdx + 1], 9100) : null;
+
+  const modelIdx = args.indexOf('--model');
+  const rawModel = modelIdx !== -1 && args[modelIdx + 1] ? args[modelIdx + 1] : undefined;
+  const model = rawModel && !rawModel.startsWith('-') ? rawModel : undefined;
+  if (modelIdx !== -1 && !model) {
+    writeLine(io.stderr, '  \u274c --model requires a value');
+    return 1;
+  }
+  let effort: string | undefined;
+  const effortIdx = args.indexOf('--effort');
+  if (effortIdx !== -1 && args[effortIdx + 1]) {
+    const validated = validateEffort(args[effortIdx + 1]!);
+    if (validated === null) {
+      writeLine(io.stderr, '  \u274c Invalid --effort value.');
+      return 1;
+    }
+    effort = validated;
+  }
 
   const noStream = args.includes('--no-stream');
   const skipPrompts = args.includes('--yes');
@@ -405,6 +424,8 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
         workDir: cwd,
         prompt: brief,
         name: `run-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`,
+        model,
+        effort,
         ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}),
       }),
     });

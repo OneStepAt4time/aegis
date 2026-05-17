@@ -51,6 +51,7 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     // Issue #2535: allow callers to declare the model at creation so analytics
     // can group by model before the first hook event arrives.
     model: z.string().max(200).optional(),
+    effort: z.string().max(20).optional(),
     // Issue #2913: per-session custom system prompt (cc-connect parity).
     systemPrompt: z.string().max(100_000).optional(),
   }).strict();
@@ -353,7 +354,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
    */
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt, effort } = data;
     // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
@@ -450,7 +451,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         return reply.status(500).send({ error: 'ACP runtime failed to start — check claude CLI availability and ACP configuration', details: acpErr });
       }
       try {
-        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort });
         // Issue #3135: Sync ACP session status to local session state
         // The ACP backend tracks agent status independently; mirror it here.
         const acpToUIState: Record<string, import('../session.js').UIState> = { idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
@@ -464,7 +465,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         throw e;
       }
     } else {
-      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model });
+      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort });
     }
     metrics.sessionCreated(session.id);
 
