@@ -263,15 +263,24 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 |---|---|---|
 | `AEGIS_PORT` | `9100` | HTTP server port |
 | `AEGIS_HOST` | `127.0.0.1` | HTTP server bind address |
+| `AEGIS_BASE_URL` | _(empty)_ | External base URL for webhook callbacks and generated links |
 | `AEGIS_AUTH_TOKEN` | _(empty)_ | Master bearer token (empty = no auth) |
+| `AEGIS_METRICS_TOKEN` | _(empty)_ | Separate bearer token for `/metrics` endpoint (falls back to `AEGIS_AUTH_TOKEN`) |
 | `AEGIS_STATE_DIR` | `~/.aegis` | State directory (sessions, PID file) |
 | `AEGIS_ACP_BIN` | _(auto)_ | Path to the ACP binary (auto-detected if empty) |
+| `AEGIS_ACP_ENABLED` | `true` | Enable ACP backend for session creation and control actions |
 | `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `120000` | Timeout in ms for ACP JSON-RPC requests (default 120s). Increase for slow BYO-LLM proxy setups (min: 1000) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
+| `AEGIS_MAX_SESSION_AGE_MS` | `7200000` | Maximum session age before reaping (2 hours default) |
+| `AEGIS_REAPER_INTERVAL_MS` | `300000` | Reaper check interval (5 minutes default) |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
+| `AEGIS_CONTINUATION_POINTER_TTL_MS` | `86400000` | Continuation pointer TTL (24 hours default) |
+| `AEGIS_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Path to Claude Code projects directory |
+| `AEGIS_DASHBOARD_ENABLED` | `true` | Enable the web dashboard |
+| `AEGIS_PIPELINE_STAGE_TIMEOUT_MS` | `0` | Pipeline stage timeout in ms (0 = no timeout) |
 
 #### Security
 
@@ -279,13 +288,33 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 |---|---|---|
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
+| `AEGIS_ENFORCE_SESSION_OWNERSHIP` | `true` | Enforce session ownership — tenants can only access their own sessions |
+| `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for single-tenant deployments |
 
 #### Hooks
 
 | Variable | Default | Range | Description |
 |---|---|---|---|
+| `AEGIS_HOOK_TIMEOUT_MS` | `10000` | 100–∞ | Timeout in ms for outgoing hook/webhook HTTP calls (10s default) |
+| `AEGIS_HOOK_SECRET_HEADER_ONLY` | `false` | — | Require `X-Hook-Secret` header and reject query param secrets |
 | `HOOK_CIRCUIT_BREAKER_MAX` | `5` | 1–100 | StopFailure events before circuit breaker trips |
 | `HOOK_CIRCUIT_BREAKER_WINDOW_MS` | `60000` | 1000–3600000 | Circuit breaker sliding window (ms) |
+
+#### SSE
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_SSE_MAX_CONNECTIONS` | `100` | Maximum concurrent SSE connections |
+| `AEGIS_SSE_MAX_PER_IP` | `10` | Maximum concurrent SSE connections per client IP |
+| `AEGIS_SSE_IDLE_MS` | `60000` | SSE idle timeout in ms (60s default) |
+| `AEGIS_SSE_CLIENT_TIMEOUT_MS` | `300000` | Milliseconds before closing an SSE connection that hasn't consumed data (5 min default) |
+
+#### Shutdown
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_SHUTDOWN_GRACE_MS` | `15000` | Grace period in ms for in-flight requests during shutdown (15s default) |
+| `AEGIS_SHUTDOWN_HARD_MS` | `20000` | Hard shutdown deadline in ms (20s default) |
 
 #### Notification Channels
 
@@ -301,9 +330,13 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_EMAIL_TO` | _(none)_ | Destination email address |
 | `AEGIS_EMAIL_FROM` | `aegis@localhost` | Sender email address |
 | `AEGIS_EMAIL_SECURE` | `false` | Use TLS/SSL (auto-true for port 465) |
-| `AEGIS_TG_BOT_TOKEN` | _(none)_ | Telegram bot token |
-| `AEGIS_TG_GROUP_ID` | _(none)_ | Telegram group chat ID |
+| `AEGIS_TG_TOKEN` | _(none)_ | Telegram bot token |
+| `AEGIS_TG_GROUP` | _(none)_ | Telegram group chat ID |
+| `AEGIS_TG_ALLOWED_USERS` | _(none)_ | Comma-separated Telegram user IDs allowed to interact with the bot |
 | `AEGIS_TG_VERBOSE` | `false` | Forward full CC output (thinking, tool calls) to Telegram |
+| `AEGIS_TG_TOPIC_TTL_MS` | `86400000` | Telegram forum topic TTL in ms (24 hours default) |
+| `AEGIS_TG_TOPIC_TTL_HOURS` | `0` | Telegram forum topic TTL in hours (takes priority over `AEGIS_TG_TOPIC_TTL_MS` if set) |
+| `AEGIS_TG_TOPIC_AUTO_DELETE` | `true` | Auto-delete expired Telegram forum topics |
 
 ### Configuration File
 
