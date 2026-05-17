@@ -33,6 +33,7 @@ import {
   resolveClaudeAgentAcpBinary,
 } from './services/acp/binary-resolver.js';
 import { getErrorMessage, parseIntSafe, validateEffort } from './validation.js';
+import { generateSessionName } from './utils/session-name.js';
 import { setJsonLogsEnabled } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -158,7 +159,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   const baseUrl = portOverride === null
     ? getConfiguredBaseUrl(config)
     : deriveBaseUrl('127.0.0.1', portOverride);
-  const sessionName = `cc-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`;
+  const sessionName = generateSessionName(brief);
   const authToken = await resolveAuthToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
