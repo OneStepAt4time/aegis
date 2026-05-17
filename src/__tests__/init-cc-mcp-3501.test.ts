@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execFile } from 'node:child_process';
+import { describe, it, expect } from 'vitest';
+import { join, resolve, dirname } from 'node:path';
+import { homedir } from 'node:os';
 
 // #3501: Test Claude Code MCP auto-wiring detection
 // We test the detection logic by mocking execFile
@@ -25,12 +26,26 @@ other: npx other-mcp`;
     expect(output.includes('aegis')).toBe(false);
   });
 
-  it('should use project scope for .aegis config paths', () => {
-    const configPath = '/home/user/projects/myapp/.aegis/config.yaml';
-    const configDir = configPath.substring(0, configPath.lastIndexOf('/'));
-    const isProjectConfig = !configPath.includes('/home/user/') === false && configPath.includes('.aegis');
-    // Project config: includes .aegis
-    expect(configPath.includes('.aegis')).toBe(true);
+  // Issue #3614: Scope detection must distinguish global (~/.aegis/) from project configs
+  it('should use GLOBAL scope for ~/.aegis/config.yaml (global config)', () => {
+    const configPath = join(homedir(), '.aegis', 'config.yaml');
+    const globalAegisDir = join(homedir(), '.aegis');
+    const isProjectConfig = !resolve(configPath).startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(false); // global scope
+  });
+
+  it('should use project scope for ~/projects/myapp/.aegis/config.yaml', () => {
+    const configPath = join(homedir(), 'projects', 'myapp', '.aegis', 'config.yaml');
+    const globalAegisDir = join(homedir(), '.aegis');
+    const isProjectConfig = !resolve(configPath).startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(true); // project scope
+  });
+
+  it('should use project scope for /opt/aegis/config.yaml (non-home dir)', () => {
+    const configPath = '/opt/aegis/config.yaml';
+    const globalAegisDir = join(homedir(), '.aegis');
+    const isProjectConfig = !resolve(configPath).startsWith(globalAegisDir);
+    expect(isProjectConfig).toBe(true); // project scope
   });
 
   it('should build correct wire args for project scope', () => {
