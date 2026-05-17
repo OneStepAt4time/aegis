@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { act } from 'react';
+
 import TemplatesPage from '../pages/TemplatesPage';
 import { I18nProvider } from '../i18n/context';
 import * as client from '../api/client';
@@ -103,20 +103,20 @@ describe('TemplatesPage', () => {
       expect(screen.getByText('React Scaffold')).toBeDefined();
     });
 
-    // There should be at least 2 "Delete" buttons (one per template card)
-    // The first template's Delete button should trigger the confirm dialog
-    const allDeleteBtns = screen.getAllByText('Delete');
-    expect(allDeleteBtns.length).toBeGreaterThanOrEqual(2);
+    // Find delete buttons by accessible name (aria-label)
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete template/ });
+    expect(deleteButtons.length).toBeGreaterThanOrEqual(2);
 
-    // Click the first Delete button
-    await act(async () => {
-      fireEvent.click(allDeleteBtns[0]);
-    });
+    // Click the first Delete button to open confirmation
+    fireEvent.click(deleteButtons[0]);
 
-    // The confirm dialog should render - check for the dialog heading
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Delete Template' })).toBeDefined();
-    }, { timeout: 3000 });
+    // Use findByRole which auto-waits — avoids timeout flakiness on Node 20 CI
+    const dialog = await screen.findByRole('alertdialog', undefined, { timeout: 5000 });
+    expect(dialog).toBeDefined();
+
+    // Verify the heading is rendered inside the dialog
+    const heading = screen.getByRole('heading', { name: 'Delete Template' });
+    expect(heading).toBeDefined();
 
     // Verify deleteTemplate was NOT called yet (confirmation needed)
     expect(client.deleteTemplate).not.toHaveBeenCalled();
