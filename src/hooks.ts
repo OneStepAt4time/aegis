@@ -80,7 +80,7 @@ const HOOK_CIRCUIT_BREAKER_MAX = getCircuitBreakerMax();
 const HOOK_CIRCUIT_BREAKER_WINDOW_MS = getCircuitBreakerWindowMs();
 
 /** Valid permission_mode values accepted by Claude Code. */
-const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions']);
+const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions', 'acceptEdits', 'dontAsk', 'auto']);
 
 /** Valid CC hook event names (allow any for extensibility, but these are known). */
 const KNOWN_HOOK_EVENTS = new Set([
