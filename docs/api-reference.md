@@ -802,13 +802,11 @@ curl -X POST http://localhost:9100/v1/sessions \
   "status": "working",
   "createdAt": 1712650800000,
   "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" },
-  "model": "opus-4.7",
-  "effort": "high"
+  "model": "opus-4.7"
 }
 ```
 
-> **Note:** `model` and `effort` fields appear in the response when provided at creation time. Both are optional. When the backend implementation lands (#3560), these will also be populated from CC session metadata.
-```
+> **Note:** The `model` field appears in the response when provided at creation time. The `effort` field is accepted at creation but not yet returned in responses — it will be added once the backend implementation lands (#3560).
 
 **`promptDelivery` fields:**
 
