@@ -10,6 +10,8 @@ import { useT } from '../../i18n/context';
 import { ModelBadge } from '../shared/ModelBadge';
 import { EffortIndicator } from '../shared/EffortIndicator';
 import type { ExtendedSessionInfo } from '../../types/session-extensions';
+import { IsolationModeBadge } from '../shared/IsolationModeBadge';
+import type { IsolationSessionInfo } from '../../types/session-isolation';
 
 interface SessionHeaderProps {
   session: SessionInfo;
@@ -183,6 +185,7 @@ export function SessionHeader({
         </span>
         <ModelBadge model={session.model} className="hidden sm:inline-flex" />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} className="hidden sm:inline-flex" />
+        <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} className="hidden sm:inline-flex" />
         {session.ownerKeyId && (
           <span className="group hidden font-mono sm:inline-flex items-center gap-1">
             Owner: {session.ownerKeyId.slice(0, 8)}
