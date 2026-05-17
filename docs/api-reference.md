@@ -787,7 +787,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
 | `parentId` | string (UUID) | no | Set parent session — child appears in parent's `/children` |
 | `memoryKeys` | string[] | no | Pre-load memory entries into session (max 50) |
-| `effort` | string | no | Reasoning effort level: `low`, `medium`, or `high`. Passed to the CC session via `--effort` flag. *(Proposed — awaiting backend implementation, #3560)* |
+| `effort` | string | no | Reasoning effort level: `low`, `medium`, or `high`. Passed to the CC session via `--effort` flag. |
 | `systemPrompt` | string | no | Per-session custom system prompt passed via ACP `_meta.systemPrompt` (max 100k chars; ACP only) |
 
 > **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key.
@@ -806,7 +806,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 }
 ```
 
-> **Note:** The `model` field appears in the response when provided at creation time. The `effort` field is accepted at creation but not yet returned in responses — it will be added once the backend implementation lands (#3560).
+> **Note:** The `model` and `effort` fields appear in the response when provided at creation time.
 
 **`promptDelivery` fields:**
 
