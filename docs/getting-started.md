@@ -48,7 +48,7 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
 | `--passthrough` | Same as `--accept-permissions` — bypass all permissions (alias) |
 
-> **Note:** `ag run --help` currently shows the general help. For `ag run` flags, refer to this table.
+> **Note:** `ag run --help` shows the general help (which includes `ag run` in the usage section). For the full list of `ag run` flags, refer to the table above.
 
 > **Troubleshooting:** If `ag run` hangs without creating a session, fall back to the step-by-step setup below. It separates server start from session creation and gives clearer error output.
 
