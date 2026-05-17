@@ -32,7 +32,7 @@ import {
   AcpBinaryResolutionError,
   resolveClaudeAgentAcpBinary,
 } from './services/acp/binary-resolver.js';
-import { getErrorMessage, parseIntSafe } from './validation.js';
+import { getErrorMessage, parseIntSafe, validateEffort } from './validation.js';
 import { setJsonLogsEnabled } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -125,12 +125,23 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   let brief = '';
   let cwd = process.cwd();
   let portOverride: number | null = null;
+  let model: string | undefined;
+  let effort: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--cwd' && args[i + 1]) {
       cwd = args[++i]!;
     } else if (args[i] === '--port' && args[i + 1]) {
       portOverride = parseIntSafe(args[++i], 9100);
+    } else if (args[i] === '--model' && args[i + 1] && !args[i + 1]!.startsWith('-')) {
+      model = args[++i]!;
+    } else if (args[i] === '--effort' && args[i + 1]) {
+      const validated = validateEffort(args[++i]!);
+      if (validated === null) {
+        writeLine(io.stderr, '  \u274c Invalid --effort value.');
+        return 1;
+      }
+      effort = validated;
     } else if (!args[i].startsWith('-')) {
       brief = args[i];
     }
@@ -175,7 +186,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
       signal: AbortSignal.timeout(30_000),
       method: 'POST',
       headers,
-      body: JSON.stringify({ workDir: cwd, name: sessionName, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
+      body: JSON.stringify({ workDir: cwd, name: sessionName, model, effort, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
     });
 
     if (!res.ok) {
@@ -263,6 +274,8 @@ function printHelp(io: CliIO): void {
     ag create "Build a login page" --cwd /path/to/project
     ag create "Fix the tests"      (uses current directory)
     ag create "..." --passthrough   Bypass all permissions
+    --model <model>       Set Claude model
+    --effort <level>      Set reasoning effort (low, medium, high, 0.0-1.0)
 
   Doctor:
     ag doctor              Validate starter templates here, otherwise run local diagnostics

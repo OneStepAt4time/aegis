@@ -117,6 +117,7 @@ export interface SessionInfo {
   lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
+  effort?: string;               // Issue #3545: Reasoning effort level
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
@@ -572,6 +573,7 @@ export class SessionManager {
     /** Issue #3135: Override initial status when creating from ACP result. */
     initialStatus?: UIState;
     model?: string;
+    effort?: string;
   }): Promise<SessionInfo> {
     const id = opts.id ?? crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
@@ -720,6 +722,7 @@ export class SessionManager {
       // Issue #2535: Store model at creation so analytics can group by model
       // before the first hook event arrives. Hooks may override this later.
       model: opts.model,
+      effort: opts.effort,
     };
 
     this.state.sessions[id] = session;
