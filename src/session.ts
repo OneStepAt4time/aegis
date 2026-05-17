@@ -118,6 +118,8 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   effort?: string;               // Issue #3545: Reasoning effort level
+  /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
+  isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
