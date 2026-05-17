@@ -50,7 +50,7 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     memoryKeys: z.array(z.string()).max(50).optional(),
     // Issue #2535: allow callers to declare the model at creation so analytics
     // can group by model before the first hook event arrives.
-    model: z.string().max(200).optional(),
+    model: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._\/-]{0,199}$/).max(200).optional(),
     effort: z.string().max(20).optional(),
     // Issue #2913: per-session custom system prompt (cc-connect parity).
     systemPrompt: z.string().max(100_000).optional(),
