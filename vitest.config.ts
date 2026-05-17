@@ -6,6 +6,9 @@ export default defineConfig({
       '**/node_modules/**',
       'dist',
       'dashboard/**',
+      // E2E tests require build artifacts (dist/server.js). Use the
+      // dedicated `test:e2e` script instead of the default `npm test`.
+      'e2e/**',
       // Worktree directories contain duplicate source/test files. In CI only
       // the root source is tested, but local runs pick up worktree copies.
       // Exclude all wt-* directories to prevent:
