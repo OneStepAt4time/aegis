@@ -960,3 +960,14 @@ export function validateEffort(value: string): string | null {
   if (!isNaN(num) && num >= 0 && num <= 1) return String(num);
   return null;
 }
+
+
+/** Issue #3606: Validate --model CLI flag / API model string.
+ *  Accepts provider/model or plain model names: alphanumeric, dots, dashes, slashes.
+ *  Must start with an alphanumeric character. Max 200 chars.
+ *  Returns the value if valid, null otherwise. */
+export function validateModel(value: string): string | null {
+  if (!value || value.length > 200) return null;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\/-]{0,199}$/.test(value)) return null;
+  return value;
+}

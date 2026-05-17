@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-url.js';
 import { AuthManager } from '../services/auth/index.js';
 import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
-import { getErrorMessage, parseIntSafe, validateEffort } from '../validation.js';
+import { getErrorMessage, parseIntSafe, validateEffort, validateModel } from '../validation.js';
 import { generateSessionName } from '../utils/session-name.js';
 import { readAuthTokenFile } from '../utils/auth-token-path.js';
 
