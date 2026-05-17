@@ -181,22 +181,46 @@ export async function registerDashboardStatic(
 ): Promise<ReturnType<typeof setInterval> | null> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const dashboardRoot = options._dashboardRoot ?? path.join(__dirname, '..', 'dashboard');
   const dashboardEnabled = options.enabled !== false;
+  let dashboardRoot = options._dashboardRoot ?? path.join(__dirname, '..', 'dashboard');
   let dashboardAvailable = false;
 
   if (dashboardEnabled) {
-    try {
-      await fs.access(path.join(dashboardRoot, 'index.html'));
-      dashboardAvailable = true;
-    } catch {
+    // Prefer common build locations so zero-config installs work out-of-the-box.
+    // Candidate order:
+    // 1) <project-root>/dashboard/dist  (typical local build output)
+    // 2) <package>/../dashboard/dist    (packaged layout)
+    // 3) <package>/../dashboard         (legacy/current fallback)
+    const candidates = [
+      path.join(process.cwd(), 'dashboard', 'dist'),
+      path.join(__dirname, '..', '..', 'dashboard', 'dist'),
+      path.join(__dirname, '..', 'dashboard'),
+    ];
+
+    // If the caller explicitly set _dashboardRoot, try that first.
+    if (options._dashboardRoot) candidates.unshift(options._dashboardRoot);
+
+    const tried: string[] = [];
+    for (const c of candidates) {
+      try {
+        tried.push(c);
+        await fs.access(path.join(c, 'index.html'));
+        dashboardRoot = c;
+        dashboardAvailable = true;
+        break;
+      } catch {
+        // try next candidate
+      }
+    }
+
+    if (!dashboardAvailable) {
       logger.warn({
         component: 'server',
         operation: 'dashboard_static_unavailable',
         errorCode: 'DASHBOARD_DIR_MISSING',
         attributes: {
-          dashboardRoot,
-          hint: 'Run "npm run build" to populate dist/dashboard/',
+          tried,
+          hint: 'Run "npm run build" to populate dashboard/dist or set _dashboardRoot for custom locations',
         },
       });
     }
