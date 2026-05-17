@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+- **--model and --effort flags** for `ag create` and `ag run` — override model and set reasoning effort per session ([#3545](https://github.com/OneStepAt4time/aegis/pull/3545))
+- **--cwd flag for ag list** — scope sessions by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537), [#3586](https://github.com/OneStepAt4time/aegis/pull/3586))
+- **--passthrough flag** — bypass all permissions, alias for `--accept-permissions` ([#3544](https://github.com/OneStepAt4time/aegis/pull/3544))
+- **Friendlier session display names** — `ag run` derives human-readable names from prompts ([#3489](https://github.com/OneStepAt4time/aegis/pull/3489))
+- **Dashboard: model + effort per session** — ModelBadge and EffortIndicator in session table and detail page ([#3560](https://github.com/OneStepAt4time/aegis/pull/3560), [#3581](https://github.com/OneStepAt4time/aegis/pull/3581))
+- **Dashboard: isolation mode badge** — bgIsolation sessions show visual indicator ([#3539](https://github.com/OneStepAt4time/aegis/pull/3539))
+- **Dashboard: workDir filter** — filter session table by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537))
+- **Dashboard: CLI shortcuts panel** — inline CLI hints on Getting Started card
+
+### Bug Fixes
+
+- **VALID_PERMISSION_MODES sync** — align runtime permission modes with Zod schema to prevent silent downgrade ([#3577](https://github.com/OneStepAt4time/aegis/pull/3577))
+- **Missing peer deps** — move playwright, open, OTLP to optionalDependencies, remove unused ip-address ([#3574](https://github.com/OneStepAt4time/aegis/pull/3574))
+- **Tests resilient to missing dist/** — 3 tests no longer fail without a prior `npm run build` ([#3573](https://github.com/OneStepAt4time/aegis/pull/3573))
+- **Windows SIGINT fallback** — graceful shutdown on Windows when SIGINT unavailable
+- **Windows workDir normalization** — normalize Unix-style paths on Windows ([#3502](https://github.com/OneStepAt4time/aegis/pull/3502))
+- **ag read crash** — fix crash when reading sessions without auth
+- **ag tail unauthorized** — handle missing auth gracefully in tail command
+- **Auth-token file desync** — resolve client/server token mismatch
+- **Dashboard clipboard fallback** — robust handling for non-HTTPS mobile contexts ([#3525](https://github.com/OneStepAt4time/aegis/pull/3525))
+- **Config-path-walk test isolation** — isolate from host ~/.aegis/ state ([#3548](https://github.com/OneStepAt4time/aegis/pull/3548))
+
+### Documentation
+
+- Document --model, --effort, --cwd, --passthrough flags in CLI reference and getting-started guide ([#3571](https://github.com/OneStepAt4time/aegis/pull/3571), [#3588](https://github.com/OneStepAt4time/aegis/pull/3588), [#3589](https://github.com/OneStepAt4time/aegis/pull/3589))
+- Document isolationMode session field in API reference ([#3595](https://github.com/OneStepAt4time/aegis/pull/3595))
+- Fix orphaned code fence in api-reference.md ([#3578](https://github.com/OneStepAt4time/aegis/pull/3578))
+- Fix README Session States table — remove ghost `asking` state, add 8 real states ([#3597](https://github.com/OneStepAt4time/aegis/pull/3597))
+- Add 25 missing env vars to enterprise.md config reference
+- Add review gate rule for non-trivial PRs ([#3557](https://github.com/OneStepAt4time/aegis/pull/3557))
+- CC v2.1.141–143 competitive intel update ([#3561](https://github.com/OneStepAt4time/aegis/pull/3561))
+
+---
+
 ## [0.6.7](https://github.com/OneStepAt4time/aegis/compare/v0.6.6...v0.6.7) — 2026-05-16
 
 150 commits, 141 PRs. The zero-config release — `ag run` goes from install to running session with no setup on localhost.
