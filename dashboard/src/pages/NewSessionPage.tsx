@@ -88,12 +88,12 @@ export default function NewSessionPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-4 sm:px-0">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <button type="button"
           onClick={() => navigate(-1)}
-          className="p-2 rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+          className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           title={t('newSession.goBack')}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -290,7 +290,7 @@ export default function NewSessionPage() {
         )}
 
         {/* Submit */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
           <button
             type="submit"
             disabled={loading || !workDir.trim()}
