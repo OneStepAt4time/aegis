@@ -1,0 +1,38 @@
+name: Post-merge rebuild
+on:
+  push:
+    branches:
+      - develop
+permissions:
+  contents: read
+concurrency:
+  group: post-merge-rebuild-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Verify dist/ is fresh
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(find dist -name '*.js' -newer package-lock.json)" ]; then
+            echo "::error::dist/ is empty or stale after build"
+            exit 1
+          fi
+          echo "dist/ rebuilt successfully ($(find dist -name '*.js' | wc -l) JS files)"
+      - name: Run smoke tests
+        run: npm run test:smoke
+      - name: Upload dist/ artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-develop
+          path: dist/
+          retention-days: 1
