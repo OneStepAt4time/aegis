@@ -1,7 +1,7 @@
 /**
  * commands/list.ts — `ag list` — List active sessions.
  *
- * Wraps GET /v1/sessions with optional status filter.
+ * Wraps GET /v1/sessions with optional status and project (`--cwd`) filters.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
@@ -16,6 +16,8 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--status' && args[i + 1]) {
       params.set('status', args[++i]!);
+    } else if (args[i] === '--cwd' && args[i + 1]) {
+      params.set('project', args[++i]!);
     }
   }
 
