@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard: isolation mode badge** — bgIsolation sessions show visual indicator ([#3539](https://github.com/OneStepAt4time/aegis/pull/3539))
 - **Dashboard: workDir filter** — filter session table by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537))
 - **Dashboard: CLI shortcuts panel** — inline CLI hints on Getting Started card
+- **CC auto-wiring during ag init** — detect Claude Code on PATH and offer MCP registration ([#3501](https://github.com/OneStepAt4time/aegis/pull/3501))
 
 ### Bug Fixes
 
@@ -30,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auth-token file desync** — resolve client/server token mismatch
 - **Dashboard clipboard fallback** — robust handling for non-HTTPS mobile contexts ([#3525](https://github.com/OneStepAt4time/aegis/pull/3525))
 - **Config-path-walk test isolation** — isolate from host ~/.aegis/ state ([#3548](https://github.com/OneStepAt4time/aegis/pull/3548))
+- **Model string validation** — reject malformed model names on --model flag and API schema ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
+- **MCP scope detection** — fix global configs incorrectly wired as project-scoped ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
+- **Unused OTel deps removed** — strip gRPC and Fastify instrumentation deps ([#3605](https://github.com/OneStepAt4time/aegis/pull/3605))
+
+### Test Coverage
+
+- Route-level tests for session-data, session-actions, templates ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
+- AuthManager and JsonFileStore direct tests ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
+- Session-transcripts, session-discovery, rate-limiter tests ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
+- CommandPalette component tests ([#3620](https://github.com/OneStepAt4time/aegis/pull/3620))
+- Model validation regression tests ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
+- MCP scope detection tests ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
 
 ### Documentation
 
@@ -40,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add 25 missing env vars to enterprise.md config reference
 - Add review gate rule for non-trivial PRs ([#3557](https://github.com/OneStepAt4time/aegis/pull/3557))
 - CC v2.1.141–143 competitive intel update ([#3561](https://github.com/OneStepAt4time/aegis/pull/3561))
+- Document CC auto-wiring in getting-started and cli reference ([#3612](https://github.com/OneStepAt4time/aegis/pull/3612))
+- ccusage-dashboard competitive research — cache pricing TTL-split gap identified ([#3236](https://github.com/OneStepAt4time/aegis/issues/3236))
 
 ---
 
