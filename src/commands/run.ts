@@ -28,6 +28,26 @@ interface CliIO {
   stderr: NodeJS.WritableStream;
 }
 
+
+
+/** Issue #3631: Patterns that indicate a rate-limit or quota-exhaustion error
+ *  from the Claude API. Used to surface actionable advice in `ag run`. */
+const RATE_LIMIT_PATTERNS = [
+  /rate.?limit/i,
+  /hit your limit/i,
+  /quota exceeded/i,
+  /too many requests/i,
+  /usage limit/i,
+  /capacity/i,
+  /overloaded/i,
+  /reset.*\d+:\d+/i,           // "resets 6:20pm"
+  /try again in\s+\d/i,        // "try again in 30 minutes"
+];
+
+function isRateLimitError(text: string): boolean {
+  return RATE_LIMIT_PATTERNS.some(p => p.test(text));
+}
+
 function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
   stream.write(`${text}\n`);
 }
@@ -242,7 +262,36 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       // Check if session is done
       if (data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed') {
         writeLine(io.stdout);
-        writeLine(io.stdout, `  ✅ Session ended: ${data.statusText || data.status}`);
+        if (data.status === 'error') {
+          // Issue #3631: Detect rate-limit errors and show actionable advice
+          const errorMessages = entries
+            .slice(-5)  // Check last 5 messages for rate limit indicators
+            .map(e => e.text)
+            .filter(Boolean);
+          const isRateLimited = errorMessages.some(t => isRateLimitError(t));
+
+          if (isRateLimited) {
+            writeLine(io.stderr, '  ❌ Rate limit hit — the Claude API quota is exhausted.');
+            writeLine(io.stderr);
+            writeLine(io.stderr, '  To fix this:');
+            writeLine(io.stderr, '    1. Wait for the rate limit window to reset (check error message for timing)');
+            writeLine(io.stderr, '    2. Use a different model:  ag run "..." --model <model>');
+            writeLine(io.stderr, '    3. Use a different provider: export ANTHROPIC_API_KEY=<key-with-higher-limits>');
+            writeLine(io.stderr);
+            writeLine(io.stderr, '  Common model alternatives:');
+            writeLine(io.stderr, '    claude-sonnet-4-6  (default, fast)');
+            writeLine(io.stderr, '    claude-haiku-3-5   (cheaper, higher limits)');
+            writeLine(io.stderr);
+            // Signal rate limit via exit code 2
+            receivedAnyOutput = true;  // Don't trigger --yes timeout message
+            process.exitCode = 2;
+          } else {
+            writeLine(io.stderr, `  ❌ Session ended with error: ${data.statusText || 'unknown error'}`);
+            writeLine(io.stderr, `     Check the dashboard or run: ag read ${sessionId}`);
+          }
+        } else {
+          writeLine(io.stdout, `  ✅ Session ended: ${data.statusText || data.status}`);
+        }
         break;
       }
 
