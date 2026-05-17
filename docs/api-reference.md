@@ -829,6 +829,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | Status | Code | Condition |
 |--------|------|-----------|
 | 400 | — | Invalid request body, missing `workDir`, file path as `workDir`, empty `prompt`, disallowed characters in `name`/`label`, env denylist rejection |
+| 400 | `INVALID_WORKDIR` | workDir not in allowed directories. Default allows `$HOME` and server cwd. Set `allowedWorkDirs` in config to allow additional paths. Changes hot-reload. |
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
