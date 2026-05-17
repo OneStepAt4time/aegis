@@ -28,6 +28,7 @@ import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
 import { ChartFrame } from '../components/shared/ChartFrame';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { SkeletonStatCard } from '../components/shared/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { getErrorVariant } from '../utils/getErrorVariant';
 
@@ -84,12 +85,14 @@ function generateCSV(data: AggregateMetricsResponse): string {
 export default function MetricsPage() {
   const t = useT();
   const [data, setData] = useState<AggregateMetricsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ raw: unknown; message: string } | null>(null);
   const [range, setRange] = useState<RangePreset>('7d');
   const [granularity, setGranularity] = useState<Granularity>('day');
   const sseConnected = useStore((s) => s.sseConnected);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
       setError(null);
       const now = new Date();
@@ -98,6 +101,8 @@ export default function MetricsPage() {
       setData(result);
     } catch (err) {
       setError({ raw: err, message: sanitizeErrorMessage(err, t('metrics.loadError')) });
+    } finally {
+      setLoading(false);
     }
   }, [range, granularity]);
 
@@ -189,6 +194,15 @@ export default function MetricsPage() {
           message={error.message}
           onRetry={() => { void fetchData(); }}
         />
+      )}
+
+      {/* Loading state */}
+      {loading && !data && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
       )}
 
       {/* Summary cards */}
