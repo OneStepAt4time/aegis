@@ -802,11 +802,12 @@ curl -X POST http://localhost:9100/v1/sessions \
   "status": "working",
   "createdAt": 1712650800000,
   "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" },
-  "model": "opus-4.7"
+  "model": "opus-4.7",
+  "isolationMode": "worktree"
 }
 ```
 
-> **Note:** The `model` and `effort` fields appear in the response when provided at creation time.
+> **Note:** The `model` and `effort` fields appear in the response when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly.
 
 **`promptDelivery` fields:**
 
