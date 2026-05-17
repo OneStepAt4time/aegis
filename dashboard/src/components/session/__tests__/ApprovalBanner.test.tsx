@@ -72,7 +72,7 @@ describe('ApprovalBanner', () => {
   });
 
   it('toggles prompt expansion on click', () => {
-    const { container } = render(<ApprovalBanner prompt="Short prompt" />);
+    render(<ApprovalBanner prompt="Short prompt" />);
     const promptEl = screen.getByText('Short prompt');
     expect(promptEl.className).toContain('truncate');
     fireEvent.click(promptEl);

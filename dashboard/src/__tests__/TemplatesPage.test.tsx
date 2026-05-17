@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { act } from 'react';
+
 import TemplatesPage from '../pages/TemplatesPage';
 import { I18nProvider } from '../i18n/context';
 import * as client from '../api/client';
