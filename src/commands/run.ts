@@ -19,6 +19,7 @@ import { deriveBaseUrl, getConfiguredBaseUrl, normalizeBaseUrl } from '../base-u
 import { AuthManager } from '../services/auth/index.js';
 import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serializeConfigFile, type Config } from '../config.js';
 import { getErrorMessage, parseIntSafe, validateEffort } from '../validation.js';
+import { generateSessionName } from '../utils/session-name.js';
 import { readAuthTokenFile } from '../utils/auth-token-path.js';
 
 interface CliIO {
@@ -423,7 +424,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
       body: JSON.stringify({
         workDir: cwd,
         prompt: brief,
-        name: `run-${brief.slice(0, 20).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}`,
+        name: generateSessionName(brief),
         model,
         effort,
         ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}),
