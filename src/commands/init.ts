@@ -940,9 +940,12 @@ async function offerClaudeCodeMcpWiring(args: string[], io: CliIO, configPath: s
     return;
   }
 
-  // Determine scope: project-level if configPath is local, global otherwise
+  // Determine scope: project-level if configPath is NOT under ~/.aegis/, global otherwise.
+  // Issue #3614: Previous logic used includes('.aegis') which matched ALL Aegis config paths,
+  // making isProjectConfig always true. Now checks if config is under the default global dir.
   const configDir = dirname(configPath);
-  const isProjectConfig = !configPath.includes(homedir()) || configPath.includes('.aegis');
+  const globalAegisDir = join(homedir(), '.aegis');
+  const isProjectConfig = !resolve(configPath).startsWith(globalAegisDir);
 
   const wireArgs = isProjectConfig
     ? ['mcp', 'add', '--scope', 'project', 'aegis', '--', 'ag', 'mcp']
