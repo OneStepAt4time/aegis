@@ -2,57 +2,134 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.6.x-preview (current) | :white_check_mark: |
-| Older alpha builds | :x: |
-| Legacy non-alpha lines | :x: |
+| Version | Supported |
+| ------- | --------- |
+| `develop` branch | ✅ Active development |
+| Latest release | ✅ Security fixes |
+| Previous minor | ⚠️ Critical fixes only |
+| Older versions | ❌ End of life |
 
-> Aegis currently ships in the preview channel only. Legacy version lines
-> are retired and no longer receive security fixes.
+We follow semantic versioning. Security patches are released as patch versions (e.g., `0.6.7` → `0.6.8`) and backported to the previous minor at our discretion.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Aegis, please report it responsibly:
+**Do not report security vulnerabilities through public GitHub issues.**
 
-1. **Preferred**: Open a [GitHub Security Advisory](https://github.com/OneStepAt4time/aegis/security). This keeps the report private until a fix is released.
-2. **Fallback**: Use the [Security Vulnerability issue template](https://github.com/OneStepAt4time/aegis/issues/new?template=security.yml). Maintainers will move it to a private advisory if needed.
-3. Include a description of the vulnerability, steps to reproduce, and potential impact.
-4. We will acknowledge receipt within 48 hours and provide a timeline for the fix.
+Send reports to **security@aegis.dev** (or open a private [GitHub Security Advisory](https://github.com/OneStepAt4time/aegis/security/advisories/new)).
 
-## Security Measures
+Include:
+- Description of the vulnerability
+- Steps to reproduce
+- Affected versions
+- Potential impact
 
-Aegis implements the following security controls:
+We aim to acknowledge reports within **24 hours**. Fix timelines are communicated upon triage — we target resolution of critical issues within **7 days** and provide mitigations where possible in the interim. Valid reports are credited in the CHANGELOG and advisory unless you request anonymity.
 
-- **Authentication**: API key-based auth with optional master token
-- **Session ownership**: All action routes enforce ownership — non-owning API keys cannot send/interrupt/kill sessions unless admin or master token
-- **Input validation**: Path traversal prevention, env var name validation, Zod schema validation on all routes
-- **Env var denylist**: CreateSession rejects dangerous env vars (AI provider keys, credentials, shell vars) and prefix-blocked vars (npm_config_, SSH_, GIT_ etc.)
-- **SSRF protection**: URL scheme and private IP range validation
-- **Command injection prevention**: Port validation, safe exec patterns
-- **Transport security**: Recommended behind HTTPS reverse proxy
+## Security Features
 
-Phase 3.5 ACP backend migration is complete. Aegis communicates with Claude
-Code via the Agent Client Protocol (ACP) over JSON-RPC stdio. ACP
-driver/observer, approval, pause/resume, and intervention actions are
-security-sensitive control-plane operations and remain covered by RBAC,
-session ownership, audit attribution, and tenant boundaries.
+### Authentication
 
-## Security Updates
+- **Master bearer token** — 256-bit token via `AEGIS_AUTH_TOKEN` env var. SHA-256 hashed at rest, plaintext returned only at creation.
+- **API keys** — Scoped keys with roles (`admin`, `operator`, `viewer`). SHA-256 hashed at rest with `0o600` file permissions.
+- **SSE tokens** — Short-lived (60s), single-use tokens for event streams. Capped at 5 concurrent per key.
+- **OIDC** — OpenID Connect authentication for enterprise deployments.
 
-Security patches are released through the active preview line. We recommend upgrading to the latest published preview immediately.
+### Authorization (RBAC)
 
-Security hotfixes may target `main` directly with maintainer approval, but normal releases follow `develop` → `release/<version>` → `main` → `v*` tag. Public publishing is performed only by the tag-triggered release workflow after its preflight, SBOM, checksum, Sigstore, npm, PyPI, and Helm gates pass.
+Three roles with principle-of-least-privilege:
 
-## Compliance Documentation
+| Role | Create sessions | Approve/reject | Manage keys | View sessions |
+|------|----------------|----------------|-------------|---------------|
+| `admin` | ✅ | ✅ | ✅ | ✅ |
+| `operator` | ✅ | ✅ | ❌ | ✅ |
+| `viewer` | ❌ | ❌ | ❌ | ✅ (own tenant only) |
 
-For SOC 2 Type II audit preparation, GDPR data mapping, and incident response, see:
+- **Session ownership** — tenants can only access their own sessions
+- **`strictRBAC`** — enforce role checks even when auth is disabled (`AEGIS_STRICT_RBAC=true`)
+- **Self-demotion guard** — keys cannot elevate their own role
 
-- **[`docs/compliance/`](docs/compliance/)** — Compliance documentation hub
-  - [SOC 2 CC Mapping](docs/compliance/soc2-cc-mapping.md) — Trust Services Criteria mapped to Aegis features
-  - [SOC 2 Evidence Checklist](docs/compliance/soc2-evidence-checklist.md) — Audit evidence collection checklist
-  - [Data Retention Policy](docs/compliance/data-retention-policy.md) — Retention schedules and DSAR handling
-  - [DPA Template](docs/compliance/dpa-template.md) — Data Processing Agreement template for enterprise customers
-  - [Incident Response](docs/compliance/incident-response.md) — Security incident response runbook
-- **[`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)** — High-level SOC 2 + GDPR + HIPAA readiness overview
-- **[`docs/SECURITY_QUESTIONNAIRE.md`](docs/SECURITY_QUESTIONNAIRE.md)** — Pre-filled vendor security questionnaire
+### Secret Redaction
+
+- ACP event payloads are sanitized before storage — API keys, tokens, and credentials are replaced with `[REDACTED]` in the local JSON file and event stream
+- Sensitive environment variables are stripped from process telemetry
+- Environment denylist blocks injection of `ANTHROPIC_API_KEY`, `PATH`, `HOME`, `LD_PRELOAD`, and other security-sensitive keys via session creation
+
+### Audit Logging
+
+Tamper-evident append-only audit trail:
+
+- Each record chained via SHA-256 hashes (record N includes hash of N-1)
+- Retroactive edits are detectable
+- Daily rotation, never overwritten
+- Covers: key creation, session lifecycle, approvals, rejections, configuration changes
+
+### Network Security
+
+- **SSRF protection** — blocks RFC 1918 private ranges, loopback, link-local, CGNAT, multicast, and IPv4-mapped IPv6 addresses
+- **Rate limiting** — per-IP limits (no-auth: 120 req/min, master token: 300 req/min)
+- **Dashboard static rate limiting** — per-IP fixed-window limiter for asset routes
+- **Session ID enumeration prevention** — unauthorized sessions return `404` instead of `403`
+- **Default bind** — `127.0.0.1` only (no external exposure unless explicitly configured)
+
+### Input Validation
+
+- All POST bodies validated with Zod schemas (`strict()` mode — no extra keys)
+- Model strings validated with regex + length check
+- Session names restricted to safe characters
+- Work directories validated (system temp dirs rejected, file paths rejected)
+- Hook payloads validated with HMAC secret support
+
+### Permission Modes
+
+Claude Code permissions can be scoped per session:
+
+| Mode | Behavior |
+|------|----------|
+| `default` | Prompt for every tool call |
+| `acceptEdits` | Auto-approve file edits, prompt for shell |
+| `dontAsk` | Auto-approve all non-destructive tools |
+| `auto` | Auto-approve everything |
+| `bypassPermissions` | Full bypass (requires `--passthrough` or `--accept-permissions`) |
+
+Permission modes are validated against the Zod schema at runtime.
+
+## Security Configuration
+
+Key environment variables for hardening:
+
+```bash
+# Enable authentication (required for production)
+AEGIS_AUTH_TOKEN=your-secure-token
+
+# Enforce RBAC even without auth
+AEGIS_STRICT_RBAC=true
+
+# Scope session working directories
+AEGIS_ALLOWED_WORKDIRS=/home/user/projects:/workspace
+
+# Bind to localhost only (default)
+AEGIS_HOST=127.0.0.1
+```
+
+See [Enterprise Configuration](docs/enterprise.md) for the full reference.
+
+## Threat Model
+
+| Threat | Mitigation |
+|--------|-----------|
+| Unauthorized API access | Bearer tokens + API keys with RBAC |
+| Session hijacking | Tenant-scoped ownership, 404 on unauthorized |
+| Credential leakage in logs | Automatic secret redaction |
+| SSRF via webhook/hook URLs | Comprehensive private IP blocking |
+| Env var injection | Denylist of security-sensitive keys |
+| Audit log tampering | SHA-256 hash chain |
+| Brute-force API keys | SHA-256 hashed at rest, rate limiting |
+| Privilege escalation | Role hierarchy with self-demotion guard |
+
+## Known Security Issues
+
+See [Security Advisories](https://github.com/OneStepAt4time/aegis/security/advisories) for disclosed vulnerabilities and their fixes.
+
+## Credits
+
+Security posture reviewed by Themis (Security Auditor).
