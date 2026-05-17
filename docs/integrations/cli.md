@@ -28,6 +28,8 @@ ag init --from-template code-reviewer
 
 The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite. In `--yes` mode, existing config is preserved by default — use `--force` (or `-f`) to allow overwriting.
 
+If Claude Code (`claude`) is detected on your PATH, `ag init` will automatically offer to wire the Aegis MCP server into Claude Code. This adds Aegis tools to your Claude Code session without manual setup. In `--yes` mode, MCP wiring happens automatically (skipped in CI/test environments).
+
 `ag init` also exposes the built-in starter gallery for Claude Code helpers:
 
 - `code-reviewer` (agent)
