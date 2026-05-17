@@ -679,6 +679,18 @@ export default function Layout() {
             Command palette
           </button>
 
+          <span className="hidden md:inline text-[11px] text-[var(--color-text-muted)]">·</span>
+
+          <button
+            type="button"
+            className="hidden md:inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            title="Keyboard shortcuts"
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true }))}
+          >
+            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1.5 text-[var(--color-text-primary)]">?</kbd>
+            Shortcuts
+          </button>
+
           {/* Mobile: compact version on the right */}
           <span className="sm:hidden text-[11px] text-[var(--color-text-muted)] font-mono truncate">v{aegisVersion}</span>
         </footer>
