@@ -344,6 +344,7 @@ Aegis is configured via environment variables:
 | `AEGIS_REDIS_KEY_PREFIX` | `aegis` | Redis key prefix |
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC on protected endpoints even when auth is disabled |
 | `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `120000` | Timeout in ms for ACP JSON-RPC requests (increase for slow BYO-LLM proxy setups) |
+| `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings), `enforce-worktree` (reject non-worktree sessions), `enforce-direct` (force direct edits, no worktree) |
 
 See the [Enterprise Deployment Guide](enterprise.md#configuration-reference) for the complete environment variable reference (rate limiting, OIDC, hooks, notifications, alerting, and more).
 

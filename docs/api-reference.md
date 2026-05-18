@@ -780,6 +780,8 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
 | `model` | string | no | Model name for analytics grouping and per-session model override (max 200 chars, `a-zA-Z0-9._/-` only, must start with alphanumeric). When set, passed to the CC session via `--model` flag. |
+| `effort` | string | no | Reasoning effort level: `low`, `medium`, `high`. When set, passed to the CC session via `--effort` flag. |
+| `isolationPolicy` | string | no | Override server-level isolation policy for this session: `respect-cc` (default), `enforce-worktree`, or `enforce-direct`. See [isolation policy](#isolation-policy) below. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
 | `env` | object | no | Environment variables (subject to denylist) |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
@@ -808,6 +810,8 @@ curl -X POST http://localhost:9100/v1/sessions \
 ```
 
 > **Note:** The `model` and `effort` fields appear in the response when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly.
+>
+> **Isolation policy:** Control how Aegis handles worktree isolation via `isolationPolicy` (request body) or `AEGIS_ISOLATION_POLICY` (env/config). Values: `respect-cc` (default — follows CC settings), `enforce-worktree` (rejects sessions that would run without a worktree), `enforce-direct` (forces no worktree, edits project directly). Use `enforce-worktree` when multiple concurrent sessions share a repo to prevent file conflicts.
 
 **`promptDelivery` fields:**
 
@@ -829,6 +833,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 |--------|------|-----------|
 | 400 | — | Invalid request body, missing `workDir`, file path as `workDir`, empty `prompt`, disallowed characters in `name`/`label`/`model`, env denylist rejection |
 | 400 | `INVALID_WORKDIR` | workDir not in allowed directories. Default allows `$HOME` and server cwd. Set `allowedWorkDirs` in config to allow additional paths. Changes hot-reload. |
+| 400 | `ISOLATION_POLICY_VIOLATION` | Session rejected because isolation policy requires worktree but Claude Code settings would run without one. Fix: enable worktrees in Claude Code or change policy. |
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
