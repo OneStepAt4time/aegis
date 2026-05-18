@@ -119,7 +119,9 @@ Then include the token in every request:
 curl -H "Authorization: Bearer your-secret-token" http://localhost:9100/v1/sessions
 ```
 
-**Option B: OIDC / SSO (enterprise)**
+**Option B: OIDC / SSO (enterprise — Phase 4)**
+
+> OIDC/SSO is a Phase 4 feature, currently hidden from CLI help. Enable with `AEGIS_FEATURE_OIDC=1`.
 
 For IdP-based authentication, configure OIDC and use the CLI:
 

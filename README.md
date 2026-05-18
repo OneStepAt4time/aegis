@@ -51,7 +51,7 @@ $ npx --package=@onestepat4time/aegis ag run "Build a login page" --cwd ./my-pro
   Aegis v0.7.0
   ✓ Claude Code found
   ✓ Server started → http://127.0.0.1:9100/dashboard
-  ✓ Session created: cc-build-a-login-page
+  ✓ Session created: my-project
 
   [Claude] I'll build a login page with email and password fields...
   [Claude] ├── Creating src/components/LoginForm.tsx
