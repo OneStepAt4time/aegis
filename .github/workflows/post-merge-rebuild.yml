@@ -1,38 +1,71 @@
-name: Post-merge rebuild
+name: Post-merge rebuild (develop)
+
 on:
   push:
-    branches:
-      - develop
-permissions:
-  contents: read
-concurrency:
-  group: post-merge-rebuild-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [ develop ]
+
 jobs:
-  rebuild:
+  build-and-commit-dist:
+    name: Build and commit dist if changed
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: '22'
-          cache: npm
-      - name: Install dependencies
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install
         run: npm ci
+
       - name: Build
         run: npm run build
-      - name: Verify dist/ is fresh
+
+      - name: Show git status
+        run: git --no-pager status --porcelain --untracked-files=no
+
+      - name: Commit dist if changed
         run: |
-          if [ ! -d "dist" ] || [ -z "$(find dist -name '*.js' -newer package-lock.json)" ]; then
-            echo "::error::dist/ is empty or stale after build"
-            exit 1
+          set -e
+          # Only commit tracked changes in dist/ produced by the build
+          if [ -n "$(git status --porcelain --untracked-files=no -- dist | sed -n '1p')" ]; then
+            git config user.name "aegis-bot"
+            git config user.email "aegis-bot@local"
+            git add -A dist
+            git commit -m "chore(dist): rebuild dist after merge to develop [skip ci]" || echo "No changes to commit"
+            git push origin HEAD:develop
+          else
+            echo "No dist changes"
           fi
-          echo "dist/ rebuilt successfully ($(find dist -name '*.js' | wc -l) JS files)"
-      - name: Run smoke tests
-        run: npm run test:smoke
-      - name: Upload dist/ artifact
-        uses: actions/upload-artifact@v4
+
+  optional-deploy-to-host:
+    name: Optional: deploy to host and restart service
+    runs-on: ubuntu-latest
+    needs: build-and-commit-dist
+    if: ${{ secrets.DEPLOY_HOST && secrets.DEPLOY_USER && secrets.DEPLOY_SSH_KEY }}
+
+    steps:
+      - name: Deploy and restart over SSH
+        uses: appleboy/ssh-action@v0.1.8
         with:
-          name: dist-develop
-          path: dist/
-          retention-days: 1
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script: |
+            set -e
+            cd /home/bubuntu/projects/aegis || exit 1
+            git fetch origin develop
+            git checkout develop
+            git reset --hard origin/develop
+            npm ci
+            npm run build
+            # NOTE: The remote user must have passwordless sudo for systemctl
+            sudo systemctl reset-failed aegis || true
+            sudo systemctl restart aegis
+
