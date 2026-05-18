@@ -2,10 +2,10 @@
  * AgentContributionsPanel.tsx — Per-agent git contribution stats.
  *
  * Shows commit count, lines changed, PRs opened, and contribution bars
- * for each agent. Part of issue #3269: agent git identity tracking.
+ * for each agent. Part of issue #3269: agent git identity tracking. // token-ok
  *
- * Mock data until backend provides per-agent git identity (#3269 backend).
- * @ticket #3399 — chart polish with design tokens
+ * Mock data until backend provides per-agent git identity (#3269 backend). // token-ok
+ * @ticket #3399 — chart polish with design tokens // token-ok
  */
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
@@ -221,7 +221,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
                 </div>
                 <div className="mt-1 h-1.5 w-full rounded-full bg-[var(--color-void-light)]">
                   <div
-                    className="h-1.5 rounded-full transition-all duration-500"
+                    className="h-1.5 rounded-full transition-all duration-[var(--duration-cinematic)]"
                     style={{
                       width: `${commitPct}%`,
                       backgroundColor: AGENT_COLORS[agent.agent] ?? AGENT_COLORS.other,

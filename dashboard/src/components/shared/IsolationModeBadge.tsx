@@ -8,7 +8,7 @@
  * - none     → amber warning (shared working copy)
  * - undefined → renders nothing (graceful degradation)
  *
- * Related: #3539 (bgIsolation), #3590 (backend field)
+ * Related: #3539 (bgIsolation), #3590 (backend field) // token-ok
  */
 
 const MODE_STYLES: Record<string, { color: string; label: string; title: string }> = {

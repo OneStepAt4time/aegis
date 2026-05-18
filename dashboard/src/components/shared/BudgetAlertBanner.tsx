@@ -4,7 +4,7 @@
  * Shows when spending is approaching or exceeding budget caps.
  * Reads budget settings from localStorage and current spend from analytics API.
  * Dismissible per session; re-alerts when next threshold is crossed.
- * Part of issue #3125: Budget Alerts & Cost Forecasts.
+ * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';

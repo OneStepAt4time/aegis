@@ -1,7 +1,7 @@
 /**
  * pages/CostPage.tsx — Global cost & billing dashboard with charts and budgets.
- * Wired to GET /v1/analytics/costs (Issue #2802).
- * Cost analytics panels added (Issue #3273).
+ * Wired to GET /v1/analytics/costs (Issue #2802). // token-ok
+ * Cost analytics panels added (Issue #3273). // token-ok
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -383,7 +383,7 @@ export default function CostPage() {
         </section>
       )}
 
-      {/* ── Cost Analytics Panels (#3273) ── */}
+      {/* ── Cost Analytics Panels (#3273) ── */} // token-ok
       <section aria-label="Cost analytics">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">

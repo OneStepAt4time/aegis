@@ -2,7 +2,7 @@
  * SessionCostCard.tsx — Per-session real-time cost tracking card.
  *
  * Displays running token and cost totals for a single session.
- * Part of issue #3125: Budget Alerts & Cost Forecasts.
+ * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
  */
 
 import { DollarSign, Coins } from 'lucide-react';

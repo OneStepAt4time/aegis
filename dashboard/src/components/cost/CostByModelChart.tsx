@@ -2,7 +2,7 @@
  * CostByModelChart.tsx — Horizontal bar chart showing cost per model.
  *
  * Displays total USD grouped by model with color coding.
- * Part of issue #3273: Cost Analytics Panels.
+ * Part of issue #3273: Cost Analytics Panels. // token-ok
  */
 
 import {

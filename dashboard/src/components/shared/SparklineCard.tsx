@@ -2,7 +2,7 @@
  * components/shared/SparklineCard.tsx — Metric card with inline 7-day sparkline.
  * Uses Recharts for visualization. Hover shows exact value for that day.
  *
- * @ticket #3399 — chart polish with design tokens
+ * @ticket #3399 — chart polish with design tokens // token-ok
  */
 
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';

@@ -49,7 +49,7 @@ export function CliShortcutsPanel({ sessionId, createdAt }: CliShortcutsPanelPro
       >
         <span>{t('cliShortcuts.title')}</span>
         <ChevronDown
-          className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform duration-[var(--duration-base)] ${open ? 'rotate-180' : ''}`}
         />
       </button>
 

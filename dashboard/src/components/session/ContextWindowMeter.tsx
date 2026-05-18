@@ -5,7 +5,7 @@ import { useT } from '../../i18n/context';
  * Shows a progress bar with green → yellow → red color coding as context fills.
  * Parity feature with Cline's context progress bar.
  *
- * Issue: #3127
+ * Issue: #3127 // token-ok
  */
 
 interface ContextWindowMeterProps {
@@ -75,7 +75,7 @@ export function ContextWindowMeter({
       <div className="flex items-center gap-1.5" title={`${formatTokens(usedTokens)} / ${formatTokens(maxTokens)} tokens used`}>
         <div className="h-1.5 w-16 rounded-full bg-[var(--color-void-lighter)] overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${color}`}
+            className={`h-full rounded-full transition-all duration-[var(--duration-cinematic)] ${color}`}
             style={{ width: `${percentage * 100}%` }}
             role="progressbar"
             aria-valuenow={usedTokens}
@@ -107,7 +107,7 @@ export function ContextWindowMeter({
       )}
       <div className="h-2.5 rounded-full bg-[var(--color-void-lighter)] overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ease-out ${color}`}
+          className={`h-full rounded-full transition-all duration-[var(--duration-cinematic)] ease-out ${color}`}
           style={{ width: `${percentage * 100}%` }}
           role="progressbar"
           aria-valuenow={usedTokens}
