@@ -2,7 +2,7 @@
  * ForecastChart.tsx — Cost forecast line chart with projected trend.
  *
  * Shows actual daily spend and a linear regression projection line.
- * Part of issue #3125: Budget Alerts & Cost Forecasts.
+ * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
  */
 
 import {

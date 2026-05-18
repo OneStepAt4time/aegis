@@ -2,7 +2,7 @@
  * TokenBreakdownChart.tsx — Stacked bar chart for token usage breakdown.
  *
  * Shows input, output, cache-read, and cache-write tokens per day.
- * Part of issue #3273: Cost Analytics Panels.
+ * Part of issue #3273: Cost Analytics Panels. // token-ok
  */
 
 import {

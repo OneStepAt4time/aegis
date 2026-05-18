@@ -4,7 +4,7 @@
  * Adds a vertical connecting line, event dots, and category-colored markers
  * on top of the existing OperatorTimeline event data.
  *
- * Issue: #3126
+ * Issue: #3126 // token-ok
  */
 
 import { useState, useMemo, useCallback, useRef } from 'react';

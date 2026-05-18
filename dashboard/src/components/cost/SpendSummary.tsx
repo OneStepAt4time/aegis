@@ -2,7 +2,7 @@
  * SpendSummary.tsx — Summary of spending metrics with forecast.
  *
  * Shows today's spend, monthly spend, and projected monthly total.
- * Part of issue #3125: Budget Alerts & Cost Forecasts.
+ * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
  */
 
 import { formatCurrency } from '../../utils/formatNumber';

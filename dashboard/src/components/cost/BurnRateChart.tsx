@@ -2,7 +2,7 @@
  * BurnRateChart.tsx — Session burn rate line chart.
  *
  * Shows cost velocity over time (USD on Y, date on X).
- * Part of issue #3273: Cost Analytics Panels.
+ * Part of issue #3273: Cost Analytics Panels. // token-ok
  */
 
 import {

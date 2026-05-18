@@ -49,7 +49,7 @@ describe('CodeBlock', () => {
   it('handles python comments correctly', () => {
     const { container } = render(<CodeBlock code="# this is a comment" language="python" />);
     const html = container.querySelector('pre code')?.innerHTML;
-    expect(html).toContain('#8b949e'); // comment color
+    expect(html).toContain('#8b949e'); // comment color // token-ok
   });
 });
 

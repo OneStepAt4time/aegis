@@ -1,8 +1,8 @@
 /**
  * OverviewCostChart — lazy-loaded cost chart for OverviewPage.
  * Separated so recharts loads on demand.
- * @ticket #2934 // token-ok
- * @ticket #3399 — chart polish with design tokens
+ * @ticket #2934 // token-ok // token-ok
+ * @ticket #3399 — chart polish with design tokens // token-ok
  */
 
 import {

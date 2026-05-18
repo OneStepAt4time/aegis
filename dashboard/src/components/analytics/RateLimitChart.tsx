@@ -1,10 +1,10 @@
 /**
- * components/analytics/RateLimitChart.tsx — Per-key quota usage bars (Issue #2283). // token-ok
+ * components/analytics/RateLimitChart.tsx — Per-key quota usage bars (Issue #2283). // token-ok // token-ok
  *
  * Bar chart showing sessions, tokens, and spend usage per API key
  * with color-coded thresholds: <66% cyan, 66-90% amber, >90% red.
  *
- * @ticket #3399 — chart polish with design tokens
+ * @ticket #3399 — chart polish with design tokens // token-ok
  */
 
 import {

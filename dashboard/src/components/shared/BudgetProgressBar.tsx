@@ -2,7 +2,7 @@
  * BudgetProgressBar.tsx — Visual progress bar for budget tracking.
  *
  * Shows current spend vs cap with color-coded severity thresholds.
- * Part of issue #3125: Budget Alerts & Cost Forecasts.
+ * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
  */
 
 import { formatCurrency } from '../../utils/formatNumber';
@@ -104,7 +104,7 @@ export function BudgetProgressBar({ currentSpend, cap, label, period }: BudgetPr
       >
         <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-void-lighter)]">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${SEVERITY_BG[severity]}`}
+            className={`h-full rounded-full transition-all duration-[var(--duration-cinematic)] ${SEVERITY_BG[severity]}`}
             style={{ width: `${clampedPct}%` }}
           />
         </div>

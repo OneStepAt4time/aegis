@@ -1,5 +1,5 @@
 /**
- * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970). // token-ok
+ * pages/AnalyticsPage.tsx — Analytics dashboard with charts (Issue #1970). // token-ok // token-ok
  *
  * Displays session volume, token usage by model, cost trends,
  * top API keys, duration trends, and error/permission stats.
@@ -43,7 +43,7 @@ import {
 } from '../utils/chartTheme';
 
 
-// Model colors centralized in chartTheme.ts (#3399)
+// Model colors centralized in chartTheme.ts (#3399) // token-ok
 const MODEL_COLORS = CHART_MODEL_COLORS;
 
 function formatDuration(seconds: number): string {
@@ -490,7 +490,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Agent Contributions (#3269) */}
+      {/* Agent Contributions (#3269) */} // token-ok
       <AgentContributionsPanel />
     </div>
   );
