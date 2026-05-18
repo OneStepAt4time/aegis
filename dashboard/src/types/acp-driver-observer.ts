@@ -26,15 +26,6 @@ export interface AcpPresenceRecord {
   expiresAt?: number;
 }
 
-/** Driver lock lease information. */
-export interface AcpDriverLockLease {
-  sessionId: string;
-  holderId: string;
-  ttlMs: number;
-  fence: number;
-  expiresAt: number;
-  backendRunId?: string;
-}
 
 /** Request body to claim the driver role. */
 export interface AcpClaimDriverRequest {
@@ -69,13 +60,6 @@ export interface AcpSessionParticipants {
   activeCount: number;
 }
 
-/** Role capability matrix from epic §9.1. */
-export const ROLE_CAPABILITIES: Record<AcpDisplayRole, string[]> = {
-  driver: ['send prompts', 'request cancel', 'request pause/resume'],
-  observer: ['read chat', 'view timeline', 'view terminal', 'view metrics'],
-  operator: ['revoke stale driver', 'force pause', 'inspect health', 'transfer control'],
-  admin: ['all operator capabilities', 'configuration', 'emergency control'],
-};
 
 /** Role color mapping for UI badges. */
 export const ROLE_COLORS: Record<AcpDisplayRole, { bg: string; text: string }> = {

@@ -29,15 +29,6 @@ export const DEFAULT_SESSION_TABS: AcpSessionTabConfig[] = [
   { id: 'transcript', label: 'Transcript', icon: 'FileText' },
 ];
 
-/** Control rail section — groups related controls together. */
-export interface AcpControlRailSection {
-  id: string;
-  label?: string;
-  /** Whether this section is collapsible. */
-  collapsible?: boolean;
-  /** Whether this section starts collapsed. */
-  defaultCollapsed?: boolean;
-}
 
 /** Session shell layout configuration. */
 export interface AcpSessionShellConfig {

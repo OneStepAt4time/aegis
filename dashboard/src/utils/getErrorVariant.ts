@@ -53,26 +53,3 @@ export function getErrorVariant(error: unknown): ErrorVariant {
   // 4xx other than 403/404/429 — treat as server error for UX
   return 'server-5xx';
 }
-
-/**
- * Get a human-readable error message from an API error.
- * Uses sanitizeErrorMessage for technical error cleanup.
- */
-export function getUserErrorMessage(error: unknown, fallback?: string): string {
-  const err = error as ApiError;
-  const raw = err?.message ?? '';
-
-  // Network errors
-  if (!err?.statusCode) {
-    const msg = raw.toLowerCase();
-    if (msg.includes('failed to fetch') || msg.includes('network')) {
-      return 'Unable to reach the Aegis server. Check your connection.';
-    }
-    if (msg.includes('timeout') || msg.includes('timed out')) {
-      return 'The request timed out. The server may be under load.';
-    }
-  }
-
-  // For status-coded errors, use the raw message (already sanitized by API client)
-  return raw || fallback || 'Something went wrong. Please try again.';
-}

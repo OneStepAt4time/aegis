@@ -202,10 +202,17 @@ export const tokens = {
   },
 } as const;
 
+/** @public Design token map */
 export type Tokens = typeof tokens;
+/** @public Color design tokens */
 export type ColorToken = keyof typeof tokens.color;
+/** @public Spacing design tokens */
 export type SpacingToken = keyof typeof tokens.spacing;
+/** @public Border radius tokens */
 export type RadiusToken = keyof typeof tokens.radius;
+/** @public Animation duration tokens */
 export type DurationToken = keyof typeof tokens.duration;
+/** @public Easing curve tokens */
 export type EasingToken = keyof typeof tokens.easing;
+/** @public Shadow tokens */
 export type ShadowToken = keyof typeof tokens.shadow;
