@@ -118,7 +118,8 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   effort?: string;               // Issue #3545: Reasoning effort level
-    /** Issue #3613: Per-session isolation policy override. */    isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
+    /** Issue #3613: Per-session isolation policy override. */
+  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
   /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
   isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
@@ -613,7 +614,8 @@ export class SessionManager {
     initialStatus?: UIState;
     model?: string;
     effort?: string;
-    /** Issue #3613: Per-session isolation policy override. */    isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
+    /** Issue #3613: Per-session isolation policy override. */
+  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
   }): Promise<SessionInfo> {
     const id = opts.id ?? crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
@@ -704,12 +706,16 @@ export class SessionManager {
     // Issue #3613: Enforce isolation policy
     const policy = opts.isolationPolicy ?? this.config.isolationPolicy;
     if (policy === 'enforce-worktree' && isolationMode === 'none') {
+      console.warn(`Session ${id}: enforce-worktree policy rejecting session with detected bgIsolation="none"`);
       throw new SessionCreationError(
         `Session rejected: isolation policy is 'enforce-worktree' but CC settings have bgIsolation="none". ` +
         `Set worktree.bgIsolation to "worktree" in .claude/settings.json or change the server isolation policy.`
       );
     }
     if (policy === 'enforce-direct') {
+      if (isolationMode !== 'none') {
+        console.warn(`Session ${id}: enforce-direct policy overriding detected worktree isolation to none`);
+      }
       isolationMode = 'none';
     }
     // policy === 'respect-cc' → use detected isolationMode as-is
@@ -781,6 +787,7 @@ export class SessionManager {
       model: opts.model,
       effort: opts.effort,
       isolationMode: isolationMode,
+      isolationPolicy: policy,
     };
 
     this.state.sessions[id] = session;
