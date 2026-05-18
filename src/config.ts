@@ -169,6 +169,12 @@ export interface Config {
   acpEnabled: boolean;
   /** ACP JSON-RPC request timeout in ms (default: 60000). Issue #3223. */
   acpPromptTimeoutMs: number;
+  /** Session isolation policy (Issue #3613).
+   *  "respect-cc": read bgIsolation from CC settings (current behavior, default)
+   *  "enforce-worktree": reject sessions where isolation would be "none"
+   *  "enforce-direct": force bgIsolation "none" (niche, single-session workdirs)
+   */
+  isolationPolicy?: "respect-cc" | "enforce-worktree" | "enforce-direct";
 }
 
 /** Compute stall threshold from env var or default (Issue #392).
@@ -233,6 +239,7 @@ const defaults: Config = {
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
   acpEnabled: true,
   acpPromptTimeoutMs: 120_000, // Issue #3243: 120s default for BYO-LLM proxy setups
+  isolationPolicy: 'respect-cc', // Issue #3613: safe default, no behavior change
 };
 
 /** Parse CLI args for --config flag */
@@ -465,6 +472,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
     { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
+    { aegis: 'AEGIS_ISOLATION_POLICY', manus: '', key: 'isolationPolicy' },
   ];
 
   for (const { aegis, manus, key } of envMappings) {
@@ -527,6 +535,14 @@ function applyEnvOverrides(config: Config): Config {
       case 'tgGroupId':
       case 'defaultTenantId':
         config[key] = value;
+        break;
+      // Issue #3613: isolationPolicy with validation
+      case 'isolationPolicy':
+        if (value === 'respect-cc' || value === 'enforce-worktree' || value === 'enforce-direct') {
+          config.isolationPolicy = value as Config['isolationPolicy'];
+        } else {
+          console.warn(`Invalid AEGIS_ISOLATION_POLICY: "${value}". Must be respect-cc, enforce-worktree, or enforce-direct.`);
+        }
         break;
       default:
         // Skip complex types (Record<string,string>) that can't be set from a single env var
