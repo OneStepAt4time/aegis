@@ -118,6 +118,7 @@ export interface SessionInfo {
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
   effort?: string;               // Issue #3545: Reasoning effort level
+    /** Issue #3613: Per-session isolation policy override. */    isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
   /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
   isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
@@ -293,6 +294,14 @@ export type { PermissionDecision };
  * Coordinates session lifecycle, persistence, transcript discovery, and
  * interactive approval/question flows for all managed Claude Code sessions.
  */
+/** Issue #3613: Error thrown when session creation is rejected by isolation policy. */
+export class SessionCreationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SessionCreationError';
+  }
+}
+
 export class SessionManager {
   private state: SessionState = { sessions: Object.create(null) as Record<string, SessionInfo> };
   private stateFile: string;
@@ -604,6 +613,7 @@ export class SessionManager {
     initialStatus?: UIState;
     model?: string;
     effort?: string;
+    /** Issue #3613: Per-session isolation policy override. */    isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
   }): Promise<SessionInfo> {
     const id = opts.id ?? crypto.randomUUID();
     const createSpan = startSessionSpan('create', id, { workDir: opts.workDir });
@@ -689,7 +699,20 @@ export class SessionManager {
     // Issue #169 Phase 2: Generate HTTP hook settings for this session.
     // Detect isolation mode from project/global Claude settings (Issue #3590)
     const detectedIsolation = await detectIsolationMode(opts.workDir).catch(() => undefined);
-    const isolationMode = detectedIsolation ?? 'worktree';
+    let isolationMode: 'worktree' | 'none' = detectedIsolation ?? 'worktree';
+
+    // Issue #3613: Enforce isolation policy
+    const policy = opts.isolationPolicy ?? this.config.isolationPolicy;
+    if (policy === 'enforce-worktree' && isolationMode === 'none') {
+      throw new SessionCreationError(
+        `Session rejected: isolation policy is 'enforce-worktree' but CC settings have bgIsolation="none". ` +
+        `Set worktree.bgIsolation to "worktree" in .claude/settings.json or change the server isolation policy.`
+      );
+    }
+    if (policy === 'enforce-direct') {
+      isolationMode = 'none';
+    }
+    // policy === 'respect-cc' → use detected isolationMode as-is
 
     // Writes a temp file with hooks pointing to Aegis's hook receiver.
       // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.

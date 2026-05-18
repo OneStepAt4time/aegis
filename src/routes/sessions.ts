@@ -11,6 +11,7 @@ import { SYSTEM_TENANT } from '../config.js';
 import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
+import { SessionCreationError } from '../session.js';
 import {
   type RouteContext,
   requirePermission,
@@ -54,6 +55,8 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     effort: z.string().max(20).optional(),
     // Issue #2913: per-session custom system prompt (cc-connect parity).
     systemPrompt: z.string().max(100_000).optional(),
+    // Issue #3613: per-session isolation policy override.
+    isolationPolicy: z.enum(['respect-cc', 'enforce-worktree', 'enforce-direct']).optional(),
   }).strict();
 }
 
@@ -354,7 +357,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
    */
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt, effort } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt, effort, isolationPolicy } = data;
     // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
@@ -451,7 +454,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         return reply.status(500).send({ error: 'ACP runtime failed to start — check claude CLI availability and ACP configuration', details: acpErr });
       }
       try {
-        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort });
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy });
         // Issue #3135: Sync ACP session status to local session state
         // The ACP backend tracks agent status independently; mirror it here.
         const acpToUIState: Record<string, import('../session.js').UIState> = { idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
@@ -465,7 +468,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         throw e;
       }
     } else {
-      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort });
+      session = await sessions.createSession({ workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy });
     }
     metrics.sessionCreated(session.id);
 
@@ -544,7 +547,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         }
         return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
       }
-      return createSessionHandler(req, reply, parsed.data);
+      try {
+        return await createSessionHandler(req, reply, parsed.data);
+      } catch (e: unknown) {
+        if (e instanceof SessionCreationError) {
+          return reply.status(400).send({ error: 'ISOLATION_POLICY_VIOLATION', message: e.message, code: 'isolation_policy_violation' });
+        }
+        throw e;
+      }
     },
   });
 
