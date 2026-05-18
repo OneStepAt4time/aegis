@@ -247,6 +247,15 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
 }
 
 function printHelp(io: CliIO): void {
+  const showOidc = process.env.AEGIS_FEATURE_OIDC === '1';
+  const authBlock = showOidc ? `
+  Auth (OAuth2 device flow):
+    ag login               Authenticate via your IdP (requires OIDC config)
+    ag logout              Revoke tokens and clear credentials
+    ag logout --all        Clear credentials for all servers
+    ag whoami              Show current identity and token status
+
+` : '';
   write(io.stdout, `
   ag — Claude Code session bridge (alias: aegis)
 
@@ -295,15 +304,7 @@ function printHelp(io: CliIO): void {
     ag tail <id>            Follow session output in real-time
     ag kill <id>            Terminate a session
     ag status               Show server health + session summary
-
-
-  Auth (OAuth2 device flow):
-    ag login               Authenticate via your IdP (requires OIDC config)
-    ag logout              Revoke tokens and clear credentials
-    ag logout --all        Clear credentials for all servers
-    ag whoami              Show current identity and token status
-
-  Flags:
+${authBlock}  Flags:
     --json-logs           Emit structured JSON logs (default: quiet mode)
 
   Environment variables:
