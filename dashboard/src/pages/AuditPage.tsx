@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Drawer } from '../components/shared/Drawer';
 import {
   AlertCircle,
   CheckCircle2,
@@ -359,30 +360,12 @@ function DetailDrawer({
   ];
 
   return (
-    <AnimatePresence>
-      <>
-        {/* Backdrop */}
-        <motion.div
-          key="audit-drawer-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[var(--z-drawer-overlay)] bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        {/* Panel */}
-        <motion.aside
-          key="audit-drawer-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("aria.auditRecordDetail")}
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-          className="fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] overflow-y-auto border-l border-white/10 bg-[var(--color-void)] shadow-2xl"
-        >
+    <Drawer
+      open={true}
+      onClose={onClose}
+      ariaLabel={t("aria.auditRecordDetail")}
+      className="bg-[var(--color-void)]"
+    >
           <div className="flex items-center justify-between border-b border-[var(--color-void-lighter)] px-6 py-4">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-[var(--color-accent-cyan)]" />
@@ -453,9 +436,7 @@ function DetailDrawer({
               </pre>
             </div>
           </div>
-        </motion.aside>
-      </>
-    </AnimatePresence>
+    </Drawer>
   );
 }
 

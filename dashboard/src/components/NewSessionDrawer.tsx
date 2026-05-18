@@ -8,7 +8,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Drawer } from './shared/Drawer';
 import { createSession, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
@@ -108,34 +108,12 @@ export function NewSessionDrawer() {
   }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession, triggerFirstSessionConfetti]);
 
   return (
-    <AnimatePresence>
-      {newSessionOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="drawer-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[var(--z-drawer-overlay)] bg-black/50 backdrop-blur-sm"
-            onClick={closeNewSession}
-            aria-hidden="true"
-          />
-
-          {/* Drawer panel */}
-          <motion.aside
-            key="drawer-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("aria.newSession")}
-            ref={trapRef as React.Ref<HTMLDivElement>}
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-            className="fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-white/5 shadow-2xl flex flex-col overflow-y-auto"
-          >
+    <Drawer
+      open={newSessionOpen}
+      onClose={closeNewSession}
+      ariaLabel={t("aria.newSession")}
+      panelRef={trapRef as React.Ref<HTMLDivElement>}
+    >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
               <div>
@@ -261,9 +239,6 @@ export function NewSessionDrawer() {
                 </button>
               </div>
             </form>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+    </Drawer>
   );
 }
