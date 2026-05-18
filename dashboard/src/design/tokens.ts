@@ -130,6 +130,12 @@ export const tokens = {
       '0 30px 60px -15px rgba(0, 0, 0, 0.9), 0 12px 40px -4px rgba(0, 0, 0, 0.5), 0 0 25px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
     terminal: 'inset 0 2px 15px rgba(0,0,0,0.5)',
     statusGlow: '0 0 10px currentColor',
+    /** Cyan accent glow (used in SessionTable hero). */
+    accentCyan: '0 0 30px rgba(6, 182, 212, 0.12)',
+    /** Success brand glow (used in ShieldLogo, OnboardingScreen). */
+    brandSuccess: '0 0 8px rgba(34, 197, 94, 0.6)',
+    /** Success brand glow — large (OnboardingScreen hero). */
+    brandSuccessLg: '0 0 24px rgba(34, 197, 94, 0.8)',
     cardLight:
       '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06), 0 20px 40px -10px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1)',
     cardLightHover:
@@ -142,6 +148,11 @@ export const tokens = {
    */
   zIndex: {
     base: 0,
+    drawerOverlay: 150,
+    drawer: 151,
+    commandPaletteOverlay: 200,
+    commandPalette: 201,
+    tour: 300,
     dropdown: 1000,
     sticky: 1100,
     overlay: 1200,

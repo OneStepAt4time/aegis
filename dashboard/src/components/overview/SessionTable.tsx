@@ -481,7 +481,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
   return (
     <div className="space-y-6 relative">
-      <div className="card-glass w-full animate-bento-reveal shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+      <div className="card-glass w-full animate-bento-reveal shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -657,7 +657,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
 
           {/* Icon diamond */}
-          <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.12)] transform rotate-45">
+          <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[var(--shadow-accent-cyan)] transform rotate-45">
             <span className="text-2xl transform -rotate-45 block text-[var(--color-text-muted)]">⌘</span>
           </div>
 

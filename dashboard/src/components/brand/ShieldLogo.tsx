@@ -70,7 +70,7 @@ export function ShieldWordmark({ size = 'md', className = '', collapsed = false 
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <ShieldLogoMark size={size} className="shrink-0 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+      <ShieldLogoMark size={size} className="shrink-0 drop-shadow-[var(--shadow-brand-success)]" />
       {!collapsed && (
         <span
           className={`${text} font-bold tracking-tight whitespace-nowrap`}
