@@ -57,9 +57,6 @@ export function buildClaudeLaunchCommand(
 
 // ── Script execution ─────────────────────────────────────────────────
 
-export interface RunScriptOptions {
-  timeoutMs?: number;
-}
 
 /**
  * Execute a batch of shell commands written to a temporary script file.
@@ -69,33 +66,6 @@ export interface RunScriptOptions {
  *
  * The temp file is always deleted afterwards.
  */
-export async function runShellScript(
-  lines: string[],
-  opts: RunScriptOptions = {},
-  platform: NodeJS.Platform = process.platform,
-): Promise<void> {
-  const timeoutMs = opts.timeoutMs ?? 10_000;
-
-  const isWin = platform === 'win32';
-  const ext = isWin ? '.ps1' : '.sh';
-  const scriptPath = join(tmpdir(), `aegis-batch-${process.pid}${ext}`);
-
-  try {
-    await writeFile(scriptPath, lines.join('\n') + '\n');
-
-    if (isWin) {
-      await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath],
-        { timeout: timeoutMs },
-      );
-    } else {
-      await execFileAsync('sh', [scriptPath], { timeout: timeoutMs });
-    }
-  } finally {
-    try { await unlink(scriptPath); } catch { /* ignore cleanup errors */ }
-  }
-}
 
 // ── Process inspection ───────────────────────────────────────────
 
