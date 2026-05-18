@@ -116,7 +116,6 @@ const HTTP_HOOK_EVENTS = [
 
 export { HTTP_HOOK_EVENTS };
 
-export type HttpHookEvent = typeof HTTP_HOOK_EVENTS[number];
 
 /** Shape of a single HTTP hook entry in CC settings.json. */
 interface HttpHookConfig {

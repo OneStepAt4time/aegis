@@ -1,7 +1,5 @@
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import { it } from 'vitest';
-
 /** Returns the platform-native temporary directory for test file creation. */
 export function testTmpDir(): string {
   return tmpdir();
@@ -39,8 +37,3 @@ export function testPath(unixPath: string): string {
   return path.join(root, ...normalized.replace(/^\//, '').split('/'));
 }
 
-/** Runs a test on non-Windows platforms and skips on Windows. */
-export const skipOnWindows = (process.platform === 'win32' ? it.skip : it) as unknown as typeof it;
-
-/** Runs a test only on Windows and skips on non-Windows platforms. */
-export const onlyOnWindows = (process.platform === 'win32' ? it : it.skip) as unknown as typeof it;

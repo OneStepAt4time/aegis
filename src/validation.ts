@@ -937,12 +937,6 @@ export const transferDriverSchema = z.object({
 
 // ── ACP-063: Session event replay endpoints ────────────────────
 
-/** GET /v1/sessions/:id/events — query params for event listing */
-export const eventQuerySchema = z.object({
-  after: z.coerce.number().int().nonnegative().optional(),
-  limit: z.coerce.number().int().min(1).max(1000).optional(),
-}).strict();
-
 /** POST /v1/sessions/:id/events/replay — request body for event replay */
 export const eventReplaySchema = z.object({
   afterSeq: z.number().int().nonnegative().optional(),

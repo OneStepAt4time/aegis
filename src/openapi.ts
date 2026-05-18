@@ -202,17 +202,6 @@ function toPascalCase(value: string): string {
     .join('');
 }
 
-// ── Error response schema helper ──────────────────────────────────
-
-/** Standard error response schema used across Aegis routes. */
-export const errorResponseSchema = {
-  description: 'Error response',
-  content: {
-    'application/json': {
-      schema: z.object({ error: z.string() }),
-    },
-  },
-} as const satisfies { description: string; content: Record<string, { schema: z.ZodType }> };
 
 /** Convenience: 400 validation error response. */
 export function validationErrorResponse(description = 'Validation error') {
