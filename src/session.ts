@@ -643,7 +643,6 @@ export class SessionManager {
 
     // Compute a sensible display name with fallbacks:
     // 1) explicit name
-    // 2) explicit label
     // 3) basename(workDir)
     // 4) fallback id prefix
     const candidateName = opts.name ? String(opts.name) : basename(opts.workDir || '') || `cc-${id.slice(0,8)}`;
@@ -654,12 +653,11 @@ export class SessionManager {
     const existing = this.listSessions().filter(s => s.tenantId === opts.tenantId).map(s=>s.displayName);
     if (existing.includes(displayName)) {
       let suffix = 1;
-      let base = displayName;
+      const originalBase = displayName;
       while (existing.includes(displayName)) {
         const suffixStr = `-${suffix}`;
         const maxBaseLen = 200 - suffixStr.length;
-        base = base.slice(0, maxBaseLen);
-        displayName = `${base}${suffixStr}`;
+        displayName = `${originalBase.slice(0, maxBaseLen)}${suffixStr}`;
         suffix++;
       }
     }
