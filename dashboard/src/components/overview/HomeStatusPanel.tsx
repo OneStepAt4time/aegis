@@ -63,7 +63,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
   return (
     <article
       aria-label={`${label}: ${value}`}
-      className={`relative overflow-hidden card-glass card-glass-interactive animate-bento-reveal px-5 py-4 flex items-center justify-between shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] ${toneStyles[tone].border}`}
+      className={`relative overflow-hidden card-glass card-glass-interactive animate-bento-reveal px-5 py-4 flex items-center justify-between shadow-[var(--shadow-panel)] ${toneStyles[tone].border}`}
     >
       {/* Critical Alert Glowing Underlay */}
       {isCritical && (

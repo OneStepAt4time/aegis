@@ -83,6 +83,21 @@
   --duration-slow: 320ms;
   --duration-cinematic: 480ms;
 
+  /* Shadow tokens */
+  --shadow-card: 0 8px 30px rgb(0, 0, 0, 0.4);
+  --shadow-panel: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  --shadow-accent-cyan: 0 0 30px rgba(6, 182, 212, 0.12);
+  --shadow-brand-success: 0 0 8px rgba(34, 197, 94, 0.6);
+  --shadow-brand-success-lg: 0 0 24px rgba(34, 197, 94, 0.8);
+
+  /* Z-index layers */
+  --z-drawer-overlay: 150;
+  --z-drawer: 151;
+  --z-cmd-overlay: 200;
+  --z-cmd: 201;
+  --z-tour: 300;
+  --z-toast: 400;
+
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasis-in: cubic-bezier(0.3, 0, 0.8, 0.15);
   --ease-emphasis-out: cubic-bezier(0.05, 0.7, 0.1, 1);

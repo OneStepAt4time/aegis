@@ -92,7 +92,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 damping: 20,
               }}
             >
-              <ShieldLogoMark size="xl" className="drop-shadow-[0_0_24px_rgba(34,197,94,0.8)]" />
+              <ShieldLogoMark size="xl" className="drop-shadow-[var(--shadow-brand-success-lg)]" />
             </motion.div>
           )}
         </AnimatePresence>

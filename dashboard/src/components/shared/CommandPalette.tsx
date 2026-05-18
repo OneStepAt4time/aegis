@@ -191,7 +191,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[200] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
+            className="fixed inset-0 z-[var(--z-cmd-overlay)] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
             style={{ backgroundImage: 'var(--palette-backdrop)' }}
             onClick={onClose}
           />
@@ -206,7 +206,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             aria-modal="true"
             aria-label={t("aria.commandPalette")}
             ref={trapRef as React.Ref<HTMLDivElement>}
-            className="fixed left-1/2 top-[20vh] z-[201] w-full max-w-xl -translate-x-1/2"
+            className="fixed left-1/2 top-[20vh] z-[var(--z-cmd)] w-full max-w-xl -translate-x-1/2"
           >
             <div className="card-glass overflow-hidden shadow-palette">
               {/* Search input */}

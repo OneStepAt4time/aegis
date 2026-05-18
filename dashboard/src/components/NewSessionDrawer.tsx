@@ -118,7 +118,7 @@ export function NewSessionDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[var(--z-drawer-overlay)] bg-black/50 backdrop-blur-sm"
             onClick={closeNewSession}
             aria-hidden="true"
           />
@@ -134,7 +134,7 @@ export function NewSessionDrawer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-            className="fixed right-0 top-0 bottom-0 z-[151] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-white/5 shadow-2xl flex flex-col overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-white/5 shadow-2xl flex flex-col overflow-y-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
