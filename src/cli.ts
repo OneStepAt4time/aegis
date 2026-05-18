@@ -248,7 +248,8 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
 
 function printHelp(io: CliIO): void {
   const showOidc = process.env.AEGIS_FEATURE_OIDC === '1';
-  const auth_block = showOidc ? `  Auth (OAuth2 device flow):
+  const authBlock = showOidc ? `
+  Auth (OAuth2 device flow):
     ag login               Authenticate via your IdP (requires OIDC config)
     ag logout              Revoke tokens and clear credentials
     ag logout --all        Clear credentials for all servers
@@ -266,8 +267,44 @@ function printHelp(io: CliIO): void {
     ag run "prompt"         Zero-to-session in one command
     ag init --list-templates
     ag init --from-template code-reviewer
+    ag doctor              Validate starter templates here or run local diagnostics
+    ag "brief"             Create a session and send brief (shorthand)
+    ag --port 3000         Custom port
+    ag create "brief"      Create a session and send brief
+    ag mcp                 Start MCP server (stdio transport)
+    ag --help              Show this help
 
-  ${auth_block}  Flags:
+  Init:
+    ag init
+    ag init --yes
+    ag init --list-templates
+    ag init --from-template docs-writer
+
+  Create:
+    ag create "Build a login page" --cwd /path/to/project
+    ag create "Fix the tests"      (uses current directory)
+    ag create "..." --passthrough   Bypass all permissions
+    --model <model>       Set Claude model
+    --effort <level>      Set reasoning effort (low, medium, high, 0.0-1.0)
+
+  Doctor:
+    ag doctor              Validate starter templates here, otherwise run local diagnostics
+    ag doctor --port 3000  Check a custom API port
+    ag doctor --json       Emit machine-readable diagnostics
+
+  MCP server:
+    ag mcp                 Start MCP stdio server
+    ag mcp --port 3000     Custom Aegis API port
+    claude mcp add aegis -- ag mcp
+
+  Sessions:
+    ag list                 List active sessions
+    ag list --status active  Filter by status
+    ag read <id>            Read session output
+    ag tail <id>            Follow session output in real-time
+    ag kill <id>            Terminate a session
+    ag status               Show server health + session summary
+${authBlock}  Flags:
     --json-logs           Emit structured JSON logs (default: quiet mode)
 
   Environment variables:
@@ -296,7 +333,6 @@ function printHelp(io: CliIO): void {
 
   Docs: https://github.com/OneStepAt4time/aegis
   `);
-}
 }
 
 /** Main CLI entry point that dispatches subcommands and bootstraps the server. */

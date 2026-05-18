@@ -8,7 +8,7 @@
 import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState, SerializedSessionInfo } from './services/state/state-store.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
@@ -646,7 +646,7 @@ export class SessionManager {
     // 2) explicit label
     // 3) basename(workDir)
     // 4) fallback id prefix
-    const candidateName = opts.name ? String(opts.name) : (opts.label ? String(opts.label) : require('path').basename(opts.workDir || '') || `cc-${id.slice(0,8)}`);
+    const candidateName = opts.name ? String(opts.name) : basename(opts.workDir || '') || `cc-${id.slice(0,8)}`;
     let displayName = sanitizeWindowName(candidateName);
     // Trim to 200 chars
     if (displayName.length > 200) displayName = displayName.slice(0, 200);
