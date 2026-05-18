@@ -53,4 +53,5 @@ export const motion: {
   exit: { duration: ms(tokens.duration.fast), ease: framerEasing.emphasisIn },
 } as const;
 
+/** @public Motion animation presets */
 export type MotionPreset = keyof typeof motion;

@@ -55,7 +55,3 @@ export function formatDateTime(date: Date | number | string): string {
 /**
  * Format a date as ISO date string (YYYY-MM-DD).
  */
-export function formatDateIso(date: Date | number | string): string {
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  return d.toISOString().split('T')[0];
-}

@@ -18,19 +18,3 @@ export function withViewTransition(callback: () => void | Promise<void>): void {
   document.startViewTransition(() => callback());
 }
 
-/**
- * Wraps async navigation in View Transitions.
- * Intended for React Router navigate() calls.
- */
-export function withViewTransitionAsync(
-  callback: () => Promise<void>
-): Promise<void> {
-  if (!document.startViewTransition) {
-    return callback();
-  }
-
-  return new Promise<void>((resolve, reject) => {
-    const transition = document.startViewTransition(() => callback());
-    transition.finished.then(resolve).catch(reject);
-  });
-}

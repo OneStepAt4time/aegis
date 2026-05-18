@@ -63,13 +63,6 @@ export function formatRelativeTime(
   return rtf.format(diffYears, 'year');
 }
 
-/**
- * Format a timestamp as short relative time (e.g., "5m ago", "2h ago").
- * Uses 'short' style for compact display.
- */
-export function formatRelativeTimeShort(timestamp: number | Date): string {
-  return formatRelativeTime(timestamp, { style: 'short' });
-}
 
 /**
  * Format a timestamp as "time ago" (always in the past).
@@ -86,16 +79,3 @@ export function formatTimeAgo(timestamp: number | Date): string {
   return formatRelativeTime(then);
 }
 
-/**
- * Format a timestamp as short "time ago" (e.g., "5m ago").
- */
-export function formatTimeAgoShort(timestamp: number | Date): string {
-  const now = Date.now();
-  const then = typeof timestamp === 'number' ? timestamp : timestamp.getTime();
-  
-  if (then > now) {
-    return 'now';
-  }
-  
-  return formatRelativeTimeShort(then);
-}

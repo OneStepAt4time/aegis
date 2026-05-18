@@ -42,32 +42,8 @@ export function pluralize(
 }
 
 /**
- * Advanced pluralization with custom forms for each category.
- * Useful for languages with more complex plural rules.
- * 
- * @example
- * pluralizeAdvanced(0, {
- *   zero: 'no sessions',
- *   one: 'one session',
- *   other: '# sessions',
- * }) // "no sessions"
- */
-export function pluralizeAdvanced(
-  count: number,
-  forms: Partial<Record<Intl.LDMLPluralRule, string>>
-): string {
-  const category = getPluralCategory(count);
-  let message = forms[category] || forms.other || `${count}`;
-  
-  // Replace # with the count
-  message = message.replace(/#/g, String(count));
-  
-  return message;
-}
-
-/**
  * Create a pluralization function bound to specific forms.
- * 
+ *
  * @example
  * const sessionCount = createPluralize('session', 'sessions');
  * sessionCount(1) // "1 session"
