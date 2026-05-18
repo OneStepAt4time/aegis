@@ -641,7 +641,29 @@ export class SessionManager {
       throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
     }
 
-    const displayName = opts.name ? sanitizeWindowName(opts.name) : `cc-${id.slice(0, 8)}`;
+    // Compute a sensible display name with fallbacks:
+    // 1) explicit name
+    // 2) explicit label
+    // 3) basename(workDir)
+    // 4) fallback id prefix
+    const candidateName = opts.name ? String(opts.name) : (opts.label ? String(opts.label) : require('path').basename(opts.workDir || '') || `cc-${id.slice(0,8)}`);
+    let displayName = sanitizeWindowName(candidateName);
+    // Trim to 200 chars
+    if (displayName.length > 200) displayName = displayName.slice(0, 200);
+    // De-duplicate display names: append numeric suffix when needed (per-tenant scope)
+    const existing = this.listSessions().filter(s => s.tenantId === opts.tenantId).map(s=>s.displayName);
+    if (existing.includes(displayName)) {
+      let suffix = 1;
+      let base = displayName;
+      while (existing.includes(displayName)) {
+        const suffixStr = `-${suffix}`;
+        const maxBaseLen = 200 - suffixStr.length;
+        base = base.slice(0, maxBaseLen);
+        displayName = `${base}${suffixStr}`;
+        suffix++;
+      }
+    }
+
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
     // Security: validate env var names to prevent injection attacks
