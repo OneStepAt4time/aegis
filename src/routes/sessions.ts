@@ -560,7 +560,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
   // Get session (Issue #20: includes actionHints)
   registerWithLegacy(app, 'get', '/v1/sessions/:id', withOwnership(sessions, async (_req, _reply, session) => {
-    return addActionHints(session, sessions);
+    return addActionHints(session, sessions, channels);
   }));
 
   // #128: Bulk health check

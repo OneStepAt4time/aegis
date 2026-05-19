@@ -341,6 +341,7 @@ export function redactSession(session: Record<string, unknown>): Record<string, 
 export function addActionHints(
   session: SessionInfo,
   sessions?: SessionManager,
+  channels?: ChannelManager,
 ): Record<string, unknown> {
   // Issue #2527: Strip hookSecret and other internal fields before API serialization
   const safe = redactSession(session as unknown as Record<string, unknown>);
@@ -371,6 +372,14 @@ export function addActionHints(
       };
     }
   }
+  // Issue #3743: Inject telegram topic ID from channel topic map
+  if (channels?.getTelegramTopicId) {
+    const telegramTopicId = channels.getTelegramTopicId(session.id);
+    if (telegramTopicId !== null) {
+      result.telegramTopicId = telegramTopicId;
+    }
+  }
+
   return result;
 }
 
