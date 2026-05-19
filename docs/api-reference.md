@@ -805,11 +805,12 @@ curl -X POST http://localhost:9100/v1/sessions \
   "createdAt": 1712650800000,
   "promptDelivery": { "delivered": true, "attempts": 1, "status": "delivered" },
   "model": "opus-4.7",
-  "isolationMode": "worktree"
+  "isolationMode": "worktree",
+  "runnerName": "claude-code"
 }
 ```
 
-> **Note:** The `model` and `effort` fields appear in the response when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly.
+> **Note:** The `model` and `effort` fields appear in the response when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly. The `runnerName` field identifies the agent type (e.g. `"claude-code"` for ACP sessions); it is absent for legacy sessions.
 >
 > **Isolation policy:** Control how Aegis handles worktree isolation via `isolationPolicy` (request body) or `AEGIS_ISOLATION_POLICY` (env/config). Values: `respect-cc` (default — follows CC settings), `enforce-worktree` (rejects sessions that would run without a worktree), `enforce-direct` (forces no worktree, edits project directly). Use `enforce-worktree` when multiple concurrent sessions share a repo to prevent file conflicts.
 
@@ -3135,6 +3136,13 @@ GET /v1/pipelines
 
 Lists all registered pipelines.
 
+| Role | Allowed |
+|------|--------|
+| admin | ✅ |
+| operator | ✅ |
+| viewer | ✅ |
+| *(no key)* | ❌ |
+
 ```bash
 curl http://localhost:9100/v1/pipelines \
   -H "Authorization: Bearer $TOKEN"
@@ -3151,6 +3159,13 @@ GET /v1/pipelines/:id
 ```
 
 Returns status and details of a specific pipeline.
+
+| Role | Allowed |
+|------|--------|
+| admin | ✅ |
+| operator | ✅ |
+| viewer | ✅ |
+| *(no key)* | ❌ |
 
 ```bash
 curl http://localhost:9100/v1/pipelines/pipe-123 \
@@ -3710,7 +3725,14 @@ curl "http://localhost:9100/v1/usage/sessions/sess-xyz?from=2026-04-01T00:00:00Z
 GET /v1/usage/tiers
 ```
 
-Returns the current rate tier configuration. No auth required.
+Returns the current rate tier configuration.
+
+| Role | Allowed |
+|------|---------|
+| admin | ✅ |
+| operator | ✅ |
+| viewer | ✅ |
+| *(no key)* | ❌ |
 
 ```bash
 curl http://localhost:9100/v1/usage/tiers
