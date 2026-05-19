@@ -107,7 +107,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['abc123'], io);
+      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
 
       expect(readline.emitKeypressEvents).toHaveBeenCalledWith(process.stdin);
       expect(exitCode).toBe(0);
@@ -137,7 +137,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['abc123'], io);
+      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
 
       expect(readline.emitKeypressEvents).not.toHaveBeenCalled();
       expect(exitCode).toBe(0);
@@ -160,7 +160,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['abc123'], io);
+      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
       expect(exitCode).toBe(1);
       expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('SSE token'));
     } finally {
@@ -189,7 +189,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['abc123'], io);
+      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
       expect(exitCode).toBe(1);
       expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Session not found'));
     } finally {
@@ -217,7 +217,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['abc123'], io);
+      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
       expect(exitCode).toBe(0);
       // Should have printed the assistant message
       expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 hello'));
@@ -252,7 +252,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
       try {
         const io = makeIO();
-        await handleTail(['abc123'], io);
+        await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
         expect(onceSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
         expect(removeListenerSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
       } finally {
