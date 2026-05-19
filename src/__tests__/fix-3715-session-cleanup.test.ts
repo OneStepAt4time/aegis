@@ -9,15 +9,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { cleanupTerminatedSessionState, type SessionCleanupDeps } from '../session-cleanup.js';
 
-function createMockDeps(): SessionCleanupDeps & {
-  monitor: { removeSession: ReturnType<typeof vi.fn> };
-  metrics: { cleanupSession: ReturnType<typeof vi.fn> };
-  toolRegistry: { cleanupSession: ReturnType<typeof vi.fn> };
-} {
+function createMockDeps() {
   return {
-    monitor: { removeSession: vi.fn() },
-    metrics: { cleanupSession: vi.fn() },
-    toolRegistry: { cleanupSession: vi.fn() },
+    monitor: { removeSession: vi.fn<(s: string) => void>() },
+    metrics: { cleanupSession: vi.fn<(s: string) => void>() },
+    toolRegistry: { cleanupSession: vi.fn<(s: string) => void>() },
   };
 }
 
@@ -33,10 +29,10 @@ describe('Issue #3715 — cleanupTerminatedSessionState', () => {
 
   it('calls deps in order: monitor → metrics → toolRegistry', () => {
     const order: string[] = [];
-    const deps: SessionCleanupDeps = {
-      monitor: { removeSession: vi.fn(() => { order.push('monitor'); }) },
-      metrics: { cleanupSession: vi.fn(() => { order.push('metrics'); }) },
-      toolRegistry: { cleanupSession: vi.fn(() => { order.push('toolRegistry'); }) },
+    const deps = {
+      monitor: { removeSession: vi.fn<(s: string) => void>(() => { order.push('monitor'); }) },
+      metrics: { cleanupSession: vi.fn<(s: string) => void>(() => { order.push('metrics'); }) },
+      toolRegistry: { cleanupSession: vi.fn<(s: string) => void>(() => { order.push('toolRegistry'); }) },
     };
 
     cleanupTerminatedSessionState('sess-456', deps);
