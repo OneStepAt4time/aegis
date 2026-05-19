@@ -930,7 +930,7 @@ button:active:not(:disabled) {
   background: var(--color-accent-on-light);
 }
 
-/* ── Focus ring — keyboard/programmatic only ─────────────────────── */
+/* ── Focus ring — keyboard/programmatic only (resolves #3687) ─── */
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-offset), var(--focus-ring);
