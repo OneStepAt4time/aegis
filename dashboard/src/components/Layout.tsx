@@ -10,6 +10,7 @@ import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
 import CommandPalette from './shared/CommandPalette';
 import LiveAuditStream from './shared/LiveAuditStream';
+import { ApprovalNotification, ApprovalBadge } from './approvals/ApprovalNotification';
 import { NewSessionDrawer } from './NewSessionDrawer';
 import { Sun, Moon, Plus, Search } from 'lucide-react';
 import {
@@ -558,6 +559,9 @@ export default function Layout() {
                 PREVIEW
               </span>
 
+              {/* Pending approvals badge */}
+              <ApprovalBadge />
+
               {/* New Session button */}
               <button
                 type="button"
@@ -701,6 +705,7 @@ export default function Layout() {
       <ConnectionBanner />
       {/* Command Palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ApprovalNotification />
       {/* New Session Drawer */}
       <NewSessionDrawer />
     </div>
