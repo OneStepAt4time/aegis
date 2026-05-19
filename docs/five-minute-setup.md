@@ -103,7 +103,7 @@ Now Claude can create sessions, read transcripts, and manage Aegis directly thro
 | `-y` | Auto-approve all permission prompts |
 | `--model <model>` | Override the model for this session |
 | `--effort <level>` | Reasoning effort: `low`, `medium`, `high` |
-| `--no-stream` | Print curl commands instead of streaming |
+| `--no-stream` | Wait for session completion and print output (non-streaming) |
 
 ## Troubleshooting
 

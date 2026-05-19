@@ -41,7 +41,7 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 |------|-------------|
 | `--cwd <path>` | Working directory (default: current directory) |
 | `--port <number>` | Server port override |
-| `--no-stream` | Don't stream output; print curl commands instead |
+| `--no-stream` | Wait for session completion and print output (non-streaming) |
 | `--model <provider/model>` | Override the default model for this session |
 | `--name <name>` | Set a display name for the session |
 | `--yes` | Suppress all status messages for non-interactive/CI usage |
