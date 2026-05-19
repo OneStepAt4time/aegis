@@ -2,9 +2,11 @@
  * commands/kill.ts — `ag kill <id>` — Terminate a session.
  *
  * Wraps DELETE /v1/sessions/:id.
+ * Issue #3672: Support prefix matching for session IDs via resolveSessionId.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
+import { resolveSessionId } from './read.js';
 
 export async function handleKill(args: string[], io: CliIO): Promise<number> {
   const sessionId = args.find(a => !a.startsWith('-'));
@@ -18,7 +20,12 @@ export async function handleKill(args: string[], io: CliIO): Promise<number> {
   if (!(await requireServer(baseUrl, authToken, io))) return 1;
 
   const headers = buildHeaders(authToken);
-  const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}`, {
+
+  // Issue #3672: Resolve prefix to full UUID
+  const resolvedId = await resolveSessionId(sessionId, baseUrl, headers, io);
+  if (!resolvedId) return 1;
+
+  const res = await fetch(`${baseUrl}/v1/sessions/${resolvedId}`, {
     method: 'DELETE',
     headers,
     signal: AbortSignal.timeout(15_000),
@@ -30,6 +37,6 @@ export async function handleKill(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  writeLine(io.stdout, `  ✅ Session ${sessionId.slice(0, 8)}… killed.`);
+  writeLine(io.stdout, `  ✅ Session ${resolvedId.slice(0, 8)}… killed.`);
   return 0;
 }

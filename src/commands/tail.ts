@@ -4,6 +4,7 @@
  * Connects to GET /v1/sessions/:id/events SSE stream and prints events.
  * Issue #3566: SSE endpoints require short-lived sse_ tokens.
  * The CLI first obtains an SSE token via POST /v1/auth/sse-token, then connects.
+ * Issue #3672: Support prefix matching for session IDs via resolveSessionId.
  *
  * Uses SIGINT on Unix and a readline keypress fallback on Windows for Ctrl+C.
  * Includes a 30-minute max-duration safeguard so the process never hangs forever.
@@ -12,6 +13,7 @@
 import { platform } from 'node:os';
 import * as readline from 'node:readline';
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
+import { resolveSessionId } from './read.js';
 
 /** Maximum tail duration before auto-disconnect (30 minutes). */
 const MAX_TAIL_DURATION_MS = 30 * 60 * 1000;
@@ -46,6 +48,12 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const authToken = await resolveAuthToken();
   if (!(await requireServer(baseUrl, authToken, io))) return 1;
 
+  const headers = buildHeaders(authToken);
+
+  // Issue #3672: Resolve prefix to full UUID
+  const resolvedId = await resolveSessionId(sessionId, baseUrl, headers, io);
+  if (!resolvedId) return 1;
+
   // Issue #3566: Obtain SSE token before connecting to the event stream.
   const sseToken = await obtainSSEToken(baseUrl, authToken);
   if (!sseToken) {
@@ -53,10 +61,10 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  const headers = buildHeaders(sseToken);
-  headers['Accept'] = 'text/event-stream';
+  const sseHeaders = buildHeaders(sseToken);
+  sseHeaders['Accept'] = 'text/event-stream';
 
-  writeLine(io.stdout, `  Tailing session ${sessionId.slice(0, 8)}… (Ctrl+C to stop)`);
+  writeLine(io.stdout, `  Tailing session ${resolvedId.slice(0, 8)}… (Ctrl+C to stop)`);
 
   const abortController = new AbortController();
   const onSigInt = () => {
@@ -104,8 +112,8 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
 
   let res: Response;
   try {
-    res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/events`, {
-      headers,
+    res = await fetch(`${baseUrl}/v1/sessions/${resolvedId}/events`, {
+      headers: sseHeaders,
       signal: abortController.signal,
     });
   } catch (e: unknown) {
