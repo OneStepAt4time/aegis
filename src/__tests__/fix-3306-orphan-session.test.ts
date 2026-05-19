@@ -92,7 +92,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
       if (typeof url === 'string' && url.includes('/v1/sessions/stats')) {
         return { ok: false, status: 401, json: async () => ({ error: 'Unauthorized' }) };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
@@ -123,7 +124,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
@@ -151,7 +153,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
