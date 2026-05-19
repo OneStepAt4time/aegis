@@ -12,16 +12,7 @@ import {
   type StoredAuth,
 } from '../services/auth/token-store.js';
 import { parseOidcConfig, discoverOidcEndpoints, mergeDiscovery, type OidcConfig } from '../services/auth/oidc-config.js';
-
-interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
-
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
+import { CliIO, writeLine } from '../cli-http.js';
 
 /** Attempt token revocation at the IdP (best-effort, does not block logout). */
 async function attemptRevocation(auth: StoredAuth, config: OidcConfig, fetchFn: typeof fetch): Promise<boolean> {
