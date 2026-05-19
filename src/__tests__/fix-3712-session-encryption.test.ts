@@ -12,17 +12,14 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SessionManager } from '../session.js';
-import type { SessionInfo } from '../types.js';
+import { getConfig } from '../config.js';
 
 // SessionManager has private encrypt/decrypt — access via (sm as any)
 function enc(sm: SessionManager) { return (sm as any).encryptSecret.bind(sm) as (s: string) => string; }
 function dec(sm: SessionManager) { return (sm as any).decryptSecret.bind(sm) as (s: string) => string | undefined; }
 
 function createTestSM(stateDir: string): SessionManager {
-  return new SessionManager({
-    stateDir,
-    masterToken: 'test-master-token-for-enc',
-  });
+  return new SessionManager({ ...getConfig(), stateDir, authToken: 'test-auth-token' });
 }
 
 describe('Issue #3712 — session.ts encryption/decryption', () => {
@@ -143,14 +140,14 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
       const encrypted = enc(sm)(plaintext);
 
       // Inject a session with encrypted hookSecret directly into state
-      const state = (sm as any).state as { sessions: Record<string, SessionInfo> };
+      const state = (sm as any).state;
       state.sessions['test-sess-1'] = {
         id: 'test-sess-1',
         displayName: 'test',
         status: 'idle',
         hookSecret: encrypted,
         createdAt: new Date().toISOString(),
-      } as SessionInfo;
+      } as any;
 
       await (sm as any).restoreSessionHookSecrets();
 
@@ -162,14 +159,14 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
       sm.setEncryptionKey('test-master-token-for-enc');
 
       // A colon-containing value that is NOT valid AES-GCM
-      const state = (sm as any).state as { sessions: Record<string, SessionInfo> };
+      const state = (sm as any).state;
       state.sessions['test-sess-2'] = {
         id: 'test-sess-2',
         displayName: 'test',
         status: 'idle',
         hookSecret: 'not-valid-hex:not-valid-hex:not-valid-hex',
         createdAt: new Date().toISOString(),
-      } as SessionInfo;
+      } as any;
 
       await (sm as any).restoreSessionHookSecrets();
 
@@ -183,14 +180,14 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
       sm.setEncryptionKey('test-master-token-for-enc');
 
       const plaintext = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
-      const state = (sm as any).state as { sessions: Record<string, SessionInfo> };
+      const state = (sm as any).state;
       state.sessions['test-sess-3'] = {
         id: 'test-sess-3',
         displayName: 'test',
         status: 'idle',
         hookSecret: plaintext,
         createdAt: new Date().toISOString(),
-      } as SessionInfo;
+      } as any;
 
       await (sm as any).restoreSessionHookSecrets();
 
