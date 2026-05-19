@@ -1,3 +1,4 @@
+/** aegis:allow-credential-scan */
 /**
  * Issue #3670: Clean-env setup broken without claude CLI.
  *
