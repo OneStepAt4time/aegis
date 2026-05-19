@@ -15,6 +15,7 @@ import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'no
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SessionManager } from '../session.js';
+import { getConfig } from '../config.js';
 
 const validSession = {
   id: 'sess-1', windowId: 'win-1', displayName: 'test-session',
@@ -25,7 +26,7 @@ const validSession = {
 
 function createSM(stateDir: string, store?: any): SessionManager {
   return new SessionManager(
-    { stateDir, masterToken: 'test-token' },
+    { ...getConfig(), stateDir, authToken: 'test-token' },
     store,
   );
 }
