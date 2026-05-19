@@ -46,6 +46,7 @@ interface SessionTopic {
   displayName: string;
   endedAt: number | null;
   cleanupScheduledAt: number | null;
+  cleanupRetries: number;
   deleting: boolean;
 }
 
@@ -702,6 +703,7 @@ class TopicPersistence {
           displayName: t.displayName || t.sessionId.slice(0, 8),
           endedAt: t.endedAt ?? null,
           cleanupScheduledAt: null,
+          cleanupRetries: 0,
           deleting: false,
         });
       }
@@ -726,6 +728,7 @@ export class TelegramChannel implements Channel {
   readonly name = 'telegram';
   static readonly DEFAULT_TOPIC_TTL_MS = 24 * 60 * 60 * 1000;
   private static readonly TOPIC_CLEANUP_RETRY_MS = 60_000;
+  private static readonly TOPIC_CLEANUP_MAX_RETRIES = 3;
 
   private topics = new Map<string, SessionTopic>();
   private progress = new Map<string, SessionProgress>();
@@ -891,6 +894,7 @@ export class TelegramChannel implements Channel {
       displayName: payload.session.name,
       endedAt: null,
       cleanupScheduledAt: null,
+      cleanupRetries: 0,
       deleting: false,
     });
 
@@ -1632,6 +1636,13 @@ export class TelegramChannel implements Channel {
         this.topicPersistence.save(this.topics);
       } else {
         console.error(`Telegram: failed to cleanup topic for session ${sessionId}:`, this.redactError(e));
+        topic.cleanupRetries++;
+        if (topic.cleanupRetries > TelegramChannel.TOPIC_CLEANUP_MAX_RETRIES) {
+          console.warn(`Telegram: max retries (${TelegramChannel.TOPIC_CLEANUP_MAX_RETRIES}) reached for topic cleanup session ${sessionId} - removing stale entry`);
+          this.topics.delete(sessionId);
+          this.topicPersistence.save(this.topics);
+          return;
+        }
         topic.deleting = false;
         topic.cleanupScheduledAt = null;
         const timer = setTimeout(() => {
@@ -1647,7 +1658,7 @@ export class TelegramChannel implements Channel {
 
   private isIgnorableTopicDeleteError(err: unknown): boolean {
     const message = err instanceof Error ? err.message : String(err);
-    return /not found|message thread|topic.*(?:closed|deleted)|forum topic/i.test(message);
+    return /not found|message thread|topic.*(?:closed|deleted)|forum topic|TOPIC_ID_INVALID/i.test(message);
   }
 
 
