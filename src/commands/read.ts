@@ -13,7 +13,7 @@ import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLin
  * If the ID looks like a full UUID, return it as-is.
  * Otherwise, fetch the session list and find a unique match.
  */
-async function resolveSessionId(sessionId: string, baseUrl: string, headers: Record<string, string>, io: CliIO): Promise<string | null> {
+export async function resolveSessionId(sessionId: string, baseUrl: string, headers: Record<string, string>, io: CliIO): Promise<string | null> {
   // Full UUID — no resolution needed
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
     return sessionId;
