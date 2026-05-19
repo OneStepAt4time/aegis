@@ -28,6 +28,7 @@ import {
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useToastStore } from '../../store/useToastStore';
 import { useStore } from '../../store/useStore';
+import { useApprovalStore } from '../../store/useApprovalStore';
 import type { RowHealth, SessionStatusCounts, SessionStatusFilter } from '../../types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import RealtimeBadge from './RealtimeBadge';
@@ -223,6 +224,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       }
 
       setSessionsAndHealth(filteredSessions, nextHealthMap);
+      // Sync pending approvals to global store
+      useApprovalStore.getState().setFromSessions(filteredSessions);
       setStatusCounts(counts);
       setSearchCapped(isSearching && list.pagination.total > list.sessions.length);
       setLoadError(null);
