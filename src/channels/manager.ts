@@ -11,6 +11,7 @@ import type {
   SessionEventPayload,
   InboundHandler,
 } from './types.js';
+import { TelegramChannel } from './telegram.js';
 import { startChannelSpan, spanOk, spanError } from '../tracing.js';
 
 /**
@@ -98,6 +99,17 @@ export class ChannelManager {
   /** How many channels are registered. */
   get count(): number {
     return this.channels.length;
+  }
+
+  /** Issue #3743: Look up the Telegram topic ID for a session across all telegram channels. */
+  getTelegramTopicId(sessionId: string): number | null {
+    for (const ch of this.channels) {
+      if (ch instanceof TelegramChannel && typeof (ch as TelegramChannel).getTopicIdForSession === 'function') {
+        const topicId = (ch as TelegramChannel).getTopicIdForSession(sessionId);
+        if (topicId !== null) return topicId;
+      }
+    }
+    return null;
   }
 
   /** Get all registered channels (for wiring optional dependencies). */

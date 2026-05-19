@@ -1663,7 +1663,15 @@ export class TelegramChannel implements Channel {
 
 
 
-  // ── Health Reporting ──────────────────────────────────────────────────────
+  // ── Public API ──────────────────────────────────────────────────────────────
+
+  /** Issue #3743: Look up the Telegram topic ID for a session. */
+  getTopicIdForSession(sessionId: string): number | null {
+    const topic = this.topics.get(sessionId);
+    return topic?.topicId ?? null;
+  }
+
+    // ── Health Reporting ──────────────────────────────────────────────────────
 
   /** Issue #3169: Report actual channel health including delivery state. */
   getHealth(): ChannelHealthStatus {
