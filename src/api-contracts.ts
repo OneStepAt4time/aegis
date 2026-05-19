@@ -73,6 +73,7 @@ export interface SessionInfo {
   tenantId?: string;
   model?: string;
   effort?: string;
+  runnerName?: string;          // Issue #3681: Agent runner name
 }
 
 export interface SessionHealth {

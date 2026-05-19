@@ -135,6 +135,7 @@ export interface SessionInfo {
   pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
   promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
+  runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
   // Issue #2518: Hook failure circuit breaker
   hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
@@ -614,6 +615,8 @@ export class SessionManager {
     initialStatus?: UIState;
     model?: string;
     effort?: string;
+    /** Issue #3681: Runner name for agent type identification. */
+    runnerName?: string;
     /** Issue #3613: Per-session isolation policy override. */
   isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
   }): Promise<SessionInfo> {
@@ -806,6 +809,7 @@ export class SessionManager {
       // before the first hook event arrives. Hooks may override this later.
       model: opts.model,
       effort: opts.effort,
+      runnerName: opts.runnerName,
       isolationMode: isolationMode,
       isolationPolicy: policy,
     };

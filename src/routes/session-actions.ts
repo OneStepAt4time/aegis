@@ -109,7 +109,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       return reply.status(400).send({ error: `Invalid workDir: ${safeChildWorkDir.error}`, code: safeChildWorkDir.code });
     }
     const childPermMode = permissionMode ?? parent.permissionMode ?? 'default';
-    const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId: parent.id, permissionMode: childPermMode, ownerKeyId: req.authKeyId });
+    const childSession = await sessions.createSession({ workDir: safeChildWorkDir, name: childName, parentId: parent.id, permissionMode: childPermMode, ownerKeyId: req.authKeyId, runnerName: parent.runnerName });
     let promptDelivery: { delivered: boolean; attempts: number } | undefined;
     if (prompt) { promptDelivery = await sessions.sendInitialPrompt(childSession.id, prompt); }
     return reply.status(201).send({ ...childSession, promptDelivery });
@@ -126,13 +126,14 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       name: forkName,
       permissionMode: parent.permissionMode,
       ownerKeyId: req.authKeyId,
+      runnerName: parent.runnerName,
     });
     let promptDelivery: { delivered: boolean; attempts: number } | undefined;
     if (prompt) { promptDelivery = await sessions.sendInitialPrompt(forkedSession.id, prompt); }
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: forkedSession.id, name: forkedSession.displayName, workDir: parent.workDir },
+      session: { id: forkedSession.id, name: forkedSession.displayName, workDir: parent.workDir, runnerName: forkedSession.runnerName },
       detail: `Session forked from ${parent.id}`,
     });
     return reply.status(201).send({ ...forkedSession, forkedFrom: parent.id, promptDelivery });
