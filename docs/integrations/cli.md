@@ -53,7 +53,7 @@ Bootstrap config, start the server, create a session, and stream output — all 
 ```bash
 ag run "Build a REST API for managing tasks" --cwd .
 ag run "Fix the auth bug"                     # Uses current directory
-ag run "Refactor the utils" --no-stream       # Print curl commands instead of streaming
+ag run "Refactor the utils" --no-stream       # Wait for completion and print output
 ag run "Debug the tests" --port 3000          # Custom server port
 ag run "Fix CI" --yes                        # Non-interactive (CI-friendly)
 ```
@@ -81,7 +81,7 @@ If the server is already running, skips straight to session creation. Existing c
 | `--passthrough` | Bypass all permissions (alias for `--accept-permissions`) |
 | `--model <provider/model>` | Override the default model for this session |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
-| `--no-stream` | Don't stream output; print curl commands instead |
+| `--no-stream` | Wait for session completion and print output (non-streaming) |
 
 ### `ag` — Start Server
 
