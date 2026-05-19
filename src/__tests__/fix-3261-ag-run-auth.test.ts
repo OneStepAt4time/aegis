@@ -24,6 +24,13 @@ vi.mock('../utils/claude-installer.js', () => ({
   hasAnthropicCredentials: vi.fn(() => false),
 }));
 
+// Mock node:child_process so claude auth check doesn't run real CLI
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn((_cmd: string, _args: string[], _opts: any, cb: any) => {
+    cb(null, 'Claude Code 2.1.144', '');
+  }),
+}));
+
 const AUTH_MANAGER_PATH = '../services/auth/index.js';
 const CONFIG_PATH = '../config.js';
 
