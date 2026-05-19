@@ -19,6 +19,7 @@ import { AuthManager } from '../services/auth/index.js';
 import { buildEnvSchema, ENV_BYO_LLM_WHITELIST, getErrorMessage } from '../validation.js';
 import { persistAuthTokenFile, readAuthTokenFile } from '../utils/auth-token-path.js';
 import { isLocalhost } from '../utils/localhost.js';
+import { CliIO, writeLine, write } from '../cli-http.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,12 +32,6 @@ const BYO_ENV_FIELDS = [
   { key: 'ANTHROPIC_DEFAULT_FAST_MODEL', label: 'ANTHROPIC fast model' },
   { key: 'API_TIMEOUT_MS', label: 'API timeout (ms)' },
 ] as const;
-
-interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
 
 interface InitSummary {
   authToken: string;
@@ -83,14 +78,6 @@ interface Prompter {
 }
 
 // --- Shared utilities ---
-
-function write(stream: NodeJS.WritableStream, text: string): void {
-  stream.write(text);
-}
-
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
 
 // --- Config path helpers ---
 

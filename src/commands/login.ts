@@ -17,16 +17,7 @@ import {
   setStoredAuth,
   type StoredAuth,
 } from '../services/auth/token-store.js';
-
-interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
-
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
+import { CliIO, writeLine } from '../cli-http.js';
 
 // ── RFC 8628 Device Flow ────────────────────────────────────────────
 

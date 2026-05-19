@@ -14,16 +14,7 @@ import { dirname } from 'node:path';
 import { findConfigFilePath, loadConfig, readConfigFile, serializeConfigFile, type Config } from '../config.js';
 import { getErrorMessage } from '../validation.js';
 import { getAuthTokenFilePath, persistAuthTokenFile, readAuthTokenFile } from '../utils/auth-token-path.js';
-
-interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
-
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
+import { CliIO, writeLine } from '../cli-http.js';
 
 /**
  * Migrate clientAuthToken from config.yaml to the canonical auth-token file.

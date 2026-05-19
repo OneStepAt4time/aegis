@@ -22,19 +22,8 @@ import { getErrorMessage, parseIntSafe, validateEffort, validateModel } from '..
 import { generateSessionName } from '../utils/session-name.js';
 import { readAuthTokenFile } from '../utils/auth-token-path.js';
 
-interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
-
-
-
 import { isRateLimitError } from '../rate-limit.js';
-
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
+import { CliIO, writeLine } from '../cli-http.js';
 
 async function resolveAuthToken(): Promise<string | undefined> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;

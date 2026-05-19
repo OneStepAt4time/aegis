@@ -22,6 +22,11 @@ export function writeLine(stream: NodeJS.WritableStream, text: string = ''): voi
   stream.write(`${text}\n`);
 }
 
+/** Write text without trailing newline. */
+export function write(stream: NodeJS.WritableStream, text: string): void {
+  stream.write(text);
+}
+
 /** Resolve auth token from env, config, or legacy files. */
 export async function resolveAuthToken(): Promise<string> {
   const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
