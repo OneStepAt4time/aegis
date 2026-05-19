@@ -126,6 +126,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
               e.stopPropagation();
               setCollapsed(!collapsed);
             }}
+            aria-label="Collapse transcript entry"
             className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors py-1"
           >
             <Icon 
@@ -176,7 +177,8 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 e.stopPropagation();
                 setCollapsed(!collapsed);
               }}
-              className={`w-full text-left rounded-lg overflow-hidden border transition-colors ${
+              aria-label="Collapse transcript entry"
+            className={`w-full text-left rounded-lg overflow-hidden border transition-colors ${
                 isFailed
                   ? 'border-[var(--color-danger)]/40 bg-[var(--color-void)]'
                   : entry.contentType === 'tool_use'
