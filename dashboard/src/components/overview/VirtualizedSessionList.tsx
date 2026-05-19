@@ -203,7 +203,7 @@ function VirtualizedRow(props: {
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
         </Link>
-        <AgentBadge runnerName={(session as any).runnerName} model={session.model} compact />
+        <AgentBadge runnerName={session.runnerName} model={session.model} compact />
         <ModelBadge model={session.model} />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
         <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} />

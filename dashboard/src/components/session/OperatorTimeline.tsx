@@ -275,7 +275,7 @@ export function OperatorTimeline({
             value={filters.search}
             onChange={handleSearch}
             placeholder="Search events..."
-            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-void)] py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus:outline-none"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-void)] py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus-visible:outline-none"
             aria-label={t("aria.searchTimeline")}
           />
         </div>

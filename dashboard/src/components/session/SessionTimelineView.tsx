@@ -201,7 +201,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
                 <button
                   type="button"
                   onClick={() => toggleExpand(event.id)}
-                  className="w-full text-left flex items-start gap-2 rounded p-1.5 -m-1.5 hover:bg-[var(--color-void)]/30 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
+                  className="w-full text-left flex items-start gap-2 rounded p-1.5 -m-1.5 hover:bg-[var(--color-void)]/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
                   aria-expanded={expanded}
                   aria-label={`${cfg.label}: ${event.description}`}
                 >

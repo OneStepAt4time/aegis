@@ -129,7 +129,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My template name"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             />
           </div>
@@ -144,7 +144,7 @@ export default function SaveTemplateModal({ open, onClose, sessionId }: SaveTemp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this template for?"
               rows={3}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>

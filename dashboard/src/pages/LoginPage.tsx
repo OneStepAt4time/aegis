@@ -101,7 +101,7 @@ export default function LoginPage() {
                 placeholder="API token"
                 autoFocus
                 autoComplete="current-password"
-                className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2.5 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus:outline-none touch-action-manipulation"
+                className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2.5 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] focus-visible:outline-none touch-action-manipulation"
               />
               <button
                 type="button"

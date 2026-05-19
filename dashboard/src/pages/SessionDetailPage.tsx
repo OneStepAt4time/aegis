@@ -466,8 +466,8 @@ export default function SessionDetailPage() {
       ? 'grid gap-2'
       : 'flex flex-wrap items-center gap-2';
     const selectClass = isMobile
-      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50'
-      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50';
+      ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50'
+      : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50';
     const buttonClass = isMobile
       ? 'min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30'
       : 'min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:opacity-30';
@@ -877,7 +877,7 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none disabled:opacity-50"
               />
 
               <button
@@ -1009,7 +1009,7 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50"
               />
 
               <button

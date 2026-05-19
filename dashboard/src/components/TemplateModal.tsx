@@ -193,7 +193,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. React scaffold"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             />
           </div>
@@ -208,7 +208,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this template for?"
               rows={2}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>
@@ -223,7 +223,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
               placeholder="/home/user/project"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
               disabled={loading}
             />
           </div>
@@ -238,7 +238,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="First message to send Claude Code"
               rows={3}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors resize-none"
               disabled={loading}
             />
           </div>
@@ -253,7 +253,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               value={claudeCommand}
               onChange={(e) => setClaudeCommand(e.target.value)}
               placeholder="e.g. claude --model opus"
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors font-mono"
               disabled={loading}
             />
           </div>
@@ -266,7 +266,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
               id="tmpl-perm"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
+              className="w-full px-3 py-2 text-sm rounded bg-[var(--color-void)] border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] transition-colors"
               disabled={loading}
             >
               {PERMISSION_MODES.map((mode) => (

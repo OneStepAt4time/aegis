@@ -157,7 +157,7 @@ export default function CalendarGrid({
               onClick={() => onSelectDate(day)}
               disabled={!inCurrentMonth}
               className={`
-                relative p-2 min-h-[4rem] text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-inset
+                relative p-2 min-h-[4rem] text-left transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-inset
                 ${!inCurrentMonth ? 'opacity-30 cursor-default' : 'hover:bg-[var(--color-void-dark)] cursor-pointer'}
                 ${isSelected ? 'bg-[var(--color-accent)]/10 ring-1 ring-[var(--color-accent)]/30' : ''}
               `}
