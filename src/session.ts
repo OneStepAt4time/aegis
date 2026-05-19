@@ -193,6 +193,29 @@ function normalizeApprovalLabel(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+/** Issue #3740: Detect the model name from Claude Code settings files.
+ * Reads ANTHROPIC_MODEL from env in settings.local.json or settings.json. */
+async function detectModelFromSettings(workDir: string): Promise<string | undefined> {
+  const candidates = [
+    join(workDir, '.claude', 'settings.local.json'),
+    join(workDir, '.claude', 'settings.json'),
+    join(homedir(), '.claude', 'settings.local.json'),
+    join(homedir(), '.claude', 'settings.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (!existsSync(p)) continue;
+      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
+      if (!raw) continue;
+      let obj: any;
+      try { obj = JSON.parse(raw); } catch { continue; }
+      const model = obj?.env?.ANTHROPIC_MODEL;
+      if (typeof model === 'string' && model.length > 0) return model;
+    } catch { continue; }
+  }
+  return undefined;
+}
+
 /** Detect session isolation mode from project or global Claude Code settings. */
 async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none' | undefined> {
   const candidates = [
@@ -724,6 +747,7 @@ export class SessionManager {
     // Issue #169 Phase 2: Generate HTTP hook settings for this session.
     // Detect isolation mode from project/global Claude settings (Issue #3590)
     const detectedIsolation = await detectIsolationMode(opts.workDir).catch(() => undefined);
+    const detectedModel = await detectModelFromSettings(opts.workDir).catch(() => undefined);
     let isolationMode: 'worktree' | 'none' = detectedIsolation ?? 'worktree';
 
     // Issue #3613: Enforce isolation policy
@@ -806,8 +830,8 @@ export class SessionManager {
       ownerKeyId: opts.ownerKeyId ?? undefined,
       tenantId: opts.tenantId,
       // Issue #2535: Store model at creation so analytics can group by model
-      // before the first hook event arrives. Hooks may override this later.
-      model: opts.model,
+      // Issue #3740: Fall back to model from CC settings if not provided at creation.
+      model: opts.model || detectedModel,
       effort: opts.effort,
       runnerName: opts.runnerName,
       isolationMode: isolationMode,
