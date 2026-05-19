@@ -329,7 +329,8 @@ function createPrompter(io: CliIO): Prompter {
   return {
     close: () => {},
     async question(prompt: string): Promise<string> {
-      write(io.stdout, prompt);
+      // Non-TTY: add newline before each prompt for readable output
+      write(io.stdout, '\n' + prompt);
       const lines = await bufferedLinesPromise;
       const answer = lines[index] ?? '';
       index += 1;
@@ -618,6 +619,13 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       baseUrl = await promptBaseUrl(prompter, io, baseUrl);
       byoEnv = await promptByoEnv(prompter, io, existingByoEnv);
       dashboardEnabled = await promptBoolean(prompter, io, 'Enable the bundled dashboard?', dashboardEnabled);
+    } catch (err: unknown) {
+      // Handle Ctrl+D / pipe exhaustion gracefully
+      if (err instanceof Error && (err.name === 'AbortError' || (err as NodeJS.ErrnoException).code === 'ABORT_ERR')) {
+        writeLine(io.stderr, '\n  ⚠️  Input ended — using defaults for remaining prompts.');
+      } else {
+        throw err;
+      }
     } finally {
       prompter.close();
     }
