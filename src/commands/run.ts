@@ -280,7 +280,7 @@ async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: 
 }
 
 /** Stream session transcript/output to terminal using polling.
- *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 30_000 for --yes mode.
+ *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 90_000 for --yes mode.
  *  @returns true if output was received, false if timed out without output. */
 async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxIdleMs: number = 120_000): Promise<boolean> {
   const headers: Record<string, string> = {};
@@ -294,11 +294,16 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
   writeLine(io.stdout, '  📡 Streaming session output (Ctrl+C to stop)...');
   writeLine(io.stdout);
 
-  try {
-    while (Date.now() - lastActivity < maxIdleMs) {
+  // #3732: Increased from 5s to 15s — read endpoint may block waiting for CC output
+  const FETCH_TIMEOUT_MS = 15_000;
+  const MAX_CONSECUTIVE_ERRORS = 3;
+  let consecutiveErrors = 0;
+
+  while (Date.now() - lastActivity < maxIdleMs) {
+    try {
       const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/read`, {
         headers,
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!res.ok) {
@@ -313,6 +318,9 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
         status?: string;
         statusText?: string | null;
       };
+
+      // Reset error counter on successful fetch
+      consecutiveErrors = 0;
 
       // #3368: Read endpoint returns `messages`, not `lines` or `transcript`
       const entries = data.messages || [];
@@ -366,9 +374,24 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       await new Promise((r) => setTimeout(r, 1500));
+    } catch (e) {
+      // #3732: Retry on transient fetch errors instead of aborting immediately
+      consecutiveErrors++;
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        writeLine(io.stderr, `  ⚠️  Stream fetch failed after ${MAX_CONSECUTIVE_ERRORS} attempts: ${getErrorMessage(e)}`);
+        break;
+      }
+      // Transient error — retry after brief pause
+      await new Promise((r) => setTimeout(r, 2000));
     }
-  } catch (e) {
-    writeLine(io.stderr, `  ⚠️  Stream interrupted: ${getErrorMessage(e)}`);
+  }
+
+  // #3732: Clear idle timeout message (replaces generic "Stream interrupted")
+  if (!receivedAnyOutput && Date.now() - lastActivity >= maxIdleMs) {
+    writeLine(io.stderr);
+    writeLine(io.stderr, `  ⏱️  No output received within ${Math.round(maxIdleMs / 1000)}s idle timeout.`);
+    writeLine(io.stderr, '  The session may still be running. Check with:');
+    writeLine(io.stderr, `    ag read ${sessionId}`);
   }
 
   // Return whether we received any output (for --yes timeout detection)
@@ -658,14 +681,14 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   }
 
   // Stream output
-  // Issue #3498: Use 30s idle timeout in --yes mode for fast failure
-  const streamTimeoutMs = skipPrompts ? 30_000 : 120_000;
+  // Issue #3732: Use 90s idle timeout in --yes mode (CC often needs 30-60s to produce first output)
+  const streamTimeoutMs = skipPrompts ? 90_000 : 120_000;
   const receivedOutput = await streamOutput(baseUrl, sessionId, authToken, io, streamTimeoutMs);
 
-  // Issue #3498: If --yes mode timed out without output, show actionable error
-  if (!receivedOutput && skipPrompts) {
+  // Issue #3732: If timed out without output, show actionable error (all modes)
+  if (!receivedOutput) {
     writeLine(io.stderr);
-    writeLine(io.stderr, '  ⚠️  No output received within 30 seconds.');
+    writeLine(io.stderr, `  ⚠️  No output received within ${Math.round(streamTimeoutMs / 1000)} seconds.`);
     writeLine(io.stderr, '  This usually means Claude Code could not start or is not responding.');
     writeLine(io.stderr);
     writeLine(io.stderr, '  Possible causes:');
