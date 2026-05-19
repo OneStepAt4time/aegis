@@ -14,6 +14,7 @@ import {
   getPendingApproval,
 } from '../api/acp-approval-client.js';
 import type { AcpApprovalRequest } from '../types/acp-approval';
+import { useApprovalStore } from '../store/useApprovalStore';
 
 export interface UseAcpApprovalOptions {
   sessionId: string;
@@ -100,6 +101,8 @@ export function useAcpApproval({
           setApproval(null);
           setCountdown(null);
           setIsExpired(false);
+          // Also clear the global approval badge
+          useApprovalStore.getState().removeApproval(sessionId);
         }
       } catch {
         // Ignore malformed events
@@ -168,6 +171,7 @@ export function useAcpApproval({
       setApproval(null);
       setCountdown(null);
       setIsExpired(false);
+      useApprovalStore.getState().removeApproval(sessionId);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -188,6 +192,7 @@ export function useAcpApproval({
       setApproval(null);
       setCountdown(null);
       setIsExpired(false);
+      useApprovalStore.getState().removeApproval(sessionId);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

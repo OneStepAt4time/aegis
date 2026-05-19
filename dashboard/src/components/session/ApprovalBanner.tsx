@@ -76,6 +76,7 @@ export function ApprovalBanner({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
+          aria-label="Toggle approval details"
           className={`mt-3 w-full cursor-pointer text-left font-mono text-sm text-[var(--color-text-primary)] hover:text-white transition-colors ${
             expanded ? 'break-words max-h-48 overflow-y-auto' : 'truncate'
           }`}

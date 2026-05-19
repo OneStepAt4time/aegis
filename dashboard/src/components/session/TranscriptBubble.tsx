@@ -265,6 +265,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyMessage();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
+              aria-label="Copy message"
               title="Copy message"
             >
               <Icon name="Copy" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />
@@ -276,6 +277,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyUpToHere();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
+              aria-label="Copy transcript up to here"
               title="Copy transcript up to here"
             >
               <Icon name="FileText" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />
@@ -287,6 +289,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyPermalink();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
+              aria-label="Copy permalink"
               title="Copy permalink"
             >
               <Icon name="Link" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />

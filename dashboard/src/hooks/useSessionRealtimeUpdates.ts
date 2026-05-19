@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { useApprovalStore } from '../store/useApprovalStore';
 import type { UIState, SessionHealthState } from '../types';
 
 const SESSION_RELEVANT_EVENTS: ReadonlySet<string> = new Set([
@@ -18,6 +19,7 @@ const SESSION_RELEVANT_EVENTS: ReadonlySet<string> = new Set([
   'session_created',
   'session_stall',
   'session_dead',
+  'session_approval',
 ]);
 
 /**
@@ -54,8 +56,10 @@ export function useSessionRealtimeUpdates(): void {
       if (!SESSION_RELEVANT_EVENTS.has(event.event)) continue;
       if (event.sessionId === 'global') continue;
 
+      // Extract status for use in multiple handlers below
+      let newStatus: UIState | undefined;
       if (event.event === 'session_status_change') {
-        const newStatus = event.data?.status as UIState | undefined;
+        newStatus = event.data?.status as UIState | undefined;
         if (!newStatus) continue;
 
         const idx = updatedSessions.findIndex((s) => s.id === event.sessionId);
@@ -86,6 +90,23 @@ export function useSessionRealtimeUpdates(): void {
         if (!existing || existing.health !== 'dead') {
           updatedHealthMap[event.sessionId!] = { alive: false, loading: false, health: 'dead' as SessionHealthState };
           healthChanged = true;
+        }
+      }
+
+      // Sync approval store: remove from pending when status changes away from permission_prompt
+      if (event.event === 'session_status_change' && newStatus && newStatus !== 'permission_prompt') {
+        const pending = useApprovalStore.getState().pending;
+        if (pending.has(event.sessionId!)) {
+          useApprovalStore.getState().removeApproval(event.sessionId!);
+        }
+      }
+
+      // Forward-compatible: handle session_approval SSE event (#3697)
+      if (event.event === 'session_approval') {
+        const approvalData = event.data as { action?: string } | undefined;
+        const action = approvalData?.action;
+        if (action && useApprovalStore.getState().pending.has(event.sessionId!)) {
+          useApprovalStore.getState().removeApproval(event.sessionId!);
         }
       }
     }
