@@ -92,10 +92,10 @@ export default function NewSessionPage() {
       {/* Header */}
       <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <button type="button"
-          aria-label="Go back"
           onClick={() => navigate(-1)}
           className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded hover:bg-[var(--color-void-lighter)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           title={t('newSession.goBack')}
+          aria-label={t('newSession.goBack')}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
