@@ -20,6 +20,7 @@ import { buildEnvSchema, ENV_BYO_LLM_WHITELIST, getErrorMessage } from '../valid
 import { persistAuthTokenFile, readAuthTokenFile } from '../utils/auth-token-path.js';
 import { isLocalhost } from '../utils/localhost.js';
 import { CliIO, writeLine, write } from '../cli-http.js';
+import { ensureClaudeInstalled } from '../utils/claude-installer.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -715,6 +716,8 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
       identityScaffolded: false,
       wroteConfig: false,
     });
+    // #3670: Ensure Claude CLI is installed for session support
+    await ensureClaudeInstalled(args, io);
     // #3501: Offer Claude Code MCP auto-wiring
     await offerClaudeCodeMcpWiring(args, io, configPath);
     return 0;
@@ -814,6 +817,9 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     identityScaffolded,
     wroteConfig: true,
   });
+
+  // #3670: Ensure Claude CLI is installed for session support
+  await ensureClaudeInstalled(args, io);
 
   // #3501: Offer Claude Code MCP auto-wiring
   await offerClaudeCodeMcpWiring(args, io, configPath);

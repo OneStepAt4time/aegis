@@ -21,6 +21,7 @@ import { findConfigFilePath, loadConfig, readConfigFile, writeConfigFile, serial
 import { getErrorMessage, parseIntSafe, validateEffort, validateModel } from '../validation.js';
 import { generateSessionName } from '../utils/session-name.js';
 import { readAuthTokenFile } from '../utils/auth-token-path.js';
+import { checkClaudeInstalled, hasAnthropicCredentials } from '../utils/claude-installer.js';
 
 import { isRateLimitError } from '../rate-limit.js';
 import { CliIO, writeLine } from '../cli-http.js';
@@ -408,29 +409,50 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     }
   }
 
-  // #3350: Preflight check — verify Claude Code is authenticated before creating session.
-  try {
-    const { execFile } = await import('node:child_process');
-    const claudeCheck = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve, reject) => {
-      const proc = execFile('claude', ['-p', '/version'], { timeout: 5000 }, (err, stdout, stderr) => {
-        resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code: err ? (err as any).code ?? 1 : 0 });
-      });
-    });
-    if (claudeCheck.stderr.includes('Not logged in') || claudeCheck.stderr.includes('Please run /login') || claudeCheck.code === 1) {
+  // #3350 + #3670: Preflight check — verify Claude Code is available and authenticated.
+  const claudeCheck = await checkClaudeInstalled();
+  if (!claudeCheck.installed) {
+    // Claude CLI not on PATH — check if ACP can work with just ANTHROPIC_API_KEY
+    if (!hasAnthropicCredentials()) {
       writeLine(io.stderr, '');
-      writeLine(io.stderr, '  ❌ Claude Code is not authenticated.');
+      writeLine(io.stderr, '  ❌ Claude Code CLI not found and no ANTHROPIC_API_KEY set.');
       writeLine(io.stderr, '');
-      writeLine(io.stderr, '  Aegis requires Claude Code to be logged in before creating sessions.');
+      writeLine(io.stderr, '  Aegis needs one of the following to create sessions:');
+      writeLine(io.stderr, '    1. Claude Code CLI installed and authenticated (run: ag init)');
+      writeLine(io.stderr, '    2. ANTHROPIC_API_KEY environment variable set');
       writeLine(io.stderr, '');
-      writeLine(io.stderr, '  To fix this:');
-      writeLine(io.stderr, '    1. Run: claude');
-      writeLine(io.stderr, '    2. Follow the login prompts, or');
-      writeLine(io.stderr, '    3. Set ANTHROPIC_API_KEY=<your-key> in your environment');
+      writeLine(io.stderr, '  Quick fix:');
+      writeLine(io.stderr, '    curl -fsSL https://claude.ai/install.sh | bash');
+      writeLine(io.stderr, '    Or: export ANTHROPIC_API_KEY=<your-key>');
       writeLine(io.stderr, '');
       return 1;
     }
-  } catch {
-    // claude CLI not found — let session creation proceed and fail naturally
+    // ANTHROPIC_API_KEY is set — ACP can authenticate without the CLI. Proceed.
+  } else {
+    // Claude CLI found — verify it is authenticated
+    try {
+      const { execFile } = await import('node:child_process');
+      const authCheck = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve) => {
+        execFile('claude', ['-p', '/version'], { timeout: 5000 }, (err, stdout, stderr) => {
+          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code: err ? (err as any).code ?? 1 : 0 });
+        });
+      });
+      if (authCheck.stderr.includes('Not logged in') || authCheck.stderr.includes('Please run /login') || authCheck.code === 1) {
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  ❌ Claude Code is not authenticated.');
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  Aegis requires Claude Code to be logged in before creating sessions.');
+        writeLine(io.stderr, '');
+        writeLine(io.stderr, '  To fix this:');
+        writeLine(io.stderr, '    1. Run: claude');
+        writeLine(io.stderr, '    2. Follow the login prompts, or');
+        writeLine(io.stderr, '    3. Set ANTHROPIC_API_KEY=<your-key> in your environment');
+        writeLine(io.stderr, '');
+        return 1;
+      }
+    } catch {
+      // Auth check failed — proceed anyway, session creation will surface the real error
+    }
   }
 
   // Create session
