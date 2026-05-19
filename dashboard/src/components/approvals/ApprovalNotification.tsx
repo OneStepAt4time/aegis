@@ -20,16 +20,18 @@ import { useToastStore } from "../../store/useToastStore";
  * Place this once in the app root or Layout.
  */
 export function ApprovalNotification() {
-  const list = useApprovalStore((s) => s.list());
-  const count = list.length;
+  // Subscribe to the Map (stable reference) — NOT s.list() which creates new arrays
+  const pending = useApprovalStore((s) => s.pending);
+  const count = pending.size;
   const addToast = useToastStore((s) => s.addToast);
   const navigate = useNavigate();
   const previousCount = useRef(count);
-  const knownIds = useRef(new Set(list.map((a) => a.sessionId)));
+  const knownIds = useRef(new Set<string>());
 
   // Show toast when new approval arrives
   useEffect(() => {
     if (count > previousCount.current) {
+      const list = Array.from(pending.values());
       for (const approval of list) {
         if (!knownIds.current.has(approval.sessionId)) {
           knownIds.current.add(approval.sessionId);
@@ -45,11 +47,11 @@ export function ApprovalNotification() {
     previousCount.current = count;
 
     // Clean up known IDs for removed approvals
-    const currentIds = new Set(list.map((a) => a.sessionId));
+    const currentIds = new Set(pending.keys());
     for (const id of knownIds.current) {
       if (!currentIds.has(id)) knownIds.current.delete(id);
     }
-  }, [count, list, addToast, navigate]);
+  }, [count, pending, addToast, navigate]);
 
   return null;
 }
@@ -59,7 +61,8 @@ export function ApprovalNotification() {
  * Place in the header toolbar.
  */
 export function ApprovalBadge() {
-  const count = useApprovalStore((s) => s.count());
+  // Subscribe to pending Map size (primitive, no re-render loop)
+  const count = useApprovalStore((s) => s.pending.size);
 
   if (count === 0) return null;
 
