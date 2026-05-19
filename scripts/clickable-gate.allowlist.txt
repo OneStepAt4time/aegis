@@ -21,3 +21,8 @@ dashboard/src/components/overview/SessionTable.tsx
 dashboard/src/components/shared/CommandPalette.tsx
 dashboard/src/pages/AuditPage.tsx
 dashboard/src/components/overview/VirtualizedSessionList.tsx
+
+# SessionTimelineView.tsx:195
+#   <div> connector line (1px vertical) with group-hover:bg- for visual effect only.
+#   Not interactive — the actual click target is <button> on line 200. False positive.
+dashboard/src/components/session/SessionTimelineView.tsx
