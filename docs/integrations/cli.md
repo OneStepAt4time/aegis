@@ -30,6 +30,8 @@ The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag 
 
 If Claude Code (`claude`) is detected on your PATH, `ag init` will automatically offer to wire the Aegis MCP server into Claude Code. This adds Aegis tools to your Claude Code session without manual setup. In `--yes` mode, MCP wiring happens automatically (skipped in CI/test environments).
 
+**Claude CLI auto-install:** If `claude` is not found on your PATH and `ANTHROPIC_API_KEY` is not set, `ag init` will prompt you to install Claude Code (`curl -fsSL https://claude.ai/install.sh | bash`). In `--yes` mode, installation proceeds automatically. On Windows, the CLI provides `npm install -g @anthropic-ai/claude-code` guidance instead. If `ANTHROPIC_API_KEY` is already set, the install step is skipped (ACP can authenticate without the CLI).
+
 `ag init` also exposes the built-in starter gallery for Claude Code helpers:
 
 - `code-reviewer` (agent)
@@ -65,6 +67,8 @@ ag run "Fix CI" --yes                        # Non-interactive (CI-friendly)
 5. Prints the dashboard URL for follow-up monitoring
 
 If the server is already running, skips straight to session creation. Existing config is never overwritten (respects `--force` behavior from `ag init`).
+
+**Missing Claude CLI:** If `claude` is not found on your PATH and `ANTHROPIC_API_KEY` is not set, `ag run` prints a clear error with install instructions instead of silently failing. Set `ANTHROPIC_API_KEY` to use ACP mode without the CLI.
 
 **Flags:**
 
