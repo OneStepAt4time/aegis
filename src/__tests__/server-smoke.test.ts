@@ -321,12 +321,12 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.status).toBe('ok');
-    // Issue #2458: unauthenticated callers must get only { status }
+    // Issue #3739: unauthenticated callers get status + session counts (but not sensitive fields)
     expect(body.version).toBeUndefined();
-    expect(body.sessions).toBeUndefined();
+    // sessions is now included (Issue #3739)
     expect(body.timestamp).toBeUndefined();
     expect(body.claude).toBeUndefined();
-    expect(Object.keys(body)).toEqual(['status']);
+    expect(Object.keys(body).sort()).toEqual(['sessions', 'status']);
   });
 
   it('GET /v1/health accepts dashboard session cookie for full data', async () => {
