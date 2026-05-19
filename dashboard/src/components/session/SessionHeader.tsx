@@ -8,6 +8,7 @@ import { CopyButton } from '../shared/CopyButton';
 import { TimelineScrubber, type TimelineEvent } from './TimelineScrubber';
 import { useT } from '../../i18n/context';
 import { ModelBadge } from '../shared/ModelBadge';
+import { AgentBadge } from '../agents/AgentBadge';
 import { EffortIndicator } from '../shared/EffortIndicator';
 import type { ExtendedSessionInfo } from '../../types/session-extensions';
 import { IsolationModeBadge } from '../shared/IsolationModeBadge';
@@ -183,6 +184,7 @@ export function SessionHeader({
           {truncateMiddle(session.id, 16)}
           <CopyButton value={session.id} label="session ID" size={16} />
         </span>
+        <AgentBadge runnerName={(session as any).runnerName} model={session.model} />
         <ModelBadge model={session.model} className="hidden sm:inline-flex" />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} className="hidden sm:inline-flex" />
         <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} className="hidden sm:inline-flex" />
