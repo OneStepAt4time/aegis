@@ -15,6 +15,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SessionDiscovery, type DiscoveryDeps } from '../session-discovery.js';
+import { getConfig } from '../config.js';
 import type { SessionInfo } from '../session.js';
 
 function createMockDeps(sessions: Record<string, SessionInfo> = {}): DiscoveryDeps {
@@ -35,11 +36,9 @@ const validMapEntry = (overrides: Record<string, any> = {}) => ({
 
 function createConfig() {
   return {
+    ...getConfig(),
     stateDir: '/tmp/test-state',
     claudeProjectsDir: '/tmp/test-projects',
-    continuationPointerTtlMs: 86_400_000,
-    worktreeAwareContinuation: false,
-    worktreeSiblingDirs: [] as string[],
   };
 }
 
@@ -75,11 +74,12 @@ describe('Issue #3716 — SessionDiscovery error and edge cases', () => {
         workDir: '/tmp',
         byteOffset: 0,
         monitorOffset: 0,
-        status: 'running',
+        status: 'working',
         createdAt: Date.now(),
         lastActivity: Date.now(),
         stallThresholdMs: 300_000,
-        permissionMode: 'default',
+        permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
       };
       const deps = createMockDeps({ 'sess-1': session });
       const config = createConfig();
@@ -123,11 +123,12 @@ describe('Issue #3716 — SessionDiscovery error and edge cases', () => {
         workDir: '/tmp',
         byteOffset: 0,
         monitorOffset: 0,
-        status: 'running',
+        status: 'working',
         createdAt: Date.now(),
         lastActivity: Date.now(),
         stallThresholdMs: 300_000,
-        permissionMode: 'default',
+        permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         claudeSessionId: 'cc-123',
         jsonlPath: '/tmp/test.jsonl',
       };
