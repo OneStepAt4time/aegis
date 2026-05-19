@@ -3,9 +3,13 @@
  *
  * Wraps GET /v1/sessions with optional status and project (`--cwd`) filters.
  * Issue #3633: Add --full-ids and --json flags for better CLI workflow.
+ * Issue #3731: Hide killed/completed/crashed by default; --all shows everything.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
+
+/** Statuses considered "terminal" — hidden from `ag list` unless --all is passed. */
+const TERMINAL_STATUSES = new Set(['killed', 'completed', 'crashed']);
 
 export async function handleList(args: string[], io: CliIO): Promise<number> {
   const baseUrl = await resolveBaseUrl(args);
@@ -17,6 +21,7 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   let fullIds = false;
   let jsonOutput = false;
+  let showAll = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--status' && args[i + 1]) {
@@ -28,6 +33,8 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
       fullIds = true;
     } else if (args[i] === '--json') {
       jsonOutput = true;
+    } else if (args[i] === '--all') {
+      showAll = true;
     }
   }
 
@@ -41,7 +48,12 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   }
 
   const body = await res.json() as { sessions?: any[]; data?: any[] };
-  const sessions = body.sessions ?? body.data ?? [];
+  let sessions = body.sessions ?? body.data ?? [];
+
+  // #3731: Filter terminal statuses unless --all
+  if (!showAll) {
+    sessions = sessions.filter(s => !TERMINAL_STATUSES.has(s.status));
+  }
 
   if (jsonOutput) {
     // Machine-readable JSON output — include full IDs
@@ -50,7 +62,7 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   }
 
   if (sessions.length === 0) {
-    writeLine(io.stdout, '  No sessions found.');
+    writeLine(io.stdout, showAll ? '  No sessions found.' : '  No active sessions. Use --all to include killed/completed/crashed.');
     return 0;
   }
 
@@ -63,9 +75,12 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, `    ${id}${suffix}  ${status.padEnd(12)}  ${name}`);
   }
 
-  if (!fullIds) {
+  const tips: string[] = [];
+  if (!fullIds) tips.push('--full-ids to show full UUIDs');
+  if (!showAll) tips.push('--all to include killed/completed/crashed');
+  if (tips.length > 0) {
     writeLine(io.stdout, '');
-    writeLine(io.stdout, '  Tip: use --full-ids to show full UUIDs, or pipe with --json.');
+    writeLine(io.stdout, `  Tip: use ${tips.join(', ')}, or pipe with --json.`);
   }
 
   return 0;
