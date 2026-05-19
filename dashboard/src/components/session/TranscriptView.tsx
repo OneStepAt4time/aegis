@@ -256,6 +256,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
       {showScrollBtn && (
         <button type="button"
           onClick={scrollToBottom}
+          aria-label="Scroll to bottom"
           className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
           title="Scroll to bottom"
         >

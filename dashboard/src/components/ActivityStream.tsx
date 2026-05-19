@@ -212,6 +212,7 @@ export default function ActivityStream({
             {/* Clear filters */}
             {(filterSession || filterType) && (
               <button type="button"
+                aria-label="Clear filters"
                 onClick={() => { setFilterSession(null); setFilterType(null); }}
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
               >
