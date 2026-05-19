@@ -780,7 +780,9 @@ export async function validateWorkDir(
   const resolved = path.resolve(normalizedWorkDir);
   const preAllowed = candidateSafeDirs.some((dir) => isUnderOrEqual(resolved, dir));
   if (!preAllowed) {
-    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    const hint = windowsSuggestion
+      ? ` Did you mean \`${windowsSuggestion}\`?`
+      : ' Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory.';
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
@@ -796,7 +798,9 @@ export async function validateWorkDir(
   // Step 4: Canonical allowlist check after symlink resolution.
   const allowed = candidateSafeDirs.some((dir) => isUnderOrEqual(realPath, dir));
   if (!allowed) {
-    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    const hint = windowsSuggestion
+      ? ` Did you mean \`${windowsSuggestion}\`?`
+      : ' Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory.';
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
