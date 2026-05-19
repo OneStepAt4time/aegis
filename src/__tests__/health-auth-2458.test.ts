@@ -227,24 +227,29 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     await app.close();
   });
 
-  it('unauthenticated request returns only { status }', async () => {
+  it('unauthenticated request returns status and session counts', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/health' });
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as Record<string, unknown>;
     expect(body.status).toBe('ok');
-    // Must contain no additional fields
-    expect(Object.keys(body)).toEqual(['status']);
+    // Issue #3739: session counts are safe for unauthenticated callers
+    expect(body.sessions).toBeDefined();
+    expect(typeof (body.sessions as Record<string, unknown>).active).toBe('number');
+    expect(typeof (body.sessions as Record<string, unknown>).total).toBe('number');
+    // Must not contain sensitive fields
+    expect(Object.keys(body).sort()).toEqual(['sessions', 'status']);
   });
 
-  it('unauthenticated request does not leak version, uptime, sessions, or claude', async () => {
+  it('unauthenticated request does not leak version, uptime, or claude', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/health' });
     const body = res.json() as Record<string, unknown>;
 
     expect(body.version).toBeUndefined();
     expect(body.uptime).toBeUndefined();
     expect(body.platform).toBeUndefined();
-    expect(body.sessions).toBeUndefined();
+    // sessions is now included for unauthenticated callers (Issue #3739)
+    expect(body.sessions).toBeDefined();
     expect(body.claude).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
   });
@@ -269,12 +274,13 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.claude).toBeDefined();
   });
 
-  it('legacy GET /health also returns only { status } for unauthenticated callers', async () => {
+  it('legacy GET /health also returns status and session counts for unauthenticated callers', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as Record<string, unknown>;
     expect(body.status).toBe('ok');
-    expect(Object.keys(body)).toEqual(['status']);
+    expect(body.sessions).toBeDefined();
+    expect(Object.keys(body).sort()).toEqual(['sessions', 'status']);
   });
 });

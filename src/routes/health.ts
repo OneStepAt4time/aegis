@@ -102,9 +102,9 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
 
     const base = { status, timestamp: new Date().toISOString() };
 
-    // Unauthenticated: return only status (Issue #2458 — prevent info leak)
+    // Unauthenticated: return status + session counts (Issue #3739 — monitors need counts)
     if (!isAuthenticated) {
-      return { status };
+      return { status, sessions: { active: activeCount, total: totalCount } };
     }
 
     // Authenticated: return full health details
