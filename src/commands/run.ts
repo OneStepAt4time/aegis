@@ -183,6 +183,102 @@ function defaultConfigPath(): string {
   return join(homedir(), '.aegis', 'config.yaml');
 }
 
+/** Issue #3696: Poll until session completes, then print all output.
+ *  Used by --no-stream to wait for completion without streaming line-by-line.
+ *  @returns true if output was received, false if timed out. */
+async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxWaitMs: number = 300_000): Promise<boolean> {
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const start = Date.now();
+  const pollInterval = 3_000; // 3s between polls
+  let dots = 0;
+
+  writeLine(io.stdout);
+  writeLine(io.stdout, '  ⏳ Waiting for session to complete...');
+
+  try {
+    while (Date.now() - start < maxWaitMs) {
+      const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}`, {
+        headers,
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) break;
+        await new Promise((r) => setTimeout(r, pollInterval));
+        continue;
+      }
+
+      const data = await res.json() as { status?: string };
+      dots = (dots + 1) % 4;
+      const dotStr = '.'.repeat(dots);
+      process.stdout.write(`\r  ⏳ Status: ${data.status ?? 'unknown'}${dotStr}   `);
+
+      // Check if session is done
+      if (data.status === 'idle' || data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed') {
+        process.stdout.write('\r' + ' '.repeat(50) + '\r');
+        break;
+      }
+
+      await new Promise((r) => setTimeout(r, pollInterval));
+    }
+  } catch {
+    // Connection lost
+  }
+
+  // Session done (or timed out) — fetch and print all messages
+  writeLine(io.stdout);
+  writeLine(io.stdout, '  📋 Session output:');
+  writeLine(io.stdout);
+
+  try {
+    const readRes = await fetch(`${baseUrl}/v1/sessions/${sessionId}/read`, {
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (readRes.ok) {
+      const readData = await readRes.json() as {
+        messages?: Array<{ text: string; role?: string; contentType?: string }>;
+        status?: string;
+        statusText?: string | null;
+      };
+
+      const entries = readData.messages || [];
+      if (entries.length === 0) {
+        writeLine(io.stdout, '  (no output received)');
+        return false;
+      }
+
+      for (const entry of entries) {
+        // Skip non-text content types (thinking, tool_use, tool_result, etc.)
+        if (entry.contentType && entry.contentType !== 'text') continue;
+        const prefix = entry.role === 'user' ? '  👤 ' : entry.role === 'assistant' ? '  🤖 ' : '  ';
+        writeLine(io.stdout, `${prefix}${entry.text.slice(0, 2000)}`);
+      }
+
+      writeLine(io.stdout);
+      if (readData.status === 'error') {
+        writeLine(io.stderr, `  ❌ Session ended with error: ${readData.statusText || 'unknown error'}`);
+      } else if (readData.status === 'killed' || readData.status === 'crashed') {
+        writeLine(io.stderr, `  ❌ Session ended: ${readData.status}`);
+      } else {
+        writeLine(io.stdout, `  ✅ Session completed.`);
+      }
+
+      return entries.length > 0;
+    } else {
+      writeLine(io.stderr, `  ⚠️  Could not read session output (HTTP ${readRes.status}).`);
+      writeLine(io.stderr, `     Try: ag read ${sessionId}`);
+      return false;
+    }
+  } catch (e) {
+    writeLine(io.stderr, `  ⚠️  Error reading output: ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+}
+
 /** Stream session transcript/output to terminal using polling.
  *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 30_000 for --yes mode.
  *  @returns true if output was received, false if timed out without output. */
@@ -554,12 +650,10 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   writeLine(io.stdout, `  📊 Dashboard: ${dashboardUrl}`);
 
   if (noStream) {
-    // Print curl commands and exit
-    const curlAuth = authToken ? ` -H "Authorization: Bearer ${authToken}"` : '';
-    writeLine(io.stdout);
-    writeLine(io.stdout, '  Next steps:');
-    writeLine(io.stdout, `    Status:   curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/health`);
-    writeLine(io.stdout, `    Read:     curl${curlAuth} ${baseUrl}/v1/sessions/${sessionId}/read`);
+    // Issue #3696: Instead of just printing curl commands and exiting,
+    // poll until session completes then print all output.
+    const pollTimeoutMs = 300_000; // 5 min max wait
+    await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
     return 0;
   }
 
