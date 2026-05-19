@@ -454,7 +454,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         return reply.status(500).send({ error: 'ACP runtime failed to start — check claude CLI availability and ACP configuration', details: acpErr });
       }
       try {
-        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy });
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
         // Issue #3135: Sync ACP session status to local session state
         // The ACP backend tracks agent status independently; mirror it here.
         const acpToUIState: Record<string, import('../session.js').UIState> = { idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
@@ -478,7 +478,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     await channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
-      session: { id: session.id, name: session.displayName, workDir },
+      session: { id: session.id, name: session.displayName, workDir, runnerName: session.runnerName },
       detail: `Session created: ${session.displayName}`,
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });

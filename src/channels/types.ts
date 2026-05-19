@@ -45,6 +45,7 @@ export interface SessionEventPayload {
   event: SessionEvent;
   timestamp: string;
   session: {
+    runnerName?: string;
     id: string;
     name: string;
     workDir: string;
