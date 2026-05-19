@@ -91,7 +91,8 @@ export function registerUsageRoutes(app: FastifyInstance, ctx: RouteContext): vo
   /**
    * GET /v1/usage/tiers — Current rate tier configuration.
    */
-  registerWithLegacy(app, 'get', '/v1/usage/tiers', async (_req: FastifyRequest, _reply: FastifyReply) => {
+  registerWithLegacy(app, 'get', '/v1/usage/tiers', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     return {
       schema_version: 1,
       tiers: metering.getRateTiers(),

@@ -5,7 +5,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { batchSessionSchema, pipelineSchema } from '../validation.js';
 import type { RouteContext } from './context.js';
-import { makePayload, registerWithLegacy, requirePermission, withValidation } from './context.js';
+import { makePayload, registerWithLegacy, requirePermission, requireRole, withValidation } from './context.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 
 const MAX_CONCURRENT_SESSIONS = 200;
@@ -71,11 +71,15 @@ export function registerPipelineRoutes(app: FastifyInstance, ctx: RouteContext):
 
   // Pipeline status
   registerWithLegacy(app, 'get', '/v1/pipelines/:id', async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
     const pipeline = pipelines.getPipeline(req.params.id);
     if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' });
     return pipeline;
   });
 
   // List pipelines
-  registerWithLegacy(app, 'get', '/v1/pipelines', async (_req: FastifyRequest, _reply: FastifyReply) => pipelines.listPipelines());
+  registerWithLegacy(app, 'get', '/v1/pipelines', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;
+    return pipelines.listPipelines();
+  });
 }
