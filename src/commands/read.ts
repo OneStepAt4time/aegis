@@ -7,6 +7,7 @@
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
+import { parseIntSafe } from '../validation.js';
 
 /**
  * Resolve a possibly-truncated session ID to a full UUID.
@@ -74,8 +75,8 @@ export async function handleRead(args: string[], io: CliIO): Promise<number> {
   let page = 1;
   let limit = 200;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--page' && args[i + 1]) page = parseInt(args[++i]!, 10) || 1;
-    if (args[i] === '--limit' && args[i + 1]) limit = parseInt(args[++i]!, 10) || 200;
+    if (args[i] === '--page' && args[i + 1]) page = parseIntSafe(args[++i], 1);
+    if (args[i] === '--limit' && args[i + 1]) limit = parseIntSafe(args[++i], 200);
   }
 
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
