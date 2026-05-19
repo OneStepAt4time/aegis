@@ -6,6 +6,7 @@
 
 import { formatSessionName } from '../../utils/formatSessionName';
 import { ModelBadge } from '../shared/ModelBadge';
+import { AgentBadge } from '../agents/AgentBadge';
 import { EffortIndicator } from '../shared/EffortIndicator';
 import type { ExtendedSessionInfo } from '../../types/session-extensions';
 import { IsolationModeBadge } from '../shared/IsolationModeBadge';
@@ -202,6 +203,7 @@ function VirtualizedRow(props: {
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
         </Link>
+        <AgentBadge runnerName={(session as any).runnerName} model={session.model} compact />
         <ModelBadge model={session.model} />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
         <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} />

@@ -6,6 +6,8 @@ import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, us
 import { SessionMobileCard } from './SessionMobileCard';
 import type { SessionsPaginationState, SessionRowViewModel } from './sessionTableUtils';
 import { matchesSearch, formatStatusLabel } from './sessionTableUtils';
+import { AgentFilter } from '../agents/AgentFilter';
+
 import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -105,6 +107,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [groupByDir, setGroupByDir] = useState(true);
   const [workDirFilter, setWorkDirFilter] = useState<string>('all');
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const uniqueWorkDirs = useMemo(() => {
@@ -404,6 +407,19 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
   const rowViewModels = useMemo<SessionRowViewModel[]>(() => {
     let source = sessions;
+    if (agentFilter) {
+      source = source.filter((s) => {
+        const rn = (s as any).runnerName;
+        if (rn) return rn === agentFilter;
+        // Heuristic: infer from model field
+        const m = (s.model ?? '').toLowerCase();
+        if (agentFilter === 'claude-code') return m.includes('claude');
+        if (agentFilter === 'codex') return m.includes('gpt') || m.includes('o1') || m.includes('o3') || m.includes('o4');
+        if (agentFilter === 'gemini-cli') return m.includes('gemini');
+        if (agentFilter === 'qwen') return m.includes('qwen');
+        return false;
+      });
+    }
     if (workDirFilter !== 'all') {
       source = source.filter((s) => extractDirKey(s.workDir) === workDirFilter || s.workDir === workDirFilter);
     }
@@ -552,6 +568,11 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   </select>
                 </label>
               )}
+
+              <AgentFilter
+                value={agentFilter}
+                onChange={(v) => { setAgentFilter(v); setPage(1); }}
+              />
             </div>
 
             <div className="flex flex-wrap gap-2" role="group" aria-label={t("aria.filterByStatusGroup")}>
