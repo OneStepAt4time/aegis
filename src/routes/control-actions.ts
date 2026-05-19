@@ -294,6 +294,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       const result = await acpBackend.approveSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId, approvalId: parsed.data.approvalId });
       const audit = getAuditLogger();
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'permission.approve', `Tool approved: ${session.id}`, session.id, scope.tenantId);
+      ctx.eventBus.emit(session.id, { event: 'approval_resolved', sessionId: session.id, timestamp: new Date().toISOString(), data: { action: 'approved', approvalId: parsed.data.approvalId } });
       return result;
     } catch (e: unknown) {
       return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
@@ -315,6 +316,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       const result = await acpBackend.rejectSession({ sessionId: session.id, tenantId: scope.tenantId, ownerKeyId: scope.ownerKeyId, approvalId: parsed.data.approvalId });
       const audit = getAuditLogger();
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'permission.reject', `Tool rejected: ${session.id}`, session.id, scope.tenantId);
+      ctx.eventBus.emit(session.id, { event: 'approval_resolved', sessionId: session.id, timestamp: new Date().toISOString(), data: { action: 'rejected', approvalId: parsed.data.approvalId } });
       return result;
     } catch (e: unknown) {
       return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
