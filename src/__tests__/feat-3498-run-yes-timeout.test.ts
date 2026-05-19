@@ -60,7 +60,7 @@ describe('Issue #3498: ag run --yes timeout', () => {
       expect(code).toBe(1);
       const allErrors = errors.join('');
       expect(allErrors).toContain('No output received');
-      expect(allErrors).toContain('30 seconds');
+      expect(allErrors).toContain('90 seconds');
     } finally {
       globalThis.fetch = originalFetch;
     }
