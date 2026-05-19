@@ -117,7 +117,7 @@ export default function NewSessionPage() {
             onChange={(e) => setWorkDir(e.target.value)}
             placeholder="/home/user/projects/myapp"
             required
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
           />
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.workDirDescription')}</p>
 
@@ -212,7 +212,7 @@ export default function NewSessionPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="my-session"
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
           />
         </div>
 
@@ -227,7 +227,7 @@ export default function NewSessionPage() {
             value={claudeCommand}
             onChange={(e) => setClaudeCommand(e.target.value)}
             placeholder="claude --print"
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
           />
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.claudeCommandDefault')}</p>
         </div>
@@ -243,7 +243,7 @@ export default function NewSessionPage() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="What do you want to accomplish?"
             rows={3}
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
           />
         </div>
 
@@ -256,7 +256,7 @@ export default function NewSessionPage() {
             id="permissionMode"
             value={permissionMode}
             onChange={(e) => setPermissionMode(e.target.value)}
-            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+            className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
           >
             {PERMISSION_MODES.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>

@@ -475,7 +475,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder={t('sessionHistory.searchPlaceholder')}
-              className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -488,7 +488,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterOwnerInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder={t('sessionHistory.ownerPlaceholder')}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -498,7 +498,7 @@ export default function SessionHistoryPage() {
               id="status-filter"
               value={filterStatusInput}
               onChange={(e) => setFilterStatusInput(e.target.value)}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -512,7 +512,7 @@ export default function SessionHistoryPage() {
               id="date-filter"
               value={filterDateRange}
               onChange={(e) => setFilterDateRange(e.target.value as DateRange)}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             >
               {DATE_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -528,7 +528,7 @@ export default function SessionHistoryPage() {
                 type="date"
                 value={customDateFrom}
                 onChange={(e) => setCustomDateFrom(e.target.value)}
-                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
               />
             </div>
           )}
@@ -541,7 +541,7 @@ export default function SessionHistoryPage() {
                 type="date"
                 value={customDateTo}
                 onChange={(e) => setCustomDateTo(e.target.value)}
-                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
               />
             </div>
           )}
@@ -552,7 +552,7 @@ export default function SessionHistoryPage() {
               id="sort-filter"
               value={filterSort}
               onChange={(e) => { setFilterSort(e.target.value as typeof filterSort); }}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             >
               <option value="newest">{t('sessionHistory.newestFirst')}</option>
               <option value="oldest">{t('sessionHistory.oldestFirst')}</option>
@@ -686,7 +686,7 @@ export default function SessionHistoryPage() {
                       key={`${record.id}-${record.lastSeenAt}`}
                       ref={(el) => { rowRefs.current[index] = el; }}
                       tabIndex={0}
-                      className="border-b border-[var(--color-void-lighter)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover,theme(colors.zinc.800/40))] focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--color-accent-cyan)]/40"
+                      className="border-b border-[var(--color-void-lighter)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover,theme(colors.zinc.800/40))] focus-visible:outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--color-accent-cyan)]/40"
                       onClick={(e) => handleRowClick(record.id, e)}
                       onKeyDown={(e) => handleRowKeyDown(e, record.id, index)}
                     >
@@ -760,7 +760,7 @@ export default function SessionHistoryPage() {
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size}</option>

@@ -165,7 +165,7 @@ function TypeConfirmInput({
           }}
           placeholder={entityName ?? 'Confirm…'}
           aria-label={`Type ${entityName ?? ''} to confirm`}
-          className="min-h-[36px] w-40 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-danger)]/50 focus:outline-none"
+          className="min-h-[36px] w-40 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-danger)]/50 focus-visible:outline-none"
         />
         <button
           type="button"

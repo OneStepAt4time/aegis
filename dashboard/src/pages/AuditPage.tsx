@@ -719,7 +719,7 @@ export default function AuditPage() {
               value={filters.actor}
               onChange={(event) => setFilters((current) => ({ ...current, actor: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -733,7 +733,7 @@ export default function AuditPage() {
               value={filters.action}
               onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
             <datalist id="audit-action-suggestions">
               {ACTION_SUGGESTIONS.map((action) => (
@@ -751,7 +751,7 @@ export default function AuditPage() {
               value={filters.sessionId}
               onChange={(event) => setFilters((current) => ({ ...current, sessionId: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -762,7 +762,7 @@ export default function AuditPage() {
               type="datetime-local"
               value={filters.from}
               onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -773,7 +773,7 @@ export default function AuditPage() {
               type="datetime-local"
               value={filters.to}
               onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
         </div>
@@ -889,7 +889,7 @@ export default function AuditPage() {
                   setPageSize(Number(event.target.value));
                   setPage(1);
                 }}
-                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus:outline-none"
+                className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>{size} / page</option>

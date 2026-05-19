@@ -187,7 +187,7 @@ export default function ActivityStream({
             <select
               value={filterSession ?? ''}
               onChange={(e) => setFilterSession(e.target.value || null)}
-              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             >
               <option value="">All sessions</option>
               {sessions.map((s) => (
@@ -201,7 +201,7 @@ export default function ActivityStream({
             <select
               value={filterType ?? ''}
               onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
-              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+              className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             >
               <option value="">All types</option>
               {Object.entries(EVENT_META).map(([key, meta]) => (

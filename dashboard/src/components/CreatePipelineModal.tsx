@@ -145,7 +145,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
               onChange={(e) => setPipelineName(e.target.value)}
               placeholder="my-pipeline"
               aria-label={t("aria.pipelineName")}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
@@ -166,21 +166,21 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
                   value={step.workDir}
                   onChange={(e) => updateStep(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
                 />
                 <input
                   type="text"
                   value={step.name}
                   onChange={(e) => updateStep(i, 'name', e.target.value)}
                   placeholder="name"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <input
                   type="text"
                   value={step.prompt}
                   onChange={(e) => updateStep(i, 'prompt', e.target.value)}
                   placeholder="Initial prompt..."
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <button
                   type="button"

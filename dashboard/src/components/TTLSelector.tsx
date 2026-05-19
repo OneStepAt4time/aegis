@@ -82,7 +82,7 @@ export function TTLSelector({ value, onChange }: TTLSelectorProps) {
           onChange={handleCustomChange}
           placeholder="Custom minutes…"
           min="1"
-          className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]"
+          className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
         />
         {customInput && !isNaN(parseInt(customInput, 10)) && (
           <p className="text-xs text-[var(--color-text-muted)] mt-1">

@@ -126,7 +126,7 @@ export function PauseControlBar({
                   onChange={(e) => setPauseReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handlePause()}
                   placeholder="e.g., security review needed"
-                  className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-warning)]/50 focus:outline-none"
+                  className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-warning)]/50 focus-visible:outline-none"
                   autoFocus
                 />
               </div>
@@ -208,7 +208,7 @@ export function PauseControlBar({
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
                 placeholder="Provide instructions for the agent to follow after resuming..."
-                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-accent)]/50 focus:outline-none resize-y"
+                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-accent)]/50 focus-visible:outline-none resize-y"
                 rows={3}
                 autoFocus
               />

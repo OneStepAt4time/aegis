@@ -184,7 +184,7 @@ export function SessionHeader({
           {truncateMiddle(session.id, 16)}
           <CopyButton value={session.id} label="session ID" size={16} />
         </span>
-        <AgentBadge runnerName={(session as any).runnerName} model={session.model} />
+        <AgentBadge runnerName={session.runnerName} model={session.model} />
         <ModelBadge model={session.model} className="hidden sm:inline-flex" />
         <EffortIndicator effort={(session as ExtendedSessionInfo).effort} className="hidden sm:inline-flex" />
         <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} className="hidden sm:inline-flex" />
