@@ -23,6 +23,7 @@ import { homedir } from 'node:os';
 // We'll import and test detectIsolationMode directly if exported,
 // otherwise test through SessionManager
 import { SessionManager, SessionCreationError } from '../session.js';
+import { getConfig } from '../config.js';
 
 describe('Issue #3714 — isolation mode detection and SessionCreationError', () => {
   let tmpDir: string;
@@ -58,7 +59,7 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
         worktree: { bgIsolation: 'none' },
       }));
 
-      const sm = new SessionManager({ stateDir: tmpDir, masterToken: 'test' });
+      const sm = new SessionManager({ ...getConfig(), stateDir: tmpDir, authToken: 'test' });
       await sm.load();
 
       // We need to check the isolation mode via the session's isolationMode field
@@ -66,9 +67,10 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
       try {
         const session = await sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'iso-test-none',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'iso-test-none',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         });
 
         // The session should have isolationMode = 'none' since bgIsolation is "none"
@@ -87,15 +89,16 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
         worktree: { bgIsolation: 'worktree' },
       }));
 
-      const sm = new SessionManager({ stateDir: tmpDir, masterToken: 'test' });
+      const sm = new SessionManager({ ...getConfig(), stateDir: tmpDir, authToken: 'test' });
       await sm.load();
 
       try {
         const session = await sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'iso-test-worktree',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'iso-test-worktree',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         });
 
         expect(session.isolationMode).toBe('worktree');
@@ -108,15 +111,16 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
       const workDir = mkdtempSync(join(tmpdir(), 'aegis-work-'));
       // No .claude directory
 
-      const sm = new SessionManager({ stateDir: tmpDir, masterToken: 'test' });
+      const sm = new SessionManager({ ...getConfig(), stateDir: tmpDir, authToken: 'test' });
       await sm.load();
 
       try {
         const session = await sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'iso-test-default',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'iso-test-default',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         });
 
         // Default isolation when nothing configured is 'worktree'
@@ -136,26 +140,24 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
         worktree: { bgIsolation: 'none' },
       }));
 
-      const sm = new SessionManager({
-        stateDir: tmpDir,
-        masterToken: 'test',
-        isolationPolicy: 'enforce-worktree',
-      });
+      const sm = new SessionManager({ ...getConfig(), stateDir: tmpDir, authToken: 'test', isolationPolicy: 'enforce-worktree' });
       await sm.load();
 
       try {
         await expect(sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'policy-reject',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'policy-reject',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         })).rejects.toThrow(SessionCreationError);
 
         await expect(sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'policy-reject',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'policy-reject',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         })).rejects.toThrow(/enforce-worktree/);
       } finally {
         rmSync(workDir, { recursive: true, force: true });
@@ -170,19 +172,16 @@ describe('Issue #3714 — isolation mode detection and SessionCreationError', ()
         worktree: { bgIsolation: 'worktree' },
       }));
 
-      const sm = new SessionManager({
-        stateDir: tmpDir,
-        masterToken: 'test',
-        isolationPolicy: 'enforce-direct',
-      });
+      const sm = new SessionManager({ ...getConfig(), stateDir: tmpDir, authToken: 'test', isolationPolicy: 'enforce-direct' });
       await sm.load();
 
       try {
         const session = await sm.createSession({
           workDir,
-          command: 'echo test',
-          displayName: 'policy-direct',
-          permissionMode: 'default',
+          claudeCommand: 'echo test',
+          name: 'policy-direct',
+          permissionMode: 'default' as const,
+        permissionStallMs: 300_000,
         });
 
         // enforce-direct overrides to 'none' regardless of detection
