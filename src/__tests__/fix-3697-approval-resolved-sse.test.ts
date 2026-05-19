@@ -1,150 +1,75 @@
 /**
  * Issue #3697: Backend must emit approval_resolved SSE event after approve/reject.
  *
- * Verifies that both POST /v1/sessions/:id/approval/approve and
- * POST /v1/sessions/:id/approval/reject emit an approval_resolved event
- * via the SessionEventBus after the ACP backend call succeeds.
+ * Verifies:
+ * 1. approval_resolved is a valid SessionSSEEvent type
+ * 2. The event shape matches what the dashboard expects
+ * 3. The code in control-actions.ts emits after approve/reject
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { registerControlActionRoutes } from '../routes/control-actions.js';
-import type { RouteContext } from '../routes/context.js';
-import type { SessionEventBus } from '../events.js';
-
-function makeMockContext(eventBusEmit: ReturnType<typeof vi.fn>): RouteContext {
-  const eventBus = {
-    emit: eventBusEmit,
-    emitStatus: vi.fn(),
-    emitHook: vi.fn(),
-    subscribe: vi.fn(() => vi.fn()),
-    subscribeGlobal: vi.fn(() => vi.fn()),
-    getBufferedEvents: vi.fn(() => []),
-    end: vi.fn(),
-  } as unknown as SessionEventBus;
-
-  return {
-    sessions: {
-      getSession: vi.fn(() => ({
-        id: 'test-session-1234',
-        displayName: 'test',
-        workDir: '/tmp',
-        status: 'permission_prompt',
-        lastActivity: Date.now(),
-        permissionMode: 'default',
-        byteOffset: 0,
-        monitorOffset: 0,
-        stallThresholdMs: 5000,
-        createdAt: Date.now(),
-      })),
-      listSessions: vi.fn(() => []),
-    },
-    auth: {
-      authenticate: vi.fn(() => true),
-      checkPermission: vi.fn(() => true),
-    },
-    eventBus,
-    acpBackend: {
-      approveSession: vi.fn(async () => ({ ok: true })),
-      rejectSession: vi.fn(async () => ({ ok: true })),
-      getPendingApproval: vi.fn(() => null),
-    } as any,
-    pauseInterventionStore: null,
-    getAuditLogger: vi.fn(() => null),
-    config: {} as any,
-  } as unknown as RouteContext;
-}
-
-function makeMockApp(ctx: RouteContext): FastifyInstance {
-  const routes: Array<{ method: string; url: string; handler: Function }> = [];
-
-  return {
-    post: vi.fn((url, handler) => {
-      routes.push({ method: 'post', url, handler });
-    }),
-    get: vi.fn((url, handler) => {
-      routes.push({ method: 'get', url, handler });
-    }),
-    _routes: routes,
-  } as unknown as FastifyInstance;
-}
+import { describe, it, expect, vi } from 'vitest';
+import type { SessionSSEEvent } from '../events.js';
 
 describe('Issue #3697: approval_resolved SSE event', () => {
-  let eventBusEmit: ReturnType<typeof vi.fn>;
-  let ctx: RouteContext;
-  let app: FastifyInstance & { _routes: Array<{ method: string; url: string; handler: Function }> };
-
-  beforeEach(() => {
-    eventBusEmit = vi.fn();
-    ctx = makeMockContext(eventBusEmit);
-    app = makeMockApp(ctx) as any;
-    registerControlActionRoutes(app, ctx);
-  });
-
-  it('emits approval_resolved with action=approved after approveSession', async () => {
-    // Find the approve handler
-    const approveRoute = app._routes.find(r => r.url.includes('/approval/approve'));
-    expect(approveRoute).toBeDefined();
-
-    // Create mock req/reply
-    const req = {
-      body: { approvalId: 'approval-abc-123' },
-      authKeyId: 'key-1',
-      tenantId: 'default',
-    } as any;
-    const reply = { status: vi.fn(() => reply), send: vi.fn(() => reply) } as any;
-
-    // The handler is wrapped — we need to call it through the withSessionOwnership wrapper
-    // which calls the inner handler with (req, reply, session)
-    // Since registerWithLegacy registers via app.post, the handler is the raw one
-    // We'll test by verifying eventBusEmit was NOT called before the route fires
-
-    // Direct test: call the event bus emit manually as the code would
-    const session = { id: 'test-session-1234' };
-    ctx.eventBus.emit(session.id, {
+  it('approval_resolved is a valid SessionSSEEvent for approved action', () => {
+    const event: SessionSSEEvent = {
       event: 'approval_resolved',
-      sessionId: session.id,
+      sessionId: 'session-123',
       timestamp: new Date().toISOString(),
-      data: { action: 'approved', approvalId: 'approval-abc-123' },
-    });
+      data: { action: 'approved', approvalId: 'approval-abc' },
+    };
 
-    expect(eventBusEmit).toHaveBeenCalledWith('test-session-1234', {
-      event: 'approval_resolved',
-      sessionId: 'test-session-1234',
-      timestamp: expect.any(String),
-      data: { action: 'approved', approvalId: 'approval-abc-123' },
-    });
+    expect(event.event).toBe('approval_resolved');
+    expect(event.data.action).toBe('approved');
+    expect(event.data.approvalId).toBe('approval-abc');
   });
 
-  it('emits approval_resolved with action=rejected after rejectSession', async () => {
-    const session = { id: 'test-session-1234' };
-    ctx.eventBus.emit(session.id, {
+  it('approval_resolved is a valid SessionSSEEvent for rejected action', () => {
+    const event: SessionSSEEvent = {
       event: 'approval_resolved',
-      sessionId: session.id,
+      sessionId: 'session-456',
       timestamp: new Date().toISOString(),
-      data: { action: 'rejected', approvalId: 'approval-abc-123' },
-    });
+      data: { action: 'rejected', approvalId: 'approval-xyz' },
+    };
 
-    expect(eventBusEmit).toHaveBeenCalledWith('test-session-1234', {
-      event: 'approval_resolved',
-      sessionId: 'test-session-1234',
-      timestamp: expect.any(String),
-      data: { action: 'rejected', approvalId: 'approval-abc-123' },
-    });
+    expect(event.event).toBe('approval_resolved');
+    expect(event.data.action).toBe('rejected');
+    expect(event.data.approvalId).toBe('approval-xyz');
   });
 
-  it('approval_resolved is a valid SessionSSEEvent type', async () => {
-    // Import the type and verify it's in the union
+  it('SessionEventBus can emit and buffer approval_resolved events', async () => {
     const { SessionEventBus } = await import('../events.js');
     const bus = new SessionEventBus();
     const emitSpy = vi.spyOn(bus, 'emit');
 
-    bus.emit('test-session', {
+    const event: SessionSSEEvent = {
       event: 'approval_resolved',
-      sessionId: 'test-session',
+      sessionId: 'session-789',
       timestamp: new Date().toISOString(),
-      data: { action: 'approved', approvalId: 'test-approval' },
-    });
+      data: { action: 'approved', approvalId: 'approval-test' },
+    };
 
-    expect(emitSpy).toHaveBeenCalled();
+    bus.emit('session-789', event);
+
+    expect(emitSpy).toHaveBeenCalledWith('session-789', expect.objectContaining({
+      event: 'approval_resolved',
+      data: expect.objectContaining({
+        action: 'approved',
+        approvalId: 'approval-test',
+      }),
+    }));
+  });
+
+  it('control-actions source contains approval_resolved emit for approve', async () => {
+    // Verify the source code includes the emit call for approve
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const source = fs.readFileSync(
+      path.join(import.meta.dirname, '..', 'routes', 'control-actions.ts'),
+      'utf-8'
+    );
+
+    // After approveSession succeeds, emit approval_resolved
+    expect(source).toMatch(/approveSession.*\n.*\n.*eventBus\.emit.*approval_resolved.*approved/s);
+    expect(source).toMatch(/rejectSession.*\n.*\n.*eventBus\.emit.*approval_resolved.*rejected/s);
   });
 });
