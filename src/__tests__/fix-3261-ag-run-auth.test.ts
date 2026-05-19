@@ -18,6 +18,12 @@ vi.mock('../utils/auth-token-path.js', () => ({
   persistAuthTokenFile: vi.fn(),
 }));
 
+// #3670: Mock claude-installer so preflight passes
+vi.mock('../utils/claude-installer.js', () => ({
+  checkClaudeInstalled: vi.fn(async () => ({ installed: true })),
+  hasAnthropicCredentials: vi.fn(() => false),
+}));
+
 const AUTH_MANAGER_PATH = '../services/auth/index.js';
 const CONFIG_PATH = '../config.js';
 
