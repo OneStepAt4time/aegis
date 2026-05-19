@@ -191,7 +191,7 @@ ag read abc12345 --page 2      # Paginate
 ag read a9e0                   # Prefix match (8+ chars)
 ```
 
-**Prefix matching:** `ag read` accepts truncated session IDs (8+ characters). If the prefix is unique, it resolves automatically. If ambiguous or missing, an error is shown.
+**Prefix matching:** `ag read`, `ag kill`, `ag tail`, and `ag status <id>` accept truncated session IDs (8+ characters). If the prefix is unique, it resolves automatically. If ambiguous or missing, an error is shown.
 
 **Flags:**
 
@@ -202,30 +202,34 @@ ag read a9e0                   # Prefix match (8+ chars)
 
 ### `ag kill <id>` — Terminate a Session
 
-Kill a running session by ID.
+Kill a running session by ID. Supports prefix matching.
 
 ```bash
 ag kill abc12345
+ag kill 5070c990    # Prefix match
 ```
 
 Sends `DELETE /v1/sessions/:id` and confirms termination. Sessions in terminal states (`killed`, `completed`, `crashed`) return `404`.
 
-### `ag status` — Server Health
+### `ag status [id]` — Server Health or Session Status
 
-Show server health and session summary.
+Without an argument, show server health and session summary. With a session ID, show detailed session status and cost metrics. Supports prefix matching.
 
 ```bash
-ag status
+ag status              # Server health
+ag status abc12345     # Session details
+ag status 5070c990     # Prefix match
 ```
 
-Displays version, status, uptime, port, and active/total session counts.
+Server mode displays version, status, uptime, port, and active/total session counts. Session mode displays session details and cost metrics.
 
 ### `ag tail <id>` — Follow Session in Real-Time
 
-Stream session events as they arrive (SSE).
+Stream session events as they arrive (SSE). Supports prefix matching.
 
 ```bash
 ag tail abc12345
+ag tail 5070c990     # Prefix match
 ```
 
 Connects to the session's event stream and prints output live. Press `Ctrl+C` to stop.
@@ -325,9 +329,9 @@ ag init --from-template code-reviewer
 ag run "prompt"        Zero-to-session (bootstrap + start + create + stream)
 ag list                List sessions
 ag read <id>           Read session output
-ag kill <id>           Terminate a session
-ag status              Server health + session summary
-ag tail <id>           Follow session events in real-time
+ag kill <id>           Terminate a session (prefix match)
+ag status [id]         Server health or session details (prefix match)
+ag tail <id>           Follow session events in real-time (prefix match)
 ag create "brief"      Create + send
 ag doctor              Validate starter scaffolds
 ag mcp                 Start MCP server
