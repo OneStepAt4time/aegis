@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock("../utils/claude-installer.js", () => ({
+  ensureClaudeInstalled: vi.fn(),
+  checkClaudeInstalled: vi.fn(() => Promise.resolve({ installed: true })),
+  installClaudeCli: vi.fn(() => Promise.resolve(true)),
+}));
 import { parse as parseYaml } from 'yaml';
 
 import { runCli } from '../cli.js';
