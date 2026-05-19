@@ -167,7 +167,8 @@ Run this after upgrading from a version that stored tokens in config. If the tok
 List active and recent sessions.
 
 ```bash
-ag list                        # All sessions (truncated IDs)
+ag list                        # Active sessions (truncated IDs)
+ag list --all                  # Include killed/completed/crashed sessions
 ag list --status running      # Filter by status
 ag list --full-ids            # Show full UUIDs
 ag list --json                # Machine-readable JSON output
@@ -177,12 +178,13 @@ ag list --json                # Machine-readable JSON output
 
 | Flag | Description |
 |------|-------------|
+| `--all` | Include terminal sessions (`killed`, `completed`, `crashed`). Without this flag, only active sessions are shown. |
 | `--status <value>` | Filter sessions by status (e.g. `running`, `idle`, `completed`) |
 | `--cwd <path>` | Filter sessions by working directory |
 | `--full-ids` | Show full UUIDs instead of truncated 8-char IDs |
 | `--json` | Output session data as JSON (full IDs included), pipeable to `jq` |
 
-By default, displays each session as a compact row with truncated 8-char ID, status, and display name.
+By default, `ag list` hides sessions in terminal states (`killed`, `completed`, `crashed`). Use `--all` to see every session, including terminated ones.
 
 ### `ag read <id>` — Read Session Output
 
