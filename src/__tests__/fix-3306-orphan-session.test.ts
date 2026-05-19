@@ -54,6 +54,14 @@ vi.mock('../utils/claude-installer.js', () => ({
   hasAnthropicCredentials: vi.fn(() => false),
 }));
 
+// Mock node:child_process so claude auth check doesn't run real CLI
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn((_cmd: string, _args: string[], _opts: any, cb: any) => {
+    // Simulate claude CLI responding with version (auth OK)
+    cb(null, 'Claude Code 2.1.144', '');
+  }),
+}));
+
 import { handleRun } from '../commands/run.js';
 
 function makeIO() {
