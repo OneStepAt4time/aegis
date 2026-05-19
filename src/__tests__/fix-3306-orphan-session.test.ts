@@ -48,10 +48,13 @@ vi.mock('../utils/auth-token-path.js', () => ({
   persistAuthTokenFile: vi.fn(),
 }));
 
-// #3670: Mock claude-installer so preflight passes
+// #3670: Mock claude-installer to skip real claude CLI calls.
+// Return installed:false + credentials:true so preflight passes without execFile.
+// The dynamic import('node:child_process') in run.ts is not interceptable by vi.mock,
+// so we avoid the code path entirely.
 vi.mock('../utils/claude-installer.js', () => ({
-  checkClaudeInstalled: vi.fn(async () => ({ installed: true })),
-  hasAnthropicCredentials: vi.fn(() => false),
+  checkClaudeInstalled: vi.fn(async () => ({ installed: false })),
+  hasAnthropicCredentials: vi.fn(() => true),
 }));
 
 import { handleRun } from '../commands/run.js';
@@ -84,7 +87,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
       if (typeof url === 'string' && url.includes('/v1/sessions/stats')) {
         return { ok: false, status: 401, json: async () => ({ error: 'Unauthorized' }) };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
@@ -115,7 +119,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
@@ -143,7 +148,8 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
       }
-      return { ok: true, status: 200, json: async () => ({}) };
+      // Default: return idle session status so pollUntilComplete exits
+      return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
 
     const io = makeIO();
