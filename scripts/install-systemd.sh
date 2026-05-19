@@ -74,12 +74,27 @@ if [ "${SKIP_BUILD}" != "true" ]; then
   fi
 fi
 
-# 1. Kill any process holding our port (stale server from previous crash)
+# 1. Kill stale process on our port — ONLY if it is NOT a known Aegis instance
 PORT_PID=\$(ss -tlnp "sport = :\${AEGIS_PORT}" 2>/dev/null | grep -oP 'pid=\\K\\d+' | head -1)
 if [ -n "\$PORT_PID" ]; then
-  echo "ExecStartPre: killing stale process \$PORT_PID on port \$AEGIS_PORT"
-  kill -9 "\$PORT_PID" 2>/dev/null
-  sleep 1
+  # Check if this PID matches a known Aegis PID file (healthy running instance)
+  OWN_PID=""
+  for pidfile in "\$HOME/.aegis/aegis.pid"; do
+    if [ -f "\$pidfile" ]; then
+      FILE_PID=\$(cat "\$pidfile" 2>/dev/null)
+      if [ -n "\$FILE_PID" ] && kill -0 "\$FILE_PID" 2>/dev/null && [ "\$FILE_PID" = "\$PORT_PID" ]; then
+        OWN_PID="\$FILE_PID"
+        echo "ExecStartPre: port \$AEGIS_PORT held by Aegis PID \$OWN_PID — not killing"
+        break
+      fi
+    fi
+  done
+  # Only kill if NOT our own healthy instance
+  if [ -z "\$OWN_PID" ]; then
+    echo "ExecStartPre: killing stale process \$PORT_PID on port \$AEGIS_PORT"
+    kill -9 "\$PORT_PID" 2>/dev/null
+    sleep 1
+  fi
 fi
 
 # 2. Clean stale PID files
