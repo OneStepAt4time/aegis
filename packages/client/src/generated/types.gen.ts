@@ -3422,3 +3422,25 @@ export type PostV1SessionsIdApprovalRejectResponses = {
 };
 
 export type PostV1SessionsIdApprovalRejectResponse = PostV1SessionsIdApprovalRejectResponses[keyof PostV1SessionsIdApprovalRejectResponses];
+
+export type GetV1SettingsBudgetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/settings/budget';
+};
+
+export type GetV1SettingsBudgetResponses = {
+    /**
+     * Success
+     */
+    200: {
+        serverSideEnforcement: boolean;
+        dailyLimitUsd: number | null;
+        monthlyLimitUsd: number | null;
+        hardStopEnabled: boolean;
+        message: string;
+    };
+};
+
+export type GetV1SettingsBudgetResponse = GetV1SettingsBudgetResponses[keyof GetV1SettingsBudgetResponses];
