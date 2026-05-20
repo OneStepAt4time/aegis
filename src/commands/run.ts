@@ -282,7 +282,7 @@ async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: 
 /** Stream session transcript/output to terminal using polling.
  *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 90_000 for --yes mode.
  *  @returns true if output was received, false if timed out without output. */
-async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxIdleMs: number = 120_000): Promise<boolean> {
+export async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxIdleMs: number = 120_000): Promise<boolean> {
   const headers: Record<string, string> = {};
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
@@ -338,7 +338,10 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
       }
 
       // Check if session is done
-      if (data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed') {
+      // #3773: Also break on idle when we've received output (session ran and completed back to idle)
+      const isTerminal = data.status === 'completed' || data.status === 'error' || data.status === 'killed' || data.status === 'crashed';
+      const isIdleAfterWork = data.status === 'idle' && receivedAnyOutput;
+      if (isTerminal || isIdleAfterWork) {
         writeLine(io.stdout);
         if (data.status === 'error') {
           // Issue #3631: Detect rate-limit errors and show actionable advice
@@ -367,6 +370,8 @@ async function streamOutput(baseUrl: string, sessionId: string, authToken: strin
             writeLine(io.stderr, `  ❌ Session ended with error: ${data.statusText || 'unknown error'}`);
             writeLine(io.stderr, `     Check the dashboard or run: ag read ${sessionId}`);
           }
+        } else if (isIdleAfterWork) {
+          writeLine(io.stdout, `  ✅ Session completed successfully.`);
         } else {
           writeLine(io.stdout, `  ✅ Session ended: ${data.statusText || data.status}`);
         }
