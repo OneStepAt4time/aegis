@@ -118,7 +118,7 @@ describe('Issue #3752: Stall auto-recovery', () => {
 
     // The immediate notification should be sent
     expect(channels.payloads.length).toBeGreaterThanOrEqual(1);
-    expect(channels.payloads[0].detail).toContain('stall recovery');
+    expect(channels.payloads[0].detail).toContain('Stall recovery');
   });
 
   it('skips recovery when disabled', async () => {

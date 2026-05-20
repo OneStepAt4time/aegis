@@ -528,8 +528,8 @@ export class SessionMonitor {
 
     this.channels.statusChange(
       this.makePayload('status.stall', session,
-        `Attempting stall recovery (${stallType}): restarting session...`),
-    ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_notify'); });
+        `Stall recovery (${stallType}): restarting...`),
+    ).catch((e: unknown) => { suppressedCatch(e, 'sr_notify'); });
 
     // Fire-and-forget recovery
     retryWithJitter(
@@ -565,8 +565,8 @@ export class SessionMonitor {
       this.stallDeleteAll(sid);
       this.channels.statusChange(
         this.makePayload('status.stall', { ...session, status: 'idle' } as SessionInfo,
-          `Stall recovery successful. Session restarted.`),
-      ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_success_notify'); });
+          `Stall recovery OK — session restarted.`),
+      ).catch((e: unknown) => { suppressedCatch(e, 'sr_ok'); });
     }).catch((err: unknown) => {
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error({
@@ -579,8 +579,8 @@ export class SessionMonitor {
       this.stallRecovering.delete(sid);
       this.channels.statusChange(
         this.makePayload('status.stall', session,
-          `Stall recovery failed: ${errMsg}. Manual intervention required.`),
-      ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_failed_notify'); });
+          `Stall recovery failed: ${errMsg}`),
+      ).catch((e: unknown) => { suppressedCatch(e, 'sr_fail'); });
       this.alertManager?.recordFailure('session_failure',
         `Session "${displayName}" stall recovery failed: ${errMsg}`);
       this.metrics?.sessionFailed(sid);
