@@ -26,6 +26,8 @@ Behind the scenes, `ag run`:
 
 When Claude needs permission (to run a command, write a file), you'll see a prompt. Approve or deny right there.
 
+> **Tip:** Run from a directory under your home folder (`~/projects/`, `~/code/`, etc.). System temp dirs (`/tmp`) are not allowed by default. If you need to allow additional directories, set `allowedWorkDirs` in `~/.aegis/config.yaml` — changes take effect immediately without restart.
+
 <details>
 <summary>What you'll see</summary>
 
@@ -111,6 +113,7 @@ Now Claude can create sessions, read transcripts, and manage Aegis directly thro
 |---------|-----|
 | `claude: command not found` | `npm install -g @anthropic-ai/claude-code` then `claude login` |
 | Session hangs without output | Run `claude auth status` — you must be logged in |
+| `workDir is not in the allowed directories list` | Run from your home directory, or add the path to `allowedWorkDirs` in `~/.aegis/config.yaml` |
 | `401 Unauthorized` | On localhost with a fresh install, this shouldn't happen. If it does, delete `~/.aegis/` and retry |
 | `EADDRINUSE` | Port 9100 in use: `AEGIS_PORT=9200 ag run "..." --cwd ./my-project` |
 | Dashboard won't load | Check Aegis is running: `curl http://127.0.0.1:9100/v1/health` |
