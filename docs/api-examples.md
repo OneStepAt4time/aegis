@@ -56,9 +56,9 @@ Roles: `admin`, `operator`, `viewer`
 }
 ```
 
-**Response `403`** — forbidden (non-admin):
+**Response `404`** — not found (session ID enumeration prevention):
 ```json
-{"error": "Forbidden"}
+{"code": "NOT_FOUND", "message": "Session not found"}
 ```
 
 > **Save the `key` field** — it is only shown once on creation.
@@ -307,9 +307,9 @@ curl http://localhost:9100/v1/sessions/abc123 \
 }
 ```
 
-**Response `403`** — not owner:
+**Response `404`** — not found (no access):
 ```json
-{"error": "Forbidden"}
+{"code": "NOT_FOUND", "message": "Session not found"}
 ```
 
 ---
