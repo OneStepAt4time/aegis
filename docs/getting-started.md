@@ -29,13 +29,13 @@ npx --package=@onestepat4time/aegis ag run "Analyze this project and list the ma
 
 If the server is already running, `ag run` skips bootstrap and start — goes straight to session creation. Existing config is never overwritten.
 
-> **Zero-config on localhost:** When the server host is `localhost`, `127.0.0.1`, or `::1`, `ag init` skips admin token creation — no auth is needed. The server automatically allows unauthenticated requests from localhost when no tokens exist.
->
-> **Auth note:** If you previously configured an API token during `ag init` (or are running on a public host like `0.0.0.0`), set `AEGIS_AUTH_TOKEN` before running CLI commands:
+> **Already configured?** If you've already run `ag init`, you may have an API token set. Export it before running:
 > ```bash
 > export AEGIS_AUTH_TOKEN=your-secret-token
 > ```
-> Without this, `ag run` and `ag create` return `401 Unauthorized`.
+> Without this, commands return `401 Unauthorized`. If this is your first time and you haven't run `ag init`, no token is needed — Aegis auto-configures on `localhost`.
+>
+> **Zero-config on localhost:** When the server host is `localhost`, `127.0.0.1`, or `::1`, `ag init` skips admin token creation — no auth is needed. The server automatically allows unauthenticated requests from localhost when no tokens exist.
 
 | Flag | Description |
 |------|-------------|
@@ -51,6 +51,8 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 
 > **Note:** `ag run --help` shows the general help (which includes `ag run` in the usage section). For the full list of `ag run` flags, refer to the table above.
 
+> **`--cwd` safety:** System temp directories (`/tmp`, `/var/tmp`) are intentionally blocked for security. Use your project directory or home folder instead. If you get an `INVALID_WORKDIR` error, run from a different directory or add the path to `allowedWorkDirs` in `.aegis/config.yaml`.
+>
 > **Troubleshooting:** If `ag run` hangs without creating a session, fall back to the step-by-step setup below. It separates server start from session creation and gives clearer error output.
 
 ---
