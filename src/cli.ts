@@ -368,7 +368,11 @@ ${authBlock}  Flags:
 
 /** Main CLI entry point that dispatches subcommands and bootstraps the server. */
 export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO = defaultCliIO): Promise<number> {
-  if (argv.includes('--help') || argv.includes('-h')) {
+  // Issue #3796: Only show generic help if no subcommand is provided.
+  // Subcommands like 'run' handle their own --help with command-specific flags.
+  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'version', 'setup'];
+  const hasKnownCommand = argv.length > 0 && knownCommands.includes(argv[0]);
+  if ((argv.includes('--help') || argv.includes('-h')) && !hasKnownCommand) {
     printHelp(io);
     return 0;
   }
