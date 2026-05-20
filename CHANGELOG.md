@@ -9,66 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- **--model and --effort flags** for `ag create` and `ag run` — override model and set reasoning effort per session ([#3545](https://github.com/OneStepAt4time/aegis/pull/3545))
+- **Worktree isolation policy** — enforce per-session isolation mode (worktree|none) with config, env var, and API parameter ([#3651](https://github.com/OneStepAt4time/aegis/pull/3651))
+- **Sensible session display names** — `ag run` derives human-readable names from prompts; OIDC-aware conditional CLI help ([#3654](https://github.com/OneStepAt4time/aegis/pull/3654))
+- **Claude CLI auto-detect + guided install** — `ag init` and `ag run` detect missing Claude Code and offer guided install ([#3670](https://github.com/OneStepAt4time/aegis/pull/3670))
+- **--model and --effort flags** — override model and set reasoning effort per session in `ag create` and `ag run` ([#3545](https://github.com/OneStepAt4time/aegis/pull/3545))
 - **--cwd flag for ag list** — scope sessions by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537), [#3586](https://github.com/OneStepAt4time/aegis/pull/3586))
 - **--passthrough flag** — bypass all permissions, alias for `--accept-permissions` ([#3544](https://github.com/OneStepAt4time/aegis/pull/3544))
-- **Friendlier session display names** — `ag run` derives human-readable names from prompts ([#3489](https://github.com/OneStepAt4time/aegis/pull/3489))
+- **--session-id for ag create** — send to existing session instead of creating a new one ([#3760](https://github.com/OneStepAt4time/aegis/pull/3760))
+- **runnerName in SessionInfo** — identify agent type (claude-code, codex, etc.) in session responses ([#3691](https://github.com/OneStepAt4time/aegis/pull/3691))
+- **Budget enforcement status endpoint** — `GET /v1/settings/budget` returns enforcement state ([#3811](https://github.com/OneStepAt4time/aegis/pull/3811))
+- **Auto-recovery for stalled CC sessions** — detect and retry stalled Claude Code sessions automatically ([#3752](https://github.com/OneStepAt4time/aegis/pull/3752))
+- **Automatic rate-limit retry** — exponential backoff for Claude Code API rate limits ([#3754](https://github.com/OneStepAt4time/aegis/pull/3754))
+- **Telegram formatted session logging** — cc-connect style output with session metadata ([#3747](https://github.com/OneStepAt4time/aegis/pull/3747))
+- **telegramTopicId in session response** — expose Telegram topic ID in `GET /v1/sessions/:id` ([#3761](https://github.com/OneStepAt4time/aegis/pull/3761))
+- **approval_resolved SSE event** — emit after approve/reject for downstream consumers ([#3697](https://github.com/OneStepAt4time/aegis/pull/3697))
+- **CC auto-wiring during ag init** — detect Claude Code on PATH and offer MCP registration ([#3501](https://github.com/OneStepAt4time/aegis/pull/3501))
 - **Dashboard: model + effort per session** — ModelBadge and EffortIndicator in session table and detail page ([#3560](https://github.com/OneStepAt4time/aegis/pull/3560), [#3581](https://github.com/OneStepAt4time/aegis/pull/3581))
 - **Dashboard: isolation mode badge** — bgIsolation sessions show visual indicator ([#3539](https://github.com/OneStepAt4time/aegis/pull/3539))
 - **Dashboard: workDir filter** — filter session table by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537))
 - **Dashboard: CLI shortcuts panel** — inline CLI hints on Getting Started card
-- **CC auto-wiring during ag init** — detect Claude Code on PATH and offer MCP registration ([#3501](https://github.com/OneStepAt4time/aegis/pull/3501))
+- **Dashboard: stale-data indicator** — last-updated timestamp and stale-data UX ([#3809](https://github.com/OneStepAt4time/aegis/pull/3809))
+- **ag run --no-stream** — waits for completion and prints output instead of just curl commands ([#3696](https://github.com/OneStepAt4time/aegis/pull/3696))
+- **ag list --all** — show terminal sessions (killed/completed/crashed) that are hidden by default ([#3735](https://github.com/OneStepAt4time/aegis/pull/3735))
+- **ag kill/tail prefix matching** — `ag kill` and `ag tail` accept short session IDs ([#3672](https://github.com/OneStepAt4time/aegis/pull/3672))
+- **ag status session-id** — `ag status` accepts a session ID argument ([#3674](https://github.com/OneStepAt4time/aegis/pull/3674))
+- **Health includes session counts** — unauthenticated `/v1/health` now returns active/total session counts ([#3739](https://github.com/OneStepAt4time/aegis/pull/3739))
+- **Model auto-detection** — auto-detect model from Claude Code settings at session creation ([#3740](https://github.com/OneStepAt4time/aegis/pull/3740))
+
+### Security
+
+- **Viewer RBAC isolation** — tenant-scoped key enumeration, viewer cannot access admin endpoints ([#3382](https://github.com/OneStepAt4time/aegis/pull/3382))
+- **API key name validation** — reject unsafe characters in key names ([#3378](https://github.com/OneStepAt4time/aegis/pull/3378))
+- **strictRBAC config** — enforce RBAC even when auth is disabled ([#3208](https://github.com/OneStepAt4time/aegis/pull/3208))
+- **Auth guards on pipeline/usage endpoints** — requireRole on previously unprotected endpoints ([#3693](https://github.com/OneStepAt4time/aegis/pull/3693))
+- **Secret redaction in ACP payloads** — API keys and credentials replaced with `[REDACTED]` before storage ([#3617](https://github.com/OneStepAt4time/aegis/pull/3617))
+- **PID-aware port cleanup** — prevent stale PID files from blocking server start ([#3749](https://github.com/OneStepAt4time/aegis/pull/3749))
+- **Session ID enumeration prevention** — unauthorized sessions return 404 instead of 403
+- **XSS in esc()** — escape double quotes to prevent attribute injection ([#3209](https://github.com/OneStepAt4time/aegis/pull/3209))
+- **Telegram HTML sanitizer hardened** — escape single quotes, sanitize hrefs and callback_data ([#3219](https://github.com/OneStepAt4time/aegis/pull/3219))
 
 ### Bug Fixes
 
-- **VALID_PERMISSION_MODES sync** — align runtime permission modes with Zod schema to prevent silent downgrade ([#3577](https://github.com/OneStepAt4time/aegis/pull/3577))
-- **Missing peer deps** — move playwright, open, OTLP to optionalDependencies, remove unused ip-address ([#3574](https://github.com/OneStepAt4time/aegis/pull/3574))
-- **Tests resilient to missing dist/** — 3 tests no longer fail without a prior `npm run build` ([#3573](https://github.com/OneStepAt4time/aegis/pull/3573))
-- **Windows SIGINT fallback** — graceful shutdown on Windows when SIGINT unavailable
+- **Rate-limit error guidance** — surface actionable guidance when Claude Code API rate limits are hit ([#3631](https://github.com/OneStepAt4time/aegis/pull/3631), [#3758](https://github.com/OneStepAt4time/aegis/pull/3758))
+- **Stream timeout tuning** — less aggressive timeout for `ag run` streaming ([#3733](https://github.com/OneStepAt4time/aegis/pull/3733))
+- **INVALID_WORKDIR error** — include allowed directories in error message for guidance ([#3734](https://github.com/OneStepAt4time/aegis/pull/3734), [#3799](https://github.com/OneStepAt4time/aegis/pull/3799))
+- **EADDRINUSE prevention** — skip server start if already running ([#3770](https://github.com/OneStepAt4time/aegis/pull/3770))
+- **Idle status after completed work** — `ag run` handles idle status correctly ([#3774](https://github.com/OneStepAt4time/aegis/pull/3774))
+- **ag run --help** — shows run-specific flags instead of generic help ([#3796](https://github.com/OneStepAt4time/aegis/pull/3796))
+- **ag init non-TTY/Ctrl+D** — improve prompt rendering for non-TTY environments ([#3736](https://github.com/OneStepAt4time/aegis/pull/3736))
+- **Telegram infinite retry loop** — prevent infinite retry on `TOPIC_ID_INVALID` ([#3742](https://github.com/OneStepAt4time/aegis/pull/3742))
+- **Transcript cache memory** — reduce memory footprint and add socket timeout for CLOSE-WAIT connections ([#3762](https://github.com/OneStepAt4time/aegis/pull/3762))
+- **OOM prevention** — cap readNewEntries to 2MB per batch ([#3766](https://github.com/OneStepAt4time/aegis/pull/3766))
+- **Pending UIState validation** — add `pending` to UIStateEnum ([#3756](https://github.com/OneStepAt4time/aegis/pull/3756))
+- **Transcript byteOffset reset** — fix empty `/read` responses for idle/killed sessions ([#3632](https://github.com/OneStepAt4time/aegis/pull/3632))
+- **Windows SIGINT fallback** — graceful shutdown on Windows when SIGINT unavailable ([#3512](https://github.com/OneStepAt4time/aegis/pull/3512))
 - **Windows workDir normalization** — normalize Unix-style paths on Windows ([#3502](https://github.com/OneStepAt4time/aegis/pull/3502))
-- **ag read crash** — fix crash when reading sessions without auth
-- **ag tail unauthorized** — handle missing auth gracefully in tail command
+- **VALID_PERMISSION_MODES sync** — align runtime permission modes with Zod schema ([#3577](https://github.com/OneStepAt4time/aegis/pull/3577))
+- **Missing peer deps** — move playwright, open, OTLP to optionalDependencies ([#3574](https://github.com/OneStepAt4time/aegis/pull/3574))
 - **Auth-token file desync** — resolve client/server token mismatch
-- **Dashboard clipboard fallback** — robust handling for non-HTTPS mobile contexts ([#3525](https://github.com/OneStepAt4time/aegis/pull/3525))
-- **Config-path-walk test isolation** — isolate from host ~/.aegis/ state ([#3548](https://github.com/OneStepAt4time/aegis/pull/3548))
 - **Model string validation** — reject malformed model names on --model flag and API schema ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
 - **MCP scope detection** — fix global configs incorrectly wired as project-scoped ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
-- **Unused OTel deps removed** — strip gRPC and Fastify instrumentation deps ([#3605](https://github.com/OneStepAt4time/aegis/pull/3605))
-- **Secret redaction in ACP payloads** — API keys and credentials replaced with `[REDACTED]` before storage ([#3624](https://github.com/OneStepAt4time/aegis/pull/3624))
-- **TTL-tiered cache write pricing** — split cache costs into 5m (1.25×) and 1h (2×) tiers ([#3625](https://github.com/OneStepAt4time/aegis/pull/3625))
-- **Transcript byteOffset reset** — fix empty `/read` responses for idle/killed sessions ([#3632](https://github.com/OneStepAt4time/aegis/pull/3632))
-- **CLI prefix matching** — `ag read` accepts short IDs, `ag list --full-ids` and `--json` flags ([#3633](https://github.com/OneStepAt4time/aegis/pull/3633))
-
-### Test Coverage
-
-- Route-level tests for session-data, session-actions, templates ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
-- AuthManager and JsonFileStore direct tests ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
-- Session-transcripts, session-discovery, rate-limiter tests ([#3575](https://github.com/OneStepAt4time/aegis/pull/3575))
-- CommandPalette component tests ([#3620](https://github.com/OneStepAt4time/aegis/pull/3620))
-- Model validation regression tests ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
-- MCP scope detection tests ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
+- **Bundle hygiene** — direct ACP imports + shared backoff implementation ([#3781](https://github.com/OneStepAt4time/aegis/pull/3781))
 
 ### Documentation
 
-- Document --model, --effort, --cwd, --passthrough flags in CLI reference and getting-started guide ([#3571](https://github.com/OneStepAt4time/aegis/pull/3571), [#3588](https://github.com/OneStepAt4time/aegis/pull/3588), [#3589](https://github.com/OneStepAt4time/aegis/pull/3589))
+- **README accuracy fixes** — phantom `ag setup telegram`, stale version, Claude auth warning, handshake response, --cwd safety ([#3791](https://github.com/OneStepAt4time/aegis/issues/3791)-[#3795](https://github.com/OneStepAt4time/aegis/issues/3795))
+- **5-minute setup guide** — new quick-start guide for Aegis ([#3671](https://github.com/OneStepAt4time/aegis/pull/3671))
+- **Isolation policy docs** — config, env var, API parameter documentation ([#3652](https://github.com/OneStepAt4time/aegis/pull/3652))
+- **RunnerName + RBAC tables** — pipeline and usage tier RBAC documentation ([#3694](https://github.com/OneStepAt4time/aegis/pull/3694))
+- **approval_resolved SSE event** — add to API reference ([#3700](https://github.com/OneStepAt4time/aegis/pull/3700))
+- **--no-stream behavior update** — reflects new wait-and-print behavior ([#3704](https://github.com/OneStepAt4time/aegis/pull/3704))
+- **ag list --all docs** — document default terminal session filtering ([#3737](https://github.com/OneStepAt4time/aegis/pull/3737))
+- **Model auto-detection docs** — document CC settings auto-detection ([#3764](https://github.com/OneStepAt4time/aegis/pull/3764))
+- **Health + telegramTopicId docs** — update API reference ([#3768](https://github.com/OneStepAt4time/aegis/pull/3768))
+- **workDir allowlist guidance** — add to 5-minute setup guide ([#3769](https://github.com/OneStepAt4time/aegis/pull/3769))
+- **--session-id docs** — document ag create --session-id flag ([#3771](https://github.com/OneStepAt4time/aegis/pull/3771))
+- **Rate-limit retry + Telegram compact** — enterprise and notifications docs ([#3779](https://github.com/OneStepAt4time/aegis/pull/3779))
+- **Stall recovery config** — document stallRecoveryEnabled and stallRecoveryMaxRetries ([#3786](https://github.com/OneStepAt4time/aegis/pull/3786))
+- **NO_RUNNER_AVAILABLE error** — add to error codes table ([#3800](https://github.com/OneStepAt4time/aegis/pull/3800))
+- **Quick Start finalize** — post-epic Quick Start rework ([#3664](https://github.com/OneStepAt4time/aegis/pull/3664))
+- **CLI prefix matching docs** — ag kill/tail prefix matching, ag status session-id ([#3679](https://github.com/OneStepAt4time/aegis/pull/3679))
+- **Claude CLI auto-install docs** — document guided install in ag init and ag run ([#3685](https://github.com/OneStepAt4time/aegis/pull/3685))
+- Document --model, --effort, --cwd, --passthrough flags in CLI reference ([#3571](https://github.com/OneStepAt4time/aegis/pull/3571), [#3588](https://github.com/OneStepAt4time/aegis/pull/3588), [#3589](https://github.com/OneStepAt4time/aegis/pull/3589))
 - Document isolationMode session field in API reference ([#3595](https://github.com/OneStepAt4time/aegis/pull/3595))
-- Fix orphaned code fence in api-reference.md ([#3578](https://github.com/OneStepAt4time/aegis/pull/3578))
 - Fix README Session States table — remove ghost `asking` state, add 8 real states ([#3597](https://github.com/OneStepAt4time/aegis/pull/3597))
-- Add 25 missing env vars to enterprise.md config reference
-- Add review gate rule for non-trivial PRs ([#3557](https://github.com/OneStepAt4time/aegis/pull/3557))
-- CC v2.1.141–143 competitive intel update ([#3561](https://github.com/OneStepAt4time/aegis/pull/3561))
-- Document CC auto-wiring in getting-started and cli reference ([#3612](https://github.com/OneStepAt4time/aegis/pull/3612))
-- ccusage-dashboard competitive research — cache pricing TTL-split gap identified ([#3236](https://github.com/OneStepAt4time/aegis/issues/3236))
 - SECURITY.md — security policy for ACP registry listing ([#3628](https://github.com/OneStepAt4time/aegis/pull/3628))
-- Model validation format docs in api-reference.md ([#3623](https://github.com/OneStepAt4time/aegis/pull/3623))
-- Billing hooks docs for TTL-tiered pricing ([#3625](https://github.com/OneStepAt4time/aegis/pull/3625))
-- CLI prefix matching and --full-ids/--json docs ([#3635](https://github.com/OneStepAt4time/aegis/pull/3635))
-
-### CI
-
-- **Post-merge rebuild hook** — auto-rebuild dist/ and restart after develop merge ([#3630](https://github.com/OneStepAt4time/aegis/pull/3630))
+- CHANGELOG catch-up — dogfooding fixes, TTL pricing, SECURITY.md ([#3637](https://github.com/OneStepAt4time/aegis/pull/3637))
 
 ---
+
+
 
 ## [0.6.7](https://github.com/OneStepAt4time/aegis/compare/v0.6.6...v0.6.7) — 2026-05-16
 
@@ -165,8 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MeteringService lifecycle** wired for persistent cost tracking ([#3310](https://github.com/OneStepAt4time/aegis/pull/3310), [#3315](https://github.com/OneStepAt4time/aegis/pull/3315))
 - **Cost tracking API fixes** — 3 bugs in burn rate and per-session cost ([#3311](https://github.com/OneStepAt4time/aegis/pull/3311))
 - **Session completion from hooks** — make metrics idempotent ([#3427](https://github.com/OneStepAt4time/aegis/pull/3427))
-- **OpenAPI paths corrected** for approve/reject endpoints ([#3428](https://github.com/OneStepAt4time/aegis/pull/3428))
-- **approve/reject return 500** when no permission is pending ([#3428](https://github.com/OneStepAt4time/aegis/pull/3428))
+- **OpenAPI paths + approve/reject 500 fix** — corrected paths and fixed 500 when no permission is pending ([#3428](https://github.com/OneStepAt4time/aegis/pull/3428))
 - **Memory-bridge learnings pattern** — port gstack pattern ([#3452](https://github.com/OneStepAt4time/aegis/pull/3452))
 
 ### Bug Fixes — Dashboard
@@ -253,6 +282,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard deps** — dompurify, lucide-react, react-router-dom, zod ([#3474](https://github.com/OneStepAt4time/aegis/pull/3474))
 - **@opentelemetry/*** bumped to 0.218.x — removes protobufjs dependency ([#3476](https://github.com/OneStepAt4time/aegis/pull/3476))
 - **Helm chart versions** aligned with package.json
+## [0.6.6](https://github.com/OneStepAt4time/aegis/compare/v0.6.6-preview.1...v0.6.6) — 2026-05-08
+
+Stability release. CI and release pipeline fixes, no user-facing changes.
+
+### CI
+
+- Skip tag-freshness check for recovery releases ([#2516](https://github.com/OneStepAt4time/aegis/pull/2516))
+
+---
+
 ## [0.6.6-preview.1](https://github.com/OneStepAt4time/aegis/compare/v0.6.5-preview.3...v0.6.6-preview.1) (2026-05-03)
 
 
