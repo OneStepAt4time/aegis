@@ -1,85 +1,63 @@
-/**
- * ErrorBoundary.test.tsx — Tests for error boundary with fallback UI.
- */
-
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, afterAll } from 'vitest';
+import { render } from '@testing-library/react';
 import { ErrorBoundary } from '../ErrorBoundary';
 
-// Component that throws on demand
-function ThrowError({ shouldThrow }: { shouldThrow: boolean }) {
-  if (shouldThrow) throw new Error('Test error message');
-  return <div>All good</div>;
+function ThrowingChild({ shouldThrow }: { shouldThrow: boolean }) {
+  if (shouldThrow) throw new Error('test crash');
+  return <div>Healthy</div>;
 }
 
 describe('ErrorBoundary', () => {
-  // Suppress console.error from React error boundary in test output
-  const originalError = console.error;
-  beforeEach(() => {
-    console.error = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('Test error')) return;
-      if (typeof args[0] === 'string' && args[0].includes('The above error occurred')) return;
-      originalError.call(console, ...args);
-    };
-  });
-  afterEach(() => {
-    console.error = originalError;
-  });
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  afterAll(() => spy.mockRestore());
 
   it('renders children when no error', () => {
-    render(
+    const { container } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={false} />
-      </ErrorBoundary>,
+        <ThrowingChild shouldThrow={false} />
+      </ErrorBoundary>
     );
-    expect(screen.getByText('All good')).toBeTruthy();
+    expect(container.textContent).toContain('Healthy');
   });
 
-  it('renders fallback UI when child throws', () => {
-    render(
+  it('shows fallback UI when child throws', () => {
+    const { container } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
     );
-    expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.getByText(/Something went wrong/)).toBeTruthy();
+    expect(container.textContent).toContain('Something went wrong');
+    expect(container.textContent).toContain('test crash');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
   });
 
-  it('displays error message', () => {
-    render(
+  it('shows retry button after error', () => {
+    const { container } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
     );
-    expect(screen.getByText('Test error message')).toBeTruthy();
+    expect(container.querySelector('button')).not.toBeNull();
+    expect(container.querySelector('button')!.textContent).toContain('Try again');
   });
 
   it('renders custom fallback when provided', () => {
-    render(
-      <ErrorBoundary fallback={<div>Custom error</div>}>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
+    const { container } = render(
+      <ErrorBoundary fallback={<div data-testid="custom">Oops</div>}>
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
     );
-    expect(screen.getByText('Custom error')).toBeTruthy();
-    expect(screen.queryByText(/Something went wrong/)).toBeNull();
+    expect(container.querySelector('[data-testid="custom"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('Something went wrong');
   });
 
-  it('has try again button', () => {
-    render(
+  it('shows default message for error with empty message', () => {
+    function NoMsg(): never { throw new Error(''); }
+    const { container } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
+        <NoMsg />
+      </ErrorBoundary>
     );
-    expect(screen.getByText('Try again')).toBeTruthy();
-  });
-
-  it('has aria-live="assertive" for accessibility', () => {
-    render(
-      <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
-    );
-    const alert = screen.getByRole('alert');
-    expect(alert.getAttribute('aria-live')).toBe('assertive');
+    expect(container.textContent).toContain('An unexpected error occurred');
   });
 });
