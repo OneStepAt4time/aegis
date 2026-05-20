@@ -508,16 +508,15 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           abortRef.current = controller;
 
           try {
-            // Validate workDir before submit
-      const dirError = validateWorkDir(workDir);
-      if (dirError) {
-        setWorkDirError(dirError);
-        workDirRef.current?.focus();
-        return;
-      }
-      setWorkDirError(null);
+            // Validate workDir before submit (batch uses template.workDir)
+            const dirError = validateWorkDir(template.workDir);
+            if (dirError) {
+              setError(dirError);
+              setLoading(false);
+              return;
+            }
 
-      const session = await createSessionWithFallback({
+            const session = await createSessionWithFallback({
               workDir: template.workDir,
               prompt: template.prompt,
               claudeCommand: template.claudeCommand,
