@@ -431,15 +431,19 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           </div>
 
           {/* Add row button */}
-          {batchRows.length < 10 && (
+          {batchRows.length < 10 ? (
             <button
               type="button"
               onClick={addBatchRow}
               className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add session
+              Add session ({10 - batchRows.length} remaining)
             </button>
+          ) : (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Maximum 10 sessions per batch. Create additional batches as needed.
+            </p>
           )}
 
           {/* Permission mode */}

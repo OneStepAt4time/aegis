@@ -16,6 +16,8 @@ import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import SessionTable from '../components/overview/SessionTable';
 import CreateSessionModal from '../components/CreateSessionModal';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
+import { useLastUpdated } from '../hooks/useLastUpdated';
+import { LastUpdatedIndicator } from '../components/shared/LastUpdatedIndicator';
 import { KPIBanner } from '../components/analytics/KPIBanner';
 import type { KPIItem } from '../components/analytics/KPIBanner';
 import { ModelDistributionBar } from '../components/analytics/ModelDistributionBar';
@@ -60,10 +62,14 @@ export default function OverviewPage() {
   // Real-time SSE updates
   useSessionRealtimeUpdates();
 
+  // Track last data refresh time
+  const { relativeTime, isStale, markUpdated } = useLastUpdated();
+
   const fetchAnalytics = useCallback(async () => {
     try {
       const data = await getAnalyticsSummary();
       setAnalytics(data);
+      markUpdated();
       
     } catch (e) {
       /* analytics fetch failed — non-critical */
@@ -299,6 +305,9 @@ export default function OverviewPage() {
         >
           Recent Sessions
         </h3>
+        <div className="flex items-center justify-between">
+          <LastUpdatedIndicator relativeTime={relativeTime} isStale={isStale} />
+        </div>
         <div aria-labelledby="recent-sessions-heading"><SessionTable maxRows={5} /></div>
       </div>
 

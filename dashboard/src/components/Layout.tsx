@@ -329,6 +329,7 @@ export default function Layout() {
           },
           onClose: () => {
             setSseConnected(false);
+            setSseError(SSE_RECONNECTING_MESSAGE);
           },
           onGiveUp: () => {
             setSseRetryCount(0);

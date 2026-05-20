@@ -12,6 +12,7 @@ import { Drawer } from './shared/Drawer';
 import { createSessionWithFallback, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
+import { useRecentDirs } from '../hooks/useRecentDirs';
 import { useDrawerStore } from '../store/useDrawerStore';
 import { useConfetti } from '../hooks/useConfetti';
 import { useT } from '../i18n/context';
@@ -22,6 +23,7 @@ import { PERMISSION_MODES, validateWorkDir } from '../utils/sessionCreation';
 export function NewSessionDrawer() {
   const navigate = useNavigate();
   const addToast = useToastStore((t) => t.addToast);
+  const { add: addRecentDir } = useRecentDirs();
   const t = useT();
   const { newSessionOpen, closeNewSession } = useDrawerStore();
   const { triggerFirstSessionConfetti } = useConfetti();
@@ -109,6 +111,7 @@ export function NewSessionDrawer() {
       const msg = err instanceof Error ? err.message : 'Failed to create session';
       addToast('error', 'Creation failed', msg);
     } finally {
+      addRecentDir(workDir.trim());
       setLoading(false);
     }
   }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession, triggerFirstSessionConfetti]);
