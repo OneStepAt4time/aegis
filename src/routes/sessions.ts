@@ -428,6 +428,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           : await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
+        // Issue #3797: Fail loudly when prompt delivery fails due to no runner
+        if (prompt && promptDelivery && !promptDelivery.delivered && !ctx.config.acpEnabled) {
+          return reply.status(422).send({
+            error: 'NO_RUNNER_AVAILABLE',
+            message: 'Prompt not delivered: no agent runner available. Enable ACP by setting AEGIS_ACP_ENABLED=true or adding "acpEnabled": true to .aegis/config.yaml.',
+          });
+        }
         return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
       } finally {
         sessions.releaseSessionClaim(existing.id);
@@ -513,12 +520,19 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    // Issue #3068: Warn when ACP is disabled — sessions are created but no agent runs
-    const acpWarning = prompt && !ctx.config.acpEnabled && promptDelivery && !promptDelivery.delivered
-      ? 'Session created but prompt not delivered: ACP is disabled. Set AEGIS_ACP_ENABLED=true or add "acpEnabled": true to config to enable Claude Code sessions.'
-      : undefined;
+    // Issue #3797: When prompt provided but no runner available, return 422 instead of 201 with silent failure.
+    // This prevents the API from returning promptDelivery.delivered=false while looking successful.
+    if (prompt && promptDelivery && !promptDelivery.delivered && !ctx.config.acpEnabled) {
+      await sessions.killSession(session.id);
+      cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
+      return reply.status(422).send({
+        error: 'NO_RUNNER_AVAILABLE',
+        message: 'Session not created: no agent runner available to execute the prompt. Enable ACP by setting AEGIS_ACP_ENABLED=true or adding "acpEnabled": true to .aegis/config.yaml.',
+        hint: 'The session was created then cleaned up because no runner could deliver the prompt.',
+      });
+    }
 
-    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery, ...(acpWarning ? { warning: acpWarning } : {}) });
+    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
