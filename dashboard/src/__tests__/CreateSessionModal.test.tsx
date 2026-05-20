@@ -66,7 +66,7 @@ describe('CreateSessionModal', () => {
     // Batch-specific elements appear
     expect(screen.getByText('Shared Prompt')).toBeDefined();
     expect(screen.getByPlaceholderText('Apply to all sessions without a per-row prompt...')).toBeDefined();
-    expect(screen.getByText('Add session')).toBeDefined();
+    expect(screen.getByText(/Add session/)).toBeDefined();
   });
 
   // ── Default rows ────────────────────────────────────────────────
@@ -87,7 +87,7 @@ describe('CreateSessionModal', () => {
 
     expect(getWorkDirInputs()).toHaveLength(2);
 
-    fireEvent.click(screen.getByText('Add session'));
+    fireEvent.click(screen.getByText(/Add session/));
 
     expect(getWorkDirInputs()).toHaveLength(3);
   });

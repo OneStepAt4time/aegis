@@ -463,8 +463,14 @@ export default function SessionHistoryPage() {
         className="mb-2"
       />
 
-      {/* Filters */}
-      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
+      {/* Filters — NLFilterBar above handles quick natural-language queries.
+          The panel below is for structured filtering (status, date, owner, sort). */}
+      <details className="group rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50" open>
+        <summary className="flex items-center justify-between cursor-pointer px-4 py-3 text-xs font-medium text-[var(--color-text-muted)] select-none">
+          <span>Structured filters (status, date, owner, sort)</span>
+          <svg className="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
+        </summary>
+        <div className="border-t border-[var(--color-void-lighter)] p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap xl:items-end xl:gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="search-filter" className="text-xs text-[var(--color-text-muted)]">{t('sessionHistory.search')}</label>
@@ -574,7 +580,8 @@ export default function SessionHistoryPage() {
             {t('sessionHistory.clear')}
           </button>
         </div>
-      </div>
+        </div>
+      </details>
 
       {endpointMissing ? (
         <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
