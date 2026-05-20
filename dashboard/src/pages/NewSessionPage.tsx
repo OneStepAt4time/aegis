@@ -83,11 +83,18 @@ export default function NewSessionPage() {
   }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir, t]);
 
   function applyTemplate(template: SessionTemplate): void {
+    // Check if user has unsaved form data
+    const hasFormData = name || workDir || prompt || claudeCommand || permissionMode !== 'default';
+    if (hasFormData) {
+      const confirmed = window.confirm(t('newSession.templateOverwriteConfirm'));
+      if (!confirmed) return;
+    }
     setName(template.name);
     setWorkDir(template.workDir);
     setPrompt(template.prompt ?? '');
     setClaudeCommand(template.claudeCommand ?? '');
     setPermissionMode(template.permissionMode ?? 'default');
+    addToast('success', t('newSession.templateApplied'));
   }
 
   return (
