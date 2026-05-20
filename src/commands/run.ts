@@ -282,6 +282,24 @@ async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: 
 /** Stream session transcript/output to terminal using polling.
  *  @param maxIdleMs Maximum idle time before timing out (default 120s). Set to 90_000 for --yes mode.
  *  @returns true if output was received, false if timed out without output. */
+/**
+ * Issue #3887: Kill a session on the server when the CLI is interrupted.
+ * Best-effort — swallows errors since the process is exiting anyway.
+ */
+export async function killSessionOnExit(baseUrl: string, sessionId: string, authToken: string | undefined): Promise<void> {
+  try {
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    await fetch(`${baseUrl}/sessions/${sessionId}/kill`, {
+      method: 'POST',
+      headers,
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    // Best-effort — process is exiting, network may be down
+  }
+}
+
 export async function streamOutput(baseUrl: string, sessionId: string, authToken: string | undefined, io: CliIO, maxIdleMs: number = 120_000): Promise<boolean> {
   const headers: Record<string, string> = {};
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
@@ -722,6 +740,17 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
+  // Issue #3887: Register signal handlers to kill session on CLI exit
+  let signalReceived = false;
+  const onSignal = (sig: string) => {
+    if (signalReceived) return; // Prevent double-fire
+    signalReceived = true;
+    writeLine(io.stderr, `\n  ⏔ Received ${sig} — cleaning up session ${sessionId.slice(0, 8)}...`);
+    void killSessionOnExit(baseUrl, sessionId, authToken).finally(() => process.exit(130));
+  };
+  process.on('SIGTERM', onSignal);
+  process.on('SIGINT', onSignal);
+
   // Dashboard URL
   const dashboardUrl = baseUrl.replace('/v1', '');
   writeLine(io.stdout, `  📊 Dashboard: ${dashboardUrl}`);
@@ -731,6 +760,9 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     // poll until session completes then print all output.
     const pollTimeoutMs = 300_000; // 5 min max wait
     await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
+    // Issue #3887: Remove signal handlers on normal exit
+    process.removeListener('SIGTERM', onSignal);
+    process.removeListener('SIGINT', onSignal);
     return 0;
   }
 
@@ -740,6 +772,10 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   const defaultTimeoutMs = skipPrompts ? 300_000 : 120_000;
   const streamTimeoutMs = cliTimeoutSec !== null ? cliTimeoutSec * 1000 : defaultTimeoutMs;
   const receivedOutput = await streamOutput(baseUrl, sessionId, authToken, io, streamTimeoutMs);
+
+  // Issue #3887: Remove signal handlers on normal exit
+  process.removeListener('SIGTERM', onSignal);
+  process.removeListener('SIGINT', onSignal);
 
   // Issue #3732: If timed out without output, show actionable error (all modes)
   if (!receivedOutput) {
