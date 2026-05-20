@@ -251,7 +251,7 @@ describe('ChannelManager', () => {
       const payload = createPayload('status.working');
 
       // Should not throw
-      await expect(manager.statusChange(payload)).resolves.toBeUndefined();
+      manager.statusChange(payload);
     });
   });
 
@@ -337,10 +337,10 @@ describe('ChannelManager', () => {
       await manager.destroy();
 
       const payload = createPayload('session.created');
-      await expect(manager.sessionCreated(payload)).resolves.toBeUndefined();
-      await expect(manager.sessionEnded(payload)).resolves.toBeUndefined();
-      await expect(manager.message(payload)).resolves.toBeUndefined();
-      await expect(manager.statusChange(payload)).resolves.toBeUndefined();
+      manager.sessionCreated(payload);
+      manager.sessionEnded(payload);
+      manager.message(payload);
+      manager.statusChange(payload);
     });
   });
 

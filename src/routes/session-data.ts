@@ -341,7 +341,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     const detail = tool_name
       ? `Permission request: ${tool_name}${permission_mode ? ` (${permission_mode})` : ''}`
       : 'Permission requested';
-    await channels.statusChange({
+    channels.statusChange({
       event: 'status.permission',
       timestamp: new Date().toISOString(),
       session: { id: session.id, name: session.displayName, workDir: session.workDir },
@@ -368,7 +368,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
     const detail = stop_reason
       ? `Claude Code stopped: ${stop_reason}`
       : 'Claude Code session ended normally';
-    await channels.statusChange({
+    channels.statusChange({
       event: 'status.idle',
       timestamp: new Date().toISOString(),
       session: { id: session.id, name: session.displayName, workDir: session.workDir },

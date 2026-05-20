@@ -1,21 +1,22 @@
 /**
- * fire-and-forget-rejections.test.ts — Tests for Issue #404:
+ * fire-and-forget-rejections.test.ts — Tests for Issue #404 + #3837:
  * Unhandled promise rejections in fire-and-forget monitor paths.
  *
+ * After #3837, ChannelManager methods (message, statusChange, etc.) are
+ * fire-and-forget (return void). Errors are caught inside fanOut's try/catch.
+ *
  * Verifies that:
- * - handleWatcherEvent catches forwardMessage rejections (logs, doesn't crash)
- * - debounced broadcastStatusChange catches rejections (logs, doesn't crash)
- * - Rejections do not propagate as unhandled promise rejections
+ * - Channel failures inside fanOut are caught (no unhandled rejection)
+ * - forwardMessage continues processing after channel failures
+ * - broadcastStatusChange debounce continues after channel failures
+ * - No unhandled promise rejections from fire-and-forget paths
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SessionInfo } from '../session.js';
-import type { ChannelManager, SessionEventPayload } from '../channels/index.js';
-import type { SessionEventBus } from '../events.js';
-import type { JsonlWatcher } from '../jsonl-watcher.js';
-import type { ParsedEntry } from '../transcript.js';
-import type { UIState } from '../api-contracts.js';
 import { SessionMonitor, DEFAULT_MONITOR_CONFIG } from '../monitor.js';
+import { ChannelManager } from '../channels/manager.js';
+import type { Channel, SessionEventPayload } from '../channels/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,10 +36,53 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
     createdAt: Date.now() - 60_000,
     lastActivity: Date.now() - 10_000,
     stallThresholdMs: 5 * 60 * 1000,
-    permissionStallMs: 5 * 60 * 1000,
+    permissionStallMs: 5 * 60_000,
     permissionMode: 'default',
+    tenantId: '_system',
+    ownerKeyId: 'master',
+    ...overrides,
+  } as SessionInfo;
+}
+
+function makeMessage(overrides: Record<string, unknown> = {}) {
+  return {
+    role: 'assistant',
+    contentType: 'text',
+    text: 'Hello',
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
+}
+
+/** Flush all pending microtasks and timers. */
+async function flushAll(ms = 100): Promise<void> {
+  await new Promise(r => setTimeout(r, ms));
+}
+
+/**
+ * Create a ChannelManager with a registered channel that rejects all calls.
+ */
+function createFailingChannelManager() {
+  const failingChannel: Channel = {
+    name: 'mock-failing',
+    onSessionCreated: vi.fn(async (_payload: SessionEventPayload) => {
+      throw new Error('Channel delivery failed');
+    }),
+    onSessionEnded: vi.fn(async (_payload: SessionEventPayload) => {
+      throw new Error('Channel ended failed');
+    }),
+    onMessage: vi.fn(async (_payload: SessionEventPayload) => {
+      throw new Error('Channel message failed');
+    }),
+    onStatusChange: vi.fn(async (_payload: SessionEventPayload) => {
+      throw new Error('Channel status failed');
+    }),
+  };
+
+  const mgr = new ChannelManager();
+  mgr.register(failingChannel);
+
+  return { mgr, failingChannel };
 }
 
 function mockSessionManager(sessions: SessionInfo[] = []) {
@@ -48,56 +92,20 @@ function mockSessionManager(sessions: SessionInfo[] = []) {
   return {
     listSessions: vi.fn(() => [...sessionMap.values()]),
     getSession: vi.fn((id: string) => sessionMap.get(id) ?? null),
-    isWindowAlive: vi.fn<(id: string) => Promise<boolean>>(async () => true),
-    killSession: vi.fn(async () => {}),
     readMessagesForMonitor: vi.fn(async () => ({
-      messages: [] as ParsedEntry[],
-      status: 'idle' as UIState,
-      statusText: null as string | null,
-      interactiveContent: null as string | null,
+      messages: [],
+      status: 'working',
+      statusText: null,
+      interactiveContent: null,
     })),
-    approve: vi.fn(async () => {}),
-    reject: vi.fn(async () => {}),
   };
-}
-
-function mockChannelManager() {
-  return {
-    statusChange: vi.fn(async (_payload: SessionEventPayload) => {}),
-    message: vi.fn(async (_payload: SessionEventPayload) => {}),
-  };
-}
-
-function mockEventBus() {
-  return {
-    emitDead: vi.fn(),
-    emitStall: vi.fn(),
-    emitMessage: vi.fn(),
-    emitSystem: vi.fn(),
-    emitStatus: vi.fn(),
-    emitApproval: vi.fn(),
-  };
-}
-
-function makeMessage(overrides: Partial<ParsedEntry> = {}): ParsedEntry {
-  return {
-    role: 'assistant',
-    contentType: 'text',
-    text: 'Hello world',
-    ...overrides,
-  };
-}
-
-/** Flush pending timers and microtasks. */
-async function flushAll(ms = 50): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Issue #404: Fire-and-forget rejection handling', () => {
+describe('Issue #404/#3837: Fire-and-forget rejection handling', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -108,52 +116,11 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  describe('handleWatcherEvent → forwardMessage rejection', () => {
-    it('logs error when forwardMessage rejects (channel failure)', async () => {
-      const session = makeSession({ id: 'fw-reject-1' });
-      const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      // Simulate channel failure
-      channels.message.mockRejectedValue(new Error('Channel delivery failed'));
-      const bus = mockEventBus();
-      const watcher = {
-        watch: vi.fn(),
-        unwatch: vi.fn(),
-        isWatching: vi.fn(() => false),
-        onEntries: vi.fn(),
-      };
-
-      const monitor = new SessionMonitor(
-        sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
-      );
-      monitor.setEventBus(bus as unknown as SessionEventBus);
-      monitor.setJsonlWatcher(watcher as unknown as JsonlWatcher);
-
-      // Trigger handleWatcherEvent with a message that will cause forwardMessage to reject
-      const onEntries = watcher.onEntries.mock.calls[0][0] as (event: any) => void;
-      onEntries({
-        sessionId: 'fw-reject-1',
-        newOffset: 500,
-        messages: [makeMessage()],
-      });
-
-      // Wait for the fire-and-forget promise to settle
-      await flushAll(100);
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"errorCode":"FORWARD_MESSAGE_FAILED"'),
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"sessionId":"fw-reject-1"'),
-      );
-    });
-
-    it('does not throw unhandled rejection when forwardMessage fails', async () => {
+  describe('handleWatcherEvent → forwardMessage', () => {
+    it('does not throw unhandled rejection when channel fails', async () => {
       const session = makeSession({ id: 'fw-nothrow-1' });
       const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      channels.message.mockRejectedValue(new Error('Network error'));
+      const { mgr: channels } = createFailingChannelManager();
 
       const watcher = {
         watch: vi.fn(),
@@ -164,9 +131,9 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
 
       const monitor = new SessionMonitor(
         sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
+        channels as unknown as import('../channels/index.js').ChannelManager,
       );
-      monitor.setJsonlWatcher(watcher as unknown as JsonlWatcher);
+      monitor.setJsonlWatcher(watcher as unknown as import('../jsonl-watcher.js').JsonlWatcher);
 
       const rejectionHandler = vi.fn();
       process.on('unhandledRejection', rejectionHandler);
@@ -190,12 +157,7 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
     it('continues processing subsequent messages after one fails', async () => {
       const session = makeSession({ id: 'fw-continue-1' });
       const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      let callCount = 0;
-      channels.message.mockImplementation(async () => {
-        callCount++;
-        if (callCount === 1) throw new Error('First call fails');
-      });
+      const { mgr: channels, failingChannel } = createFailingChannelManager();
 
       const watcher = {
         watch: vi.fn(),
@@ -206,9 +168,9 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
 
       const monitor = new SessionMonitor(
         sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
+        channels as unknown as import('../channels/index.js').ChannelManager,
       );
-      monitor.setJsonlWatcher(watcher as unknown as JsonlWatcher);
+      monitor.setJsonlWatcher(watcher as unknown as import('../jsonl-watcher.js').JsonlWatcher);
 
       const onEntries = watcher.onEntries.mock.calls[0][0] as (event: any) => void;
       onEntries({
@@ -220,72 +182,32 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
         ],
       });
 
-      await flushAll(100);
+      await flushAll(200);
 
       // Both messages should have been attempted
-      expect(channels.message).toHaveBeenCalledTimes(2);
-      // Error logged for first, not second
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(failingChannel.onMessage).toHaveBeenCalledTimes(2);
     });
   });
 
-  describe('debounced broadcastStatusChange rejection', () => {
-    it('logs error when broadcastStatusChange rejects', async () => {
-      const session = makeSession({ id: 'bc-reject-1' });
-      const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      channels.statusChange.mockRejectedValue(new Error('Webhook delivery failed'));
-
-      const monitor = new SessionMonitor(
-        sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
-      );
-
-      // Simulate a status change via checkSession — need readMessagesForMonitor
-      sessions.readMessagesForMonitor.mockResolvedValue({
-        messages: [],
-        status: 'permission_prompt',
-        statusText: null,
-        interactiveContent: 'Allow tool use?',
-      });
-
-      // Set previous status so a change is detected
-      (monitor as any).lastStatus.set('bc-reject-1', 'working');
-
-      // checkSession triggers debounced broadcastStatusChange
-      await (monitor as any).checkSession(session);
-
-      // Wait for debounce (500ms) + catch handler
-      await flushAll(700);
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"errorCode":"BROADCAST_STATUS_CHANGE_FAILED"'),
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"sessionId":"bc-reject-1"'),
-      );
-    });
-
-    it('does not throw unhandled rejection when broadcastStatusChange fails', async () => {
+  describe('debounced broadcastStatusChange', () => {
+    it('does not throw unhandled rejection when broadcastStatusChange channel fails', async () => {
       const session = makeSession({ id: 'bc-nothrow-1' });
       const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      channels.statusChange.mockRejectedValue(new Error('Telegram API error'));
+      const { mgr: channels } = createFailingChannelManager();
 
       const monitor = new SessionMonitor(
         sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
+        channels as unknown as import('../channels/index.js').ChannelManager,
       );
 
       sessions.readMessagesForMonitor.mockResolvedValue({
         messages: [],
         status: 'idle',
-        statusText: 'Done',
+        statusText: null,
         interactiveContent: null,
-      });
+      } as any);
 
       (monitor as any).lastStatus.set('bc-nothrow-1', 'working');
-      // Set idleSince so idle debounce passes (>3s)
       (monitor as any).idleSince.set('bc-nothrow-1', Date.now() - 5_000);
 
       const rejectionHandler = vi.fn();
@@ -304,48 +226,41 @@ describe('Issue #404: Fire-and-forget rejection handling', () => {
     it('monitor continues polling after broadcast rejection', async () => {
       const session = makeSession({ id: 'bc-continue-1' });
       const sessions = mockSessionManager([session]);
-      const channels = mockChannelManager();
-      let statusCallCount = 0;
-      channels.statusChange.mockImplementation(async () => {
-        statusCallCount++;
-        if (statusCallCount === 1) throw new Error('First broadcast fails');
-      });
+      const { mgr: channels, failingChannel } = createFailingChannelManager();
 
       const monitor = new SessionMonitor(
         sessions as unknown as ConstructorParameters<typeof SessionMonitor>[0],
-        channels as unknown as ChannelManager,
+        channels as unknown as import('../channels/index.js').ChannelManager,
         { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 10, deadCheckIntervalMs: 100_000, stallCheckIntervalMs: 100_000 },
       );
 
-      // First check: trigger a permission_prompt change that will reject
+      // First check: trigger a permission_prompt change
       sessions.readMessagesForMonitor.mockResolvedValue({
         messages: [],
-        status: 'permission_prompt' as UIState,
-        statusText: null as string | null,
+        status: 'permission_prompt',
+        statusText: null,
         interactiveContent: 'Allow?',
-      });
+      } as any);
       await (monitor as any).checkSession(session);
       await flushAll(700);
 
-      // Error should have been logged for the first rejection
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      // Channel should have been called
+      expect(failingChannel.onStatusChange).toHaveBeenCalled();
+      const firstCallCount = (failingChannel.onStatusChange as ReturnType<typeof vi.fn>).mock.calls.length;
 
       // Second check: trigger a different status change
-      // Reset lastStatus so a new change is detected
       (monitor as any).lastStatus.delete('bc-continue-1');
       sessions.readMessagesForMonitor.mockResolvedValue({
         messages: [],
-        status: 'permission_prompt' as UIState,
-        statusText: null as string | null,
+        status: 'permission_prompt',
+        statusText: null,
         interactiveContent: 'Another permission?',
-      });
+      } as any);
       await (monitor as any).checkSession(session);
       await flushAll(700);
 
-      // Second call should have succeeded (no more errors)
-      expect(channels.statusChange).toHaveBeenCalledTimes(2);
-      // Only one error logged
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      // Second call should have happened (monitor continued)
+      expect((failingChannel.onStatusChange as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(firstCallCount);
     });
   });
 });
