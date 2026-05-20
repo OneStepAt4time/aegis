@@ -245,13 +245,16 @@ export default function Layout() {
 
     const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
     let wasMobileViewport = mediaQuery.matches;
+    let hasAutoOpened = false;
 
     const handleViewportChange = () => {
       const nextIsMobileViewport = mediaQuery.matches;
       setIsMobileViewport(nextIsMobileViewport);
 
-      if (!wasMobileViewport && nextIsMobileViewport) {
+      // Only auto-open once on the first desktop→mobile transition (fixes #3820)
+      if (!hasAutoOpened && !wasMobileViewport && nextIsMobileViewport) {
         setMobileOpen(true);
+        hasAutoOpened = true;
       }
 
       wasMobileViewport = nextIsMobileViewport;
