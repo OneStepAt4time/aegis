@@ -777,7 +777,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `workDir` | string | **yes** | Absolute path to an existing directory (file paths are rejected) |
+| `workDir` | string | **yes** | Absolute path to an existing directory (file paths are rejected). `cwd` accepted as alias; `workDir` takes precedence when both are provided |
 | `name` | string | no | Session name (max 200 chars, `a-zA-Z0-9_ ./@-=` only; defaults to auto-generated) |
 | `label` | string | no | Alias for `name` (same character restrictions; `name` takes precedence) |
 | `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided). For follow-up messages after creation, use `POST /v1/sessions/:id/send` with `text` field. |
