@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseArgs } from '../commands/run.js';
 
 // Minimal test: verify the timeout defaults and overrides
 describe('Issue #3865: Configurable idle timeout', () => {
