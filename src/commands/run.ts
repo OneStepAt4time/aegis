@@ -289,6 +289,7 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
   let lastLineCount = 0;
   let lastActivity = Date.now();
   let receivedAnyOutput = false;
+  let accumulatedEntries: Array<{ text: string; role?: string; contentType?: string }> = [];
 
   writeLine(io.stdout);
   writeLine(io.stdout, '  📡 Streaming session output (Ctrl+C to stop)...');
@@ -324,6 +325,10 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
 
       // #3368: Read endpoint returns `messages`, not `lines` or `transcript`
       const entries = data.messages || [];
+      // #3758: Accumulate entries for rate-limit check in timeout path
+      if (entries.length > accumulatedEntries.length) {
+        accumulatedEntries = entries;
+      }
       if (entries.length > lastLineCount) {
         const newEntries = entries.slice(lastLineCount);
         for (const entry of newEntries) {
@@ -368,7 +373,11 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
             process.exitCode = 2;
           } else {
             writeLine(io.stderr, `  ❌ Session ended with error: ${data.statusText || 'unknown error'}`);
-            writeLine(io.stderr, `     Check the dashboard or run: ag read ${sessionId}`);
+            writeLine(io.stderr);
+            writeLine(io.stderr, '  If this is a rate limit, try:');
+            writeLine(io.stderr, '    1. Waiting for the rate limit window to reset');
+            writeLine(io.stderr, '    2. Using a different model: ag run "..." --model <model>');
+            writeLine(io.stderr, `    3. Check transcript: ag read ${sessionId}`);
           }
         } else if (isIdleAfterWork) {
           writeLine(io.stdout, `  ✅ Session completed successfully.`);
@@ -391,12 +400,38 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
     }
   }
 
-  // #3732: Clear idle timeout message (replaces generic "Stream interrupted")
+  // #3758: Check for rate-limit in timeout path
   if (!receivedAnyOutput && Date.now() - lastActivity >= maxIdleMs) {
-    writeLine(io.stderr);
-    writeLine(io.stderr, `  ⏱️  No output received within ${Math.round(maxIdleMs / 1000)}s idle timeout.`);
-    writeLine(io.stderr, '  The session may still be running. Check with:');
-    writeLine(io.stderr, `    ag read ${sessionId}`);
+    // Check accumulated transcript for rate limit indicators
+    const rateLimitTexts = accumulatedEntries
+      .slice(-10)  // Check last 10 messages
+      .map(e => e.text)
+      .filter(Boolean);
+    const hitRateLimit = rateLimitTexts.some(t => isRateLimitError(t));
+
+    if (hitRateLimit) {
+      writeLine(io.stderr);
+      writeLine(io.stderr, '  ❌ Rate limit hit — the Claude API quota is exhausted.');
+      writeLine(io.stderr);
+      writeLine(io.stderr, '  To fix this:');
+      writeLine(io.stderr, '    1. Wait for the rate limit window to reset (check error message for timing)');
+      writeLine(io.stderr, '    2. Use a different model:  ag run "..." --model <model>');
+      writeLine(io.stderr, '    3. Use a different provider: export ANTHROPIC_API_KEY=<key-with-higher-limits>');
+      writeLine(io.stderr);
+      process.exitCode = 2;
+    } else {
+      writeLine(io.stderr);
+      writeLine(io.stderr, `  ⏱️  No output received within ${Math.round(maxIdleMs / 1000)}s idle timeout.`);
+      writeLine(io.stderr, '  This may be caused by:');
+      writeLine(io.stderr, '    • Claude API rate limit or quota exhaustion');
+      writeLine(io.stderr, '    • Network connectivity issues');
+      writeLine(io.stderr, '    • Session waiting for permission approval');
+      writeLine(io.stderr);
+      writeLine(io.stderr, '  To troubleshoot:');
+      writeLine(io.stderr, '    1. Check rate limits: https://console.anthropic.com/settings/limits');
+      writeLine(io.stderr, `    2. View session transcript: ag read ${sessionId}`);
+      writeLine(io.stderr, '    3. Try a different model: ag run "..." --model <model>');
+    }
   }
 
   // Return whether we received any output (for --yes timeout detection)
