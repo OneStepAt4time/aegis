@@ -242,7 +242,7 @@ export function isValidUUID(id: string): boolean {
 const UIStateEnum = z.enum([
   'idle', 'working', 'compacting', 'context_warning', 'waiting_for_input',
   'permission_prompt', 'bash_approval', 'plan_mode', 'ask_question',
-  'settings', 'error', 'unknown',
+  'settings', 'error', 'pending', 'unknown',
 ]);
 
 /** Issue #700: Permission Policy Schema */
