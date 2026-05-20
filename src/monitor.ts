@@ -27,6 +27,7 @@ import { type AlertManager } from './alerting.js';
 import { type MetricsCollector } from './metrics.js';
 import { startToolSpan, setToolResult, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
+import { computeDelayMs } from './retry.js';
 
 /** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
 function parseCogitatedDuration(_statusText: string): number | null {
@@ -495,9 +496,8 @@ export class SessionMonitor {
     if (this.acpBackend && retryAttempt <= maxRetries) {
       const baseDelay = this.config.rateLimitBaseDelayMs;
       const maxDelay = this.config.rateLimitMaxDelayMs;
-      // Exponential backoff with jitter: min(base * 2^attempt + jitter, max)
-      const jitter = Math.floor(Math.random() * 1000);
-      const delayMs = Math.min(baseDelay * Math.pow(2, retryAttempt - 1) + jitter, maxDelay);
+      // Exponential backoff with jitter (shared computeDelayMs from retry.ts)
+      const delayMs = computeDelayMs(retryAttempt, baseDelay, maxDelay);
       this.rateLimitRetryAttempts.set(session.id, retryAttempt);
       await this.channels.statusChange(
         this.makePayload('status.rate_limited', session,

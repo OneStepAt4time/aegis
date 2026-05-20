@@ -21,7 +21,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function computeDelayMs(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
+export function computeDelayMs(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
   const exponential = Math.min(baseDelayMs * (2 ** (attempt - 1)), maxDelayMs);
   const jitterMultiplier = 0.5 + (Math.random() * 0.5);
   return Math.round(exponential * jitterMultiplier);

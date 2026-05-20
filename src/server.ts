@@ -72,14 +72,11 @@ import { AlertManager } from './alerting.js';
 import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
-import {
-  AcpBackend,
-  AcpSessionService,
-  AcpTerminalBridge,
-  createFileAcpLocalStorageProfile,
-  mapAcpJsonRpcNotificationToEvent,
-  type AcpLocalStorageProfile,
-} from './services/acp/index.js';
+import { AcpBackend } from './services/acp/backend.js';
+import { AcpSessionService } from './services/acp/session-service.js';
+import { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
+import { createFileAcpLocalStorageProfile, type AcpLocalStorageProfile } from './services/acp/local-storage.js';
+import { mapAcpJsonRpcNotificationToEvent } from './services/acp/event-mapper.js';
 import {
   registerHealthRoutes,
   registerAuthRoutes,
