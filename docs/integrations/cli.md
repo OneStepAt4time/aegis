@@ -256,6 +256,7 @@ ag create "Fix the failing tests"                     # Uses current directory
 | `--cwd <dir>` | Working directory for the session |
 | `--model <provider/model>` | Override the default model for this session |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
+| `--session-id <id>` | Send the brief to an existing session instead of creating a new one |
 | `--port <port>` | Aegis API port (default: `AEGIS_PORT` or `9100`) |
 
 This is a convenience wrapper that:
