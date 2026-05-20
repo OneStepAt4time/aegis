@@ -35,8 +35,10 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     tool_result: true,
   });
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
+  const prevLengthRef = useRef(0);
   const seenKeys = useRef<Set<string>>(new Set());
 
   // Fetch initial messages via API client
@@ -140,8 +142,14 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   // Auto-scroll when new messages arrive (unless user scrolled up)
   useEffect(() => {
+    const newMsgs = filteredMessages.length - prevLengthRef.current;
+    prevLengthRef.current = filteredMessages.length;
+
     if (!userScrolledRef.current && filteredMessages.length > 0) {
       virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
+      setUnreadCount(0);
+    } else if (newMsgs > 0) {
+      setUnreadCount((prev) => prev + newMsgs);
     }
   }, [filteredMessages.length, virtualizer]);
 
@@ -155,6 +163,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
 
   const scrollToBottom = useCallback(() => {
     userScrolledRef.current = false;
+    setUnreadCount(0);
     if (filteredMessages.length > 0) {
       virtualizer.scrollToIndex(filteredMessages.length - 1, { align: 'end' });
     }
@@ -240,10 +249,16 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
       {showScrollBtn && (
         <button type="button"
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
-          title="Scroll to bottom"
+          className="relative absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
+          title={unreadCount > 0 ? `${unreadCount} new message${unreadCount !== 1 ? 's' : ''} — Scroll to bottom` : 'Scroll to bottom'}
+          aria-label={unreadCount > 0 ? `${unreadCount} new messages. Scroll to bottom.` : 'Scroll to bottom'}
         >
           ↓
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-[var(--color-accent-cyan)] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       )}
     </div>
