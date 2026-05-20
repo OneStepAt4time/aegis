@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
         label: 'Total Cost',
         value: formatCurrency(cost),
         color: 'cost',
-        subtitle: analytics.costTrends.length > 1 ? 'Last 14 days' : undefined,
+        subtitle: analytics.costTrends.length > 1 ? t('analytics.last14Days') : undefined,
       },
       {
         id: 'tokens',

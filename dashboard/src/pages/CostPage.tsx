@@ -118,9 +118,9 @@ function BudgetOverview({ dailyData, budgetSettings, navigateToSettings }: Budge
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-medium text-amber-200">Budget Alerts</h4>
+            <h4 className="text-sm font-medium text-amber-200">{t('cost.budgetAlertSection.title')}</h4>
             <p className="mt-1 text-xs text-amber-300/80">
-              Configure daily and monthly spending caps in{' '}
+              {t('cost.budgetAlertSection.description')}{' '}
               <button
                 type="button"
                 onClick={navigateToSettings}

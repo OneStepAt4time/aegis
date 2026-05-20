@@ -3,6 +3,7 @@
  */
 
 import type { UIState } from '../../types';
+import { useT } from '../../i18n/context';
 import type { SessionHealthState } from '../../types';
 
 const STATUS_COLORS: Record<UIState, string> = {
@@ -42,32 +43,33 @@ interface StatusDotProps {
   health?: SessionHealthState | null;
 }
 
-const STATUS_LABELS: Record<UIState, string> = {
-  idle: 'Idle',
-  working: 'Working',
-  permission_prompt: 'Permission prompt',
-  bash_approval: 'Bash approval',
-  plan_mode: 'Plan mode',
-  ask_question: 'Awaiting question',
-  settings: 'Settings',
-  error: 'Error',
-  rate_limit: 'Rate limited',
-  compacting: 'Compacting',
-  context_warning: 'Context warning',
-  waiting_for_input: 'Waiting for input',
-  pending: 'Pending',
-  unknown: 'Unknown',
-  killed: 'Killed',
-  completed: 'Completed',
-  crashed: 'Crashed',
+const STATUS_KEYS: Record<UIState, string> = {
+  idle: 'statusDot.idle',
+  working: 'statusDot.working',
+  permission_prompt: 'statusDot.permissionPrompt',
+  bash_approval: 'statusDot.bashApproval',
+  plan_mode: 'statusDot.planMode',
+  ask_question: 'statusDot.askQuestion',
+  settings: 'statusDot.settings',
+  error: 'statusDot.error',
+  rate_limit: 'statusDot.rateLimited',
+  compacting: 'statusDot.compacting',
+  context_warning: 'statusDot.contextWarning',
+  waiting_for_input: 'statusDot.waitingForInput',
+  pending: 'statusDot.pending',
+  unknown: 'statusDot.unknown',
+  killed: 'statusDot.killed',
+  completed: 'statusDot.completed',
+  crashed: 'statusDot.crashed',
 };
 
-const HEALTH_LABELS: Record<SessionHealthState, string> = {
-  stall: 'Stalled',
-  dead: 'Dead',
+const HEALTH_KEYS: Record<SessionHealthState, string> = {
+  stall: 'statusDot.stalled',
+  dead: 'statusDot.dead',
 };
 
 export default function StatusDot({ status, health }: StatusDotProps) {
+  const t = useT();
   // Health state (stall/dead) overrides the status color for emphasis
   const isStall = health === 'stall';
   const isDead = health === 'dead';
@@ -83,10 +85,10 @@ export default function StatusDot({ status, health }: StatusDotProps) {
   const pulseDuration = isDead ? '0.8s' : isStall ? '2s' : '1.5s';
 
   const label = isDead
-    ? HEALTH_LABELS.dead
+    ? t(HEALTH_KEYS.dead)
     : isStall
-    ? HEALTH_LABELS.stall
-    : STATUS_LABELS[status] ?? STATUS_LABELS.unknown;
+    ? t(HEALTH_KEYS.stall)
+    : t(STATUS_KEYS[status] ?? STATUS_KEYS.unknown);
 
   return (
     <span
