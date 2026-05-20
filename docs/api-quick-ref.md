@@ -184,6 +184,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 |--------|------|------|---------|
 | `GET` | `/v1/cost/summary` | Bearer | Aggregate cost summary with burn rate |
 | `GET` | `/v1/cost/by-model` | Bearer | Cost grouped by model |
+| `GET` | `/v1/settings/budget` | Bearer | Server-side budget enforcement status |
 
 ## Metrics
 

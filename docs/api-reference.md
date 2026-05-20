@@ -2635,6 +2635,45 @@ curl http://localhost:9100/v1/analytics/costs \
 
 ---
 
+### Get Budget Enforcement Status
+
+```
+GET /v1/settings/budget
+```
+
+Returns server-side budget enforcement status. Currently returns static values (no server-side enforcement). Forward-compatible: when budget enforcement is implemented, this endpoint will reflect real limits.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/settings/budget \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "serverSideEnforcement": false,
+  "dailyLimitUsd": null,
+  "monthlyLimitUsd": null,
+  "hardStopEnabled": false,
+  "message": "Budget alerts are computed locally. Configure server-side limits in the Aegis configuration file."
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `serverSideEnforcement` | boolean | Whether server-side budget limits are active. Currently always `false`. |
+| `dailyLimitUsd` | number \| null | Configured daily spend limit in USD. `null` when not configured. |
+| `monthlyLimitUsd` | number \| null | Configured monthly spend limit in USD. `null` when not configured. |
+| `hardStopEnabled` | boolean | Whether sessions are killed when the budget is exceeded. Currently always `false`. |
+| `message` | string | Human-readable description of current enforcement state. |
+
+---
+
 ### Get Token Usage
 
 ```
