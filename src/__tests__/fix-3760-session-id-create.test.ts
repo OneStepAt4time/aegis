@@ -86,7 +86,7 @@ describe('Issue #3760: --session-id behavioral tests', () => {
 
     // Should NOT create a new session (no POST to /v1/sessions ending path)
     const createCall = mockFetch.mock.calls.find(
-      (c: unknown[]) => typeof c[0] === 'string' && c[0].match(/\/v1\/sessions$/) && c[1]?.method === 'POST',
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].match(/\/v1\/sessions$/) && (c[1] as Record<string, unknown>)?.method === 'POST',
     );
     expect(createCall).toBeUndefined();
 
@@ -95,7 +95,7 @@ describe('Issue #3760: --session-id behavioral tests', () => {
       (c: unknown[]) => typeof c[0] === 'string' && c[0].includes(`/v1/sessions/${sessionId}/send`),
     );
     expect(sendCall).toBeDefined();
-    expect(JSON.parse(sendCall![1]?.body)).toEqual({ text: 'hello world' });
+    expect(JSON.parse((sendCall![1] as Record<string, unknown>)?.body as string)).toEqual({ text: 'hello world' });
 
     expect(getStdout()).toContain('Using existing session');
   });
@@ -173,7 +173,7 @@ describe('Issue #3760: --session-id behavioral tests', () => {
     await runCli(['create', 'hello world'], io);
 
     const createCall = mockFetch.mock.calls.find(
-      (c: unknown[]) => typeof c[0] === 'string' && c[0].match(/\/v1\/sessions$/) && c[1]?.method === 'POST',
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].match(/\/v1\/sessions$/) && (c[1] as Record<string, unknown>)?.method === 'POST',
     );
     expect(createCall).toBeDefined();
     expect(getStdout()).toContain('Session created');
