@@ -16,6 +16,7 @@ import HomeStatusPanel from '../components/overview/HomeStatusPanel';
 import SessionTable from '../components/overview/SessionTable';
 import CreateSessionModal from '../components/CreateSessionModal';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
+import { LastUpdatedIndicator } from '../components/overview/LastUpdatedIndicator';
 import { KPIBanner } from '../components/analytics/KPIBanner';
 import type { KPIItem } from '../components/analytics/KPIBanner';
 import { ModelDistributionBar } from '../components/analytics/ModelDistributionBar';
@@ -59,6 +60,7 @@ export default function OverviewPage() {
 
   // Real-time SSE updates
   useSessionRealtimeUpdates();
+  const lastDataRefresh = useStore((s) => s.lastDataRefresh);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -299,7 +301,13 @@ export default function OverviewPage() {
         >
           Recent Sessions
         </h3>
-        <div aria-labelledby="recent-sessions-heading"><SessionTable maxRows={5} /></div>
+        <div aria-labelledby="recent-sessions-heading">
+          <div className="flex items-center justify-between mb-2">
+            <h3 id="recent-sessions-heading" className="text-sm font-medium text-[var(--color-text-secondary)]">Recent sessions</h3>
+            <LastUpdatedIndicator lastUpdated={lastDataRefresh} />
+          </div>
+          <SessionTable maxRows={5} />
+        </div>
       </div>
 
       <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />

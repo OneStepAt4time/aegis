@@ -100,6 +100,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   const sessions = useStore((s) => s.sessions);
   const healthMap = useStore((s) => s.healthMap);
   const sseConnected = useStore((s) => s.sseConnected);
+  const markDataRefresh = useStore((s) => s.markDataRefresh);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseError = useStore((s) => s.sseError);
   const setSessionsAndHealth = useStore((s) => s.setSessionsAndHealth);
@@ -232,6 +233,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       setStatusCounts(counts);
       setSearchCapped(isSearching && list.pagination.total > list.sessions.length);
       setLoadError(null);
+      markDataRefresh();
       setPagination(
         isSearching
           ? {
@@ -484,6 +486,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             onClick={() => {
               setIsLoading(true);
               setLoadError(null);
+      markDataRefresh();
               void fetchSessions();
             }}
             aria-label={t("aria.retryLoading")}

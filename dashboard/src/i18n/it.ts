@@ -692,4 +692,17 @@ export const it = {
     title: 'Modello',
     effortTitle: 'Sforzo',
   },
-};
+
+
+  updated: {
+    justNow: 'Aggiornato ora',
+    secondsAgo: 'Aggiornato {n}s fa',
+    minutesAgo: 'Aggiornato {n}m fa',
+    hoursAgo: 'Aggiornato {n}h fa',
+    stale: 'Dati potenzialmente obsoleti',
+    staleLabel: 'Dati potenzialmente obsoleti — ultimo aggiornamento oltre un minuto fa',
+  },
+} as const;
+
+export type Messages = typeof it;
+export type MessageKey = string;

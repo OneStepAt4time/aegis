@@ -11,6 +11,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { useApprovalStore } from '../store/useApprovalStore';
+import { useToastStore } from '../store/useToastStore';
 import type { UIState, SessionHealthState } from '../types';
 
 const SESSION_RELEVANT_EVENTS: ReadonlySet<string> = new Set([
@@ -64,6 +65,11 @@ export function useSessionRealtimeUpdates(): void {
 
         const idx = updatedSessions.findIndex((s) => s.id === event.sessionId);
         if (idx !== -1 && updatedSessions[idx].status !== newStatus) {
+          // Toast when session finishes working → idle
+          if (updatedSessions[idx].status === 'working' && newStatus === 'idle') {
+            const name = updatedSessions[idx].displayName || updatedSessions[idx].id.slice(0, 8);
+            useToastStore.getState().addToast('success', `Session completed: ${name}`, undefined, { duration: 4000 });
+          }
           if (!sessionsChanged) updatedSessions = [...updatedSessions]; // lazy shallow clone
           updatedSessions[idx] = { ...updatedSessions[idx], status: newStatus, lastActivity: Date.now() };
           sessionsChanged = true;

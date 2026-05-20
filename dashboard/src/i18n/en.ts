@@ -697,6 +697,15 @@ export const en = {
     title: 'Model',
     effortTitle: 'Effort',
   },
+
+  updated: {
+    justNow: 'Updated just now',
+    secondsAgo: 'Updated {n}s ago',
+    minutesAgo: 'Updated {n}m ago',
+    hoursAgo: 'Updated {n}h ago',
+    stale: 'Data may be stale',
+    staleLabel: 'Data may be stale — last updated over a minute ago',
+  },
 } as const;
 
 export type Messages = typeof en;

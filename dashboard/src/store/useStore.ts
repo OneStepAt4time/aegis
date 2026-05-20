@@ -115,6 +115,10 @@ export interface AppState {
   setActivityFilterSession: (id: string | null) => void;
   activityFilterType: GlobalSSEEventType | null;
   setActivityFilterType: (type: GlobalSSEEventType | null) => void;
+
+  // Last data refresh timestamp
+  lastDataRefresh: number | null;
+  markDataRefresh: () => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -164,4 +168,8 @@ export const useStore = create<AppState>((set) => ({
   setActivityFilterSession: (id) => set({ activityFilterSession: id }),
   activityFilterType: null,
   setActivityFilterType: (type) => set({ activityFilterType: type }),
+
+  // Last data refresh
+  lastDataRefresh: null,
+  markDataRefresh: () => set({ lastDataRefresh: Date.now() }),
 }));
