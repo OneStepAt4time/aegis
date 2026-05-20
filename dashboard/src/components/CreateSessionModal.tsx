@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
-import { createSession, batchCreateSessions, getTemplates } from '../api/client';
+import { createSessionWithFallback, batchCreateSessions, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useT } from '../i18n/context';
 
@@ -164,7 +164,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const session = await createSession({
+      const session = await createSessionWithFallback({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
         prompt: prompt.trim() || undefined,
@@ -476,7 +476,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           abortRef.current = controller;
 
           try {
-            const session = await createSession({
+            const session = await createSessionWithFallback({
               workDir: template.workDir,
               prompt: template.prompt,
               claudeCommand: template.claudeCommand,

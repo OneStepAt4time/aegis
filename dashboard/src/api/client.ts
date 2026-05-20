@@ -408,6 +408,32 @@ export function createSession(opts: CreateSessionRequest & { signal?: AbortSigna
   });
 }
 
+/**
+ * Resilient session creation: wraps createSession with a fallback.
+ * If the API returns a malformed response (Zod validation failure) or a
+ * response missing a session ID, refetches the sessions list and returns
+ * the most recently created session.
+ * Defensive fix for #3738.
+ */
+export async function createSessionWithFallback(opts: CreateSessionRequest & { signal?: AbortSignal }): Promise<SessionInfo> {
+  try {
+    const session = await createSession(opts);
+    if (session?.id) return session;
+  } catch (err) {
+    // Only attempt fallback on validation errors or missing-id responses.
+    // Re-throw auth errors, network errors, and HTTP 4xx/5xx immediately.
+    const msg = err instanceof Error ? err.message : '';
+    const isValidation = msg.includes('API response validation failed');
+    const isNoId = msg.includes('session info could not be retrieved');
+    if (!isValidation && !isNoId) throw err;
+  }
+  // Fallback: refetch sessions list and return the newest
+  const list = await getSessions({ limit: 1 });
+  if (list.sessions.length > 0) return list.sessions[0];
+  throw new Error('Session was created but session info could not be retrieved');
+}
+
+
 export function killSession(id: string): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}`, {
     method: 'DELETE',

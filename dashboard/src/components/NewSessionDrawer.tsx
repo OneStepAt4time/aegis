@@ -9,7 +9,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
 import { Drawer } from './shared/Drawer';
-import { createSession, getTemplates } from '../api/client';
+import { createSessionWithFallback, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useDrawerStore } from '../store/useDrawerStore';
@@ -86,7 +86,7 @@ export function NewSessionDrawer() {
 
     setLoading(true);
     try {
-      const session = await createSession({
+      const session = await createSessionWithFallback({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
         claudeCommand: claudeCommand.trim() || undefined,
