@@ -54,7 +54,7 @@ ag doctor
 
 **Fix:**
 - Verify the directory exists: `ls /path/to/workdir`
-- Check `AEGIS_ALLOWED_WORKDIRS` includes the path (or use default: `$HOME`, `/tmp`, `cwd`)
+- Check `AEGIS_ALLOWED_WORKDIRS` includes the path (default: `$HOME` and `cwd`)
 - `allowedWorkDirs` changes in config are hot-reloaded without restart
 
 ---
@@ -116,7 +116,7 @@ ag
 # workDir is required
 curl -X POST http://localhost:9100/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{"workDir": "/tmp/test", "prompt": "Hello"}'
+  -d '{"workDir": "/home/user/project", "prompt": "Hello"}'
 ```
 
 ---
