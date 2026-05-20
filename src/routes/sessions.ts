@@ -36,6 +36,8 @@ function buildCreateSessionSchema(ctx: RouteContext) {
   const adminAllowlist = ctx.config.envAdminAllowlist ?? [];
   return z.object({
     workDir: z.string().min(1),
+    /** Alias for `workDir`. Issue #3867. */
+    cwd: z.string().min(1).optional(),
     name: z.string().max(200).regex(SAFE_NAME_RE).optional(),
     /** Alias for `name`; accepted for backward compatibility with dashboard/CLI callers. */
     label: z.string().max(200).regex(SAFE_NAME_RE).optional(),
@@ -543,7 +545,10 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     },
     // Issue #1908: Custom handler wraps withValidation to emit audit on env rejection
     handler: async (req: FastifyRequest, reply: FastifyReply) => {
-      const parsed = createSessionSchema.safeParse(req.body);
+      // Issue #3867: accept 'cwd' as alias for 'workDir'
+      const body = req.body as Record<string, unknown> ?? {};
+      if (!body.workDir && body.cwd) body.workDir = body.cwd;
+      const parsed = createSessionSchema.safeParse(body);
       if (!parsed.success) {
         // Emit audit record for env-related rejections (Issue #1908)
         const envErrors = parsed.error.issues.filter(i => i.path.length >= 2 && i.path[0] === 'env');
