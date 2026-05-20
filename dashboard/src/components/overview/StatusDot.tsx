@@ -18,11 +18,11 @@ const STATUS_COLORS: Record<UIState, string> = {
   compacting: 'var(--color-warning)',
   context_warning: 'var(--color-warning)',
   waiting_for_input: 'var(--color-warning)',
-  pending: '#f0ad4e',  // amber — visually distinct from unknown gray
-  unknown: '#666',
-  killed: '#888',
-  completed: '#4CAF50',
-  crashed: '#F44336',
+  pending: 'var(--color-dot-pending)',
+  unknown: 'var(--color-dot-unknown)',
+  killed: 'var(--color-dot-killed)',
+  completed: 'var(--color-dot-completed)',
+  crashed: 'var(--color-dot-crashed)',
 };
 
 const HEALTH_COLORS: Record<SessionHealthState, string> = {

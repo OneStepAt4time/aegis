@@ -66,6 +66,13 @@
   --color-success-rgb: 34, 197, 94;
   --color-warning: #f59e0b;
   --color-warning-rgb: 245, 158, 11;
+  --color-dot-pending: #f0ad4e;
+  --color-dot-unknown: #666;
+  --color-dot-killed: #888;
+  --color-dot-completed: #4CAF50;
+  --color-dot-crashed: #F44336;
+  --color-dot-orange: #f97316;
+  --color-dot-red: #ef4444;
   --color-info: #3b82f6;
 
   /* Chart & Metrics */

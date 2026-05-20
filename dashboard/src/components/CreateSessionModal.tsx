@@ -527,7 +527,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded px-3 py-2">
+            <div className="text-xs text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-2">
               {error}
             </div>
           )}
