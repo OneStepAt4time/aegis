@@ -782,7 +782,7 @@ export async function validateWorkDir(
   if (!preAllowed) {
     const hint = windowsSuggestion
       ? ` Did you mean \`${windowsSuggestion}\`?`
-      : ' Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory.';
+      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. Allowed: ${candidateSafeDirs.join(", ")}`;
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
@@ -800,7 +800,7 @@ export async function validateWorkDir(
   if (!allowed) {
     const hint = windowsSuggestion
       ? ` Did you mean \`${windowsSuggestion}\`?`
-      : ' Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory.';
+      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. Allowed: ${candidateSafeDirs.join(", ")}`;
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
