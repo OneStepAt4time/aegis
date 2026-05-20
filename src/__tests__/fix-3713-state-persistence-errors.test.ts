@@ -33,13 +33,13 @@ function createSM(stateDir: string, store?: any): SessionManager {
 
 describe('Issue #3713 — session.ts state persistence error branches', () => {
   let tmpDir: string;
-  let consoleWarnSpy: any;
+  let _consoleWarnSpy: any;
   let consoleErrorSpy: any;
   let consoleLogSpy: any;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'aegis-state-test-'));
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    _consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
