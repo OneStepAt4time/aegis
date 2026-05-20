@@ -9,6 +9,7 @@ import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createSessionWithFallback, batchCreateSessions, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useT } from '../i18n/context';
+import { PERMISSION_MODES } from '../utils/sessionCreation';
 
 interface CreateSessionModalProps {
   open: boolean;
@@ -66,6 +67,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
   const [workDir, setWorkDir] = useState('');
   const [name, setName] = useState('');
+  const [claudeCommand, setClaudeCommand] = useState('');
   const [prompt, setPrompt] = useState('');
   const [permissionMode, setPermissionMode] = useState('default');
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   function resetForm(): void {
     setWorkDir('');
     setName('');
+    setClaudeCommand('');
     setPrompt('');
     setPermissionMode('default');
     setLoading(false);
@@ -167,6 +170,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       const session = await createSessionWithFallback({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
+        claudeCommand: claudeCommand.trim() || undefined,
         prompt: prompt.trim() || undefined,
         permissionMode,
         signal: controller.signal,
@@ -277,6 +281,21 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             />
           </div>
 
+          {/* Claude Command */}
+          <div>
+            <label htmlFor="modal-claudeCommand" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+              Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
+            </label>
+            <input
+              id="modal-claudeCommand"
+              type="text"
+              value={claudeCommand}
+              onChange={(e) => setClaudeCommand(e.target.value)}
+              placeholder="claude --print"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
+            />
+          </div>
+
           {/* Prompt */}
           <div>
             <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
@@ -301,11 +320,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             >
-              <option value="default">default - asks for everything</option>
-              <option value="plan">plan - auto-reads, asks for writes</option>
-              <option value="acceptEdits">acceptEdits - auto-edits, asks for bash</option>
-              <option value="bypassPermissions">bypassPermissions - never asks</option>
-              <option value="auto">auto - auto-approve in sandbox</option>
+              {PERMISSION_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
 
@@ -422,11 +439,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             >
-              <option value="default">default - asks for everything</option>
-              <option value="plan">plan - auto-reads, asks for writes</option>
-              <option value="acceptEdits">acceptEdits - auto-edits, asks for bash</option>
-              <option value="bypassPermissions">bypassPermissions - never asks</option>
-              <option value="auto">auto - auto-approve in sandbox</option>
+              {PERMISSION_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
 

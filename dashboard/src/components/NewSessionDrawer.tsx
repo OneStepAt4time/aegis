@@ -15,12 +15,9 @@ import { useToastStore } from '../store/useToastStore';
 import { useDrawerStore } from '../store/useDrawerStore';
 import { useConfetti } from '../hooks/useConfetti';
 import { useT } from '../i18n/context';
+import { PERMISSION_MODES } from '../utils/sessionCreation';
 
-const PERMISSION_MODES = [
-  { value: 'default', label: 'Default (prompt)' },
-  { value: 'bypassPermissions', label: 'Bypass Permissions' },
-  { value: 'clipboardOnly', label: 'Clipboard Only' },
-];
+
 
 export function NewSessionDrawer() {
   const navigate = useNavigate();
