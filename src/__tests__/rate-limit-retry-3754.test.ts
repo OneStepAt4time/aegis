@@ -270,8 +270,9 @@ describe('Issue #3754: Rate-limit retry logic', () => {
     const match = msg.match(/in (\d+)s…/);
     expect(match).not.toBeNull();
     const delaySec = parseInt(match![1], 10);
-    // Base is 10s, cap is 15s — first attempt should be 10s (+ up to 1s jitter)
-    expect(delaySec).toBeGreaterThanOrEqual(10);
-    expect(delaySec).toBeLessThanOrEqual(15);
+    // Base is 10s, cap is 15s — computeDelayMs uses multiplicative jitter (0.5–1.0x)
+    // First attempt: 10000 * [0.5..1.0] = 5000–10000ms → 5–10s
+    expect(delaySec).toBeGreaterThanOrEqual(5);
+    expect(delaySec).toBeLessThanOrEqual(10);
   });
 });
