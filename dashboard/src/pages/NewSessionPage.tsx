@@ -83,6 +83,11 @@ export default function NewSessionPage() {
   }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, addRecentDir, t]);
 
   function applyTemplate(template: SessionTemplate): void {
+    // Warn if form already has content that would be overwritten
+    const isDirty = name || workDir || prompt || claudeCommand;
+    if (isDirty && !window.confirm('Applying this template will overwrite all current form fields. Continue?')) {
+      return;
+    }
     setName(template.name);
     setWorkDir(template.workDir);
     setPrompt(template.prompt ?? '');
