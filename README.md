@@ -42,13 +42,15 @@ That's it. Aegis:
 
 When Claude needs permission to run a command or edit a file, you'll see a prompt in your terminal. Approve or deny right there.
 
+> `--cwd` must point to your project directory or home folder — system temp dirs (`/tmp`) are blocked by default.
+
 <details>
 <summary>What you'll see</summary>
 
 ```
 $ npx --package=@onestepat4time/aegis ag run "Build a login page" --cwd ./my-project
 
-  Aegis v0.7.0
+  Aegis vX.Y.Z
   ✓ Claude Code found
   ✓ Server started → http://127.0.0.1:9100/dashboard
   ✓ Session created: my-project
@@ -78,7 +80,7 @@ ag run "Your prompt here" --cwd ./my-project
 After your first session, you might want to:
 
 - **Dashboard** — open <http://127.0.0.1:9100/dashboard> to see sessions, cost analytics, and audit trails
-- **Telegram** — approve agent actions from your phone: `ag setup telegram` (one guided setup)
+- **Telegram** — approve agent actions from your phone: run `ag init` and follow the Telegram setup prompt, or see the [Notification Channels guide](docs/integrations/notifications.md)
 - **MCP** — let Claude Code control Aegis: `claude mcp add --scope user aegis -- ag mcp`
 - **Multiple sessions** — `ag run "fix the tests" & ag run "update the README"` (parallel agents)
 
@@ -111,8 +113,10 @@ Built-in templates: `code-reviewer`, `ci-runner`, `pr-reviewer`, `docs-writer`.
 
 </details>
 
+> **Claude Code must be authenticated.** Run `claude auth status` first — if it shows "Not logged in", run `claude login`. Sessions created without auth will silently produce no output.
+>
 > **Prerequisites:** [Node.js ≥ 20](https://nodejs.org/) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). That's it.
-
+>
 > **CLI naming:** the primary command is `ag`. The legacy name `aegis` is preserved as an alias.
 
 ### Windows
@@ -323,6 +327,15 @@ curl -X POST http://localhost:9100/v1/handshake \
   "serverCapabilities": ["session.create", "session.resume", "session.approve", "session.transcript", "session.transcript.cursor", "session.events.sse", "session.screenshot", "hooks.pre_tool_use", "hooks.post_tool_use", "hooks.notification", "hooks.stop", "swarm", "metrics"],
   "negotiatedCapabilities": ["session.create", "session.transcript.cursor"],
   "warnings": [],
+  "featureGates": {
+    "cursorReplay": false,
+    "transcriptRead": false,
+    "sseEvents": false,
+    "permissionControl": false,
+    "screenshots": false,
+    "hookLifecycle": false
+  },
+  "fallbackMode": "none",
   "compatible": true
 }
 ```
@@ -332,6 +345,8 @@ curl -X POST http://localhost:9100/v1/handshake \
 | `protocolVersion` | Server's protocol version (`"1"` currently) |
 | `serverCapabilities` | Full list of server-supported capabilities |
 | `negotiatedCapabilities` | Intersection of client + server capabilities |
+| `featureGates` | Per-capability feature flags (used for progressive enablement) |
+| `fallbackMode` | Fallback behavior when feature gates restrict a capability (`"none"` = fail fast) |
 | `warnings` | Non-fatal issues (unknown caps, version skew) |
 | `compatible` | `true` (200) or `false` (409 Conflict) |
 
