@@ -61,6 +61,7 @@ export default function OverviewPage() {
   // Real-time SSE updates
   useSessionRealtimeUpdates();
   const lastDataRefresh = useStore((s) => s.lastDataRefresh);
+  const sseConnected = useStore((s) => s.sseConnected);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -304,7 +305,18 @@ export default function OverviewPage() {
         <div aria-labelledby="recent-sessions-heading">
           <div className="flex items-center justify-between mb-2">
             <h3 id="recent-sessions-heading" className="text-sm font-medium text-[var(--color-text-secondary)]">Recent sessions</h3>
-            <LastUpdatedIndicator lastUpdated={lastDataRefresh} />
+            <div className="flex items-center gap-3">
+              {!sseConnected && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-400" aria-live="polite" aria-label="Live updates paused">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                  </span>
+                  Live updates paused
+                </span>
+              )}
+              <LastUpdatedIndicator lastUpdated={lastDataRefresh} />
+            </div>
           </div>
           <SessionTable maxRows={5} />
         </div>
