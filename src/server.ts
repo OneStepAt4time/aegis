@@ -919,6 +919,8 @@ async function main(): Promise<void> {
   monitor.setAlertManager(alertManager);
   jsonlWatcher = new JsonlWatcher();
   monitor.setMetrics(metrics);
+  // Issue #3754: Wire ACP backend for rate-limit retry support
+  if (acpBackend) monitor.setAcpBackend(acpBackend);
   monitor.setJsonlWatcher(jsonlWatcher);
   container.register('sessionManager', sessions, {
     start: async () => {
