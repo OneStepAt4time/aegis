@@ -66,6 +66,9 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
     it('rejects AEGIS_SECRET', () => {
       expectRejection({ AEGIS_SECRET: 'super-secret' }, 'denylisted');
     });
+    it('rejects AEGIS_AUTH_TOKEN (#3852)', () => {
+      expectRejection({ AEGIS_AUTH_TOKEN: 'aegis_deadbeef1234' }, 'denylisted');
+    });
 
     it('rejects DATABASE_URL', () => {
       expectRejection({ DATABASE_URL: 'postgres://...' }, 'denylisted');
@@ -313,6 +316,7 @@ describe('Env var denylist — live Zod schema (Issues #1392 + #1908)', () => {
       expect(ENV_DENYLIST).toContain('LD_LIBRARY_PATH');
       expect(ENV_DENYLIST).toContain('ANTHROPIC_API_KEY');
       expect(ENV_DENYLIST).toContain('AEGIS_OIDC_CLIENT_SECRET');
+    expect(ENV_DENYLIST).toContain('AEGIS_AUTH_TOKEN');
       expect(ENV_DENYLIST).toContain('COMSPEC');
       expect(ENV_DENYLIST).toContain('DYLD_FRAMEWORK_PATH');
     });
