@@ -387,6 +387,18 @@ function md2html(md: string): string {
 
 // ── Message Formatting ──────────────────────────────────────────────────────
 
+
+/** Issue #3747: Format timestamp in cc-connect style: [DD/MM/YYYY HH:MM] */
+export function formatTimestamp(isoTimestamp: string): string {
+  const d = new Date(isoTimestamp);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `[${day}/${month}/${year} ${hours}:${minutes}]`;
+}
+
 function formatSessionCreated(name: string, workDir: string, id: string, meta?: Record<string, unknown>): string {
   const shortId = id.slice(0, 8);
   const shortDir = shortenHomePath(workDir);
@@ -405,29 +417,7 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
       parts.push(italic(esc(prompt)));
     }
   }
-  return `🚀 ${parts.join('\n')}`;
-}
-
-function _formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
-  const duration = elapsed(Date.now() - progress.startedAt);
-  const lines = [`✅ ${bold('Done')}  ${duration}  ·  ${progress.totalMessages} msgs`];
-
-  // Quality gate checklist
-  const checks: string[] = [];
-  if (progress.errors === 0) checks.push('☑ No errors');
-  else checks.push(`☒ ${progress.errors} errors`);
-  if (progress.edits || progress.creates) {
-    const edited = progress.filesEdited.slice(0, 5).map(f => code(shortPath(f))).join(', ');
-    const extra = progress.filesEdited.length > 5 ? ` +${progress.filesEdited.length - 5}` : '';
-    checks.push(`☑ Files: ${edited}${extra}`);
-  }
-  if (checks.length) lines.push(checks.join('\n'));
-
-  if (detail) {
-    const d = truncate(detail, 200);
-    lines.push(esc(d));
-  }
-  return lines.join('\n\n');
+  return `🧰 Process: ${name}\n🚀 ${parts.join('\n')}`;
 }
 
 function formatAssistantMessage(detail: string): string | null {
@@ -990,7 +980,9 @@ export class TelegramChannel implements Channel {
         const lastMsg = this.lastUserMessage.get(payload.session.id);
         if (lastMsg === payload.detail) break;
         this.lastUserMessage.set(payload.session.id, payload.detail);
-        await this.queueMessage(payload.session.id, `👤 ${bold('User')}  ${esc(truncate(payload.detail, 200))}`, 'high');
+        // Issue #3747: cc-connect style timestamp format
+        const ts = formatTimestamp(payload.timestamp);
+        await this.queueMessage(payload.session.id, `${ts} User: ${esc(truncate(payload.detail, 200))}`, 'high');
         break;
       }
 
@@ -1025,8 +1017,19 @@ export class TelegramChannel implements Channel {
         const tool = parseToolUse(detail);
         this.pendingTool.set(payload.session.id, tool);
 
-        // Verbose: show the actual tool call command/input
-        if (this.config.verbose && tool.label) {
+        // Issue #3747: Compact Exec format (cc-connect style)
+        if (!this.config.verbose) {
+          // Show compact: 🛠️ Exec: command summary
+          const label = tool.label || tool.file || truncate(detail, 80);
+          if (label) {
+            await this.queueMessage(
+              payload.session.id,
+              `🛠️ Exec: ${esc(truncate(label, 150))}`,
+              'normal',
+            );
+          }
+        } else if (tool.label) {
+          // Verbose: show the actual tool call command/input
           const toolDetail = truncate(detail, 600);
           await this.queueMessage(
             payload.session.id,
@@ -1050,6 +1053,31 @@ export class TelegramChannel implements Channel {
       case 'message.tool_result': {
         const tool = this.pendingTool.get(payload.session.id);
         this.pendingTool.delete(payload.session.id);
+
+        // Issue #3747: Compact completion in non-verbose mode
+        if (!this.config.verbose && tool) {
+          const label = tool.label || tool.file || 'command';
+          const summary = truncate(payload.detail?.trim() || 'done', 80);
+          // Only show non-trivial results (skip "ok", "done", "success")
+          if (!/^(success|ok|done|completed|passed)$/i.test(payload.detail?.trim())) {
+            await this.queueMessage(
+              payload.session.id,
+              `🛠️ Exec: completed; ${esc(truncate(summary, 150))}`,
+              'normal',
+            );
+          }
+          // Always track for progress
+          if (progress) {
+            switch (tool.category) {
+              case 'read': progress.reads++; if (tool.file) progress.filesRead.push(tool.file); break;
+              case 'edit': progress.edits++; if (tool.file && !progress.filesEdited.includes(tool.file)) progress.filesEdited.push(tool.file); break;
+              case 'create': progress.creates++; if (tool.file && !progress.filesEdited.includes(tool.file)) progress.filesEdited.push(tool.file); break;
+              case 'search': progress.searches++; break;
+              case 'command': progress.commands++; break;
+            }
+          }
+          break;
+        }
 
         const result = formatToolResult(payload.detail);
 
