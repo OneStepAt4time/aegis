@@ -5,7 +5,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Loader2, Plus, ArrowLeft, Star, Clock, X } from 'lucide-react';
-import { createSession, getTemplates } from '../api/client';
+import { createSessionWithFallback, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useToastStore } from '../store/useToastStore';
 import { useRecentDirs } from '../hooks/useRecentDirs';
@@ -61,7 +61,7 @@ export default function NewSessionPage() {
 
     setLoading(true);
     try {
-      const session = await createSession({
+      const session = await createSessionWithFallback({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
         claudeCommand: claudeCommand.trim() || undefined,

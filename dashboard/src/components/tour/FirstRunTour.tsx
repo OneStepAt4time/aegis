@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, PlayCircle, CheckCircle2, Shield, Trash2, Lightbulb } from 'lucide-react';
-import { createSession, approve, killSession, getSessions } from '../../api/client';
+import { createSessionWithFallback, approve, killSession, getSessions } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
 import type { SessionInfo } from '../../types';
 import { useT } from '../../i18n/context';
@@ -43,7 +43,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     setError(null);
     
     try {
-      const result = await createSession({
+      const result = await createSessionWithFallback({
         workDir: SANDBOX_DIR,
         name: 'aegis-tour',
         prompt: 'This is a tutorial session. Say "Hello from the tour!"',

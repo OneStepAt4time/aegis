@@ -28,6 +28,7 @@ const mockGetTemplates = vi.fn();
 
 vi.mock('../api/client', () => ({
   createSession: (...args: unknown[]) => mockCreateSession(...args),
+  createSessionWithFallback: (...args: unknown[]) => mockCreateSession(...args),
   getTemplates: (...args: unknown[]) => mockGetTemplates(...args),
 }));
 
