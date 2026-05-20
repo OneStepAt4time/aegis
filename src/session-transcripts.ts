@@ -44,8 +44,13 @@ function extractInteractiveContent(_paneText: string): { content: string } | nul
  * discovered paths are visible to the caller (SessionManager).
  */
 export class SessionTranscripts {
-  private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 10_000;
-  private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number }>();
+  /** Issue #3762: Reduced from 10K to 2K — large entries consume massive memory. */
+  private static readonly MAX_CACHE_ENTRIES_PER_SESSION = 2_000;
+  /** Issue #3762: Max text length retained per cached entry (bytes). Truncate longer text. */
+  private static readonly MAX_CACHED_TEXT_LENGTH = 2_048;
+  /** Issue #3762: Total byte budget for the parsed entries cache (50MB). Evict oldest sessions when exceeded. */
+  private static readonly CACHE_BYTE_BUDGET = 50 * 1024 * 1024;
+  private parsedEntriesCache = new Map<string, { entries: ParsedEntry[]; offset: number; estimatedBytes: number }>();
 
   private acpEventStore: AcpEventStore | null = null;
   constructor(
@@ -450,6 +455,45 @@ export class SessionTranscripts {
   }
 
   /** Remove cached entries for a session (e.g. on session kill). */
+  /** Issue #3762: Truncate text in a ParsedEntry to reduce memory footprint in cache. */
+  private static truncateEntryText(entry: ParsedEntry): ParsedEntry {
+    if (entry.text.length <= SessionTranscripts.MAX_CACHED_TEXT_LENGTH) return entry;
+    return {
+      ...entry,
+      text: entry.text.slice(0, SessionTranscripts.MAX_CACHED_TEXT_LENGTH) + '\n... [truncated]',
+    };
+  }
+
+  /** Issue #3762: Estimate bytes used by cached entries for a session. */
+  private estimateCacheBytes(entries: ParsedEntry[]): number {
+    let bytes = 0;
+    for (const entry of entries) {
+      // Rough estimate: text content + overhead for object structure
+      bytes += entry.text.length * 2 + 200; // UTF-16 chars + overhead
+    }
+    return bytes;
+  }
+
+  /** Issue #3762: Evict oldest session caches when total exceeds byte budget. */
+  private evictIfNeeded(): void {
+    if (this.parsedEntriesCache.size <= 1) return;
+    let totalBytes = 0;
+    for (const cached of this.parsedEntriesCache.values()) {
+      totalBytes += cached.estimatedBytes;
+    }
+    if (totalBytes <= SessionTranscripts.CACHE_BYTE_BUDGET) return;
+    // Evict oldest sessions first (first inserted = oldest by insertion order of Map)
+    const keysToDelete: string[] = [];
+    for (const [sessionId, cached] of this.parsedEntriesCache) {
+      if (totalBytes <= SessionTranscripts.CACHE_BYTE_BUDGET * 0.7) break;
+      totalBytes -= cached.estimatedBytes;
+      keysToDelete.push(sessionId);
+    }
+    for (const key of keysToDelete) {
+      this.parsedEntriesCache.delete(key);
+    }
+  }
+
   clearCache(sessionId: string): void {
     this.parsedEntriesCache.delete(sessionId);
   }
@@ -474,24 +518,33 @@ export class SessionTranscripts {
       const result = await readNewEntries(session.jsonlPath, fromOffset);
       if (cached) {
         // #832: Detect JSONL truncation — newOffset resets to 0 when file is rewritten.
-        // readNewEntries returns empty entries + newOffset:0 on truncation.
-        // Discard stale cached entries and rebuild from scratch.
         if (fromOffset > 0 && result.newOffset === 0 && result.entries.length === 0) {
           const freshResult = await readNewEntries(session.jsonlPath, 0);
-          this.parsedEntriesCache.set(session.id, { entries: [...freshResult.entries], offset: freshResult.newOffset });
-          return freshResult.entries;
+          const truncatedEntries = freshResult.entries.map(e => SessionTranscripts.truncateEntryText(e));
+          const estBytes = this.estimateCacheBytes(truncatedEntries);
+          this.parsedEntriesCache.set(session.id, { entries: truncatedEntries, offset: freshResult.newOffset, estimatedBytes: estBytes });
+          return freshResult.entries; // Return untruncated to callers
         }
-        cached.entries.push(...result.entries);
+        // Issue #3762: Truncate before caching to reduce memory
+        const truncatedNew = result.entries.map(e => SessionTranscripts.truncateEntryText(e));
+        cached.entries.push(...truncatedNew);
         cached.offset = result.newOffset;
+        cached.estimatedBytes = this.estimateCacheBytes(cached.entries);
         // #424: Evict oldest entries when cache exceeds per-session cap
         if (cached.entries.length > SessionTranscripts.MAX_CACHE_ENTRIES_PER_SESSION) {
           cached.entries.splice(0, cached.entries.length - SessionTranscripts.MAX_CACHE_ENTRIES_PER_SESSION);
+          cached.estimatedBytes = this.estimateCacheBytes(cached.entries);
         }
+        // Issue #3762: Evict other sessions if total cache exceeds budget
+        this.evictIfNeeded();
         return cached.entries;
       }
-      // First read — cache it
-      this.parsedEntriesCache.set(session.id, { entries: [...result.entries], offset: result.newOffset });
-      return result.entries;
+      // First read — cache with truncated entries
+      const truncatedEntries = result.entries.map(e => SessionTranscripts.truncateEntryText(e));
+      const estBytes = this.estimateCacheBytes(truncatedEntries);
+      this.parsedEntriesCache.set(session.id, { entries: truncatedEntries, offset: result.newOffset, estimatedBytes: estBytes });
+      this.evictIfNeeded();
+      return result.entries; // Return untruncated to callers
     } catch { /* JSONL read failed — return cached entries or empty */
       return cached ? [...cached.entries] : [];
     }

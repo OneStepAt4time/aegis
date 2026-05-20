@@ -25,6 +25,17 @@ export class SSEWriter {
     private readonly onCleanup: () => void,
   ) {
     req.on('close', () => this.cleanup());
+    // Issue #3762: Backup cleanup — if the client disconnects abnormally (CLOSE-WAIT),
+    // the underlying socket may not emit 'close' on the request. Set a socket timeout
+    // as a safety net to detect dead connections.
+    const socket = req.socket;
+    if (socket && !socket.destroyed) {
+      socket.setTimeout(300_000, () => { // 5-minute socket timeout
+        if (!this.isDestroyed) {
+          this.destroy();
+        }
+      });
+    }
   }
 
   /**
