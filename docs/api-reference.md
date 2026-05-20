@@ -814,7 +814,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 }
 ```
 
-> **Note:** The `model` and `effort` fields appear in the response when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly. The `runnerName` field identifies the agent type (e.g. `"claude-code"` for ACP sessions); it is absent for legacy sessions.
+> **Note:** The `model` field is populated at creation time — either from an explicit request parameter or auto-detected from Claude Code settings (`ANTHROPIC_MODEL` in `.claude/settings.local.json` or `.claude/settings.json`). The `effort` field appears when provided at creation time. The `isolationMode` field (`"worktree"` or `"none"`) is detected from Claude Code settings and indicates whether the session uses a git worktree or edits the project directly. The `runnerName` field identifies the agent type (e.g. `"claude-code"` for ACP sessions); it is absent for legacy sessions.
 >
 > **Isolation policy:** Control how Aegis handles worktree isolation via `isolationPolicy` (request body) or `AEGIS_ISOLATION_POLICY` (env/config). Values: `respect-cc` (default — follows CC settings), `enforce-worktree` (rejects sessions that would run without a worktree), `enforce-direct` (forces no worktree, edits project directly). Use `enforce-worktree` when multiple concurrent sessions share a repo to prevent file conflicts.
 
