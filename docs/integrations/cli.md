@@ -82,6 +82,13 @@ If the server is already running, skips straight to session creation. Existing c
 | `--model <provider/model>` | Override the default model for this session |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
 | `--no-stream` | Wait for session completion and print output (non-streaming) |
+| `--timeout <sec>` | Maximum wait time in seconds (default: 300). Set to `0` for no timeout |
+
+**Environment variables:**
+
+| Variable | Description |
+|----------|------------|
+| `AEGIS_RUN_TIMEOUT` | Default timeout for `ag run` in seconds (default: 300) |
 
 ### `ag` — Start Server
 
