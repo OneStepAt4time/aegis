@@ -482,7 +482,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     const auditLogger = getAuditLogger();
     if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.create', `Session created: ${session.displayName} in ${safeWorkDir} (permission=${req.matchedPermission ?? 'create'})`, session.id, req.tenantId);
 
-    await channels.sessionCreated({
+    channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
       session: { id: session.id, name: session.displayName, workDir, runnerName: session.runnerName },

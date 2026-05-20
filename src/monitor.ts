@@ -328,7 +328,7 @@ export class SessionMonitor {
               const detail = `Session stalled: CC extended thinking for ${minutes}min with no output. ` +
                   `Status: "${statusText}". Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
               this.eventBus?.emitStall(session.id, 'thinking', detail);
-              await this.channels.statusChange(
+              this.channels.statusChange(
                 this.makePayload('status.stall', session, detail),
               );
             }
@@ -340,7 +340,7 @@ export class SessionMonitor {
               const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
                   `Last activity: ${new Date(session.lastActivity).toISOString()}`;
               this.eventBus?.emitStall(session.id, 'jsonl', detail);
-              await this.channels.statusChange(
+              this.channels.statusChange(
                 this.makePayload('status.stall', session, detail),
               );
               // Issue #3752: Attempt auto-recovery for JSONL stall
@@ -365,7 +365,7 @@ export class SessionMonitor {
             const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
                 `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
             this.eventBus?.emitStall(session.id, 'permission', detail);
-            await this.channels.statusChange(
+            this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
           }
@@ -386,7 +386,7 @@ export class SessionMonitor {
               await this.sessions.reject(session.id);
               const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.displayName})`;
               this.eventBus?.emitStall(session.id, 'permission_timeout', detail);
-              await this.channels.statusChange(
+              this.channels.statusChange(
                 this.makePayload('status.permission_timeout', session, detail),
               );
             } catch (e: unknown) {
@@ -413,7 +413,7 @@ export class SessionMonitor {
             const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
                 `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
             this.eventBus?.emitStall(session.id, 'unknown', detail);
-            await this.channels.statusChange(
+            this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
           }
@@ -432,7 +432,7 @@ export class SessionMonitor {
             const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
                 `May need intervention: /interrupt, /approve, or /kill`;
             this.eventBus?.emitStall(session.id, 'extended', detail);
-            await this.channels.statusChange(
+            this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
           }
@@ -452,7 +452,7 @@ export class SessionMonitor {
             const detail = `Session stalled: in "working" state for ${minutes}min. ` +
               `CC may be stuck in an internal loop (e.g., Misting). Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
             this.eventBus?.emitStall(session.id, 'extended_working', detail);
-            await this.channels.statusChange(
+            this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
             // Issue #3752: Attempt auto-recovery for extended working stall
@@ -529,7 +529,7 @@ export class SessionMonitor {
     this.channels.statusChange(
       this.makePayload('status.stall', session,
         `Stall recovery (${stallType}): restarting...`),
-    ).catch((e: unknown) => { suppressedCatch(e, 'sr_notify'); });
+    );
 
     // Fire-and-forget recovery
     retryWithJitter(
@@ -566,7 +566,7 @@ export class SessionMonitor {
       this.channels.statusChange(
         this.makePayload('status.stall', { ...session, status: 'idle' } as SessionInfo,
           `Stall recovery OK — session restarted.`),
-      ).catch((e: unknown) => { suppressedCatch(e, 'sr_ok'); });
+      );
     }).catch((err: unknown) => {
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error({
@@ -580,7 +580,7 @@ export class SessionMonitor {
       this.channels.statusChange(
         this.makePayload('status.stall', session,
           `Stall recovery failed: ${errMsg}`),
-      ).catch((e: unknown) => { suppressedCatch(e, 'sr_fail'); });
+      );
       this.alertManager?.recordFailure('session_failure',
         `Session "${displayName}" stall recovery failed: ${errMsg}`);
       this.metrics?.sessionFailed(sid);
@@ -598,7 +598,7 @@ export class SessionMonitor {
       // Exponential backoff with jitter (shared computeDelayMs from retry.ts)
       const delayMs = computeDelayMs(retryAttempt, baseDelay, maxDelay);
       this.rateLimitRetryAttempts.set(session.id, retryAttempt);
-      await this.channels.statusChange(
+      this.channels.statusChange(
         this.makePayload('status.rate_limited', session,
           `Claude API rate limited (${stopReason}). Retrying (${retryAttempt}/${maxRetries}) in ${Math.round(delayMs / 1000)}s…`),
       );
@@ -644,7 +644,7 @@ export class SessionMonitor {
             this.channels.statusChange(
               this.makePayload('status.error', { ...session, status: 'error' } as SessionInfo,
                 `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
-            ).catch((e: unknown) => { suppressedCatch(e, 'rate_limit_retry_exhausted_notify'); });
+            );
             this.alertManager?.recordFailure('session_failure',
               `Session "${session.displayName}" rate-limit retries exhausted: ${errMsg}`);
             this.metrics?.sessionFailed(sid);
@@ -653,14 +653,14 @@ export class SessionMonitor {
       }, delayMs);
     } else if (!this.acpBackend) {
       // No ACP backend available — legacy notification only
-      await this.channels.statusChange(
+      this.channels.statusChange(
         this.makePayload('status.rate_limited', session,
           `Claude API rate limited (${stopReason}). Session will resume when the backoff window expires.`),
       );
     } else {
       // Retries exhausted
       this.rateLimitRetryAttempts.delete(session.id);
-      await this.channels.statusChange(
+      this.channels.statusChange(
         this.makePayload('status.error', session,
           `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
       );
@@ -735,7 +735,7 @@ export class SessionMonitor {
             await this.handleRateLimitSignal(session, stopReason);
           } else {
             const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
-            await this.channels.statusChange(
+            this.channels.statusChange(
               this.makePayload('status.error', session,
                 `⚠️ Claude Code error: ${errorDetail}`),
             );
@@ -765,7 +765,7 @@ export class SessionMonitor {
           this.stateSince.delete(session.id);
           this.idleNotified.add(session.id);
 
-          await this.channels.statusChange(
+          this.channels.statusChange(
             this.makePayload('status.stopped', session,
               'Claude Code session ended normally'),
           );
@@ -937,7 +937,7 @@ export class SessionMonitor {
     }
 
     await maybeInjectFault('monitor.forwardMessage.channels.message');
-    await this.channels.message(this.makePayload(event, session, msg.text));
+    this.channels.message(this.makePayload(event, session, msg.text));
   }
 
   private async broadcastStatusChange(
@@ -966,7 +966,7 @@ export class SessionMonitor {
         });
         try {
           await this.sessions.approve(session.id);
-          await this.channels.statusChange(
+          this.channels.statusChange(
             this.makePayload('status.permission', session,
               `[AUTO-APPROVED] ${result.interactiveContent || 'Permission auto-approved'}`),
           );
@@ -979,19 +979,19 @@ export class SessionMonitor {
             errorCode: 'AUTO_APPROVE_FAILED',
             attributes: { error: errMsg },
           });
-          await this.channels.statusChange(
+          this.channels.statusChange(
             this.makePayload('status.permission', session,
               `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${errMsg}`),
           );
         }
       } else {
-        await this.channels.statusChange(
+        this.channels.statusChange(
           this.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
         );
       }
     } else if (status === 'plan_mode') {
       this.eventBus?.emitStatus(session.id, 'plan_mode', result.interactiveContent || 'Plan review requested');
-      await this.channels.statusChange(
+      this.channels.statusChange(
         this.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),
       );
     } else if (status === 'idle') {
@@ -1001,7 +1001,7 @@ export class SessionMonitor {
       if (idleDuration >= 3_000 && !this.idleNotified.has(session.id)) {
         this.idleNotified.add(session.id);
         this.eventBus?.emitStatus(session.id, 'idle', result.statusText || 'Session finished working, awaiting input');
-        await this.channels.statusChange(
+        this.channels.statusChange(
           this.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
         );
       }
@@ -1017,7 +1017,7 @@ export class SessionMonitor {
           attributes: { displayName: session.displayName },
         });
         try {
-          await this.channels.statusChange(
+          this.channels.statusChange(
             this.makePayload('status.context_warning', session,
               'Context window nearing limit — auto-injected /compact to prevent overflow'),
           );
@@ -1033,7 +1033,7 @@ export class SessionMonitor {
       }
     } else if (status === 'ask_question' && prevStatus !== 'ask_question') {
       this.eventBus?.emitStatus(session.id, 'ask_question', result.interactiveContent || 'Session is asking a question');
-      await this.channels.statusChange(
+      this.channels.statusChange(
         this.makePayload('status.question', session, result.interactiveContent || 'Session is asking a question'),
       );
     }
@@ -1092,7 +1092,7 @@ export class SessionMonitor {
         const detail = `Session "${session.displayName}" died — session process no longer alive. ` +
             `Last activity: ${new Date(session.lastActivity).toISOString()}`;
         this.eventBus?.emitDead(session.id, detail);
-        await this.channels.statusChange(
+        this.channels.statusChange(
           this.makePayload('status.dead', session, detail),
         );
         // Issue #1418: Report dead session to alerting

@@ -177,7 +177,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
         await sessions.killSession(cmd.sessionId);
-        await channels.sessionEnded(makePayloadFromCtx(sessions, 'session.ended', cmd.sessionId, 'killed'));
+        channels.sessionEnded(makePayloadFromCtx(sessions, 'session.ended', cmd.sessionId, 'killed'));
         cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
         break;
       case 'message':
@@ -595,7 +595,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
         // reference a session that is still being destroyed.
         await sessions.killSession(session.id);
         eventBus.cleanupSession(session.id);
-        await channels.sessionEnded({
+        channels.sessionEnded({
           event: 'session.ended',
           timestamp: new Date().toISOString(),
           session: { id: session.id, name: session.displayName, workDir: session.workDir },
@@ -647,7 +647,7 @@ async function reapZombieSessions(): Promise<void> {
       // Issue #2947: mark zombie-reaped sessions as infra failures
       metrics.sessionInfraFailed(session.id);
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
-      await channels.sessionEnded({
+      channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
         session: { id: session.id, name: session.displayName, workDir: session.workDir },

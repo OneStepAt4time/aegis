@@ -71,29 +71,44 @@ export class ChannelManager {
     }
   }
 
-  /** Fan out a session-created event. */
-  async sessionCreated(payload: SessionEventPayload): Promise<void> {
-    await this.fanOut(payload, ch => ch.onSessionCreated?.(payload));
+  /**
+   * Fan out a session-created event (fire-and-forget).
+   * Issue #3837: Non-blocking — slow channels must not stall HTTP responses.
+   */
+  sessionCreated(payload: SessionEventPayload): void {
+    void this.fanOut(payload, ch => ch.onSessionCreated?.(payload));
   }
 
-  /** Fan out a session-ended event. */
-  async sessionEnded(payload: SessionEventPayload): Promise<void> {
-    await this.fanOut(payload, ch => ch.onSessionEnded?.(payload));
+  /**
+   * Fan out a session-ended event (fire-and-forget).
+   * Issue #3837: Non-blocking — slow channels must not stall HTTP responses.
+   */
+  sessionEnded(payload: SessionEventPayload): void {
+    void this.fanOut(payload, ch => ch.onSessionEnded?.(payload));
   }
 
-  /** Fan out a message event. */
-  async message(payload: SessionEventPayload): Promise<void> {
-    await this.fanOut(payload, ch => ch.onMessage?.(payload));
+  /**
+   * Fan out a message event (fire-and-forget).
+   * Issue #3837: Non-blocking — slow channels must not stall HTTP responses.
+   */
+  message(payload: SessionEventPayload): void {
+    void this.fanOut(payload, ch => ch.onMessage?.(payload));
   }
 
-  /** Fan out a status change event. */
-  async statusChange(payload: SessionEventPayload): Promise<void> {
-    await this.fanOut(payload, ch => ch.onStatusChange?.(payload));
+  /**
+   * Fan out a status change event (fire-and-forget).
+   * Issue #3837: Non-blocking — slow channels must not stall HTTP responses.
+   */
+  statusChange(payload: SessionEventPayload): void {
+    void this.fanOut(payload, ch => ch.onStatusChange?.(payload));
   }
 
-  /** Fan out a swarm teammate event. */
-  async swarmEvent(payload: SessionEventPayload): Promise<void> {
-    await this.fanOut(payload, ch => ch.onStatusChange?.(payload));
+  /**
+   * Fan out a swarm teammate event (fire-and-forget).
+   * Issue #3837: Non-blocking — slow channels must not stall HTTP responses.
+   */
+  swarmEvent(payload: SessionEventPayload): void {
+    void this.fanOut(payload, ch => ch.onStatusChange?.(payload));
   }
 
   /** How many channels are registered. */

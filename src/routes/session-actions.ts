@@ -61,7 +61,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       // Previously we called getStallInfo BEFORE send, capturing a stale state
       // (session was temporarily quiet but became active after message delivery).
       const currentStallInfo = monitor.getStallInfo(sessionId);
-      await channels.message({
+      channels.message({
         event: 'message.user',
         timestamp: new Date().toISOString(),
         session: { id: sessionId, name: '', workDir: '' },
@@ -130,7 +130,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     });
     let promptDelivery: { delivered: boolean; attempts: number } | undefined;
     if (prompt) { promptDelivery = await sessions.sendInitialPrompt(forkedSession.id, prompt); }
-    await channels.sessionCreated({
+    channels.sessionCreated({
       event: 'session.created',
       timestamp: new Date().toISOString(),
       session: { id: forkedSession.id, name: forkedSession.displayName, workDir: parent.workDir, runnerName: forkedSession.runnerName },
@@ -263,7 +263,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
       if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id, req.tenantId);
-      await channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
+      channels.sessionEnded(makePayload(sessions, 'session.ended', session.id, 'killed'));
       cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
       return reply.status(200).send({ ok: true, status: "killed" });
     } catch (e: unknown) {
