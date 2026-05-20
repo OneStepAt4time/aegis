@@ -93,6 +93,7 @@ export function MobilePermissionPrompt({
     },
     threshold: 80,
     enabled: !showContextMenu,
+    elementRef: containerRef,
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {

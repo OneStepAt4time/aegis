@@ -580,11 +580,12 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+                className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+                aria-label="Open command palette"
               >
                 <Search className="h-3 w-3" />
-                <span>Search…</span>
-                <kbd className="ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
+                <span className="hidden sm:inline">Search…</span>
+                <kbd className="hidden sm:inline ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
               </button>
 
               {/* Version + theme toggle */}
