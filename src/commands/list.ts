@@ -4,6 +4,7 @@
  * Wraps GET /v1/sessions with optional status and project (`--cwd`) filters.
  * Issue #3633: Add --full-ids and --json flags for better CLI workflow.
  * Issue #3731: Hide killed/completed/crashed by default; --all shows everything.
+ * Issue #3894: Mention partial ID support in tips.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
@@ -81,6 +82,7 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   if (tips.length > 0) {
     writeLine(io.stdout, '');
     writeLine(io.stdout, `  Tip: use ${tips.join(', ')}, or pipe with --json.`);
+    writeLine(io.stdout, '  Partial IDs (e.g. ag read 786d9a13) are supported by read, kill, tail, and status.');
   }
 
   return 0;
