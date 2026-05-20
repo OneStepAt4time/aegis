@@ -23,11 +23,12 @@ import { SYSTEM_TENANT } from './config.js';
 import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
+
 import { type AlertManager } from './alerting.js';
 import { type MetricsCollector } from './metrics.js';
 import { startToolSpan, setToolResult, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
-import { computeDelayMs } from './retry.js';
+import { computeDelayMs, retryWithJitter } from './retry.js';
 
 /** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
 function parseCogitatedDuration(_statusText: string): number | null {
@@ -47,6 +48,8 @@ export interface MonitorConfig {
   rateLimitMaxRetries: number;     // Max retry attempts for rate-limited sessions (default: 3)
   rateLimitBaseDelayMs: number;    // Base delay for exponential backoff on retry (default: 5000)
   rateLimitMaxDelayMs: number;     // Max delay cap for exponential backoff (default: 60000)
+  stallRecoveryEnabled: boolean;      // Auto-recover stalled sessions via restart (default: true)
+  stallRecoveryMaxRetries: number;    // Max restart attempts for stall recovery (default: 1)
 }
 
 /** Issue #89 L4: Debounce interval for status change broadcasts (ms). */
@@ -65,6 +68,8 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   rateLimitMaxRetries: 3,                  // Issue #3754: retry up to 3 times on rate limit
   rateLimitBaseDelayMs: 5_000,             // Issue #3754: 5s base backoff
   rateLimitMaxDelayMs: 60_000,             // Issue #3754: 60s max backoff
+  stallRecoveryEnabled: true,              // Issue #3752: auto-recover stalled sessions
+  stallRecoveryMaxRetries: 1,              // Issue #3752: single restart attempt
 };
 
 export class SessionMonitor {
@@ -163,6 +168,8 @@ export class SessionMonitor {
   private acpBackend?: AcpBackend;
   /** Issue #3754: Track retry attempts per session for rate-limit retries. */
   private rateLimitRetryAttempts = new Map<string, number>();
+  /** Issue #3752: Track sessions currently being recovered from stall. */
+  private stallRecovering = new Set<string>();
   /** Issue #3754: Set the ACP backend for rate-limit retry support. */
   setAcpBackend(acpBackend: AcpBackend): void {
     this.acpBackend = acpBackend;
@@ -336,6 +343,8 @@ export class SessionMonitor {
               await this.channels.statusChange(
                 this.makePayload('status.stall', session, detail),
               );
+              // Issue #3752: Attempt auto-recovery for JSONL stall
+              this.attemptStallRecovery(session, 'jsonl');
             }
           }
         }
@@ -446,6 +455,8 @@ export class SessionMonitor {
             await this.channels.statusChange(
               this.makePayload('status.stall', session, detail),
             );
+            // Issue #3752: Attempt auto-recovery for extended working stall
+            this.attemptStallRecovery(session, 'extended_working');
           }
         }
       }
@@ -488,6 +499,94 @@ export class SessionMonitor {
    * Attempts automatic retry with exponential backoff via ACP backend restart.
    * Extracted for testability.
    */
+  /**
+   * Issue #3752: Attempt stall recovery via ACP backend restart.
+   * Uses retryWithJitter for the restart attempt.
+   * Fire-and-forget to avoid blocking the monitor loop.
+   */
+  attemptStallRecovery(session: SessionInfo, stallType: string): void {
+    if (!this.config.stallRecoveryEnabled) return;
+    if (!this.acpBackend) return;
+    if (this.stallRecovering.has(session.id)) return; // Already recovering
+
+    this.stallRecovering.add(session.id);
+
+    const maxRetries = this.config.stallRecoveryMaxRetries;
+    const backend = this.acpBackend;
+    const sid = session.id;
+    const cwd = session.workDir;
+    const tenantId = session.tenantId ?? SYSTEM_TENANT;
+    const ownerKeyId = session.ownerKeyId ?? 'master';
+    const displayName = session.displayName;
+
+    logger.info({
+      component: 'monitor',
+      operation: 'stall_recovery_start',
+      sessionId: sid,
+      attributes: { stallType, displayName },
+    });
+
+    this.channels.statusChange(
+      this.makePayload('status.stall', session,
+        `Attempting stall recovery (${stallType}): restarting session...`),
+    ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_notify'); });
+
+    // Fire-and-forget recovery
+    retryWithJitter(
+      () => backend.restartSession({
+        sessionId: sid,
+        cwd,
+        tenantId,
+        ownerKeyId,
+        reason: `stall_recovery_${stallType}`,
+      }),
+      {
+        maxAttempts: maxRetries,
+        baseDelayMs: 2_000,
+        maxDelayMs: 10_000,
+        onRetry: (_err: unknown, attempt: number, delayMs: number) => {
+          logger.info({
+            component: 'monitor',
+            operation: 'stall_recovery_retry',
+            sessionId: sid,
+            attributes: { attempt, delayMs },
+          });
+        },
+      },
+    ).then((result) => {
+      logger.info({
+        component: 'monitor',
+        operation: 'stall_recovery_success',
+        sessionId: sid,
+        attributes: { backoffDelayMs: result.backoffDelayMs },
+      });
+      this.rateLimitedSessions.delete(sid);
+      this.stallRecovering.delete(sid);
+      this.stallDeleteAll(sid);
+      this.channels.statusChange(
+        this.makePayload('status.stall', { ...session, status: 'idle' } as SessionInfo,
+          `Stall recovery successful. Session restarted.`),
+      ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_success_notify'); });
+    }).catch((err: unknown) => {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logger.error({
+        component: 'monitor',
+        operation: 'stall_recovery_failed',
+        sessionId: sid,
+        errorCode: 'STALL_RECOVERY_ERROR',
+        attributes: { error: errMsg },
+      });
+      this.stallRecovering.delete(sid);
+      this.channels.statusChange(
+        this.makePayload('status.stall', session,
+          `Stall recovery failed: ${errMsg}. Manual intervention required.`),
+      ).catch((e: unknown) => { suppressedCatch(e, 'stall_recovery_failed_notify'); });
+      this.alertManager?.recordFailure('session_failure',
+        `Session "${displayName}" stall recovery failed: ${errMsg}`);
+      this.metrics?.sessionFailed(sid);
+    });
+  }
+
   async handleRateLimitSignal(session: SessionInfo, stopReason: string): Promise<void> {
     this.rateLimitedSessions.add(session.id);
     // Issue #3754: Attempt automatic retry with exponential backoff.
@@ -1021,6 +1120,7 @@ export class SessionMonitor {
     this.rateLimitedSessions.delete(sessionId);
     // Issue #3754: Clear retry tracking
     this.rateLimitRetryAttempts.delete(sessionId);
+    this.stallRecovering.delete(sessionId);
     // Issue #89 L4: Clear pending debounce timer
     const pending = this.statusChangeDebounce.get(sessionId);
     if (pending) {
