@@ -16,13 +16,6 @@ function createMockContext(): RouteContext {
       getSession: () => null,
       listSessions: () => [],
     } as unknown as RouteContext['sessions'],
-    eventBus: {} as RouteContext['eventBus'],
-    metrics: {} as RouteContext['metrics'],
-    toolRegistry: {} as RouteContext['toolRegistry'],
-    metering: {
-      getSessionUsage: () => [],
-      getUsageSummary: () => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, estimatedCostUsd: 0, records: [] }),
-    } as unknown as RouteContext['metering'],
     auth: {
       authEnabled: false,
       getRole: () => 'admin',
@@ -30,13 +23,30 @@ function createMockContext(): RouteContext {
       hasPermission: () => true,
       validateToken: () => ({ valid: true, keyId: 'test' }),
     } as unknown as RouteContext['auth'],
+    quotas: {} as RouteContext['quotas'],
+    config: {} as RouteContext['config'],
+    metrics: {} as RouteContext['metrics'],
+    monitor: {} as RouteContext['monitor'],
+    eventBus: {} as RouteContext['eventBus'],
+    channels: {} as RouteContext['channels'],
+    jsonlWatcher: {} as RouteContext['jsonlWatcher'],
+    pipelines: {} as RouteContext['pipelines'],
+    toolRegistry: {} as RouteContext['toolRegistry'],
+    getAuditLogger: () => undefined,
+    alertManager: {} as RouteContext['alertManager'],
+    sseLimiter: {} as RouteContext['sseLimiter'],
+    memoryBridge: null,
+    requestKeyMap: new Map(),
+    validateWorkDir: async () => '/tmp',
+    serverState: { draining: false },
+    metering: {
+      getSessionUsage: () => [],
+      getUsageSummary: () => ({ totalInputTokens: 0, totalOutputTokens: 0, totalCacheCreationTokens: 0, totalCacheReadTokens: 0, estimatedCostUsd: 0, records: [] }),
+    } as unknown as RouteContext['metering'],
     metricsCache: {
       getMetrics: () => ({ models: {} }),
     } as unknown as RouteContext['metricsCache'],
-    jsonlWatcher: {} as RouteContext['jsonlWatcher'],
-    sessionStore: {} as RouteContext['sessionStore'],
-    pipelineManager: {} as RouteContext['pipelineManager'],
-  };
+  } as RouteContext;
 }
 
 describe('Issue #3811: Budget enforcement status', () => {
