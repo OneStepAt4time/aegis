@@ -16,7 +16,7 @@ import { useRecentDirs } from '../hooks/useRecentDirs';
 import { useDrawerStore } from '../store/useDrawerStore';
 import { useConfetti } from '../hooks/useConfetti';
 import { useT } from '../i18n/context';
-import { PERMISSION_MODES } from '../utils/sessionCreation';
+import { PERMISSION_MODES, validateWorkDir } from '../utils/sessionCreation';
 
 
 
@@ -33,6 +33,7 @@ export function NewSessionDrawer() {
   const [claudeCommand, setClaudeCommand] = useState('');
   const [prompt, setPrompt] = useState('');
   const [permissionMode, setPermissionMode] = useState('default');
+  const [workDirError, setWorkDirError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<SessionTemplate[]>([]);
 
@@ -57,6 +58,7 @@ export function NewSessionDrawer() {
     } else {
       // Reset form on close
       setName('');
+      setWorkDirError(null);
       setWorkDir('');
       setClaudeCommand('');
       setPrompt('');
@@ -78,6 +80,13 @@ export function NewSessionDrawer() {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const dirError = validateWorkDir(workDir);
+    if (dirError) {
+      setWorkDirError(dirError);
+      return;
+    }
+    setWorkDirError(null);
+
     if (!workDir.trim()) {
       addToast('error', 'Missing work directory', 'Work directory is required');
       return;
@@ -142,12 +151,15 @@ export function NewSessionDrawer() {
                   id="drawer-workDir"
                   type="text"
                   value={workDir}
-                  onChange={(e) => setWorkDir(e.target.value)}
+                  onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
                   placeholder="/home/user/projects/myapp"
                   required
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">Absolute path where the session will run</p>
+                {workDirError && (
+                  <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
+                )}
               </div>
 
               {/* Session Name */}
@@ -214,9 +226,33 @@ export function NewSessionDrawer() {
               </div>
 
               {templates.length > 0 && (
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {templates.length} template{templates.length !== 1 ? 's' : ''} available — use the Overview page to create from template
-                </p>
+                <div>
+                  <label htmlFor="drawer-template-select" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+                    Quick fill from template
+                  </label>
+                  <select
+                    id="drawer-template-select"
+                    value=""
+                    onChange={(e) => {
+                      const tpl = templates[Number(e.target.value)];
+                      if (!tpl) return;
+                      if (tpl.name) setName(tpl.name);
+                      if (tpl.workDir) setWorkDir(tpl.workDir);
+                      if (tpl.prompt) setPrompt(tpl.prompt);
+                      if (tpl.permissionMode) setPermissionMode(tpl.permissionMode);
+                      if (tpl.claudeCommand) setClaudeCommand(tpl.claudeCommand);
+                      useToastStore.getState().addToast('info', `Applied template: ${tpl.name || 'Untitled'}`, undefined, { duration: 2000 });
+                    }}
+                    className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  >
+                    <option value="" disabled>
+                      {templates.length} template{templates.length !== 1 ? 's' : ''} available…
+                    </option>
+                    {templates.map((t, i) => (
+                      <option key={t.id} value={i}>{t.name || 'Untitled'}</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {/* Actions */}

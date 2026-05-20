@@ -17,3 +17,30 @@ export const PERMISSION_MODES = [
 ] as const;
 
 export type PermissionMode = (typeof PERMISSION_MODES)[number]['value'];
+
+/**
+ * Validate that a working directory path looks like a valid absolute path.
+ * Allows: /foo, /foo/bar, /foo/../bar, C:\foo (Windows)
+ * Rejects: empty, relative paths without leading /, common mistakes
+ */
+export function validateWorkDir(path: string): string | null {
+  const trimmed = path.trim();
+  if (!trimmed) return 'Working directory is required';
+
+  // Must start with / (Unix) or drive letter (Windows)
+  if (!trimmed.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return 'Working directory must be an absolute path (e.g. /home/user/project)';
+  }
+
+  // Reject obviously wrong patterns
+  if (trimmed.includes('  ')) {
+    return 'Path contains multiple consecutive spaces';
+  }
+
+  // Reject control characters
+  if (/[\x00-\x1f\x7f]/.test(trimmed)) {
+    return 'Path contains invalid characters';
+  }
+
+  return null; // valid
+}

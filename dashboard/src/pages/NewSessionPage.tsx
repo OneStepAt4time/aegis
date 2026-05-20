@@ -11,6 +11,7 @@ import { useToastStore } from '../store/useToastStore';
 import { useRecentDirs } from '../hooks/useRecentDirs';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 import { useT } from '../i18n/context';
+import { validateWorkDir } from '../utils/sessionCreation';
 
 export default function NewSessionPage() {
   const navigate = useNavigate();
@@ -57,6 +58,12 @@ export default function NewSessionPage() {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const dirError = validateWorkDir(workDir);
+    if (dirError) {
+      addToast('error', dirError);
+      return;
+    }
+
     if (!workDir.trim()) {
       addToast('error', t('newSession.missingWorkDir'), t('newSession.missingWorkDirDescription'));
       return;

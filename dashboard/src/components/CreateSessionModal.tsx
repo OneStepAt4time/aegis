@@ -9,7 +9,7 @@ import { X, Loader2, Plus, Trash2 } from 'lucide-react';
 import { createSessionWithFallback, batchCreateSessions, getTemplates } from '../api/client';
 import type { SessionTemplate } from '../types';
 import { useT } from '../i18n/context';
-import { PERMISSION_MODES } from '../utils/sessionCreation';
+import { PERMISSION_MODES, validateWorkDir } from '../utils/sessionCreation';
 
 interface CreateSessionModalProps {
   open: boolean;
@@ -68,6 +68,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const [workDir, setWorkDir] = useState('');
   const [name, setName] = useState('');
   const [claudeCommand, setClaudeCommand] = useState('');
+  const [workDirError, setWorkDirError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [permissionMode, setPermissionMode] = useState('default');
   const [loading, setLoading] = useState(false);
@@ -167,6 +168,15 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     const controller = new AbortController();
     abortRef.current = controller;
     try {
+      // Validate workDir before submit
+      const dirError = validateWorkDir(workDir);
+      if (dirError) {
+        setWorkDirError(dirError);
+        workDirRef.current?.focus();
+        return;
+      }
+      setWorkDirError(null);
+
       const session = await createSessionWithFallback({
         workDir: workDir.trim(),
         name: name.trim() || undefined,
@@ -261,7 +271,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               type="text"
               ref={workDirRef}
               value={workDir}
-              onChange={(e) => setWorkDir(e.target.value)}
+              onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
               placeholder="/home/user/project"
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
             />
@@ -279,6 +289,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               placeholder="my-session"
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
             />
+            {workDirError && (
+              <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
+            )}
           </div>
 
           {/* Claude Command */}
@@ -495,6 +508,14 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           abortRef.current = controller;
 
           try {
+            // Validate workDir before submit (batch uses template.workDir)
+            const dirError = validateWorkDir(template.workDir);
+            if (dirError) {
+              setError(dirError);
+              setLoading(false);
+              return;
+            }
+
             const session = await createSessionWithFallback({
               workDir: template.workDir,
               prompt: template.prompt,
