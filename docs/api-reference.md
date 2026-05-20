@@ -843,6 +843,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | 400 | `ISOLATION_POLICY_VIOLATION` | Session rejected because isolation policy requires worktree but Claude Code settings would run without one. Fix: enable worktrees in Claude Code or change policy. |
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
+| 422 | `NO_RUNNER_AVAILABLE` | No agent runner available (ACP disabled and no runner configured). Returned instead of creating a zombie session with `promptDelivery.delivered=false`. Remove `prompt` or enable a runner. |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
 
 ---
@@ -3954,6 +3955,7 @@ Every error response includes an Aegis-specific `code` field for programmatic ha
 | `NO_ACTIVE_INTERVENTION` | 409 | No active intervention to complete |
 | `NOT_PAUSED` | 409 | Session not paused for resume |
 | `STALL_RECOVERY_ERROR` | 500 | Automatic stall recovery failed |
+| `NO_RUNNER_AVAILABLE` | 422 | No agent runner available (prompt provided but ACP disabled)
 
 ---
 
