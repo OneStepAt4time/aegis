@@ -77,7 +77,7 @@ describe('#3863: getFullEntries returns untruncated text', () => {
         { role: 'assistant', contentType: 'text', text: LONG_TEXT, timestamp: '2026-05-20T00:00:00Z' },
       ],
       newOffset: 100,
-      raw: '',
+      raw: [],
     });
 
     const result = await transcripts.readTranscript(makeSession(), 1, 50);
@@ -93,7 +93,7 @@ describe('#3863: getFullEntries returns untruncated text', () => {
         { role: 'assistant', contentType: 'text', text: LONG_TEXT, timestamp: '2026-05-20T00:00:00Z' },
       ],
       newOffset: 100,
-      raw: '',
+      raw: [],
     });
 
     const result = await transcripts.readTranscriptCursor(makeSession(), undefined, 50);
@@ -114,7 +114,7 @@ describe('#3863: getFullEntries returns untruncated text', () => {
         { role: 'assistant', contentType: 'text', text: text2, timestamp: '2026-05-20T00:00:02Z' },
       ],
       newOffset: 300,
-      raw: '',
+      raw: [],
     });
 
     const result = await transcripts.readTranscript(makeSession(), 1, 50);
@@ -131,7 +131,7 @@ describe('#3863: getFullEntries returns untruncated text', () => {
         { role: 'assistant', contentType: 'text', text: LONG_TEXT, timestamp: '2026-05-20T00:00:01Z' },
       ],
       newOffset: 200,
-      raw: '',
+      raw: [],
     });
 
     const result = await transcripts.readTranscript(makeSession(), 1, 50, 'assistant');
