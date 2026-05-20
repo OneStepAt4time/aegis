@@ -22,6 +22,7 @@ import {
   forkSession,
 } from '../api/client';
 import { useToastStore } from '../store/useToastStore';
+import { useStore } from '../store/useStore';
 import { useSessionPolling } from '../hooks/useSessionPolling';
 import { useSessionIntervention } from '../hooks/useSessionIntervention';
 import { useSessionApproval } from '../hooks/useSessionApproval';
@@ -37,6 +38,7 @@ const SessionMetricsPanel = lazy(() => import('../components/session/SessionMetr
 import { LatencyPanel } from '../components/metrics/LatencyPanel';
 const AuditTrailPanel = lazy(() => import('../components/session/AuditTrailPanel').then(m => ({ default: m.AuditTrailPanel })));
 import { ApprovalBanner } from '../components/session/ApprovalBanner';
+import { StaleDataBanner } from '../components/shared/StaleDataBanner';
 import { AcpApprovalModal } from '../components/session/AcpApprovalModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PendingQuestionCard } from '../components/session/PendingQuestionCard';
@@ -153,6 +155,7 @@ export default function SessionDetailPage() {
   const handleSendRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const handleInterruptRef = useRef<() => void>(() => {});
   const addToast = useToastStore((t_store) => t_store.addToast);
+  const sseError = useStore((s) => s.sseError);
 
   function getVisibleMessageInput(): HTMLInputElement | null {
     const candidates = [desktopMsgInputRef.current, mobileMsgInputRef.current].filter(
@@ -573,6 +576,8 @@ export default function SessionDetailPage() {
             onKill={() => { void handleKill(); }}
             onSaveTemplate={() => setSaveTemplateModalOpen(true)}
           />
+
+          {sseError && <StaleDataBanner error={sseError} />}
 
           <PauseControlBar
             sessionStatus={s.status}
