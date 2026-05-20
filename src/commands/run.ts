@@ -488,27 +488,32 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
       }
     }
 
-    // Start server
+    // Issue #3759: Only start a new server if one isn't already running
     const serverDir = join(import.meta.dirname || __dirname, '..');
-    startServer(serverDir, portOverride ?? undefined);
+    const alreadyRunning = await isServerHealthy(baseUrl, authToken);
+    if (!alreadyRunning) {
+      startServer(serverDir, portOverride ?? undefined);
 
-    // Wait for server
-    if (!skipPrompts) writeLine(io.stdout, '  ⏳ Waiting for server...');
-    const started = await waitForServer(baseUrl, authToken, 15_000);
-    if (!started) {
-      // Issue #3067: Race condition — an existing Aegis server may be on the port
-      // but was in a crash loop when we first checked. Retry health check once
-      // more before giving up — the existing server may have recovered.
-      if (!skipPrompts) writeLine(io.stdout, '  ⏳ Retrying health check (existing server may have recovered)...');
-      if (await isServerHealthy(baseUrl, authToken)) {
-        if (!skipPrompts) writeLine(io.stdout, '  ✅ Connected to existing server');
-      } else {
-        writeLine(io.stderr, '  ❌ Server failed to start within 15 seconds.');
-        writeLine(io.stderr, '     Try starting manually: ag');
-        return 1;
+      // Wait for server
+      if (!skipPrompts) writeLine(io.stdout, '  ⏳ Waiting for server...');
+      const started = await waitForServer(baseUrl, authToken, 15_000);
+      if (!started) {
+        // Issue #3067: Race condition — an existing Aegis server may be on the port
+        // but was in a crash loop when we first checked. Retry health check once
+        // more before giving up — the existing server may have recovered.
+        if (!skipPrompts) writeLine(io.stdout, '  ⏳ Retrying health check (existing server may have recovered)...');
+        if (await isServerHealthy(baseUrl, authToken)) {
+          if (!skipPrompts) writeLine(io.stdout, '  ✅ Connected to existing server');
+        } else {
+          writeLine(io.stderr, '  ❌ Server failed to start within 15 seconds.');
+          writeLine(io.stderr, '     Try starting manually: ag');
+          return 1;
+        }
+      } else if (!skipPrompts) {
+        writeLine(io.stdout, '  ✅ Server started');
       }
     } else if (!skipPrompts) {
-      writeLine(io.stdout, '  ✅ Server started');
+      writeLine(io.stdout, '  ✅ Connected to existing server');
     }
   }
 
