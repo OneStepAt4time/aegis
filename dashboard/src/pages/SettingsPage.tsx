@@ -8,6 +8,7 @@ import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useReadingFont, type ReadingFont } from '../stores/readingFontStore';
 import { useLocale } from '../i18n/context';
+import { useToastStore } from '../store/useToastStore';
 import { useT } from '../i18n/context';
 
 const STORAGE_KEY = 'aegis-dashboard-settings';
@@ -112,6 +113,7 @@ function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
 
 export default function SettingsPage() {
   const handleRestartOnboarding = () => { try { localStorage.removeItem('aegis:onboarded'); sessionStorage.removeItem('aegis:onboarded'); } catch {} window.location.reload(); };
+  const addToast = useToastStore((s) => s.addToast);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { theme, resolvedTheme, toggleTheme, setTheme } = useTheme();
@@ -144,16 +146,34 @@ export default function SettingsPage() {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
+  const resetToDefaults = () => {
+    if (window.confirm('Reset all settings to their default values?')) {
+      setSettings(DEFAULT_SETTINGS);
+      setTheme('dark');
+      setReadingFont('default');
+      setLocale('en');
+      addToast('info', 'Settings reset to defaults');
+    }
+  };
+
   const isLight = resolvedTheme !== 'dark';
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-accent-cyan)]" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('settings.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('settings.subtitle')}</p>
         </div>
+        <button
+          type="button"
+          onClick={resetToDefaults}
+          className="shrink-0 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
+          aria-label="Reset all settings to defaults"
+        >
+          Reset to defaults
+        </button>
       </div>
 
       {saveError && (

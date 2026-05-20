@@ -37,6 +37,7 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
+  const unreadCountRef = useRef(0);
   const seenKeys = useRef<Set<string>>(new Set());
 
   // Fetch initial messages via API client
@@ -149,9 +150,15 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
     const el = containerRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    if (atBottom) {
+      unreadCountRef.current = 0;
+    } else if (!userScrolledRef.current) {
+      // User just scrolled up — capture current count as baseline
+      unreadCountRef.current = filteredMessages.length;
+    }
     userScrolledRef.current = !atBottom;
     setShowScrollBtn(!atBottom);
-  }, []);
+  }, [filteredMessages.length]);
 
   const scrollToBottom = useCallback(() => {
     userScrolledRef.current = false;
@@ -244,6 +251,11 @@ export function TranscriptViewer({ sessionId }: TranscriptViewerProps) {
           title="Scroll to bottom"
         >
           ↓
+          {unreadCountRef.current > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--color-accent-cyan)] text-[10px] font-bold text-[var(--color-void-dark)] px-1">
+              {filteredMessages.length - unreadCountRef.current}
+            </span>
+          )}
         </button>
       )}
     </div>
