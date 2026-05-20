@@ -149,6 +149,41 @@ function scanContentForCredentials(filePath, content) {
   return findings;
 }
 
+/**
+ * Scan tracked files for unresolved merge conflict markers.
+ * Catches <<<<<<< HEAD / ======= / >>>>>>> markers that would
+ * otherwise pass through TypeScript compilation, ESLint, and npm pack.
+ *
+ * Root cause: published npm package contained conflict markers in
+ * package.json, breaking fresh installs for all users (#3859, #3886).
+ */
+const CONFLICT_MARKER_RE = /^(<{7} |={7} |>={7} )/m;
+
+function scanTrackedFilesForConflictMarkers(rootDir = process.cwd()) {
+  const trackedFiles = gitLines(['ls-files'], [0], rootDir);
+  const findings = [];
+
+  for (const relativePath of trackedFiles) {
+    const absolutePath = path.join(rootDir, relativePath);
+    if (!fs.existsSync(absolutePath)) continue;
+
+    let content;
+    try {
+      content = fs.readFileSync(absolutePath, 'utf8');
+    } catch {
+      continue;
+    }
+
+    if (isLikelyBinary(content)) continue;
+
+    if (CONFLICT_MARKER_RE.test(content)) {
+      findings.push(`unresolved merge conflict marker detected: ${relativePath}`);
+    }
+  }
+
+  return findings;
+}
+
 function scanTrackedFilesForCredentials(rootDir = process.cwd()) {
   const trackedFiles = gitLines(['ls-files'], [0], rootDir);
   const findings = [];
@@ -227,6 +262,7 @@ function main() {
   }
 
   failures.push(...scanTrackedFilesForCredentials());
+  failures.push(...scanTrackedFilesForConflictMarkers());
 
   if (failures.length > 0) {
     fail(failures);
@@ -239,6 +275,7 @@ module.exports = {
   ALLOW_CREDENTIAL_SCAN_MARKER,
   scanContentForCredentials,
   scanTrackedFilesForCredentials,
+  scanTrackedFilesForConflictMarkers,
 };
 
 if (require.main === module) {
