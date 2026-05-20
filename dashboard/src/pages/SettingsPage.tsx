@@ -111,6 +111,13 @@ function SettingsSwitch({ checked, label, onClick }: SettingsSwitchProps) {
 }
 
 export default function SettingsPage() {
+  const handleResetDefaults = () => {
+    setSettings(DEFAULT_SETTINGS);
+    setTheme('auto');
+    setReadingFont('default');
+    setLocale('en');
+  };
+
   const handleRestartOnboarding = () => { try { localStorage.removeItem('aegis:onboarded'); sessionStorage.removeItem('aegis:onboarded'); } catch {} window.location.reload(); };
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -407,6 +414,22 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+      </section>
+
+      {/* Reset to defaults */}
+      <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
+        <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.reset.title')}</h3>
+        <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+          {t('settings.reset.description')}
+        </p>
+        <button
+          type="button"
+          onClick={handleResetDefaults}
+          className="flex min-h-[44px] items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          {t('settings.reset.button')}
+        </button>
       </section>
 
       {/* Onboarding */}
