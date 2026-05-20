@@ -156,13 +156,13 @@ describe('#3732 stream timeout fixes', () => {
     // Run with a short timeout by using --yes (90s) — we advance timers
     const runPromise = handleRun(['hello', '--yes'], io);
 
-    // Advance time past 90s idle timeout
-    await vi.advanceTimersByTimeAsync(95_000);
+    // Advance time past 300s idle timeout
+    await vi.advanceTimersByTimeAsync(305_000);
 
     const result = await runPromise;
     expect(result).toBe(1); // Exit code 1 when no output
     const errors = stderr.join('');
-    expect(errors).toContain('90 seconds');
+    expect(errors).toContain('300 seconds');
   });
 
   it('gives up after 3 consecutive fetch errors', async () => {
