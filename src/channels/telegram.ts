@@ -389,7 +389,7 @@ function md2html(md: string): string {
 
 
 /** Issue #3747: Format timestamp in cc-connect style: [DD/MM/YYYY HH:MM] */
-function formatTimestamp(isoTimestamp: string): string {
+export function formatTimestamp(isoTimestamp: string): string {
   const d = new Date(isoTimestamp);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -418,28 +418,6 @@ function formatSessionCreated(name: string, workDir: string, id: string, meta?: 
     }
   }
   return `🧰 Process: ${name}\n🚀 ${parts.join('\n')}`;
-}
-
-function _formatSessionEnded(name: string, detail: string, progress: SessionProgress): string {
-  const duration = elapsed(Date.now() - progress.startedAt);
-  const lines = [`✅ ${bold('Done')}  ${duration}  ·  ${progress.totalMessages} msgs`];
-
-  // Quality gate checklist
-  const checks: string[] = [];
-  if (progress.errors === 0) checks.push('☑ No errors');
-  else checks.push(`☒ ${progress.errors} errors`);
-  if (progress.edits || progress.creates) {
-    const edited = progress.filesEdited.slice(0, 5).map(f => code(shortPath(f))).join(', ');
-    const extra = progress.filesEdited.length > 5 ? ` +${progress.filesEdited.length - 5}` : '';
-    checks.push(`☑ Files: ${edited}${extra}`);
-  }
-  if (checks.length) lines.push(checks.join('\n'));
-
-  if (detail) {
-    const d = truncate(detail, 200);
-    lines.push(esc(d));
-  }
-  return lines.join('\n\n');
 }
 
 function formatAssistantMessage(detail: string): string | null {
@@ -1081,7 +1059,7 @@ export class TelegramChannel implements Channel {
           const label = tool.label || tool.file || 'command';
           const summary = truncate(payload.detail?.trim() || 'done', 80);
           // Only show non-trivial results (skip "ok", "done", "success")
-          if (!/^(success|ok|done|completed|passed)$/im.test(payload.detail?.trim())) {
+          if (!/^(success|ok|done|completed|passed)$/i.test(payload.detail?.trim())) {
             await this.queueMessage(
               payload.session.id,
               `🛠️ Exec: completed; ${esc(truncate(summary, 150))}`,
