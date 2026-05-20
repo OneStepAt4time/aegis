@@ -278,6 +278,8 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_REAPER_INTERVAL_MS` | `300000` | Reaper check interval (5 minutes default) |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
+| `AEGIS_STALL_RECOVERY_ENABLED` | `true` | Auto-recover stalled sessions via restart |
+| `AEGIS_STALL_RECOVERY_MAX_RETRIES` | `1` | Max restart attempts per stall event |
 | `AEGIS_CONTINUATION_POINTER_TTL_MS` | `86400000` | Continuation pointer TTL (24 hours default) |
 | `AEGIS_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Path to Claude Code projects directory |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Enable the web dashboard |

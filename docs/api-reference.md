@@ -789,6 +789,8 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
 | `env` | object | no | Environment variables (subject to denylist) |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
+| `stallRecoveryEnabled` | boolean | no | Auto-recover stalled sessions via restart (default: `true`). Requires `stallThresholdMs` detection.
+| `stallRecoveryMaxRetries` | number | no | Max restart attempts per stall event (default: `1`).
 | `permissionMode` | string | no | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
 | `parentId` | string (UUID) | no | Set parent session — child appears in parent's `/children` |
@@ -3246,6 +3248,8 @@ curl -X POST http://localhost:9100/v1/templates \
 | `claudeCommand` | string | no | Claude Code CLI arguments (max 500 chars) |
 | `env` | object | no | Environment variables map |
 | `stallThresholdMs` | number | no | Stall timeout (1–3600000ms) |
+| `stallRecoveryEnabled` | boolean | no | Auto-recover stalled sessions (default: `true`) |
+| `stallRecoveryMaxRetries` | number | no | Max restart attempts per stall (default: `1`) |
 | `permissionMode` | string | no | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `autoApprove` | boolean | no | Skip permission prompts |
 | `memoryKeys` | string[] | no | Pre-load memory entries (max 50) |
@@ -3949,6 +3953,7 @@ Every error response includes an Aegis-specific `code` field for programmatic ha
 | `NO_ACTIVE_PAUSE` | 409 | No active pause to start intervention |
 | `NO_ACTIVE_INTERVENTION` | 409 | No active intervention to complete |
 | `NOT_PAUSED` | 409 | Session not paused for resume |
+| `STALL_RECOVERY_ERROR` | 500 | Automatic stall recovery failed |
 
 ---
 
