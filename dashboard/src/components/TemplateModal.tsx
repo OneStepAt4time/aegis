@@ -17,7 +17,7 @@ const PERMISSION_MODES = [
   { value: 'acceptEdits', label: 'Accept Edits' },
   { value: 'dontAsk', label: "Don't Ask" },
   { value: 'auto', label: 'Auto-accept' },
-];
+] as const;
 
 interface TemplateModalProps {
   open: boolean;

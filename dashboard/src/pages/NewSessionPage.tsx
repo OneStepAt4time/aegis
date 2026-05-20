@@ -20,8 +20,11 @@ export default function NewSessionPage() {
 
   const PERMISSION_MODES = [
     { value: 'default', label: t('newSession.permissionDefault') },
+    { value: 'plan', label: t('newSession.permissionPlan') },
+    { value: 'acceptEdits', label: t('newSession.permissionAcceptEdits') },
     { value: 'bypassPermissions', label: t('newSession.permissionBypass') },
-    { value: 'clipboardOnly', label: t('newSession.permissionClipboard') },
+    { value: 'auto', label: t('newSession.permissionAuto') },
+    { value: 'dontAsk', label: t('newSession.permissionDontAsk') },
   ];
 
   const [name, setName] = useState('');

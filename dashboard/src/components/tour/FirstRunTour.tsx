@@ -3,12 +3,11 @@
  * Creates a real session in a sandbox dir, walks through permission prompt, approval, kill.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, PlayCircle, CheckCircle2, Shield, Trash2, Lightbulb } from 'lucide-react';
-import { createSessionWithFallback, approve, killSession, getSessions } from '../../api/client';
+import { createSessionWithFallback, approve, killSession, getSession } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
-import type { SessionInfo } from '../../types';
 import { useT } from '../../i18n/context';
 
 const TOUR_COMPLETED_KEY = 'aegis:tour:completed';
@@ -22,7 +21,7 @@ interface FirstRunTourProps {
 
 export function FirstRunTour({ onComplete }: FirstRunTourProps) {
   const [step, setStep] = useState<TourStep>('welcome');
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);  const sessionIdRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const addToast = useToastStore((s) => s.addToast);
   const t = useT();
@@ -49,6 +48,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
         prompt: 'This is a tutorial session. Say "Hello from the tour!"',
       });
       setSessionId(result.id);
+      sessionIdRef.current = result.id;
       setStep('waiting-permission');
       
       // Poll for permission prompt
@@ -61,6 +61,15 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     }
   }
 
+  useEffect(() => {
+    // Cleanup: kill the tour session and clear polling on unmount
+    return () => {
+      if (sessionIdRef.current) {
+        killSession(sessionIdRef.current).catch(() => {});
+      }
+    };
+  }, []);
+
   async function pollForPermission(id: string) {
     // Poll every 2s for up to 30s to detect permission prompt
     let attempts = 0;
@@ -70,8 +79,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       attempts++;
       
       try {
-        const response = await getSessions();
-        const session = response.sessions.find((s: SessionInfo) => s.id === id);
+        const session = await getSession(id);
         
         if (session?.status === 'permission_prompt') {
           clearInterval(interval);
@@ -90,6 +98,8 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
         // Ignore polling errors
       }
     }, 2000);
+
+    return () => clearInterval(interval);
   }
 
   async function handleApprove() {
@@ -141,6 +151,10 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
   }
 
   function handleSkip() {
+    // Attempt cleanup of any in-progress tour session
+    if (sessionId) {
+      killSession(sessionId).catch(() => {});
+    }
     try {
       localStorage.setItem(TOUR_COMPLETED_KEY, '1');
       sessionStorage.setItem(TOUR_COMPLETED_KEY, '1');

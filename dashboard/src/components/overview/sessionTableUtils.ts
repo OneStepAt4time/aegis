@@ -63,7 +63,10 @@ export function matchesSearch(session: SessionInfo, query: string): boolean {
   return (
     (session.displayName?.toLowerCase().includes(q) ?? false) ||
     session.id.toLowerCase().includes(q) ||
-    session.status.toLowerCase().includes(q)
+    session.status.toLowerCase().includes(q) ||
+    (session.workDir?.toLowerCase().includes(q) ?? false) ||
+    (session.model?.toLowerCase().includes(q) ?? false) ||
+    (session.runnerName?.toLowerCase().includes(q) ?? false)
   );
 }
 
