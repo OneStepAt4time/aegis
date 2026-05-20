@@ -261,6 +261,15 @@ export class SessionDiscovery {
               continue;
             }
 
+            // Issue #3880: Reject claudeSessionId already mapped to another session
+            const existingSession = (this.deps.getAllSessions() as SessionInfo[])
+              .find(s => s.claudeSessionId === info.session_id && s.id !== session.id);
+            if (existingSession) {
+              console.log(`Discovery: session ${session.displayName} — rejecting claudeSessionId ${info.session_id.slice(0, 8)}... ` +
+                `already mapped to session ${existingSession.displayName} (${existingSession.id.slice(0, 8)})`);
+              continue;
+            }
+
             session.claudeSessionId = info.session_id;
             session.jsonlPath = jsonlPath;
             session.byteOffset = 0;
@@ -295,6 +304,15 @@ export class SessionDiscovery {
       // Extract session ID from filename (filename = sessionId.jsonl).
       const sessionId = file.replace('.jsonl', '');
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) continue;
+
+      // Issue #3880: Reject claudeSessionId already mapped to another session
+      const existingSession = (this.deps.getAllSessions() as SessionInfo[])
+        .find(s => s.claudeSessionId === sessionId && s.id !== session.id);
+      if (existingSession) {
+        console.log(`Discovery (filesystem): session ${session.displayName} — rejecting sessionId ${sessionId.slice(0, 8)}... ` +
+          `already mapped to session ${existingSession.displayName} (${existingSession.id.slice(0, 8)})`);
+        continue;
+      }
 
       session.claudeSessionId = sessionId;
       session.jsonlPath = filePath;
