@@ -482,6 +482,95 @@ export class SessionMonitor {
   }
 
   /** Issue #15: Check for Stop/StopFailure signals written by hook.ts. */
+  /**
+   * Issue #3754: Handle a rate-limit StopFailure signal.
+   * Attempts automatic retry with exponential backoff via ACP backend restart.
+   * Extracted for testability.
+   */
+  async handleRateLimitSignal(session: SessionInfo, stopReason: string): Promise<void> {
+    this.rateLimitedSessions.add(session.id);
+    // Issue #3754: Attempt automatic retry with exponential backoff.
+    const retryAttempt = (this.rateLimitRetryAttempts.get(session.id) ?? 0) + 1;
+    const maxRetries = this.config.rateLimitMaxRetries;
+    if (this.acpBackend && retryAttempt <= maxRetries) {
+      const baseDelay = this.config.rateLimitBaseDelayMs;
+      const maxDelay = this.config.rateLimitMaxDelayMs;
+      // Exponential backoff with jitter: min(base * 2^attempt + jitter, max)
+      const jitter = Math.floor(Math.random() * 1000);
+      const delayMs = Math.min(baseDelay * Math.pow(2, retryAttempt - 1) + jitter, maxDelay);
+      this.rateLimitRetryAttempts.set(session.id, retryAttempt);
+      await this.channels.statusChange(
+        this.makePayload('status.rate_limited', session,
+          `Claude API rate limited (${stopReason}). Retrying (${retryAttempt}/${maxRetries}) in ${Math.round(delayMs / 1000)}s…`),
+      );
+      logger.info({
+        component: 'monitor',
+        operation: 'rate_limit_retry',
+        sessionId: session.id,
+        attributes: { attempt: retryAttempt, maxRetries, delayMs, stopReason },
+      });
+      // Fire-and-forget retry after delay (non-blocking to main monitor loop)
+      const backend = this.acpBackend;
+      const sid = session.id;
+      const cwd = session.workDir;
+      const tenantId = session.tenantId ?? SYSTEM_TENANT;
+      const ownerKeyId = session.ownerKeyId ?? 'master';
+      setTimeout(() => {
+        backend.restartSession({
+          sessionId: sid,
+          cwd,
+          tenantId,
+          ownerKeyId,
+          reason: `rate_limit_retry_${retryAttempt}`,
+        }).then((result) => {
+          logger.info({
+            component: 'monitor',
+            operation: 'rate_limit_retry_success',
+            sessionId: sid,
+            attributes: { attempt: retryAttempt, backoffDelayMs: result.backoffDelayMs },
+          });
+          this.rateLimitedSessions.delete(sid);
+        }).catch((err: unknown) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          logger.error({
+            component: 'monitor',
+            operation: 'rate_limit_retry_failed',
+            sessionId: sid,
+            errorCode: 'RATE_LIMIT_RETRY_ERROR',
+            attributes: { attempt: retryAttempt, error: errMsg },
+          });
+          // If this was the last attempt, notify the user and clean up
+          if (retryAttempt >= maxRetries) {
+            this.rateLimitRetryAttempts.delete(sid);
+            this.channels.statusChange(
+              this.makePayload('status.error', { ...session, status: 'error' } as SessionInfo,
+                `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
+            ).catch((e: unknown) => { suppressedCatch(e, 'rate_limit_retry_exhausted_notify'); });
+            this.alertManager?.recordFailure('session_failure',
+              `Session "${session.displayName}" rate-limit retries exhausted: ${errMsg}`);
+            this.metrics?.sessionFailed(sid);
+          }
+        });
+      }, delayMs);
+    } else if (!this.acpBackend) {
+      // No ACP backend available — legacy notification only
+      await this.channels.statusChange(
+        this.makePayload('status.rate_limited', session,
+          `Claude API rate limited (${stopReason}). Session will resume when the backoff window expires.`),
+      );
+    } else {
+      // Retries exhausted
+      this.rateLimitRetryAttempts.delete(session.id);
+      await this.channels.statusChange(
+        this.makePayload('status.error', session,
+          `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
+      );
+      this.alertManager?.recordFailure('session_failure',
+        `Session "${session.displayName}" rate-limit retries exhausted`);
+      this.metrics?.sessionFailed(session.id);
+    }
+  }
+
   private async checkStopSignals(): Promise<void> {
     // Check both aegis and manus dirs for backward compat
     const aegisDir = join(homedir(), '.aegis');
@@ -544,87 +633,7 @@ export class SessionMonitor {
           });
           const stopReason = signal.stop_reason || '';
           if (stopReason === 'rate_limit' || stopReason === 'overloaded') {
-            this.rateLimitedSessions.add(session.id);
-            // Issue #3754: Attempt automatic retry with exponential backoff.
-            const retryAttempt = (this.rateLimitRetryAttempts.get(session.id) ?? 0) + 1;
-            const maxRetries = this.config.rateLimitMaxRetries;
-            if (this.acpBackend && retryAttempt <= maxRetries) {
-              const baseDelay = this.config.rateLimitBaseDelayMs;
-              const maxDelay = this.config.rateLimitMaxDelayMs;
-              // Exponential backoff with jitter: min(base * 2^attempt + jitter, max)
-              const jitter = Math.floor(Math.random() * 1000);
-              const delayMs = Math.min(baseDelay * Math.pow(2, retryAttempt - 1) + jitter, maxDelay);
-              this.rateLimitRetryAttempts.set(session.id, retryAttempt);
-              await this.channels.statusChange(
-                this.makePayload('status.rate_limited', session,
-                  `Claude API rate limited (${stopReason}). Retrying (${retryAttempt}/${maxRetries}) in ${Math.round(delayMs / 1000)}s…`),
-              );
-              logger.info({
-                component: 'monitor',
-                operation: 'rate_limit_retry',
-                sessionId: session.id,
-                attributes: { attempt: retryAttempt, maxRetries, delayMs, stopReason },
-              });
-              // Fire-and-forget retry after delay (non-blocking to main monitor loop)
-              const backend = this.acpBackend;
-              const sid = session.id;
-              const cwd = session.workDir;
-              const tenantId = session.tenantId ?? SYSTEM_TENANT;
-              const ownerKeyId = session.ownerKeyId ?? 'master';
-              setTimeout(() => {
-                backend.restartSession({
-                  sessionId: sid,
-                  cwd,
-                  tenantId,
-                  ownerKeyId,
-                  reason: `rate_limit_retry_${retryAttempt}`,
-                }).then((result) => {
-                  logger.info({
-                    component: 'monitor',
-                    operation: 'rate_limit_retry_success',
-                    sessionId: sid,
-                    attributes: { attempt: retryAttempt, backoffDelayMs: result.backoffDelayMs },
-                  });
-                  this.rateLimitedSessions.delete(sid);
-                }).catch((err: unknown) => {
-                  const errMsg = err instanceof Error ? err.message : String(err);
-                  logger.error({
-                    component: 'monitor',
-                    operation: 'rate_limit_retry_failed',
-                    sessionId: sid,
-                    errorCode: 'RATE_LIMIT_RETRY_ERROR',
-                    attributes: { attempt: retryAttempt, error: errMsg },
-                  });
-                  // If this was the last attempt, notify the user and clean up
-                  if (retryAttempt >= maxRetries) {
-                    this.rateLimitRetryAttempts.delete(sid);
-                    this.channels.statusChange(
-                      this.makePayload('status.error', { ...session, status: 'error' } as SessionInfo,
-                        `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
-                    ).catch((e: unknown) => { suppressedCatch(e, 'rate_limit_retry_exhausted_notify'); });
-                    this.alertManager?.recordFailure('session_failure',
-                      `Session "${session.displayName}" rate-limit retries exhausted: ${errMsg}`);
-                    this.metrics?.sessionFailed(sid);
-                  }
-                });
-              }, delayMs);
-            } else if (!this.acpBackend) {
-              // No ACP backend available — legacy notification only
-              await this.channels.statusChange(
-                this.makePayload('status.rate_limited', session,
-                  `Claude API rate limited (${stopReason}). Session will resume when the backoff window expires.`),
-              );
-            } else {
-              // Retries exhausted
-              this.rateLimitRetryAttempts.delete(session.id);
-              await this.channels.statusChange(
-                this.makePayload('status.error', session,
-                  `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
-              );
-              this.alertManager?.recordFailure('session_failure',
-                `Session "${session.displayName}" rate-limit retries exhausted`);
-              this.metrics?.sessionFailed(session.id);
-            }
+            await this.handleRateLimitSignal(session, stopReason);
           } else {
             const errorDetail = signal.error || signal.stop_reason || 'Unknown API error';
             await this.channels.statusChange(
