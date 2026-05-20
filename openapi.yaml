@@ -4509,6 +4509,63 @@ paths:
 
 
 
+  /v1/settings/budget:
+    get:
+      summary: "Server-side budget enforcement status"
+      description: "Returns whether server-side budget enforcement is enabled and what limits are configured. Dashboard uses this to show appropriate warnings when enforcement is not active."
+      operationId: "getV1SettingsBudget"
+      tags:
+        - "Settings"
+
+      responses:
+        "200":
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  serverSideEnforcement:
+                    type: "boolean"
+
+                  dailyLimitUsd:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+                  monthlyLimitUsd:
+                    anyOf:
+                      - type: "number"
+
+                      - type: "null"
+
+
+
+                  hardStopEnabled:
+                    type: "boolean"
+
+                  message:
+                    type: "string"
+
+
+                required:
+                  - "serverSideEnforcement"
+                  - "dailyLimitUsd"
+                  - "monthlyLimitUsd"
+                  - "hardStopEnabled"
+                  - "message"
+
+                additionalProperties: false
+
+
+
+
+
+
+
 
 components:
   securitySchemes:

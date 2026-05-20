@@ -992,6 +992,25 @@ export function registerOpenApiSpec(): void {
     },
   });
 
+  // ── Settings: Budget enforcement status (Issue #3811) ──────────
+
+  registerOpenApiPath({
+    method: 'get',
+    path: '/v1/settings/budget',
+    summary: 'Server-side budget enforcement status',
+    description: 'Returns whether server-side budget enforcement is enabled and what limits are configured. Dashboard uses this to show appropriate warnings when enforcement is not active.',
+    tags: ['Settings'],
+    responses: {
+      '200': okJsonResponse(z.object({
+        serverSideEnforcement: z.boolean(),
+        dailyLimitUsd: z.number().nullable(),
+        monthlyLimitUsd: z.number().nullable(),
+        hardStopEnabled: z.boolean(),
+        message: z.string(),
+      })),
+    },
+  });
+
   // ── Analytics: Rate-limit / quota usage (Issue #2248) ──────────
 
   registerOpenApiPath({

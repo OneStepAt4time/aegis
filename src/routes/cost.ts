@@ -206,4 +206,18 @@ function validateDateRange(from?: string, to?: string): { error: string; statusC
     };
     return response;
   });
+
+  // Issue #3811: Budget enforcement status for dashboard
+  registerWithLegacy(app, 'get', '/v1/settings/budget', async (_req: FastifyRequest, _reply: FastifyReply) => {
+    // Server-side budget enforcement is not yet implemented.
+    // This endpoint provides a signal for the dashboard to show appropriate warnings.
+    // When budget enforcement is added (config-driven), this endpoint will reflect actual limits.
+    return {
+      serverSideEnforcement: false,
+      dailyLimitUsd: null,
+      monthlyLimitUsd: null,
+      hardStopEnabled: false,
+      message: 'Budget alerts are computed locally. Configure server-side limits in the Aegis configuration file.',
+    };
+  });
 }
