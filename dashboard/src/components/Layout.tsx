@@ -577,10 +577,20 @@ export default function Layout() {
               </button>
 
               {/* Cmd+K Palette trigger — hidden on mobile */}
+              {/* Mobile: icon-only search button */}
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+                className="sm:hidden inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--color-border-strong)] bg-white dark:border-white/10 dark:bg-white/5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:hover:bg-white/10 dark:hover:text-[var(--color-text-primary)] transition-all"
+                aria-label="Open search"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+              {/* Desktop: full search button */}
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                className="hidden sm:inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
               >
                 <Search className="h-3 w-3" />
                 <span>Search…</span>
