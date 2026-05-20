@@ -23,6 +23,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
 | `GET` | `/v1/sessions/{id}` | Bearer | Get session details |
+| `GET` | `/v1/sessions/{id}/status` | Bearer | Lightweight status (id, status, lastActivity) |
 | `GET` | `/v1/sessions/{id}/health` | Bearer | Single session health check |
 | `GET` | `/v1/sessions/{id}/cost` | Bearer | Per-session cost summary with burn rate |
 

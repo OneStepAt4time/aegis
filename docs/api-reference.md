@@ -1057,10 +1057,41 @@ curl http://localhost:9100/v1/sessions/abc123/read \
 ### Paginated Transcript
 
 ```
+GET /v1/sessions/:id/status
+```
+
+Returns a lightweight status object for a session (no transcript data).
+
+```bash
+curl "http://localhost:9100/v1/sessions/abc123/status" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "id": "abc123",
+  "status": "running",
+  "lastActivity": "2026-05-20T17:00:00Z"
+}
+```
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Session not found |
+
+---
+
+### Session Transcript
+
+```
 GET /v1/sessions/:id/transcript
 ```
 
-Returns a page-based transcript for a session.
+Returns a page-based transcript for a session. Messages are returned in full (not truncated).
 
 ```bash
 curl "http://localhost:9100/v1/sessions/abc123/transcript?page=1&limit=50&role=user" \
