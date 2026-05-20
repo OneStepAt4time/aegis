@@ -282,10 +282,15 @@ export async function readNewEntries(
       // Never fall back to offset 0, which causes O(n) re-reads.
     }
 
+    // Issue #3745: Cap reads to prevent OOM on large JSONL transcripts.
+    // CC sessions can produce multi-MB transcripts; reading all at once exhausts memory.
+    const MAX_READ_BYTES = 2 * 1024 * 1024; // 2MB max per read
+    const readEnd = Math.min(fileStat.size, effectiveOffset + MAX_READ_BYTES);
+
     const slicedContent = await new Promise<string>((resolve, reject) => {
       const chunks: Buffer[] = [];
       // Reuse the same fd — autoClose: false because we close it in the outer finally
-      const stream = createReadStream(filePath, { fd: fd.fd, start: effectiveOffset, autoClose: false });
+      const stream = createReadStream(filePath, { fd: fd.fd, start: effectiveOffset, end: readEnd, autoClose: false });
       stream.on('data', (chunk: string | Buffer) => { if (typeof chunk !== 'string') chunks.push(chunk); });
       stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
       stream.on('error', reject);
@@ -302,7 +307,7 @@ export async function readNewEntries(
     }
 
     const parsed = parseEntries(rawEntries);
-    return { entries: parsed, newOffset: fileStat.size, raw: rawEntries };
+    return { entries: parsed, newOffset: readEnd, raw: rawEntries };
   } finally {
     await fd.close();
   }
