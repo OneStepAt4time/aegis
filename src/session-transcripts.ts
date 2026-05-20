@@ -253,8 +253,8 @@ export class SessionTranscripts {
       }
     }
 
-    // #357: Use cached entries instead of re-reading from offset 0
-    let allEntries = await this.getCachedEntries(session);
+    // Issue #3863: Read full entries from disk for API transcript endpoints
+    let allEntries = await this.getFullEntries(session);
 
     if (roleFilter) {
       allEntries = allEntries.filter(e => e.role === roleFilter);
@@ -303,7 +303,7 @@ export class SessionTranscripts {
       }
     }
 
-    let allEntries = await this.getCachedEntries(session);
+    let allEntries = await this.getFullEntries(session);
 
     if (roleFilter) {
       allEntries = allEntries.filter(e => e.role === roleFilter);
@@ -546,6 +546,44 @@ export class SessionTranscripts {
       this.evictIfNeeded();
       return result.entries; // Return untruncated to callers
     } catch { /* JSONL read failed — return cached entries or empty */
+      return cached ? [...cached.entries] : [];
+    }
+  }
+
+
+  /**
+   * Issue #3863: Read full (untruncated) entries from JSONL for API transcript endpoints.
+   * Unlike getCachedEntries(), this reads directly from disk and does not truncate text,
+   * ensuring API consumers get complete assistant messages.
+   */
+  private async getFullEntries(session: SessionInfo): Promise<ParsedEntry[]> {
+    // Discover JSONL path if not yet known (Issue #884: worktree-aware)
+    if (!session.jsonlPath && session.claudeSessionId) {
+      const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
+      if (path) {
+        session.jsonlPath = path;
+        session.byteOffset = 0;
+      }
+    }
+
+    if (!session.jsonlPath || !existsSync(session.jsonlPath)) {
+      // Issue #3143: Fall back to ACP event store for ACP sessions.
+      if (this.acpEventStore) {
+        try {
+          return await this.readFromAcpEvents(session);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    try {
+      const result = await readNewEntries(session.jsonlPath, 0);
+      return result.entries;
+    } catch {
+      // Fall back to cache (may be truncated, but better than nothing)
+      const cached = this.parsedEntriesCache.get(session.id);
       return cached ? [...cached.entries] : [];
     }
   }
