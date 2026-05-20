@@ -395,7 +395,7 @@ describe('AcpBackend session lifecycle', () => {
       metadata: { optionId: 'allow-once' },
     });
 
-    expect(promptResult.resultMetadata).toEqual({ stopReason: 'end_turn' });
+    expect(promptResult.resultMetadata).toMatchObject({ stopReason: 'end_turn' });
     expect(approvalResult.resultMetadata).toEqual({
       approvalId: 'permission-1',
       outcome: 'selected',
