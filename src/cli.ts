@@ -126,6 +126,7 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   let brief = '';
   let cwd = process.cwd();
   let portOverride: number | null = null;
+  let existingSessionId: string | undefined;
   let model: string | undefined;
   let effort: string | undefined;
 
@@ -143,6 +144,10 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
         return 1;
       }
       effort = validated;
+  } else if (args[i] === '--session-id' && args[i + 1]) {
+    existingSessionId = args[++i]!;
+  } else if (args[i]?.startsWith('--session-id=')) {
+    existingSessionId = args[i]!.slice('--session-id='.length);
     } else if (!args[i].startsWith('-')) {
       brief = args[i];
     }
@@ -182,38 +187,63 @@ async function handleCreate(args: string[], io: CliIO): Promise<number> {
   }
 
   let sessionId: string;
-  try {
-    const res = await fetch(`${baseUrl}/v1/sessions`, {
-      signal: AbortSignal.timeout(30_000),
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ workDir: cwd, name: sessionName, model, effort, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
+  if (existingSessionId) {
+    // Issue #3760: --session-id sends to an existing session instead of creating a new one.
+    try {
+      const checkRes = await fetch(`${baseUrl}/v1/sessions/${existingSessionId}`, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (checkRes.status === 404) {
+        writeLine(io.stderr, `  ❌ Session ${existingSessionId.slice(0, 8)} not found.`);
+        writeLine(io.stderr, '     List sessions with: ag list');
+        return 1;
+      }
+      if (!checkRes.ok) {
+        const err = await checkRes.json().catch(() => ({ error: checkRes.statusText }));
+        writeLine(io.stderr, `  ❌ Failed to lookup session: ${(err as { error?: string }).error || checkRes.statusText}`);
+        return 1;
+      }
+      sessionId = existingSessionId;
+      writeLine(io.stdout, `  ✅ Using existing session: ${sessionId.slice(0, 8)}`);
+    } catch (e: unknown) {
+      writeLine(io.stderr, `  ❌ Cannot reach Aegis at ${baseUrl}: ${getErrorMessage(e)}`);
       return 1;
     }
+  } else {
+    try {
+      const res = await fetch(`${baseUrl}/v1/sessions`, {
+        signal: AbortSignal.timeout(30_000),
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ workDir: cwd, name: sessionName, model, effort, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
+      });
 
-    const session = await res.json() as { id: string; displayName: string };
-    sessionId = session.id;
-    writeLine(io.stdout, `  ✅ Session created: ${session.displayName}`);
-    writeLine(io.stdout, `     ID: ${sessionId}`);
-  } catch (e: unknown) {
-    if (e instanceof DOMException && e.name === 'AbortError') {
-      writeLine(io.stderr, '  ❌ Session creation timed out after 30s.');
-      writeLine(io.stderr, '     The server may be slow to respond. Try again or check server health.');
-    } else {
-      const cause = (e as { cause?: { code?: string } }).cause;
-      if (cause?.code === 'ECONNREFUSED') {
-        writeLine(io.stderr, `  ❌ Cannot connect to Aegis at ${baseUrl}.`);
-        writeLine(io.stderr, '     Start the server first: ag');
-      } else {
-        writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
+        return 1;
       }
+
+      const session = await res.json() as { id: string; displayName: string };
+      sessionId = session.id;
+      writeLine(io.stdout, `  ✅ Session created: ${session.displayName}`);
+      writeLine(io.stdout, `     ID: ${sessionId}`);
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        writeLine(io.stderr, '  ❌ Session creation timed out after 30s.');
+        writeLine(io.stderr, '     The server may be slow to respond. Try again or check server health.');
+      } else {
+        const cause = (e as { cause?: { code?: string } }).cause;
+        if (cause?.code === 'ECONNREFUSED') {
+          writeLine(io.stderr, `  ❌ Cannot connect to Aegis at ${baseUrl}.`);
+          writeLine(io.stderr, '     Start the server first: ag');
+        } else {
+          writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
+        }
+      }
+      return 1;
     }
-    return 1;
   }
 
   try {
@@ -284,6 +314,7 @@ function printHelp(io: CliIO): void {
     ag create "Build a login page" --cwd /path/to/project
     ag create "Fix the tests"      (uses current directory)
     ag create "..." --passthrough   Bypass all permissions
+    ag create "..." --session-id abc  Send to existing session
     --model <model>       Set Claude model
     --effort <level>      Set reasoning effort (low, medium, high, 0.0-1.0)
 
