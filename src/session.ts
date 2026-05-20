@@ -134,7 +134,7 @@ export interface SessionInfo {
   autoApprove?: boolean;        // API contract compat: auto-approve flag
   pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
-  promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
+  promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout"; error?: string };  // Issue #3243: async prompt delivery status
   runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
   // Issue #2518: Hook failure circuit breaker

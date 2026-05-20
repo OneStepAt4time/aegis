@@ -506,16 +506,25 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
 
       if (acpBackend && ctx.config.acpEnabled) {
-        // Issue #3271: Reverted async prompt delivery (from #3243) to synchronous.
-        // Async delivery caused promptDelivery tracking to hang — the JSON-RPC
-        // session/prompt response was never received by the tracking layer even
-        // though Claude Code processed the prompt successfully.
-        // Synchronous delivery blocks until CC acknowledges, which is the
-        // proven pre-#3243 behavior.
-        const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
-        promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed', error: result.error };
+        // Issue #3890: Fire-and-forget prompt delivery for ACP sessions.
+        // Previous synchronous await (#3271) blocked HTTP 201 for 5s+ per session,
+        // causing 30s+ timeouts under concurrent load. Now returns immediately
+        // with status 'pending'; delivery result written to session.promptDelivery
+        // and pollable via GET /v1/sessions/:id.
+        promptDelivery = { delivered: false, attempts: 0, status: 'pending' as const };
         session.promptDelivery = promptDelivery;
-        metrics.promptSent(result.delivered);
+        const sid = session.id;
+        const tenantId = req.tenantId ?? SYSTEM_TENANT;
+        const ownerKeyId = req.authKeyId ?? 'master';
+        // Fire-and-forget: no await — HTTP response returns immediately
+        acpBackend.sendPrompt(sid, finalPrompt, { tenantId, ownerKeyId })
+          .then(result => {
+            session.promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' as const : 'failed' as const, error: result.error };
+            metrics.promptSent(result.delivered);
+          })
+          .catch(err => {
+            session.promptDelivery = { delivered: false, attempts: 0, status: 'failed' as const, error: err instanceof Error ? err.message : String(err) };
+          });
       } else {
         promptDelivery = await sessions.sendInitialPrompt(session.id, finalPrompt);
         metrics.promptSent(promptDelivery.delivered);
