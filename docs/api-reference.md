@@ -32,7 +32,7 @@ Returns server health, version, uptime, and Claude CLI status.
 
 | Role | Required | Notes |
 |------|----------|-------|
-| None | — | Unauthenticated callers receive only `{ "status": "ok" }` to prevent information leakage |
+| None | — | Unauthenticated callers receive `{ "status": "ok", "sessions": { "active": N, "total": N } }` — version, uptime, and Claude CLI status are excluded |
 | admin | Yes | Full response with version, uptime, sessions, Claude CLI status |
 
 ```bash
@@ -63,7 +63,11 @@ curl http://localhost:9100/v1/health
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "sessions": {
+    "active": 3,
+    "total": 42
+  }
 }
 ```
 
@@ -858,7 +862,7 @@ curl http://localhost:9100/v1/sessions/abc123 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Session object with `actionHints` for current interactive state.
+**Response:** Session object with `actionHints` for current interactive state. When a Telegram topic is linked, the response includes `telegramTopicId`.
 
 **Errors:**
 
