@@ -738,18 +738,26 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   await authManager.load();
 
   if (generatedTokenRequested) {
-    // Issue #3351: --force should replace existing key, not crash
-    if (force) {
-      const existingKey = authManager.listKeys().find(k => k.name === 'ag-init-admin');
+    const existingKey = authManager.listKeys().find(k => k.name === 'ag-init-admin');
+    if (existingKey && !force) {
+      // Issue #3876: reuse existing key instead of crashing with DUPLICATE_KEY_NAME
+      // Key hash is stored, not plaintext — cannot recover original token.
+      // Skip key creation; the existing key remains valid.
+      writeLine(io.stderr, "  ⚠️  Admin key 'ag-init-admin' already exists, skipping key creation.");
+      writeLine(io.stderr, "     Your existing key is still valid. Use --force to replace it.");
+      // Do not update clientAuthToken — keep whatever was in the existing config
+      tokenCreated = false;
+    } else {
+      // Issue #3351: --force replaces existing key
       if (existingKey) {
         await authManager.revokeKey(existingKey.id);
       }
+      const createdKey = await authManager.createKey('ag-init-admin', 100, undefined, 'admin');
+      authToken = createdKey.key;
+      createdKeyId = createdKey.id;
+      nextConfig.clientAuthToken = createdKey.key;
+      tokenCreated = true;
     }
-    const createdKey = await authManager.createKey('ag-init-admin', 100, undefined, 'admin');
-    authToken = createdKey.key;
-    createdKeyId = createdKey.id;
-    nextConfig.clientAuthToken = createdKey.key;
-    tokenCreated = true;
   }
 
   const finalConfigText = serializeConfigFile(nextConfig, configPath);
