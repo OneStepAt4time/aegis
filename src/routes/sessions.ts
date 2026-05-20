@@ -582,6 +582,10 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     return addActionHints(session, sessions, channels);
   }));
 
+  // Issue #3860: Lightweight status endpoint for polling
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/status', withOwnership(sessions, async (_req, _reply, session) => {
+    return { id: session.id, status: session.status, lastActivity: session.lastActivity };
+  }));
   // #128: Bulk health check
   registerWithLegacy(app, 'get', '/v1/sessions/health', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!requireRole(auth, req, reply, 'admin', 'operator', 'viewer')) return;

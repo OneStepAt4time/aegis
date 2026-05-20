@@ -454,6 +454,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     writeLine(io.stdout, '    --port <number>       Server port override (default: 9100)');
     writeLine(io.stdout, '    --no-stream           Don\'t stream output; print status only');
     writeLine(io.stdout, '    --accept-permissions  Auto-approve tool permissions (-y)');
+    writeLine(io.stdout, '    --timeout <sec>        Idle timeout in seconds (default: 300 with --yes, 120 without)');
     writeLine(io.stdout, '    --passthrough          Run session with all permissions bypassed');
     writeLine(io.stdout, '    --model <model>       Set Claude model');
     writeLine(io.stdout, '    --effort <level>      Set reasoning effort (low, medium, high, 0.0-1.0)');
@@ -499,6 +500,14 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   const noStream = args.includes('--no-stream');
   const skipPrompts = args.includes('--yes');
   const acceptPerms = args.includes('--accept-permissions') || args.includes('-y') || args.includes('--passthrough');
+
+  // Issue #3865: Configurable idle timeout (env: AEGIS_RUN_TIMEOUT, flag: --timeout <sec>)
+  const timeoutFlagIdx = args.indexOf('--timeout');
+  const timeoutFlag = timeoutFlagIdx !== -1 ? parseInt(args[timeoutFlagIdx + 1], 10) : NaN;
+  const timeoutEnv = parseInt(process.env.AEGIS_RUN_TIMEOUT ?? '', 10);
+  const cliTimeoutSec = (!isNaN(timeoutFlag) && timeoutFlag > 0) ? timeoutFlag
+    : (!isNaN(timeoutEnv) && timeoutEnv > 0) ? timeoutEnv
+    : null;
 
   writeLine(io.stdout, `  🚀 ag run: ${brief.slice(0, 60)}${brief.length > 60 ? '...' : ''}`);
 
@@ -726,8 +735,10 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
   }
 
   // Stream output
-  // Issue #3732: Use 90s idle timeout in --yes mode (CC often needs 30-60s to produce first output)
-  const streamTimeoutMs = skipPrompts ? 90_000 : 120_000;
+  // Issue #3865: Configurable idle timeout. Default: 300s (--yes) / 120s (interactive).
+  // Was 90s/120s which killed real work (CC needs time for git analysis, large reads, etc.)
+  const defaultTimeoutMs = skipPrompts ? 300_000 : 120_000;
+  const streamTimeoutMs = cliTimeoutSec !== null ? cliTimeoutSec * 1000 : defaultTimeoutMs;
   const receivedOutput = await streamOutput(baseUrl, sessionId, authToken, io, streamTimeoutMs);
 
   // Issue #3732: If timed out without output, show actionable error (all modes)

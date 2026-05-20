@@ -256,6 +256,14 @@ export class SessionTranscripts {
     // Issue #3863: Read full entries from disk for API transcript endpoints
     let allEntries = await this.getFullEntries(session);
 
+    // Issue #3864: Sync session.byteOffset with cache offset so the
+    // session detail endpoint shows an accurate byteOffset instead of
+    // perpetually showing 0 while the monitor has read thousands of bytes.
+    const cached = this.parsedEntriesCache.get(session.id);
+    if (cached && cached.offset > session.byteOffset) {
+      session.byteOffset = cached.offset;
+    }
+
     if (roleFilter) {
       allEntries = allEntries.filter(e => e.role === roleFilter);
     }
