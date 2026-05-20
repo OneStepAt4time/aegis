@@ -470,6 +470,25 @@ aegis_permission_response_ms_avg > 60000
 
 Until the Prometheus endpoint ships, scrape `/v1/metrics` via a Prometheus `scrape_configs` HTTP scrape target.
 
+### Automatic Rate-Limit Retry
+
+When running parallel Claude Code sessions, Anthropic rate limits (429/overloaded) can cause CC to terminate sessions as `StopFailure`. Aegis automatically recovers:
+
+1. **Detects** rate-limit `StopFailure` from the CC process
+2. **Restarts** the session automatically with exponential backoff
+3. **Notifies** you via configured channels (retrying X/3 in Ns…, success, or exhaustion)
+4. **Resets** retry counter when the session resumes activity
+
+**Default retry parameters** (internal MonitorConfig):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `rateLimitMaxRetries` | 3 | Max retry attempts per rate-limited session |
+| `rateLimitBaseDelayMs` | 5 000 | Base delay for exponential backoff (5s) |
+| `rateLimitMaxDelayMs` | 60 000 | Max delay cap for exponential backoff (60s) |
+
+Backoff formula: `min(baseDelay × 2^attempt + randomJitter, maxDelay)` — prevents thundering herd on parallel retries.
+
 ### Diagnostics
 
 ```bash

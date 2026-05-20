@@ -29,9 +29,26 @@ AEGIS_TG_GROUP_ID=-1001234567890
 AEGIS_TG_ALLOWED_USERS=user1,user2  # optional
 ```
 
+### Message Format
+
+By default, Telegram uses **compact mode** — a clean, cc-connect–style format:
+
+```
+[20/05/2026 05:45] User: List files in the project
+🛠️ Exec: ls -la /home/user/project
+🛠️ Exec: completed; 12 files found
+🧰 Process: my-session
+```
+
+Key behaviors in compact mode:
+- Timestamps use `[DD/MM/YYYY HH:MM]` format
+- Tool executions show a one-line summary (`🛠️ Exec: ...`)
+- Trivial results (ok, done, success) are suppressed
+- Session creation shows process name + details
+
 ### Verbose Mode
 
-Enable verbose mode to forward full Claude Code output (thinking, tool calls, code) to Telegram:
+Enable verbose mode to forward full Claude Code output (thinking, tool calls, code):
 
 ```bash
 AEGIS_TG_VERBOSE=true
@@ -45,12 +62,12 @@ Or in `aegis.config.json`:
 }
 ```
 
-| Event | Without verbose | With verbose |
-|-------|----------------|-------------|
+| Event | Compact (default) | Verbose |
+|-------|-------------------|--------|
 | `message.thinking` | Silent | 💭 *thinking text* (truncated 800 chars) |
-| `message.tool_use` | Progress tracking only | 🔧 `tool.label` + code block (truncated 600 chars) |
+| `message.tool_use` | 🛠️ `Exec: summary` (one line) | 🔧 `tool.label` + code block (truncated 600 chars) |
 | `message.assistant` | Forwarded | Forwarded (unchanged) |
-| `message.user` | Forwarded | Forwarded (unchanged) |
+| `message.user` | `[timestamp] User: text` | `[timestamp] User: text` |
 
 ### Events
 
