@@ -3,6 +3,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -435,7 +436,15 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
             message: 'Prompt not delivered: no agent runner available. Enable ACP by setting AEGIS_ACP_ENABLED=true or adding "acpEnabled": true to .aegis/config.yaml.',
           });
         }
-        return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery });
+        // Issue #3862: Include prompt fingerprint in reuse response
+    let promptFingerprint: { promptPreview?: string; promptHash?: string } | undefined;
+    if (prompt && promptDelivery) {
+      promptFingerprint = {
+        promptPreview: prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt,
+        promptHash: createHash('sha256').update(prompt).digest('hex').slice(0, 12),
+      };
+    }
+    return reply.status(200).send({ ...redactSession(existing as unknown as Record<string, unknown>), reused: true, promptDelivery, promptFingerprint });
       } finally {
         sessions.releaseSessionClaim(existing.id);
       }
@@ -532,7 +541,15 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       });
     }
 
-    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
+    // Issue #3862: Include prompt fingerprint in response for caller verification
+    let promptFingerprint: { promptPreview?: string; promptHash?: string } | undefined;
+    if (prompt && promptDelivery) {
+      promptFingerprint = {
+        promptPreview: prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt,
+        promptHash: createHash('sha256').update(prompt).digest('hex').slice(0, 12),
+      };
+    }
+    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery, promptFingerprint });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {
