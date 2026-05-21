@@ -15,12 +15,12 @@ on:
         default: true
         type: boolean
 
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   prepare-main-rollback:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     outputs:
       target_sha: ${{ steps.resolve.outputs.target_sha }}
@@ -75,6 +75,9 @@ jobs:
             ci
 
   prepare-develop-follow-up:
+    permissions:
+      contents: write
+      pull-requests: write
     if: inputs.create_develop_pr
     needs: prepare-main-rollback
     runs-on: ubuntu-latest

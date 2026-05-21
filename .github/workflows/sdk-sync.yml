@@ -14,9 +14,6 @@ on:
       - 'src/routes/**'
       - 'src/schemas/**'
 
-permissions:
-  contents: write
-  pull-requests: write
 
 concurrency:
   group: sdk-sync-${{ github.ref }}
@@ -24,6 +21,9 @@ concurrency:
 
 jobs:
   sync-sdks:
+    permissions:
+      contents: write
+      pull-requests: write
     # Do not trigger on our own auto-commits (prevents loops).
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
