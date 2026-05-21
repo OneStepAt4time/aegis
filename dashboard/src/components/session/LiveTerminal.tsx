@@ -196,7 +196,7 @@ export function LiveTerminal({ sessionId, status }: LiveTerminalProps) {
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? 'var(--color-accent)' : connectionState === 'reconnecting' ? 'var(--color-warning)' : '#666',
+                backgroundColor: isConnected ? 'var(--color-accent)' : connectionState === 'reconnecting' ? 'var(--color-warning)' : 'var(--color-text-muted)',
                 boxShadow: isConnected ? '0 0 4px rgba(var(--color-accent-rgb, 59,130,246), 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}

@@ -457,7 +457,7 @@ export function TerminalPassthrough({ sessionId, status }: TerminalPassthroughPr
             <span
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? 'var(--color-accent-cyan)' : connectionState === 'reconnecting' ? 'var(--color-warning-amber)' : '#666',
+                backgroundColor: isConnected ? 'var(--color-accent-cyan)' : connectionState === 'reconnecting' ? 'var(--color-warning-amber)' : 'var(--color-text-muted)',
                 boxShadow: isConnected ? '0 0 4px rgba(var(--color-accent-cyan-rgb, 0,229,255), 0.25)' : 'none',
                 animation: connectionState === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
