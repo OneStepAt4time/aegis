@@ -86,6 +86,16 @@ If the server is already running, skips straight to session creation. Existing c
 | `--no-stream` | Wait for session completion and print output (non-streaming) |
 | `--timeout <sec>` | Maximum wait time in seconds (default: 300). Set to `0` for no timeout |
 
+**Exit codes: **
+
+| Code | Meaning |
+|------|---------|
+| `0` | Session completed successfully |
+| `1` | General error (server unreachable, session failed, etc.) |
+| `2` | Rate limit hit (HTTP 429 from server) |
+
+With `--no-stream`, exits non-zero if the poll receives no output.
+
 **Environment variables:**
 
 | Variable | Description |
