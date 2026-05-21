@@ -44,7 +44,7 @@
     "postinstall": "node scripts/postinstall-verify.cjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
-    "gate": "npm run hygiene-check && npm run security-check && npm run audit-check && npm run lint && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
+    "gate": "npm run hygiene-check && npm run security-check && npm run audit-check && npm run lint && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm run check-bundle-size && npm run test",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "bash scripts/check-merge-conflicts.sh && npm run build",
@@ -63,7 +63,8 @@
     "dashboard:a11y:check": "cd dashboard && npm run a11y:check",
     "test:e2e": "vitest run e2e/e2e-dogfood.test.ts",
     "test:e2e:ci": "vitest run e2e/e2e-dogfood.test.ts --reporter=verbose",
-    "audit-check": "bash scripts/audit-check.sh"
+    "audit-check": "bash scripts/audit-check.sh",
+    "check-bundle-size": "bash scripts/check-bundle-size.sh"
   },
   "keywords": [
     "claude",
