@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "aegis": {
+      "type": "stdio",
+      "command": "ag",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}

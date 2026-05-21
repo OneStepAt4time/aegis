@@ -1,0 +1,14 @@
+{
+  "lastHeartbeat": "2026-05-20T11:57:00Z",
+  "aegisHealth": "ok",
+  "openPRs": 2,
+  "activeSessions": 0,
+  "lastAction": "PR #3830 approved/mergeable, PR #3832 changes_requested (dashboard), no actionable backend issues",
+  "pipeline": {
+    "openPRs": ["#3830 (APPROVED, mergeable)", "#3832 (CHANGES_REQUESTED, dashboard)"],
+    "available": [],
+    "deferred": "P2 features + Phase 4 awaiting Ema's feature pick"
+  },
+  "idle": true,
+  "idlePingSent": true
+}

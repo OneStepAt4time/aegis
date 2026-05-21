@@ -1,1 +1,7 @@
-{}
+{
+  "task": "Implement #3900 (ACP validation enforcement) + #3897 (typed validationWarnings)",
+  "status": "subagent-running",
+  "subagent": "fix/3900-aegis",
+  "subagentSession": "agent:ag-hep:subagent:a128a2b8-c6c4-42d1-a33b-0820abab39f1",
+  "timestamp": "2026-05-21T03:31:00Z"
+}
