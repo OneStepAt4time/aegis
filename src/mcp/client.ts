@@ -15,6 +15,15 @@ import type {
   MemoryEntryResponse,
 } from '../services/interfaces.js';
 
+/** Response shape from GET /v1/sessions (paginated). */
+interface SessionsResponse {
+  sessions: SessionInfo[];
+  pagination?: { page?: number; totalPages?: number };
+}
+
+const DEFAULT_PAGE_SIZE = 100;
+const MAX_PAGES = 100; // safety cap against infinite loops
+
 // Re-export response types for backward compatibility
 export type {
   ServerHealthResponse,
@@ -106,15 +115,24 @@ export class AegisClient implements IAegisBackend {
   }
 
   async listSessions(filter?: { status?: string; workDir?: string }): Promise<SessionInfo[]> {
-    const response = await this.request<{ sessions: SessionInfo[]; total: number }>('/v1/sessions');
-    let sessions = response.sessions;
-    if (filter?.status) {
-      sessions = sessions.filter((s) => s.status === filter.status);
+    const projectParam = filter?.workDir ? `&project=${encodeURIComponent(filter.workDir)}` : '';
+    const statusParam = filter?.status ? `&status=${encodeURIComponent(filter.status)}` : '';
+    const aggregated: SessionInfo[] = [];
+
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const path = `/v1/sessions?page=${page}&limit=${DEFAULT_PAGE_SIZE}${statusParam}${projectParam}`;
+      const response = await this.request<SessionsResponse>(path);
+      const pageSessions = response?.sessions ?? [];
+      aggregated.push(...pageSessions);
+
+      const pagination = response?.pagination;
+      if (!pagination || typeof pagination.page !== 'number' || typeof pagination.totalPages !== 'number') {
+        break; // no pagination metadata — single page
+      }
+      if (pagination.page >= pagination.totalPages) break;
     }
-    if (filter?.workDir) {
-      sessions = sessions.filter((s) => isSameOrChildWorkDir(s.workDir, filter.workDir!));
-    }
-    return sessions;
+
+    return aggregated;
   }
 
   async getSession(id: string): Promise<Record<string, unknown>> {
