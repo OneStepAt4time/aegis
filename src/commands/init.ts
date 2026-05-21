@@ -562,8 +562,12 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const existingByoEnv = filterByoEnv(existingConfig?.defaultSessionEnv);
   const currentConfig = await loadConfig();
 
-  // Ensure state directory exists
-  const stateDir = currentConfig.stateDir;
+  // Issue #3888: For new configs, use project-local stateDir
+  // But respect explicit AEGIS_STATE_DIR env override.
+  const isNewConfig = existingConfigText === null;
+  const envStateDir = process.env.AEGIS_STATE_DIR || process.env.MANUS_STATE_DIR;
+  const localStateDir = isNewConfig && !envStateDir ? dirname(configPath) : currentConfig.stateDir;
+  const stateDir = localStateDir;
   await mkdir(stateDir, { recursive: true });
   writeLine(io.stdout, `  ✅ State directory: ${stateDir}`);
 
@@ -644,6 +648,10 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const nextConfig: Partial<Config> = { ...(existingConfig ?? {}) };
   nextConfig.baseUrl = baseUrl;
   nextConfig.dashboardEnabled = dashboardEnabled;
+  // Issue #3888: Persist project-local stateDir for new configs
+  if (isNewConfig) {
+    nextConfig.stateDir = stateDir;
+  }
 
   if (byoEnv) {
     nextConfig.defaultSessionEnv = {
@@ -734,7 +742,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   let authToken = existingToken;
   let tokenCreated = false;
   let createdKeyId: string | null = null;
-  const authManager = new AuthManager(join(currentConfig.stateDir, 'keys.json'), currentConfig.authToken);
+  const authManager = new AuthManager(join(stateDir, 'keys.json'), currentConfig.authToken);
   await authManager.load();
 
   if (generatedTokenRequested) {
@@ -818,9 +826,20 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
     }
   }
 
-  // #3369: Persist token to ~/.aegis/auth-token for easy scripting access
+  // #3369 + #3888: Persist token to stateDir/auth-token
   if (authToken) {
-    persistAuthTokenFile(authToken);
+    if (isNewConfig) {
+      // Project-local: write directly to local stateDir
+      const tokenPath = join(stateDir, 'auth-token');
+      try {
+        await mkdir(stateDir, { recursive: true });
+        await writeFile(tokenPath, authToken, { encoding: 'utf-8', mode: 0o600 });
+      } catch {
+        // Non-fatal — token is still in config.yaml as clientAuthToken
+      }
+    } else {
+      persistAuthTokenFile(authToken);
+    }
   }
 
   printInitSummary(io, {
