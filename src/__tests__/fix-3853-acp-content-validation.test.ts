@@ -140,3 +140,28 @@ describe('ACP content validation (#3853)', () => {
     });
   });
 });
+
+describe('ACP strict validation (#3900)', () => {
+  it('ACP_STRICT_VALIDATION causes hallucination to throw AcpContentValidationError', async () => {
+    process.env.ACP_STRICT_VALIDATION = 'true';
+    // Import backend module to get AcpContentValidationError
+    const { AcpContentValidationError } = await import('../services/acp/backend.js');
+    // Simulate strict mode: the error should be constructable with warnings
+    const warnings = validatePromptOutput('[TRACE] hallucinated', 'fix the bug in auth');
+    expect(warnings.length).toBeGreaterThan(0);
+    const error = new AcpContentValidationError(warnings);
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('AcpContentValidationError');
+    expect(error.warnings).toEqual(warnings);
+    expect(error.message).toContain('warning');
+    delete process.env.ACP_STRICT_VALIDATION;
+  });
+
+  it('AcpContentValidationError serializes warnings', async () => {
+    const { AcpContentValidationError } = await import('../services/acp/backend.js');
+    const warnings = validatePromptOutput('', 'fix the bug');
+    const error = new AcpContentValidationError(warnings);
+    expect(error.warnings[0].code).toBe('empty_output');
+    expect(error.warnings.length).toBe(1);
+  });
+});

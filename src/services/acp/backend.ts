@@ -22,7 +22,7 @@ import {
   type AcpJsonValue,
 } from './json-rpc-client.js';
 import type { AcpActionMetadata, AcpActionRecord } from './action-queue.js';
-import { extractResultText, validatePromptOutput } from './content-validation.js';
+import { extractResultText, validatePromptOutput, type PromptValidationWarning } from './content-validation.js';
 import type {
   AcpAgentSessionAttachment,
   AcpBackendMetadata,
@@ -834,10 +834,14 @@ export class AcpBackend {
         prompt: [{ type: 'text', text }],
       }, { timeoutMs: ACP_PROMPT_REQUEST_TIMEOUT_MS });
 
-      // Issue #3853: Validate output for hallucination signatures
+      // Issue #3853 + #3900: Validate output for hallucination signatures
       const warnings = validatePromptOutput(response.result, text);
       if (warnings.length > 0) {
-        console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
+        const strictMode = process.env.ACP_STRICT_VALIDATION === 'true';
+        console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} strict=${strictMode} warnings=${JSON.stringify(warnings)}`);
+        if (strictMode) {
+          throw new AcpContentValidationError(warnings);
+        }
       }
 
       await this.sessionService.transition(sessionId, runtime.scope, {
@@ -1135,6 +1139,15 @@ function optionalActionMetadataString(action: AcpActionRecord, key: string): str
 /** Issue #3853: Post-response content validation for hallucination signatures */
 
 
+export class AcpContentValidationError extends Error {
+  constructor(
+    public readonly warnings: PromptValidationWarning[],
+    message = `ACP content validation failed: ${warnings.length} warning(s)`,
+  ) {
+    super(message);
+    this.name = 'AcpContentValidationError';
+  }
+}
 
 
 function primitiveResultMetadata(result: AcpJsonValue): AcpBackendMetadata {
