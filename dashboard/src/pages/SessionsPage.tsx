@@ -9,7 +9,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import SessionTable from '../components/overview/SessionTable';
-import { SessionBoard } from '../components/overview/SessionBoard';
+const SessionBoard = lazy(() => import('../components/overview/SessionBoard').then(m => ({ default: m.SessionBoard })));
 import { SkeletonTable } from '../components/shared/Skeleton';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useT } from '../i18n/context';
@@ -81,7 +81,7 @@ export default function SessionsPage() {
         </div>
       ) : tab === 'board' ? (
         <div id="tab-panel-board" role="tabpanel" aria-label="Session board view">
-          <SessionBoard />
+          <Suspense fallback={<SkeletonTable rows={6} />}><SessionBoard /></Suspense>
         </div>
       ) : (
         <div id="tab-panel-all" role="tabpanel" aria-label={translate("aria.allSessions")}>
