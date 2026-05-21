@@ -211,7 +211,7 @@ async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: 
           const body = await res.text().catch(() => res.statusText);
           writeLine(io.stderr);
           writeLine(io.stderr, '  ❌ Rate limit detected while waiting for session (HTTP 429).');
-          if (body) writeLine(io.stderr, f"    {body[:1000]}");
+          if (body) writeLine(io.stderr, `    ${String(body).slice(0, 1000)}`);
           process.exitCode = 2;
           return false;
         }
