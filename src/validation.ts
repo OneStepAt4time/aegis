@@ -41,17 +41,17 @@ export const MAX_INPUT_LENGTH = 10_000;
 
 /** POST /v1/sessions/:id/send */
 export const sendMessageSchema = z.object({
-  text: z.string().min(1).max(MAX_INPUT_LENGTH),
+  text: z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.string().min(1).max(MAX_INPUT_LENGTH)),
 }).strict();
 
 /** POST /v1/sessions/:id/command */
 export const commandSchema = z.object({
-  command: z.string().min(1).max(MAX_INPUT_LENGTH),
+  command: z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.string().min(1).max(MAX_INPUT_LENGTH)),
 }).strict();
 
 /** POST /v1/sessions/:id/bash */
 export const bashSchema = z.object({
-  command: z.string().min(1).max(MAX_INPUT_LENGTH),
+  command: z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.string().min(1).max(MAX_INPUT_LENGTH)),
 }).strict();
 
 /** POST /v1/sessions/:id/screenshot */
