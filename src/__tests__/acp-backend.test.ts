@@ -938,6 +938,7 @@ async function waitForCondition(predicate: () => boolean): Promise<void> {
 }
 
 
+
 class FakeTransitionFailureSessionService extends FakeSessionService {
   private failOnTransition = false;
 
@@ -1049,6 +1050,104 @@ describe('AcpBackend error transition resilience (#3922)', () => {
     expect(service.records.has(session.id)).toBe(true);
     // Status won't be 'failed' since transition failed
     expect(service.records.get(session.id)?.status).not.toBe('failed');
+  });
+});
+
+describe('AcpBackend driver TOCTOU race condition (#3921)', () => {
+  it('prevents concurrent claimDriver calls from both succeeding', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+    await backend.createSession({ ...scope, cwd });
+
+    // Two concurrent claims — both should NOT succeed
+    const claim1 = backend.claimDriver({
+      ...scope,
+      sessionId: 'session-1',
+      holderId: 'subscriber-A',
+      ttlMs: 30000,
+    });
+    const claim2 = backend.claimDriver({
+      ...scope,
+      sessionId: 'session-1',
+      holderId: 'subscriber-B',
+      ttlMs: 30000,
+    });
+
+    const results = await Promise.allSettled([claim1, claim2]);
+    const succeeded = results.filter(r => r.status === 'fulfilled');
+    const failed = results.filter(r => r.status === 'rejected');
+
+    // Exactly one should succeed
+    expect(succeeded.length).toBe(1);
+    expect(failed.length).toBe(1);
+    expect((failed[0] as PromiseRejectedResult).reason.message).toContain('Driver already claimed');
+  });
+
+  it('prevents transferDriver when driver was released concurrently', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+    await backend.createSession({ ...scope, cwd });
+
+    // Claim driver
+    await backend.claimDriver({ ...scope, sessionId: 'session-1', holderId: 'subscriber-A', ttlMs: 30000 });
+
+    // Concurrent release and transfer
+    const release = backend.releaseDriver({ ...scope, sessionId: 'session-1', holderId: 'subscriber-A' });
+    const transfer = backend.transferDriver({
+      ...scope,
+      sessionId: 'session-1',
+      targetSubscriberId: 'subscriber-B',
+    });
+
+    const results = await Promise.allSettled([release, transfer]);
+    const succeeded = results.filter(r => r.status === 'fulfilled');
+    const failed = results.filter(r => r.status === 'rejected');
+
+    expect(succeeded.length + failed.length).toBe(2);
+  });
+
+  it('fence increments are not lost on sequential operations', async () => {
+    const service = new FakeSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+    await backend.createSession({ ...scope, cwd });
+
+    const claimResult = await backend.claimDriver({
+      ...scope, sessionId: 'session-1', holderId: 'subscriber-A', ttlMs: 30000,
+    });
+    expect(claimResult.fence).toBe(1);
+
+    const transferResult = await backend.transferDriver({
+      ...scope, sessionId: 'session-1', targetSubscriberId: 'subscriber-B',
+    });
+    expect(transferResult.fence).toBe(2);
+
+    await backend.releaseDriver({ ...scope, sessionId: 'session-1', holderId: 'subscriber-B' });
+
+    const reclaimResult = await backend.claimDriver({
+      ...scope, sessionId: 'session-1', holderId: 'subscriber-C', ttlMs: 30000,
+    });
+    expect(reclaimResult.fence).toBe(3);
   });
 });
 
