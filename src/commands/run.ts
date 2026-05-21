@@ -688,6 +688,25 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
         return 1;
       }
 
+      if (res.status === 429) {
+        // Rate limit from upstream provider or ACP; attempt to extract message
+        const body = await res.text().catch(() => res.statusText);
+        writeLine(io.stderr, "");
+        writeLine(io.stderr, "  ❌ Rate limit detected while creating session (HTTP 429).");
+        if (body) {
+          writeLine(io.stderr, "  Response:");
+          writeLine(io.stderr, `    ${body.slice(0, 1000)}`);
+          writeLine(io.stderr, "");
+        }
+        writeLine(io.stderr, "  This usually means the Claude/LLM provider quota is exhausted.");
+        writeLine(io.stderr, "  Suggestions:");
+        writeLine(io.stderr, "    • Wait for the rate limit window to reset");
+        writeLine(io.stderr, "    • Use a different model: ag run "..." --model <model>");
+        writeLine(io.stderr, "    • Use a different provider / API key with higher limits");
+        process.exitCode = 2;
+        return 2;
+      }
+
       const err = await res.json().catch(() => ({ error: res.statusText }));
       writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
       return 1;
