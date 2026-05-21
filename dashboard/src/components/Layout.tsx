@@ -621,7 +621,7 @@ export default function Layout() {
                       href={updateResult.releaseUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-cyan hover:underline"
+                      className="text-cyan hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
                     >
                       Update available: v{updateResult.latestVersion}
                     </a>
