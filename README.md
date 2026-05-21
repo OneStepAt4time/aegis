@@ -134,6 +134,59 @@ For troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
 ---
 
+## Why Aegis when Claude Code has agents?
+
+Claude Code v2.1.141+ added `claude agents`, background sessions, a plugin marketplace, and agent teams. So why Aegis?
+
+**Short answer:** CC is a terminal REPL. Aegis is an API server. Different tools for different jobs.
+
+| | Claude Code Native | Aegis |
+|---|---|---|
+| **Interface** | Terminal (`claude agents`) | REST API, MCP, CLI, dashboard, Telegram |
+| **Open source** | ❌ Closed source | ✅ MIT, fully auditable |
+| **Approval from phone** | ❌ Terminal only | ✅ Telegram, Slack, web dashboard |
+| **Programmatic control** | `--json` flag | 65+ REST endpoints + 34 MCP tools |
+| **CI/CD integration** | Subprocess + exit codes | REST API, `ag run`, webhooks, pipelines |
+| **Cost analytics** | `/usage` in terminal | Dashboard analytics, per-session metrics, Prometheus |
+| **SSE event streaming** | ❌ | ✅ Per-session + global event streams |
+| **Multi-channel notifications** | Terminal only | Telegram, Slack, email, webhooks |
+| **Session templates** | ❌ | ✅ Reusable configs + pipeline orchestration |
+| **Cross-session memory** | Structured learnings (experimental) | Memory Bridge (REST key-value store) |
+| **RBAC / multi-user** | ❌ Single user | ✅ 3 roles, OIDC/SSO, per-key permissions |
+| **Audit trail** | ❌ | ✅ Hash-chained, immutable, exportable |
+| **Multi-agent** | Agent Teams (experimental) | Orchestrates multiple CC sessions via API (native team coordination not yet supported) |
+| **Session export** | ❌ | ✅ JSONL + markdown download |
+
+### When CC native is enough
+
+- You're a solo developer
+- You live in the terminal
+- You don't need phone approvals or CI/CD integration
+- One session at a time is fine
+
+### When you need Aegis
+
+- **Teams** — multiple people managing agents, RBAC, audit trails
+- **CI/CD** — `ag run` in GitHub Actions, webhook delivery, pipeline orchestration
+- **Phone approvals** — approve file writes and commands from Telegram/Slack
+- **Monitoring** — dashboard with cost analytics, SSE streams, Prometheus metrics
+- **Compliance** — immutable audit log, hash-chain integrity, GDPR/SOC2-ready
+- **Integration** — REST API + MCP server for custom tooling
+
+```
+Claude Code native:
+  You ← Terminal → CC sessions
+
+Aegis:
+  You ← Telegram/Slack/Dashboard/API → Aegis Server → CC sessions
+  CI/CD ← REST API ─────────────────────┘
+  Monitoring ← SSE/Prometheus/OTel ─────┘
+```
+
+CC handles the REPL. Aegis handles everything around it — routing, approvals, cost tracking, audit, and integration with your existing stack.
+
+---
+
 ## How It Works
 
 Aegis bridges Claude Code sessions through the Agent Client Protocol (ACP) and exposes everything through a unified API. No SDK dependency, no browser automation — just JSON-RPC over stdio.
