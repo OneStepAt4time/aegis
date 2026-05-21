@@ -10,6 +10,7 @@ vi.mock('../../../api/client', () => ({
 }));
 
 import { getSessionCost } from '../../../api/client';
+import type { SessionCostEntry } from '../../../types';
 const mockGetSessionCost = vi.mocked(getSessionCost);
 
 const mockSession = {
@@ -52,22 +53,22 @@ describe('SessionCostTable', () => {
   });
 
   it('renders cost data after fetch', async () => {
-    let resolve: (v: unknown) => void;
-    mockGetSessionCost.mockReturnValue(new Promise((r) => { resolve = r; }));
+    let resolve!: (v: SessionCostEntry) => void;
+    mockGetSessionCost.mockReturnValue(new Promise<SessionCostEntry>((r) => { resolve = r; }));
 
     render(<SessionCostTable sessions={[mockSession]} />);
-    await act(async () => { resolve!(mockCost); });
+    await act(async () => { resolve!(mockCost as SessionCostEntry); });
 
     expect(screen.getByText('$1.25')).not.toBeNull();
     expect(screen.getByText('67%')).not.toBeNull();
   });
 
   it('renders model name', async () => {
-    let resolve: (v: unknown) => void;
-    mockGetSessionCost.mockReturnValue(new Promise((r) => { resolve = r; }));
+    let resolve!: (v: SessionCostEntry) => void;
+    mockGetSessionCost.mockReturnValue(new Promise<SessionCostEntry>((r) => { resolve = r; }));
 
     render(<SessionCostTable sessions={[mockSession]} />);
-    await act(async () => { resolve!(mockCost); });
+    await act(async () => { resolve!(mockCost as SessionCostEntry); });
 
     expect(screen.getByText('claude-sonnet-4-20250514')).not.toBeNull();
   });
@@ -92,11 +93,11 @@ describe('SessionCostTable', () => {
   });
 
   it('shows total cost in header', async () => {
-    let resolve: (v: unknown) => void;
-    mockGetSessionCost.mockReturnValue(new Promise((r) => { resolve = r; }));
+    let resolve!: (v: SessionCostEntry) => void;
+    mockGetSessionCost.mockReturnValue(new Promise<SessionCostEntry>((r) => { resolve = r; }));
 
     render(<SessionCostTable sessions={[mockSession]} />);
-    await act(async () => { resolve!(mockCost); });
+    await act(async () => { resolve!(mockCost as SessionCostEntry); });
 
     expect(screen.getByText('Total: $1.25')).not.toBeNull();
   });

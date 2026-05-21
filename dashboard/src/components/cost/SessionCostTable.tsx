@@ -57,6 +57,8 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
     setRows(sessions.map((session) => ({ session, cost: null, loading: true })));
   }, [sessions]);
 
+  // Derive a stable session ID list to prevent unnecessary refetches
+  const sessionIds = sessions.map(s => s.id).join(",");
   // Fetch costs for all sessions with concurrency limit
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +98,7 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
 
     void fetchAll();
     return () => { cancelled = true; };
-  }, [sessions, concurrency]);
+  }, [sessionIds, concurrency]);
 
   const handleSort = useCallback((key: SortKey) => {
     if (sortKey === key) {
