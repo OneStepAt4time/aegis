@@ -656,7 +656,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     const sessionCreationTimeoutMs = parseInt(process.env.AEGIS_SESSION_CREATION_TIMEOUT_MS ?? '', 10) || 120_000;
     const res = await fetch(`${baseUrl}/v1/sessions`, {
       method: 'POST',
-      signal: AbortSignal.timeout(30_000),  // Issue #3243: session creation is now fast (prompt delivery is async)
+      signal: AbortSignal.timeout(sessionCreationTimeoutMs),  // Issue #3243: session creation is now fast (prompt delivery is async)
       headers,
       body: JSON.stringify({
         workDir: cwd,
