@@ -24,6 +24,7 @@ import { handleLogout } from './commands/logout.js';
 import { handleWhoami } from './commands/whoami.js';
 import { handleRun } from './commands/run.js';
 import { handleList } from './commands/list.js';
+import { handleUpdate } from './commands/update.js';
 import { handleRead } from './commands/read.js';
 import { handleKill } from './commands/kill.js';
 import { handleStatus } from './commands/status.js';
@@ -335,6 +336,11 @@ function printHelp(io: CliIO): void {
     ag tail <id>            Follow session output in real-time
     ag kill <id>            Terminate a session
     ag status               Show server health + session summary
+
+  Update:
+    ag update               Check for and apply self-update
+    ag update --check       Only check, no update (exit 1 if available)
+    ag update --yes         Skip confirmation prompt
 ${authBlock}  Flags:
     --json-logs           Emit structured JSON logs (default: quiet mode)
 
@@ -370,7 +376,7 @@ ${authBlock}  Flags:
 export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO = defaultCliIO): Promise<number> {
   // Issue #3796: Only show generic help if no subcommand is provided.
   // Subcommands like 'run' handle their own --help with command-specific flags.
-  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'version', 'setup'];
+  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'update', 'version', 'setup'];
   const hasKnownCommand = argv.length > 0 && knownCommands.includes(argv[0]);
   if ((argv.includes('--help') || argv.includes('-h')) && !hasKnownCommand) {
     printHelp(io);
@@ -449,6 +455,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'tail') {
     return handleTail(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'update') {
+    return handleUpdate(argv.slice(1), io);
   }
   // typos (e.g. "ag status", "ag health") rather than intentional prompts.
   // Multi-word args or quoted strings are treated as prompts (backward compat).
