@@ -119,6 +119,9 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
       }
+      if (typeof url === 'string' && url.includes('/read')) {
+        return { ok: true, status: 200, json: async () => ({ messages: [{ role: 'assistant', text: 'done', contentType: 'text' }], status: 'idle' }) };
+      }
       // Default: return idle session status so pollUntilComplete exits
       return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };
     });
@@ -147,6 +150,9 @@ describe('Issue #3306 — orphaned session on auth failure', () => {
           status: 201,
           json: async () => ({ id: 'test-session-id', displayName: 'run-test', promptDelivery: { status: 'delivered' } }),
         };
+      }
+      if (typeof url === 'string' && url.includes('/read')) {
+        return { ok: true, status: 200, json: async () => ({ messages: [{ role: 'assistant', text: 'done', contentType: 'text' }], status: 'idle' }) };
       }
       // Default: return idle session status so pollUntilComplete exits
       return { ok: true, status: 200, json: async () => ({ status: 'idle' }) };

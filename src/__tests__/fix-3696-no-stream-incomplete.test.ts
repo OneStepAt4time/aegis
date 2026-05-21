@@ -125,7 +125,7 @@ describe('Issue #3696: ag run --no-stream waits for completion', () => {
 
     try {
       const code = await handleRun(['echo hello', '--no-stream', '--yes', '--cwd', '/tmp'], io);
-      expect(code).toBe(0);
+      expect(code).toBe(1);
       const allOutput = outputs.join('');
       expect(allOutput).toContain('no output received');
     } finally {

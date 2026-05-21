@@ -206,6 +206,15 @@ async function pollUntilComplete(baseUrl: string, sessionId: string, authToken: 
 
       if (!res.ok) {
         if (res.status === 404) break;
+        if (res.status === 429) {
+          // Rate limit while waiting for session to appear / be ready
+          const body = await res.text().catch(() => res.statusText);
+          writeLine(io.stderr);
+          writeLine(io.stderr, '  ❌ Rate limit detected while waiting for session (HTTP 429).');
+          if (body) writeLine(io.stderr, `    ${String(body).slice(0, 1000)}`);
+          process.exitCode = 2;
+          return false;
+        }
         await new Promise((r) => setTimeout(r, pollInterval));
         continue;
       }
@@ -328,6 +337,15 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
       if (!res.ok) {
         // Session might have ended
         if (res.status === 404) break;
+        if (res.status === 429) {
+          // Rate limit detected while streaming
+          const body = await res.text().catch(() => res.statusText);
+          writeLine(io.stderr);
+          writeLine(io.stderr, '  ❌ Rate limit detected while streaming session output (HTTP 429).');
+          if (body) writeLine(io.stderr, `    ${body.slice(0, 1000)}`);
+          process.exitCode = 2;
+          break;
+        }
         await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
@@ -379,7 +397,7 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
             writeLine(io.stderr);
             writeLine(io.stderr, '  To fix this:');
             writeLine(io.stderr, '    1. Wait for the rate limit window to reset (check error message for timing)');
-            writeLine(io.stderr, '    2. Use a different model:  ag run "..." --model <model>');
+        writeLine(io.stderr, '    • Use a different model: ag run ... --model <model>');
             writeLine(io.stderr, '    3. Use a different provider: export ANTHROPIC_API_KEY=<key-with-higher-limits>');
             writeLine(io.stderr);
             writeLine(io.stderr, '  Common model alternatives:');
@@ -688,6 +706,25 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
         return 1;
       }
 
+      if (res.status === 429) {
+        // Rate limit from upstream provider or ACP; attempt to extract message
+        const body = await res.text().catch(() => res.statusText);
+        writeLine(io.stderr, "");
+        writeLine(io.stderr, "  ❌ Rate limit detected while creating session (HTTP 429).");
+        if (body) {
+          writeLine(io.stderr, "  Response:");
+          writeLine(io.stderr, `    ${body.slice(0, 1000)}`);
+          writeLine(io.stderr, "");
+        }
+        writeLine(io.stderr, "  This usually means the Claude/LLM provider quota is exhausted.");
+        writeLine(io.stderr, "  Suggestions:");
+        writeLine(io.stderr, "    • Wait for the rate limit window to reset");
+        writeLine(io.stderr, "    • Use a different model: ag run \"...\" --model <model>");
+        writeLine(io.stderr, "    • Use a different provider / API key with higher limits");
+        process.exitCode = 2;
+        return 2;
+      }
+
       const err = await res.json().catch(() => ({ error: res.statusText }));
       writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
       return 1;
@@ -761,10 +798,15 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     // Issue #3696: Instead of just printing curl commands and exiting,
     // poll until session completes then print all output.
     const pollTimeoutMs = 300_000; // 5 min max wait
-    await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
+    const hadOutput = await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
     // Issue #3887: Remove signal handlers on normal exit
     process.removeListener('SIGTERM', onSignal);
     process.removeListener('SIGINT', onSignal);
+    // If pollUntilComplete reported no output, surface a non-zero exit code
+    if (!hadOutput) {
+      // If the poll detected a rate-limit it may have set process.exitCode=2 upstream.
+      return process.exitCode === 2 ? 2 : 1;
+    }
     return 0;
   }
 
