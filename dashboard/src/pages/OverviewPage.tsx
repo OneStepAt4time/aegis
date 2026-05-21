@@ -172,7 +172,7 @@ export default function OverviewPage() {
               {t('overview.subtitle')}
               <LiveStatusIndicator />
               {sseError && (
-                <span className="text-amber-500 text-xs" title={sseError}>
+                <span className="text-[var(--color-warning)] text-xs" title={sseError}>
                   — {sseError}
                 </span>
               )}

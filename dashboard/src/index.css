@@ -36,12 +36,14 @@
   
   --color-text-primary: #f8fafc;
   --color-text-muted: #94a3b8;
+  --color-placeholder: #475569; /* slate-600 — placeholder text */
   
   /* Primary Gradients and Accents */
   --color-accent: #3b82f6; /* Modern Blue */
   --color-accent-dim: #3b82f620;
   --color-accent-cyan: #06b6d4;
   --color-accent-cyan-rgb: 6, 182, 212;
+  --color-accent-cyan-glow: #67e8f9; /* cyan-300 — glow/shadow color */
   --color-accent-purple: #8b5cf6;
   --color-accent-purple-rgb: 139, 92, 246;
   /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
@@ -192,6 +194,7 @@
   /* Text. */
   --color-text-primary: #020617;  /* slate-950 on #f8fafc ≈ 17.6:1 (AAA) */
   --color-text-muted: #334155;    /* slate-700 on #f8fafc ≈ 10.4:1 (AAA)  */
+  --color-placeholder: #94a3b8;    /* placeholder on light bg */
 
   /* Brand. */
   --color-brand: #0f172a;         /* slate-900 for the Aegis wordmark       */
@@ -236,6 +239,7 @@
   --color-text-primary: #0a0a0a;  /* near-ink on warm white — ≥ 18:1 */
   --color-text-muted: #404040;    /* ≥ 9.3:1 on #fafaf7 */
 
+  --color-placeholder: #78716c;    /* stone-500 on paper bg */
   --color-brand: #0a0a0a;
   --color-accent-on-light: #1d4ed8; /* blue-700 for saturation shift */
   --color-accent-cyan: #155e75;
@@ -273,6 +277,7 @@
   --color-text-primary: #000000;  /* 21:1 on white */
   --color-text-muted: #1a1a1a;    /* 18.88:1 — still reads as muted weight */
 
+  --color-placeholder: #a3a3a3;    /* neutral-400 on high-contrast bg */
   --color-brand: #000000;
   --color-accent-on-light: #1d4ed8; /* blue-700 on white ≈ 7.9:1 (AAA) */
   --color-accent-cyan: #155e75;
