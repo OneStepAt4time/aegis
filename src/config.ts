@@ -170,7 +170,7 @@ export interface Config {
   /** ACP JSON-RPC request timeout in ms (default: 60000). Issue #3223. */
   acpPromptTimeoutMs: number;
   /** Issue #3900: Enforce ACP validation warnings as errors (default: false). */
-  acpStrictValidation: boolean;
+  acpStrictValidation?: boolean;
   /** Session isolation policy (Issue #3613).
    *  "respect-cc": read bgIsolation from CC settings (current behavior, default)
    *  "enforce-worktree": reject sessions where isolation would be "none"
