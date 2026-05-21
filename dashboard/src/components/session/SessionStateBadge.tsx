@@ -12,8 +12,8 @@
  *   <SessionStateBadge status="working" />
  */
 
-import { StatusDot } from '../StatusDot';
-import type { StatusDotVariant } from '../StatusDot';
+import StatusDot from '../overview/StatusDot';
+import type { UIState } from '../../types';
 
 export type SessionBadgeStatus =
   | 'idle'
@@ -33,15 +33,15 @@ export interface SessionStateBadgeProps {
   className?: string;
 }
 
-const STATUS_TO_DOT: Record<SessionBadgeStatus, StatusDotVariant> = {
+const STATUS_TO_DOT: Record<SessionBadgeStatus, UIState> = {
   idle: 'idle',
   working: 'working',
-  permission: 'waiting',
-  waiting: 'waiting',
+  permission: 'permission_prompt',
+  waiting: 'waiting_for_input',
   error: 'error',
   compacting: 'compacting',
   offline: 'unknown',
-  pending: 'idle',
+  pending: 'pending',
   unknown: 'unknown',
 };
 
@@ -91,7 +91,7 @@ export function SessionStateBadge({
       className={`inline-flex items-center gap-1.5 ${className ?? ''}`}
       aria-label={`Session status: ${label}`}
     >
-      <StatusDot variant={dotVariant} size={8} />
+      <StatusDot status={dotVariant} />
       <span className="text-xs font-medium text-[var(--color-text-muted)]">
         {label}
       </span>
