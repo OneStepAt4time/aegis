@@ -76,7 +76,7 @@ function TouchTargetCheckbox({ checked, id, label, onCheckedChange }: TouchTarge
         id={id}
         checked={checked}
         onChange={(e) => onCheckedChange(e.target.checked)}
-        className="h-4 w-4 cursor-pointer accent-blue-600"
+        className="h-4 w-4 cursor-pointer accent-[var(--color-accent-cyan)]"
         aria-label={label}
       />
     </label>

@@ -68,7 +68,7 @@ export function ApprovalBadge() {
 
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-400 cursor-pointer"
+      className="inline-flex items-center gap-1 rounded-full bg-[var(--color-warning)]/20 border border-[var(--color-warning)]/30 px-2 py-0.5 text-xs font-bold text-amber-400 cursor-pointer"
       aria-label={`${count} pending approval${count > 1 ? "s" : ""}`}
       title={`${count} session${count > 1 ? "s" : ""} awaiting approval`}
     >

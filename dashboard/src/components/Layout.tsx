@@ -661,8 +661,8 @@ export default function Layout() {
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" title={sseError ?? undefined}>
             {sseError ? (
               <>
-                <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                <span className="text-[11px] text-amber-500 truncate">{sseIndicatorLabel}</span>
+                <AlertTriangle className="h-3 w-3 text-[var(--color-warning)] shrink-0" />
+                <span className="text-[11px] text-[var(--color-warning)] truncate">{sseIndicatorLabel}</span>
               </>
             ) : (
               <>

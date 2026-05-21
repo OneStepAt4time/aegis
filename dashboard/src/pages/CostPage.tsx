@@ -116,10 +116,10 @@ function BudgetOverview({ dailyData, budgetSettings, navigateToSettings }: Budge
     return (
       <section className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-4" aria-label={t("aria.budgetAlerts")}>
         <div className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="h-5 w-5 text-[var(--color-warning)] flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="text-sm font-medium text-amber-200">{t('cost.budgetAlertSection.title')}</h4>
-            <p className="mt-1 text-xs text-amber-300/80">
+            <p className="mt-1 text-xs text-[var(--color-warning)]/80">
               {t('cost.budgetAlertSection.description')}{' '}
               <button
                 type="button"

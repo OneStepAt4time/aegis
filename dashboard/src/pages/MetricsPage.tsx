@@ -252,12 +252,12 @@ export default function MetricsPage() {
       {data && data.anomalies?.length > 0 && (
         <section className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-4" aria-label={t("aria.anomalousSessions")}>
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[var(--color-warning)] mt-0.5" />
             <div>
               <h4 className="text-sm font-medium text-amber-200">
                 Anomalous Sessions ({data.anomalies?.length})
               </h4>
-              <p className="mt-1 text-xs text-amber-300/80">
+              <p className="mt-1 text-xs text-[var(--color-warning)]/80">
                 Sessions flagged for token cost exceeding p95 by 3x or more.
               </p>
               <div className="mt-2 space-y-1">
@@ -266,7 +266,7 @@ export default function MetricsPage() {
                     <span className="inline-flex rounded bg-[var(--color-warning)]/20 px-1.5 py-0.5 font-mono text-amber-200">
                       {a.sessionId.slice(0, 12)}
                     </span>
-                    <span className="text-amber-300/80">
+                    <span className="text-[var(--color-warning)]/80">
                       {formatCurrency(a.tokenCostUsd)} — {a.reason}
                     </span>
                   </div>
