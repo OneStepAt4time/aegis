@@ -113,7 +113,7 @@ function summarizeTool(name: string, input: Record<string, unknown>): string {
 }
 
 /** Parse entries from JSONL data. */
-export function parseEntries(entries: JsonlEntry[]): ParsedEntry[] {
+export function parseEntries(entries: JsonlEntry[], preserveFullText = false): ParsedEntry[] {
   const results: ParsedEntry[] = [];
   const pendingTools = new Map<string, string>(); // tool_use_id -> summary
 
@@ -185,8 +185,8 @@ export function parseEntries(entries: JsonlEntry[]): ParsedEntry[] {
               .map(c => c.text || '')
               .join('\n');
           }
-          // Truncate long results
-          if (resultText.length > 500) {
+          // Truncate long results unless caller requested full text
+          if (!preserveFullText && resultText.length > 500) {
             resultText = resultText.slice(0, 500) + '... (truncated)';
           }
           if (resultText.trim()) {
@@ -241,7 +241,8 @@ export function extractTokenDelta(raw: JsonlEntry[]): TokenUsageDelta {
 /** Read JSONL file from byte offset, return new entries + new offset. */
 export async function readNewEntries(
   filePath: string,
-  fromOffset: number
+  fromOffset: number,
+  preserveFullText = false
 ): Promise<{ entries: ParsedEntry[]; newOffset: number; raw: JsonlEntry[] }> {
   // Issue #623: Use a single fd for stat + read to eliminate TOCTOU race.
   const fd = await open(filePath, 'r');
@@ -306,7 +307,7 @@ export async function readNewEntries(
       }
     }
 
-    const parsed = parseEntries(rawEntries);
+    const parsed = parseEntries(rawEntries, preserveFullText);
     return { entries: parsed, newOffset: readEnd, raw: rawEntries };
   } finally {
     await fd.close();
