@@ -270,6 +270,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_ACP_BIN` | _(auto)_ | Path to the ACP binary (auto-detected if empty) |
 | `AEGIS_ACP_ENABLED` | `true` | Enable ACP backend for session creation and control actions |
 | `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `120000` | Timeout in ms for ACP JSON-RPC requests (default 120s). Increase for slow BYO-LLM proxy setups (min: 1000) |
+| `AEGIS_ACP_STRICT_VALIDATION` | `false` | When `true`, ACP content validation warnings cause action failure instead of logging only. Useful for production deployments requiring hallucination-free output |
 | `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings, default), `enforce-worktree` (reject sessions without worktree — prevents file conflicts with concurrent sessions), `enforce-direct` (force direct edits, no worktree) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
