@@ -937,6 +937,121 @@ async function waitForCondition(predicate: () => boolean): Promise<void> {
   throw new Error('condition was not met');
 }
 
+
+class FakeTransitionFailureSessionService extends FakeSessionService {
+  private failOnTransition = false;
+
+  enableTransitionFailure(): void {
+    this.failOnTransition = true;
+  }
+
+  async transition(
+    sessionId: string,
+    requestedScope: AcpSessionScope,
+    event: AcpSessionTransitionEvent
+  ): Promise<AcpSessionRecord> {
+    if (this.failOnTransition && event.type === 'runtime_failed') {
+      throw new Error('simulated transition store failure');
+    }
+    return super.transition(sessionId, requestedScope, event);
+  }
+}
+
+class FakePromptErrorClient extends FakeBackendClient {
+  private readonly promptError: Error;
+  constructor(promptError: Error) {
+    super();
+    this.promptError = promptError;
+  }
+  async request<T = AcpJsonValue>(
+    method: string,
+    params?: AcpJsonValue,
+    _options?: AcpJsonRpcRequestOptions
+  ): Promise<AcpJsonRpcSuccess<T>> {
+    this.requests.push({ method, params });
+    if (method === 'session/prompt') {
+      throw this.promptError;
+    }
+    return {
+      jsonrpc: '2.0',
+      id: `${method}-request`,
+      result: this.results.get(method) as T,
+    };
+  }
+}
+
+describe('AcpBackend error transition resilience (#3922)', () => {
+  it('preserves original prompt error when transition to runtime_failed also fails', async () => {
+    const service = new FakeTransitionFailureSessionService();
+    const client = new FakePromptErrorClient(new Error('prompt execution exploded'));
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    service.enableTransitionFailure();
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    const { session } = await backend.createSession({ ...scope, cwd });
+
+    // The original prompt error should be thrown, not the transition error
+    await expect(
+      backend.dispatchAction({
+        ...scope,
+        actionId: 'action-1',
+        sessionId: session.id,
+        actionType: 'prompt',
+        status: 'leased',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        availableAt: new Date('2026-01-01T00:00:00.000Z'),
+        attemptCount: 1,
+        metadata: { text: 'test prompt' },
+      })
+    ).rejects.toThrow('prompt execution exploded');
+  });
+
+  it('preserves original startup error when transition to runtime_failed fails', async () => {
+    const service = new FakeTransitionFailureSessionService();
+    const client = new FakeBackendClient();
+    const startupError = new Error('spawn failed');
+    client.startError = startupError;
+    service.enableTransitionFailure();
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-failed',
+    });
+
+    // The original startup error should propagate, not the transition error
+    await expect(backend.createSession({ ...scope, cwd })).rejects.toBe(startupError);
+  });
+
+  it('cleans up runtime even when transition fails after unexpected exit', async () => {
+    const service = new FakeTransitionFailureSessionService();
+    const client = new FakeBackendClient();
+    client.setResult('initialize', {});
+    client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
+    service.enableTransitionFailure();
+    const backend = new AcpBackend({
+      sessionService: service,
+      clientFactory: () => client,
+      backendRunIdProvider: () => 'backend-run-1',
+    });
+
+    const { session } = await backend.createSession({ ...scope, cwd });
+
+    // Trigger unexpected exit
+    client.emitExit({ code: 1, signal: null, expected: false, escalated: false });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Session should still exist (transition failed but runtime cleaned up)
+    expect(service.records.has(session.id)).toBe(true);
+    // Status won't be 'failed' since transition failed
+    expect(service.records.get(session.id)?.status).not.toBe('failed');
+  });
+});
+
 class FakeTimeoutClient extends FakeBackendClient {
   async request<T = AcpJsonValue>(
     method: string,

@@ -880,9 +880,15 @@ export class AcpBackend {
       if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {
         console.warn(`[ACP prompt timeout] session=${sessionId} action=${action.actionId} method=session/prompt timeout=${ACP_PROMPT_REQUEST_TIMEOUT_MS}ms`);
       }
-      await this.sessionService.transition(sessionId, runtime.scope, {
-        type: 'runtime_failed',
-      });
+      try {
+        await this.sessionService.transition(sessionId, runtime.scope, {
+          type: 'runtime_failed',
+        });
+      } catch (transitionError) {
+        console.error(
+          `[ACP] failed to transition session=${sessionId} to runtime_failed: ${transitionError}`
+        );
+      }
       throw error;
     } finally {
       this.inFlightPrompts.delete(sessionId);
@@ -971,7 +977,13 @@ export class AcpBackend {
     started: boolean
   ): Promise<void> {
     try {
-      await this.sessionService.transition(sessionId, scope, { type: 'runtime_failed' });
+      try {
+        await this.sessionService.transition(sessionId, scope, { type: 'runtime_failed' });
+      } catch (transitionError) {
+        console.error(
+          `[ACP] failed to transition session=${sessionId} to runtime_failed during startup: ${transitionError}`
+        );
+      }
     } finally {
       if (started) {
         await runtime.client.shutdown().catch(() => undefined);
@@ -1025,9 +1037,15 @@ export class AcpBackend {
     });
     if (exit.expected || runtime.cleanupPromise) return;
     try {
-      await this.sessionService.transition(runtime.sessionId, runtime.scope, {
-        type: 'runtime_failed',
-      });
+      try {
+        await this.sessionService.transition(runtime.sessionId, runtime.scope, {
+          type: 'runtime_failed',
+        });
+      } catch (transitionError) {
+        console.error(
+          `[ACP] failed to transition session=${runtime.sessionId} to runtime_failed on exit: ${transitionError}`
+        );
+      }
     } finally {
       this.disposeRuntime(runtime);
       this.runtimes.delete(runtime.sessionId);
