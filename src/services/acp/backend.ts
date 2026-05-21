@@ -219,6 +219,8 @@ export interface AcpBackendRestartBackoffEvent extends AcpBackendRestartBackoffC
 }
 
 export interface AcpBackendOptions {
+  /** Issue #3897: Emit validation_warning transitions for monitoring (default: false). */
+  emitValidationWarnings?: boolean;
   sessionService: AcpBackendSessionService;
   clientFactory?: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
   backendRunIdProvider?: () => string;
@@ -267,6 +269,8 @@ export class AcpBackend {
   private readonly clientCapabilities: AcpJsonObject;
   /** Issue #3900: Enforce validation warnings as errors. */
   private readonly strictValidation: boolean;
+  /** Emit validation_warning transitions for monitoring. */
+  private readonly emitValidationWarnings: boolean;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
@@ -278,6 +282,7 @@ export class AcpBackend {
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
     this.strictValidation = options.strictValidation ?? false;
+    this.emitValidationWarnings = options.emitValidationWarnings ?? false;
     this.clientFactory =
       options.clientFactory ??
       (context =>
@@ -847,13 +852,16 @@ export class AcpBackend {
         console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
 
         // Issue #3897: Emit validation_warning event for monitoring/alerting
-        try {
-          await this.sessionService.transition(sessionId, runtime.scope, {
-            type: 'validation_warning',
-            warnings,
-          });
-        } catch {
-          // validation_warning transition is informational; ignore state errors
+        // Issue #3897: Emit validation_warning event for monitoring/alerting (opt-in)
+        if (this.emitValidationWarnings) {
+          try {
+            await this.sessionService.transition(sessionId, runtime.scope, {
+              type: 'validation_warning',
+              warnings,
+            });
+          } catch {
+            // validation_warning transition is informational; ignore state errors
+          }
         }
 
         // Issue #3900: Strict mode — fail the action on validation warnings
