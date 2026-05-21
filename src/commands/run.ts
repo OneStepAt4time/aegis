@@ -397,7 +397,7 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
             writeLine(io.stderr);
             writeLine(io.stderr, '  To fix this:');
             writeLine(io.stderr, '    1. Wait for the rate limit window to reset (check error message for timing)');
-            writeLine(io.stderr, '    2. Use a different model:  ag run "..." --model <model>');
+        writeLine(io.stderr, '    • Use a different model: ag run ... --model <model>');
             writeLine(io.stderr, '    3. Use a different provider: export ANTHROPIC_API_KEY=<key-with-higher-limits>');
             writeLine(io.stderr);
             writeLine(io.stderr, '  Common model alternatives:');
@@ -719,7 +719,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
         writeLine(io.stderr, "  This usually means the Claude/LLM provider quota is exhausted.");
         writeLine(io.stderr, "  Suggestions:");
         writeLine(io.stderr, "    • Wait for the rate limit window to reset");
-        writeLine(io.stderr, "    • Use a different model: ag run "..." --model <model>");
+        writeLine(io.stderr, "    • Use a different model: ag run \"...\" --model <model>");
         writeLine(io.stderr, "    • Use a different provider / API key with higher limits");
         process.exitCode = 2;
         return 2;
