@@ -761,10 +761,15 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
     // Issue #3696: Instead of just printing curl commands and exiting,
     // poll until session completes then print all output.
     const pollTimeoutMs = 300_000; // 5 min max wait
-    await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
+    const hadOutput = await pollUntilComplete(baseUrl, sessionId, authToken, io, pollTimeoutMs);
     // Issue #3887: Remove signal handlers on normal exit
     process.removeListener('SIGTERM', onSignal);
     process.removeListener('SIGINT', onSignal);
+    // If pollUntilComplete reported no output, surface a non-zero exit code
+    if (!hadOutput) {
+      // If the poll detected a rate-limit it may have set process.exitCode=2 upstream.
+      return process.exitCode === 2 ? 2 : 1;
+    }
     return 0;
   }
 
