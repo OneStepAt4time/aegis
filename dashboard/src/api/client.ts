@@ -1220,3 +1220,24 @@ export async function getMetricsAggregate(params: FetchMetricsAggregateParams = 
   const path = query ? `/v1/metrics/aggregate?${query}` : '/v1/metrics/aggregate';
   return request<AggregateMetricsResponse>(path);
 }
+
+// ── Claude Code Sessions (claude agents --json proxy) ──────
+
+export interface ClaudeAgentSession {
+  pid: number;
+  cwd: string;
+  kind: 'background';
+  startedAt: number;
+  sessionId: string;
+  name: string;
+  status: 'idle' | 'working';
+}
+
+export async function getClaudeSessions(signal?: AbortSignal): Promise<ClaudeAgentSession[]> {
+  try {
+    return await request<ClaudeAgentSession[]>('/v1/cc-sessions', { signal });
+  } catch {
+    // Endpoint may not exist yet — return empty array gracefully
+    return [];
+  }
+}
