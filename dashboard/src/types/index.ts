@@ -238,3 +238,18 @@ export interface CostByModelResponse {
   totalModels: number;
   totalCostUsd: number;
 }
+
+/** Per-session cost breakdown from GET /v1/sessions/:id/cost */
+export interface SessionCostEntry {
+  sessionId: string;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheCreationTokens: number;
+  totalCacheReadTokens: number;
+  cacheHitRate: number;
+  estimatedCostUsd: number;
+  model: string | null;
+  burnRateUsdPerHour: number | null;
+  durationMinutes: number | null;
+  recordCount: number;
+}

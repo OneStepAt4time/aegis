@@ -45,7 +45,7 @@ describe('EmptyState', () => {
   it('applies feature-unavailable variant styles', () => {
     const { container } = render(<EmptyState variant="feature-unavailable" title="Coming soon" />);
     const h3 = container.querySelector('h3');
-    expect(h3!.className).toContain('text-amber-300');
+    expect(h3!.className).toContain('text-[var(--color-warning)]');
   });
 
   it('has role="status" and aria-label', () => {

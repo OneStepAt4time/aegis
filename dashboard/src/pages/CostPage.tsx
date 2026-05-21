@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { SessionInfo, SessionsListResponse } from '../types';
 import { useT } from '../i18n/context';
 import { DollarSign, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
 import { SkeletonStatCard, SkeletonCard } from '../components/shared/Skeleton';
@@ -31,10 +32,11 @@ import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { ChartFrame } from '../components/shared/ChartFrame';
-import { getAnalyticsCosts, getCostSummary, getCostByModel } from '../api/client';
+import { getAnalyticsCosts, getCostSummary, getCostByModel, getSessions } from '../api/client';
 import type { AnalyticsCostsResponse, CostSummaryResponse, CostByModelResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
 import { SpendSummary } from '../components/cost/SpendSummary';
+import { SessionCostTable } from '../components/cost/SessionCostTable';
 import { ForecastChart } from '../components/cost/ForecastChart';
 import { BurnRateChart } from '../components/cost/BurnRateChart';
 import { TokenBreakdownChart } from '../components/cost/TokenBreakdownChart';
@@ -174,17 +176,20 @@ export default function CostPage() {
   const [costSummary, setCostSummary] = useState<CostSummaryResponse | null>(null);
   const [costByModel, setCostByModel] = useState<CostByModelResponse | null>(null);
   const sseConnected = useStore((s) => s.sseConnected);
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
-      const [data, summary, byModel] = await Promise.allSettled([
+      const [data, summary, byModel, sessionsResult] = await Promise.allSettled([
         getAnalyticsCosts(),
         getCostSummary().catch(() => null),
         getCostByModel().catch(() => null),
+        getSessions({ limit: 50 }).catch(() => ({ sessions: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } } satisfies SessionsListResponse)),
       ]);
       if (data.status === 'fulfilled') setCostData(data.value);
       if (summary.status === 'fulfilled' && summary.value) setCostSummary(summary.value);
       if (byModel.status === 'fulfilled' && byModel.value) setCostByModel(byModel.value);
+      if (sessionsResult.status === 'fulfilled' && sessionsResult.value) setSessions(sessionsResult.value.sessions);
       setDataError(null);
     } catch (err) {
       setDataError(err instanceof Error ? err.message : 'Failed to load cost data');
@@ -477,6 +482,9 @@ export default function CostPage() {
           </section>
         </div>
       )}
+
+      {/* Session cost breakdown table */}
+      <SessionCostTable sessions={sessions} />
 
       {/* Budget progress & spending summary */}
       <BudgetOverview
