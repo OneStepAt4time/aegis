@@ -16,6 +16,12 @@ export interface AcpSessionScope {
 export type AcpBackendMetadataValue = string | number | boolean | null;
 export type AcpBackendMetadata = Record<string, AcpBackendMetadataValue>;
 
+/** Issue #3897: Structured validation warning from ACP prompt output validation. */
+export interface PromptValidationWarning {
+  code: string;
+  message: string;
+}
+
 export interface AcpSessionRecord extends AcpSessionScope {
   id: string;
   conversationId: string;
@@ -33,6 +39,8 @@ export interface AcpSessionRecord extends AcpSessionScope {
   closedAt?: number;
   failedAt?: number;
   backendMetadata?: AcpBackendMetadata;
+  /** Issue #3897: Structured validation warnings from prompt output validation. */
+  validationWarnings?: PromptValidationWarning[];
 }
 
 export interface AcpCreateSessionInput extends AcpSessionScope {
@@ -50,6 +58,8 @@ export interface AcpAgentSessionAttachment {
   claudeSessionId?: string;
   backendRunId?: string;
   backendMetadata?: AcpBackendMetadata;
+  /** Issue #3897: Structured validation warnings from prompt output validation. */
+  validationWarnings?: PromptValidationWarning[];
 }
 
 export type AcpSessionTransitionEvent =
@@ -62,7 +72,8 @@ export type AcpSessionTransitionEvent =
   | { type: 'intervention_completed' }
   | { type: 'close_requested' }
   | { type: 'close_completed' }
-  | { type: 'runtime_failed' };
+  | { type: 'runtime_failed' }
+  | { type: 'validation_warning'; warnings?: PromptValidationWarning[] };
 
 export type AcpControlActionType =
   | 'prompt'

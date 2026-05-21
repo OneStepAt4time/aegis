@@ -11,6 +11,7 @@ export type {
   AcpSessionStatus,
   AcpSessionStore,
   AcpSessionTransitionEvent,
+  PromptValidationWarning,
 } from './types.js';
 export type {
   AcpAppendEventInput,

@@ -31,6 +31,7 @@ import type {
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionTransitionEvent,
+  PromptValidationWarning,
 } from './types.js';
 
 const DEFAULT_PROTOCOL_VERSION = 1;
@@ -229,6 +230,8 @@ export interface AcpBackendOptions {
   onRawRequest?: (request: AcpJsonRpcInboundRequest) => void;
   onRuntimeExit?: (event: AcpBackendRuntimeExitEvent) => void;
   restartBackoff?: (context: AcpBackendRestartBackoffContext) => number;
+  /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
+  strictValidation?: boolean;
   onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
 }
 
@@ -262,6 +265,8 @@ export class AcpBackend {
   private readonly backendRunIdProvider: () => string;
   private readonly clientInfo: AcpJsonObject;
   private readonly clientCapabilities: AcpJsonObject;
+  /** Issue #3900: Enforce validation warnings as errors. */
+  private readonly strictValidation: boolean;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
@@ -272,6 +277,7 @@ export class AcpBackend {
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
+    this.strictValidation = options.strictValidation ?? false;
     this.clientFactory =
       options.clientFactory ??
       (context =>
@@ -835,17 +841,36 @@ export class AcpBackend {
       }, { timeoutMs: ACP_PROMPT_REQUEST_TIMEOUT_MS });
 
       // Issue #3853: Validate output for hallucination signatures
+      // Issue #3900: Structured warnings + strict validation enforcement
       const warnings = validatePromptOutput(response.result, text);
       if (warnings.length > 0) {
         console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
+
+        // Issue #3897: Emit validation_warning event for monitoring/alerting
+        try {
+          await this.sessionService.transition(sessionId, runtime.scope, {
+            type: 'validation_warning',
+            warnings,
+          });
+        } catch {
+          // validation_warning transition is informational; ignore state errors
+        }
+
+        // Issue #3900: Strict mode — fail the action on validation warnings
+        if (this.strictValidation) {
+          throw new AcpBackendLifecycleError(
+            `ACP strict validation: ${warnings.length} warning(s) detected for action ${action.actionId} in session ${sessionId}: ${warnings.map(w => w.message).join('; ')}`
+          );
+        }
       }
 
       await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'run_completed',
       });
       const metadata = primitiveResultMetadata(response.result);
+      // Issue #3897: Attach structured warnings (not JSON stringified)
       if (warnings.length > 0) {
-        metadata._validationWarnings = JSON.stringify(warnings);
+      // Issue #3897: Structured warnings are emitted via validation_warning event and available via session record
       }
       return { resultMetadata: metadata };
     } catch (error) {

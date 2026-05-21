@@ -64,6 +64,12 @@ export function transitionAcpSessionStatus(
       return canTransitionFrom(currentStatus, event.type, ['closing'], 'closed');
     case 'runtime_failed':
       return canTransitionFrom(currentStatus, event.type, [...ACTIVE_STATUSES, 'closing'], 'failed');
+    case 'validation_warning':
+      // Issue #3900: Informational event — no status change, just records the warning
+      if (!ACTIVE_STATUSES.includes(currentStatus)) {
+        throw new AcpInvalidStateTransitionError(currentStatus, event.type);
+      }
+      return currentStatus;
     default:
       return assertNever(event);
   }
