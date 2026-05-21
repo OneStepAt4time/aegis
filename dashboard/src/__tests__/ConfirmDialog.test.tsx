@@ -154,7 +154,7 @@ describe('ConfirmDialog', () => {
       />,
     );
     const confirmBtn = screen.getByText('Confirm');
-    expect(confirmBtn.className).toContain('text-amber-300');
+    expect(confirmBtn.className).toContain('text-[var(--color-warning)]');
   });
 
   it('applies default variant styles to confirm button', () => {

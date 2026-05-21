@@ -37,6 +37,7 @@ import type {
   AnalyticsCostsResponse,
   CostSummaryResponse,
   CostByModelResponse,
+  SessionCostEntry,
 } from '../types';
 import type {
   AuditChainMetadata,
@@ -1239,5 +1240,15 @@ export async function getClaudeSessions(signal?: AbortSignal): Promise<ClaudeAge
   } catch {
     // Endpoint may not exist yet — return empty array gracefully
     return [];
+  }
+}
+
+// ── Session Cost ──────────────────────────────────────────────
+
+export async function getSessionCost(id: string): Promise<SessionCostEntry | null> {
+  try {
+    return await request<SessionCostEntry>(`/v1/sessions/${encodeURIComponent(id)}/cost`);
+  } catch {
+    return null;
   }
 }
