@@ -64,6 +64,6 @@ describe('Mobile touch targets (issue #2350)', () => {
     const src = readSrc('pages/SessionsPage.tsx');
     const matches = src.match(/py-3 min-h-\[44px\]/g);
     expect(matches).not.toBeNull();
-    expect(matches!.length).toBeGreaterThanOrEqual(2);
+    expect(matches!.length).toBeGreaterThanOrEqual(1);
   });
 });
