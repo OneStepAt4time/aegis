@@ -91,6 +91,7 @@ If the server is already running, skips straight to session creation. Existing c
 | Variable | Description |
 |----------|------------|
 | `AEGIS_RUN_TIMEOUT` | Default timeout for `ag run` in seconds (default: 300) |
+| `AEGIS_SESSION_CREATION_TIMEOUT_MS` | Timeout in ms for the session creation POST during `ag run` (default: 120000). Increase for slow server/LLM startup |
 
 ### `ag` — Start Server
 
