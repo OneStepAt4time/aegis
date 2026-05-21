@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worktree isolation policy** — enforce per-session isolation mode (worktree|none) with config, env var, and API parameter ([#3651](https://github.com/OneStepAt4time/aegis/pull/3651))
 - **Sensible session display names** — `ag run` derives human-readable names from prompts; OIDC-aware conditional CLI help ([#3654](https://github.com/OneStepAt4time/aegis/pull/3654))
+- **Session creation timeout configurable** — `AEGIS_SESSION_CREATION_TIMEOUT_MS` env var to control how long ACP session startup may take ([#3909](https://github.com/OneStepAt4time/aegis/pull/3909), closes [#3904](https://github.com/OneStepAt4time/aegis/issues/3904))
 - **Claude CLI auto-detect + guided install** — `ag init` and `ag run` detect missing Claude Code and offer guided install ([#3670](https://github.com/OneStepAt4time/aegis/pull/3670))
 - **--model and --effort flags** — override model and set reasoning effort per session in `ag create` and `ag run` ([#3545](https://github.com/OneStepAt4time/aegis/pull/3545))
 - **--cwd flag for ag list** — scope sessions by project directory ([#3537](https://github.com/OneStepAt4time/aegis/pull/3537), [#3586](https://github.com/OneStepAt4time/aegis/pull/3586))
@@ -46,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PID-aware port cleanup** — prevent stale PID files from blocking server start ([#3749](https://github.com/OneStepAt4time/aegis/pull/3749))
 - **Session ID enumeration prevention** — unauthorized sessions return 404 instead of 403
 - **XSS in esc()** — escape double quotes to prevent attribute injection ([#3209](https://github.com/OneStepAt4time/aegis/pull/3209))
+- **ACP validation enforcement + structured warnings** — `acpStrictValidation` flag rejects malformed ACP messages with structured warning output ([#3912](https://github.com/OneStepAt4time/aegis/pull/3912), closes [#3900](https://github.com/OneStepAt4time/aegis/issues/3900))
 - **Telegram HTML sanitizer hardened** — escape single quotes, sanitize hrefs and callback_data ([#3219](https://github.com/OneStepAt4time/aegis/pull/3219))
 
 ### Bug Fixes
@@ -65,6 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows SIGINT fallback** — graceful shutdown on Windows when SIGINT unavailable ([#3512](https://github.com/OneStepAt4time/aegis/pull/3512))
 - **Windows workDir normalization** — normalize Unix-style paths on Windows ([#3502](https://github.com/OneStepAt4time/aegis/pull/3502))
 - **VALID_PERMISSION_MODES sync** — align runtime permission modes with Zod schema ([#3577](https://github.com/OneStepAt4time/aegis/pull/3577))
+- **Transcripts return full untruncated entries** — API reads no longer silently truncate transcript entries ([#3910](https://github.com/OneStepAt4time/aegis/pull/3910), closes [#3906](https://github.com/OneStepAt4time/aegis/issues/3906))
+- **Config watcher accepts all fs.watch event types** — handles `rename` and other events beyond `change` to prevent missed reloads ([#3913](https://github.com/OneStepAt4time/aegis/pull/3913), closes [#3905](https://github.com/OneStepAt4time/aegis/issues/3905))
+- **Preserve original error on runtime_failed transition** — nested errors no longer swallowed when transitioning to `runtime_failed` ([#3923](https://github.com/OneStepAt4time/aegis/pull/3923), closes [#3922](https://github.com/OneStepAt4time/aegis/issues/3922))
+- **Eliminate TOCTOU race in driver lifecycle** — `claimDriver`/`releaseDriver`/`transferDriver` now use atomic check-and-set to prevent race conditions ([#3924](https://github.com/OneStepAt4time/aegis/pull/3924), closes [#3921](https://github.com/OneStepAt4time/aegis/issues/3921))
+- **Non-zero exit when no output + surface rate-limit** — `ag run` exits non-zero when CLI produces no output; rate-limit errors now surfaced to the caller ([#3942](https://github.com/OneStepAt4time/aegis/pull/3942), closes [#3929](https://github.com/OneStepAt4time/aegis/issues/3929), [#3930](https://github.com/OneStepAt4time/aegis/issues/3930))
 - **Missing peer deps** — move playwright, open, OTLP to optionalDependencies ([#3574](https://github.com/OneStepAt4time/aegis/pull/3574))
 - **Auth-token file desync** — resolve client/server token mismatch
 - **Model string validation** — reject malformed model names on --model flag and API schema ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
