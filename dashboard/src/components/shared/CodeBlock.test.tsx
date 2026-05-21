@@ -1,5 +1,5 @@
 /**
- * CodeBlock tests — syntax-highlighted code renderer.
+ * CodeBlock tests — safe, component-based syntax highlighting.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -35,10 +35,18 @@ describe('CodeBlock', () => {
     expect(screen.getByLabelText('aria.copyCode')).not.toBeNull();
   });
 
-  it('highlights keywords in code', () => {
+  it('highlights keywords using CSS class', () => {
     const { container } = render(<CodeBlock code="const x = 1;" language="typescript" />);
-    const highlighted = container.querySelector('span[style]');
-    expect(highlighted).not.toBeNull();
+    const kwSpan = container.querySelector('.syn-keyword');
+    expect(kwSpan).not.toBeNull();
+    expect(kwSpan?.textContent).toBe('const');
+  });
+
+  it('highlights strings using CSS class', () => {
+    const { container } = render(<CodeBlock code="'hello world'" language="typescript" />);
+    const strSpan = container.querySelector('.syn-string');
+    expect(strSpan).not.toBeNull();
+    expect(strSpan?.textContent).toBe("'hello world'");
   });
 
   it('renders inside a pre element', () => {
@@ -46,10 +54,41 @@ describe('CodeBlock', () => {
     expect(container.querySelector('pre')).not.toBeNull();
   });
 
-  it('handles python comments correctly', () => {
+  it('does NOT use dangerouslySetInnerHTML', () => {
+    const { container } = render(<CodeBlock code="<script>alert(1)</script>" language="html" />);
+    const codeEl = container.querySelector('code');
+    expect(codeEl).not.toBeNull();
+    // React renders text nodes, not raw HTML — no dangerouslySetInnerHTML
+    expect(codeEl?.innerHTML).not.toContain('dangerouslySetInnerHTML');
+    // XSS payload should appear as escaped text, not a real script tag
+    expect(codeEl?.querySelector('script')).toBeNull();
+  });
+
+  it('highlights Python comments with syn-comment class', () => {
     const { container } = render(<CodeBlock code="# this is a comment" language="python" />);
-    const html = container.querySelector('pre code')?.innerHTML;
-    expect(html).toContain('#8b949e'); // comment color // token-ok
+    const commentSpan = container.querySelector('.syn-comment');
+    expect(commentSpan).not.toBeNull();
+    expect(commentSpan?.textContent).toBe('# this is a comment');
+  });
+
+  it('highlights numbers with syn-number class', () => {
+    const { container } = render(<CodeBlock code="const x = 42;" language="typescript" />);
+    const numSpan = container.querySelector('.syn-number');
+    expect(numSpan).not.toBeNull();
+    expect(numSpan?.textContent).toBe('42');
+  });
+
+  it('handles shell keywords', () => {
+    const { container } = render(<CodeBlock code="sudo npm install" language="bash" />);
+    const kwSpans = container.querySelectorAll('.syn-keyword');
+    expect(kwSpans.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('handles multi-line comment blocks', () => {
+    const { container } = render(<CodeBlock code="/* comment\n   block */" language="javascript" />);
+    const commentSpan = container.querySelector('.syn-comment');
+    expect(commentSpan).not.toBeNull();
+    expect(commentSpan?.textContent).toContain('/* comment');
   });
 });
 
