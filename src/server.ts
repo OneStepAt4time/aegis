@@ -729,14 +729,13 @@ function setupConfigWatcher(): void {
 
   // fs.watch for automatic detection
   try {
-    configWatcher = watch(configPath, (eventType) => {
-      if (eventType === 'change') {
-        // Debounce: FS events can fire multiple times for one save
+    configWatcher = watch(configPath, (_eventType) => {
+      // Accept all event types — editors emit rename (atomic save), change, or undefined.
+      // Debounce: FS events can fire multiple times for one save
         if (configReloadTimer) clearTimeout(configReloadTimer);
         configReloadTimer = setTimeout(() => {
           void handleConfigReload('file-change');
         }, 300);
-      }
     });
     configWatcher.on('error', () => {
       // Watcher failed (file deleted, permissions) — disable gracefully
