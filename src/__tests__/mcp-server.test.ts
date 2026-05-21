@@ -29,20 +29,20 @@ describe('AegisClient', () => {
     vi.restoreAllMocks();
   });
 
-  it('listSessions sends GET /v1/sessions', async () => {
+  it('listSessions sends GET /v1/sessions with pagination params', async () => {
     const mockSessions = [
       { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
       { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2, pagination: { page: 1, totalPages: 1 } }),
     });
 
     const result = await client.listSessions();
     expect(result).toHaveLength(2);
     expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:9100/v1/sessions',
+      'http://127.0.0.1:9100/v1/sessions?page=1&limit=100',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer test-token',
@@ -51,53 +51,147 @@ describe('AegisClient', () => {
     );
   });
 
-  it('listSessions filters by status', async () => {
+  it('listSessions passes status filter as query param (server-side filtering)', async () => {
+    // Server filters — returns only matching sessions
     const mockSessions = [
       { id: 's1', status: 'idle', displayName: 'cc-1', workDir: testPath('/tmp/a') },
-      { id: 's2', status: 'working', displayName: 'cc-2', workDir: testPath('/tmp/b') },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessions: mockSessions, total: 2 }),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 1, pagination: { page: 1, totalPages: 1 } }),
     });
 
     const result = await client.listSessions({ status: 'idle' });
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('s1');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/sessions?page=1&limit=100&status=idle',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token',
+        }),
+      }),
+    );
   });
 
-  it('listSessions filters by workDir exact and prefix match', async () => {
+  it('listSessions passes workDir as project query param (server-side filtering)', async () => {
     const projectRoot = '/home/user/my-project';
+    // Server returns only sessions matching the project filter
     const mockSessions = [
       { id: 's1', status: 'idle', displayName: 'cc-1', workDir: projectRoot },
       { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/home/user/my-project/src' },
-      { id: 's3', status: 'working', displayName: 'cc-3', workDir: '/home/user/other-project' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessions: mockSessions, total: 3 }),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2, pagination: { page: 1, totalPages: 1 } }),
     });
 
     const result = await client.listSessions({ workDir: projectRoot });
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('s1');
     expect(result[1].id).toBe('s2');
+    expect(fetch).toHaveBeenCalledWith(
+      `http://127.0.0.1:9100/v1/sessions?page=1&limit=100&project=${encodeURIComponent(projectRoot)}`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token',
+        }),
+      }),
+    );
   });
 
-  it('listSessions handles Windows path separators and case-insensitive matching', async () => {
+  it('listSessions passes Windows workDir as project query param', async () => {
+    // Server handles path normalization — returns matching sessions
     const mockSessions = [
       { id: 's1', status: 'idle', displayName: 'cc-1', workDir: 'C:\\Repo\\Project' },
       { id: 's2', status: 'working', displayName: 'cc-2', workDir: 'C:/Repo/Project/src' },
-      { id: 's3', status: 'working', displayName: 'cc-3', workDir: 'C:/Repo/Other' },
     ];
     (fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessions: mockSessions, total: 3 }),
+      json: () => Promise.resolve({ sessions: mockSessions, total: 2, pagination: { page: 1, totalPages: 1 } }),
     });
 
     const result = await client.listSessions({ workDir: 'c:/repo/project' });
     expect(result).toHaveLength(2);
     expect(result.map(s => s.id)).toEqual(['s1', 's2']);
+  });
+
+
+  // ── Pagination tests ────────────────────────────────────────────────
+
+  it('listSessions aggregates multiple pages', async () => {
+    const page1 = [
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a' },
+      { id: 's2', status: 'idle', displayName: 'cc-2', workDir: '/tmp/b' },
+    ];
+    const page2 = [
+      { id: 's3', status: 'working', displayName: 'cc-3', workDir: '/tmp/c' },
+    ];
+    (fetch as any)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ sessions: page1, total: 3, pagination: { page: 1, totalPages: 2 } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ sessions: page2, total: 3, pagination: { page: 2, totalPages: 2 } }),
+      });
+
+    const result = await client.listSessions();
+    expect(result).toHaveLength(3);
+    expect(result.map(s => s.id)).toEqual(['s1', 's2', 's3']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenNthCalledWith(1,
+      'http://127.0.0.1:9100/v1/sessions?page=1&limit=100',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(2,
+      'http://127.0.0.1:9100/v1/sessions?page=2&limit=100',
+      expect.anything(),
+    );
+  });
+
+  it('listSessions falls back to single page when no pagination metadata', async () => {
+    const mockSessions = [
+      { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a' },
+    ];
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessions: mockSessions, total: 1 }),
+    });
+
+    const result = await client.listSessions();
+    expect(result).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(1); // did not try page 2
+  });
+
+  it('listSessions stops at totalPages boundary', async () => {
+    const page1 = [{ id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a' }];
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessions: page1, total: 1, pagination: { page: 1, totalPages: 1 } }),
+    });
+
+    const result = await client.listSessions();
+    expect(result).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(1); // stopped because page >= totalPages
+  });
+
+  it('listSessions forwards status and project query params', async () => {
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessions: [], total: 0, pagination: { page: 1, totalPages: 1 } }),
+    });
+
+    await client.listSessions({ status: 'working', workDir: '/my/project' });
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:9100/v1/sessions?page=1&limit=100&status=working&project=%2Fmy%2Fproject',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token',
+        }),
+      }),
+    );
   });
 
   it('getSession sends GET /v1/sessions/:id', async () => {
@@ -611,6 +705,7 @@ describe('MCP Tool Handlers', () => {
         { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
       total: 1,
+      pagination: { page: 1, totalPages: 1 },
     });
 
     const handler = getToolHandler('list_sessions');
@@ -622,13 +717,14 @@ describe('MCP Tool Handlers', () => {
     expect(data[0].createdAt).toBeDefined();
   });
 
-  it('list_sessions handler passes filters to client', async () => {
+  it('list_sessions handler passes filters to client (server-side)', async () => {
+    // Server filters — returns only matching sessions
     mockFetchOk({
       sessions: [
         { id: 's1', status: 'idle', displayName: 'cc-1', workDir: '/tmp/a', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
-        { id: 's2', status: 'working', displayName: 'cc-2', workDir: '/tmp/b', createdAt: '2025-01-01T00:00:00Z', lastActivity: '2025-01-01T00:01:00Z' },
       ],
-      total: 2,
+      total: 1,
+      pagination: { page: 1, totalPages: 1 },
     });
 
     const handler = getToolHandler('list_sessions');
