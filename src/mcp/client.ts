@@ -106,15 +106,37 @@ export class AegisClient implements IAegisBackend {
   }
 
   async listSessions(filter?: { status?: string; workDir?: string }): Promise<SessionInfo[]> {
-    const response = await this.request<{ sessions: SessionInfo[]; total: number }>('/v1/sessions');
-    let sessions = response.sessions;
-    if (filter?.status) {
-      sessions = sessions.filter((s) => s.status === filter.status);
+    // The HTTP /v1/sessions endpoint is paginated. Previously we fetched
+    // a single page and filtered client-side which silently dropped sessions
+    // when the server returned a limited page. Implement pagination-aware
+    // fetching: iterate pages until we've collected all sessions.
+
+    const pageSize = 100; // server max is 100
+    let page = 1;
+    const aggregated: SessionInfo[] = [];
+
+    // Translate workDir -> project query param used by the server
+    const projectParam = filter?.workDir ? `&project=${encodeURIComponent(filter.workDir)}` : '';
+    const statusParam = filter?.status ? `&status=${encodeURIComponent(filter.status)}` : '';
+
+    while (true) {
+      const path = `/v1/sessions?page=${page}&limit=${pageSize}${statusParam}${projectParam}`;
+      const response = await this.request<{ sessions: SessionInfo[]; pagination?: { page?: number; totalPages?: number } }>(path);
+      const pageSessions = (response && (response as any).sessions) || [];
+      aggregated.push(...pageSessions);
+
+      const pagination = (response as any).pagination;
+      if (!pagination || typeof pagination.page !== 'number' || typeof pagination.totalPages !== 'number') {
+        // Server didn't return pagination metadata — assume single page
+        break;
+      }
+      if (pagination.page >= pagination.totalPages) break;
+      page += 1;
     }
-    if (filter?.workDir) {
-      sessions = sessions.filter((s) => isSameOrChildWorkDir(s.workDir, filter.workDir!));
-    }
-    return sessions;
+
+    // For embedded/legacy backends the server may return full list and ignore
+    // our query params; in any case aggregated contains what we observed.
+    return aggregated;
   }
 
   async getSession(id: string): Promise<Record<string, unknown>> {
