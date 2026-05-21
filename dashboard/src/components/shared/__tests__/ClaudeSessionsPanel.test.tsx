@@ -9,11 +9,8 @@ vi.mock('../../../api/client', () => ({
   getClaudeSessions: vi.fn(),
 }));
 
-vi.mock('../../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
 
-import { getClaudeSessions } from '../../../api/client';
+import { getClaudeSessions, type ClaudeAgentSession } from '../../../api/client';
 const mockGetClaudeSessions = vi.mocked(getClaudeSessions);
 
 const workingSession = {

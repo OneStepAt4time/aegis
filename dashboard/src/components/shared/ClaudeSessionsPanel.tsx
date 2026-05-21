@@ -12,7 +12,6 @@
 import { useEffect, useState } from 'react';
 import { Terminal, Circle } from 'lucide-react';
 import { getClaudeSessions, type ClaudeAgentSession } from '../../api/client';
-import { useT } from '../../i18n/context';
 
 function formatCwd(cwd: string): string {
   const normalized = cwd.replace(/\\/g, '/');
@@ -39,7 +38,6 @@ interface ClaudeSessionsPanelProps {
 }
 
 export function ClaudeSessionsPanel({ pollInterval = 30_000, maxItems = 20 }: ClaudeSessionsPanelProps) {
-  const t = useT();
   const [sessions, setSessions] = useState<ClaudeAgentSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
