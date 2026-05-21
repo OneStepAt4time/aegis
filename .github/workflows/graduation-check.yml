@@ -14,14 +14,14 @@ on:
           - 'false'
           - 'true'
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: read
-  actions: read
 
 jobs:
   graduation-check:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      actions: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

@@ -33,11 +33,11 @@ on:
         default: ''
         type: string
 
-permissions:
-  contents: write
 
 jobs:
   create-release-branch:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
