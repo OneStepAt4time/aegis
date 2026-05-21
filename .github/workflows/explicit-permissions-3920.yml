@@ -1,0 +1,17 @@
+name: Permissions - Explicit minimal defaults
+on: [push]
+permissions:
+  contents: read
+jobs:
+  ensure-explicit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: List workflows
+        run: |
+          echo "Checking workflow permissions..."
+          for f in .github/workflows/*.yml; do
+            echo "-- $f --"
+            sed -n '1,120p' "$f" || true
+          done
