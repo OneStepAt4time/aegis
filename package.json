@@ -44,7 +44,7 @@
     "postinstall": "node scripts/postinstall-verify.cjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
-    "gate": "npm run hygiene-check && npm run security-check && npm run audit-check && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
+    "gate": "npm run hygiene-check && npm run security-check && npm run audit-check && npm run lint && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm test",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "bash scripts/check-merge-conflicts.sh && npm run build",
