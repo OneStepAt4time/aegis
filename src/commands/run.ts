@@ -337,6 +337,15 @@ export async function streamOutput(baseUrl: string, sessionId: string, authToken
       if (!res.ok) {
         // Session might have ended
         if (res.status === 404) break;
+        if (res.status === 429) {
+          // Rate limit detected while streaming
+          const body = await res.text().catch(() => res.statusText);
+          writeLine(io.stderr);
+          writeLine(io.stderr, '  ❌ Rate limit detected while streaming session output (HTTP 429).');
+          if (body) writeLine(io.stderr, `    ${body.slice(0, 1000)}`);
+          process.exitCode = 2;
+          break;
+        }
         await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
