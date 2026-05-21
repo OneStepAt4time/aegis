@@ -479,7 +479,7 @@ export class AcpBackend {
    */
   async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
-    await this.sessionService.getSession(input.sessionId, scope);
+    // Capture participant state before yielding to avoid TOCTOU race (#3921)
     let record = this.participants.get(input.sessionId);
     if (!record) {
       record = { sessionId: input.sessionId, driver: null, observers: [], activeCount: 0 };
@@ -488,10 +488,12 @@ export class AcpBackend {
     if (record.driver) {
       throw new AcpBackendLifecycleError(`Driver already claimed for session ${input.sessionId}`);
     }
+    // Claim atomically before any await — prevents concurrent claims
     const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
     this.driverFences.set(input.sessionId, fence);
     record.driver = { subscriberId: input.holderId, role: 'driver' };
     record.activeCount = 1 + record.observers.length;
+    await this.sessionService.getSession(input.sessionId, scope);
     return { sessionId: input.sessionId, holderId: input.holderId, role: 'driver', fence, ttlMs: input.ttlMs };
   }
 
@@ -501,13 +503,14 @@ export class AcpBackend {
    */
   async releaseDriver(input: AcpBackendReleaseDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
-    await this.sessionService.getSession(input.sessionId, scope);
+    // Capture and mutate participant state before yielding to avoid TOCTOU race (#3921)
     const record = this.participants.get(input.sessionId);
     if (!record || !record.driver || record.driver.subscriberId !== input.holderId) {
       throw new AcpBackendLifecycleError(`Not the driver of session ${input.sessionId}`);
     }
     record.driver = null;
     record.activeCount = record.observers.length;
+    await this.sessionService.getSession(input.sessionId, scope);
     return { sessionId: input.sessionId, holderId: null, role: 'observer' };
   }
 
@@ -517,7 +520,7 @@ export class AcpBackend {
    */
   async transferDriver(input: AcpBackendTransferDriverInput): Promise<AcpBackendDriverResult> {
     const scope = scopeFromInput(input);
-    await this.sessionService.getSession(input.sessionId, scope);
+    // Capture and mutate participant state before yielding to avoid TOCTOU race (#3921)
     const record = this.participants.get(input.sessionId);
     if (!record || !record.driver) {
       throw new AcpBackendLifecycleError(`No driver to transfer for session ${input.sessionId}`);
@@ -525,6 +528,7 @@ export class AcpBackend {
     const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
     this.driverFences.set(input.sessionId, fence);
     record.driver = { subscriberId: input.targetSubscriberId, role: 'driver' };
+    await this.sessionService.getSession(input.sessionId, scope);
     return { sessionId: input.sessionId, holderId: input.targetSubscriberId, role: 'driver', fence };
   }
 
