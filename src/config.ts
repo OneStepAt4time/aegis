@@ -169,6 +169,8 @@ export interface Config {
   acpEnabled: boolean;
   /** ACP JSON-RPC request timeout in ms (default: 60000). Issue #3223. */
   acpPromptTimeoutMs: number;
+  /** Issue #3900: Enforce ACP validation warnings as errors (default: false). */
+  acpStrictValidation?: boolean;
   /** Session isolation policy (Issue #3613).
    *  "respect-cc": read bgIsolation from CC settings (current behavior, default)
    *  "enforce-worktree": reject sessions where isolation would be "none"
@@ -238,7 +240,8 @@ const defaults: Config = {
   postgresUrl: '',
   rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
   acpEnabled: true,
-  acpPromptTimeoutMs: 120_000, // Issue #3243: 120s default for BYO-LLM proxy setups
+  acpPromptTimeoutMs: 120_000,
+  acpStrictValidation: false, // Issue #3243: 120s default for BYO-LLM proxy setups
   isolationPolicy: 'respect-cc', // Issue #3613: safe default, no behavior change
 };
 
@@ -472,6 +475,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
     { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
+    { aegis: 'AEGIS_ACP_STRICT_VALIDATION', manus: '', key: 'acpStrictValidation' },
     { aegis: 'AEGIS_ISOLATION_POLICY', manus: '', key: 'isolationPolicy' },
   ];
 
@@ -503,6 +507,7 @@ function applyEnvOverrides(config: Config): Config {
       case 'tgTopicAutoDelete':
       case 'tgVerbose':
       case 'dashboardEnabled':
+      case 'acpStrictValidation':
       case 'acpEnabled':
         if (value === 'true' || value === 'false') {
           config[key] = value === 'true';

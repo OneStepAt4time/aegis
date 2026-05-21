@@ -274,6 +274,7 @@ describe('PostgresAcpSessionStore.create', () => {
       record.closedAt,
       null,
       JSON.stringify(record.backendMetadata),
+      null,
     ]);
   });
 });

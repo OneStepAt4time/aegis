@@ -112,6 +112,7 @@ async function buildApp(tmpDir: string): Promise<FastifyInstance> {
     keyRotationGraceSeconds: 3600,
     shutdownHardMs: 20000,
       acpPromptTimeoutMs: 120_000,
+      acpStrictValidation: false,
     rateLimit: { enabled: true, sessionsMax: 100, generalMax: 30, timeWindowSec: 60 },
     stateStore: 'file',
     postgresUrl: '',

@@ -924,6 +924,8 @@ function statusForEvent(event: AcpSessionTransitionEvent): AcpSessionRecord['sta
       return 'intervening';
     case 'intervention_completed':
       return 'paused';
+    case 'validation_warning':
+      return 'running';
   }
 }
 

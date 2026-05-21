@@ -31,6 +31,7 @@ import type {
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionTransitionEvent,
+  PromptValidationWarning,
 } from './types.js';
 
 const DEFAULT_PROTOCOL_VERSION = 1;
@@ -218,6 +219,8 @@ export interface AcpBackendRestartBackoffEvent extends AcpBackendRestartBackoffC
 }
 
 export interface AcpBackendOptions {
+  /** Issue #3897: Emit validation_warning transitions for monitoring (default: false). */
+  emitValidationWarnings?: boolean;
   sessionService: AcpBackendSessionService;
   clientFactory?: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
   backendRunIdProvider?: () => string;
@@ -229,6 +232,8 @@ export interface AcpBackendOptions {
   onRawRequest?: (request: AcpJsonRpcInboundRequest) => void;
   onRuntimeExit?: (event: AcpBackendRuntimeExitEvent) => void;
   restartBackoff?: (context: AcpBackendRestartBackoffContext) => number;
+  /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
+  strictValidation?: boolean;
   onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
 }
 
@@ -262,6 +267,10 @@ export class AcpBackend {
   private readonly backendRunIdProvider: () => string;
   private readonly clientInfo: AcpJsonObject;
   private readonly clientCapabilities: AcpJsonObject;
+  /** Issue #3900: Enforce validation warnings as errors. */
+  private readonly strictValidation: boolean;
+  /** Emit validation_warning transitions for monitoring. */
+  private readonly emitValidationWarnings: boolean;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
@@ -272,6 +281,8 @@ export class AcpBackend {
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
+    this.strictValidation = options.strictValidation ?? false;
+    this.emitValidationWarnings = options.emitValidationWarnings ?? false;
     this.clientFactory =
       options.clientFactory ??
       (context =>
@@ -835,18 +846,35 @@ export class AcpBackend {
       }, { timeoutMs: ACP_PROMPT_REQUEST_TIMEOUT_MS });
 
       // Issue #3853: Validate output for hallucination signatures
+      // Issue #3900: Structured warnings + strict validation enforcement
       const warnings = validatePromptOutput(response.result, text);
       if (warnings.length > 0) {
         console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
+
+        // Issue #3897: Emit validation_warning event for monitoring/alerting (opt-in)
+        if (this.emitValidationWarnings) {
+          try {
+            await this.sessionService.transition(sessionId, runtime.scope, {
+              type: 'validation_warning',
+              warnings,
+            });
+          } catch (err) {
+            console.warn(`[ACP validation_warning] failed to emit: ${err}`);
+          }
+        }
+
+        // Issue #3900: Strict mode — fail the action on validation warnings
+        if (this.strictValidation) {
+          throw new AcpBackendLifecycleError(
+            `ACP strict validation: ${warnings.length} warning(s) detected for action ${action.actionId} in session ${sessionId}: ${warnings.map(w => w.message).join('; ')}`
+          );
+        }
       }
 
       await this.sessionService.transition(sessionId, runtime.scope, {
         type: 'run_completed',
       });
       const metadata = primitiveResultMetadata(response.result);
-      if (warnings.length > 0) {
-        metadata._validationWarnings = JSON.stringify(warnings);
-      }
       return { resultMetadata: metadata };
     } catch (error) {
       if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {

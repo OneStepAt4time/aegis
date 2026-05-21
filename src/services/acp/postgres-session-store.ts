@@ -43,6 +43,7 @@ interface AcpSessionRow {
   closed_at: string | number | null;
   failed_at: string | number | null;
   backend_metadata: unknown | null;
+  validation_warnings: unknown | null;
 }
 
 const SESSION_COLUMNS = `
@@ -63,7 +64,8 @@ const SESSION_COLUMNS = `
   updated_at,
   closed_at,
   failed_at,
-  backend_metadata
+  backend_metadata,
+  validation_warnings
 `;
 
 export class PostgresAcpSessionStore implements AcpSessionStore {
@@ -274,6 +276,7 @@ function recordToInsertParams(record: AcpSessionRecord): unknown[] {
     record.closedAt ?? null,
     record.failedAt ?? null,
     serializeBackendMetadata(record.backendMetadata),
+    serializeValidationWarnings(record.validationWarnings),
   ];
 }
 
@@ -290,6 +293,7 @@ function recordToUpdateParams(record: AcpSessionRecord, scope: AcpSessionScope):
     record.closedAt ?? null,
     record.failedAt ?? null,
     serializeBackendMetadata(record.backendMetadata),
+    serializeValidationWarnings(record.validationWarnings),
     record.tenantId,
     record.ownerKeyId,
   ];
@@ -297,6 +301,11 @@ function recordToUpdateParams(record: AcpSessionRecord, scope: AcpSessionScope):
 
 function serializeBackendMetadata(metadata: AcpBackendMetadata | undefined): string | null {
   return metadata === undefined ? null : JSON.stringify(metadata);
+}
+
+/** Issue #3897: Serialize PromptValidationWarning[] for postgres JSONB storage. */
+function serializeValidationWarnings(warnings: import('./types.js').PromptValidationWarning[] | undefined): string | null {
+  return warnings === undefined || warnings.length === 0 ? null : JSON.stringify(warnings);
 }
 
 function rowToRecord(row: AcpSessionRow): AcpSessionRecord {
@@ -325,6 +334,20 @@ function rowToRecord(row: AcpSessionRow): AcpSessionRecord {
   if (failedAt !== undefined) record.failedAt = failedAt;
   const backendMetadata = parseBackendMetadata(row.backend_metadata);
   if (backendMetadata !== undefined) record.backendMetadata = backendMetadata;
+
+  // Issue #3897: Parse structured validation warnings
+  if (row.validation_warnings !== null && row.validation_warnings !== undefined) {
+    try {
+      const parsed = typeof row.validation_warnings === 'string'
+        ? JSON.parse(row.validation_warnings)
+        : row.validation_warnings;
+      if (Array.isArray(parsed)) {
+        record.validationWarnings = parsed;
+      }
+    } catch {
+      // Ignore malformed validation_warnings
+    }
+  }
 
   return record;
 }

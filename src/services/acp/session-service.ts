@@ -221,6 +221,8 @@ export class AcpSessionService {
       updatedAt: now,
       closedAt: nextStatus === 'closed' ? record.closedAt ?? now : record.closedAt,
       failedAt: nextStatus === 'failed' ? record.failedAt ?? now : record.failedAt,
+      // Issue #3897: Store structured validation warnings on the session record
+      ...(event.type === 'validation_warning' ? { validationWarnings: event.warnings } : {}),
     };
     return this.persistUpdate(record, updated, scope);
   }

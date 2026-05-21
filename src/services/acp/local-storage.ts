@@ -262,6 +262,7 @@ export class MemoryAcpSessionStore implements AcpSessionStore {
       closedAt: record.closedAt,
       failedAt: record.failedAt,
       backendMetadata: record.backendMetadata === undefined ? undefined : { ...record.backendMetadata },
+      validationWarnings: record.validationWarnings,
     };
     this.state.sessions[index] = cloneSession(persisted);
     await this.onMutation();
