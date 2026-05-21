@@ -668,7 +668,7 @@ export default function Layout() {
               <>
                 <span
                   className={`status-dot shrink-0 ${sseConnected ? 'status-dot--idle' : ''}`}
-                  style={sseConnected ? undefined : { backgroundColor: '#666' }}
+                  style={sseConnected ? undefined : { backgroundColor: 'var(--color-text-muted)' }}
                 />
                 <span className="text-[11px] text-[var(--color-text-muted)] truncate">{sseIndicatorLabel}</span>
               </>
