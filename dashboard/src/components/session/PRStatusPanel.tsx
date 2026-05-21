@@ -129,7 +129,7 @@ export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
               href={prInfo.prUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-[var(--color-accent-cyan)] hover:underline"
+              className="text-sm font-medium text-[var(--color-accent-cyan)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
             >
               {prInfo.repo ? `${prInfo.repo}#${prInfo.prNumber}` : `PR #${prInfo.prNumber}`}
             </a>
