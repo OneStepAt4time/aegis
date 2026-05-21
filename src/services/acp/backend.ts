@@ -22,6 +22,7 @@ import {
   type AcpJsonValue,
 } from './json-rpc-client.js';
 import type { AcpActionMetadata, AcpActionRecord } from './action-queue.js';
+import { extractResultText, validatePromptOutput } from './content-validation.js';
 import type {
   AcpAgentSessionAttachment,
   AcpBackendMetadata,
@@ -1132,80 +1133,9 @@ function optionalActionMetadataString(action: AcpActionRecord, key: string): str
 
 
 /** Issue #3853: Post-response content validation for hallucination signatures */
-const HALLUCINATION_SIGNATURES = [
-  /\[TRACE\]/i,
-  /\[THINKING\]/i,
-  /<thinking>/i,
-  /\[PROSE\]/i,
-  /\[INTERNAL_MONOLOGUE\]/i,
-];
 
-interface PromptValidationWarning {
-  code: string;
-  message: string;
-}
 
-function validatePromptOutput(
-  result: AcpJsonValue,
-  originalPrompt: string
-): PromptValidationWarning[] {
-  const warnings: PromptValidationWarning[] = [];
 
-  // Extract text from result for inspection
-  const resultText = extractResultText(result);
-  if (!resultText) {
-    warnings.push({ code: 'empty_output', message: 'Prompt response contains no text output' });
-    return warnings;
-  }
-
-  // Check for known hallucination signatures
-  for (const pattern of HALLUCINATION_SIGNATURES) {
-    if (pattern.test(resultText)) {
-      warnings.push({
-        code: 'hallucination_signature',
-        message: `Output contains known hallucination pattern: ${pattern.source}`,
-      });
-      break; // one match is enough
-    }
-  }
-
-  // Check for zero word overlap with original prompt (indicates irrelevant output)
-  const promptWords = new Set(
-    originalPrompt.toLowerCase().split(/\s+/).filter(w => w.length > 3)
-  );
-  if (promptWords.size > 0) {
-    const outputWords = new Set(resultText.toLowerCase().split(/\s+/));
-    const overlap = [...promptWords].filter(w => outputWords.has(w));
-    const overlapRatio = overlap.length / promptWords.size;
-    if (overlapRatio < 0.05) {
-      warnings.push({
-        code: 'low_relevance',
-        message: `Output has near-zero word overlap with prompt (${Math.round(overlapRatio * 100)}%). Possible hallucination.`,
-      });
-    }
-  }
-
-  return warnings;
-}
-
-function extractResultText(result: AcpJsonValue): string {
-  if (typeof result === 'string') return result;
-  if (isJsonObject(result)) {
-    // Try common result shapes
-    if (typeof result.text === 'string') return result.text;
-    if (typeof result.content === 'string') return result.content;
-    if (Array.isArray(result.content)) {
-      return result.content
-        .filter((b: unknown) => typeof b === 'object' && b !== null && 'text' in (b as Record<string, unknown>))
-        .map((b) => (b as Record<string, unknown>).text)
-        .join(' ');
-    }
-    // Fallback: JSON stringification of small objects
-    const json = JSON.stringify(result);
-    return json.length > 5000 ? json.slice(0, 5000) : json;
-  }
-  return '';
-}
 
 function primitiveResultMetadata(result: AcpJsonValue): AcpBackendMetadata {
   const metadata: AcpBackendMetadata = {};

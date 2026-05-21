@@ -1,74 +1,16 @@
 /**
  * Issue #3853: ACP content validation — hallucination detection tests
+ *
+ * Tests the shared content-validation module (#3896 refactor).
+ * Previously duplicated the implementation — now imports from production code.
  */
 import { describe, it, expect } from 'vitest';
 
-const HALLUCINATION_SIGNATURES = [
-  /\[TRACE\]/i,
-  /\[THINKING\]/i,
-  /<thinking>/i,
-  /\[PROSE\]/i,
-  /\[INTERNAL_MONOLOGUE\]/i,
-];
-
-interface PromptValidationWarning {
-  code: string;
-  message: string;
-}
-
-function validatePromptOutput(
-  result: unknown,
-  originalPrompt: string
-): PromptValidationWarning[] {
-  const warnings: PromptValidationWarning[] = [];
-  const resultText = extractResultText(result);
-  if (!resultText) {
-    warnings.push({ code: 'empty_output', message: 'Prompt response contains no text output' });
-    return warnings;
-  }
-  for (const pattern of HALLUCINATION_SIGNATURES) {
-    if (pattern.test(resultText)) {
-      warnings.push({
-        code: 'hallucination_signature',
-        message: `Output contains known hallucination pattern: ${pattern.source}`,
-      });
-      break;
-    }
-  }
-  const promptWords = new Set(
-    originalPrompt.toLowerCase().split(/\s+/).filter(w => w.length > 3)
-  );
-  if (promptWords.size > 0) {
-    const outputWords = new Set(resultText.toLowerCase().split(/\s+/));
-    const overlap = [...promptWords].filter(w => outputWords.has(w));
-    const overlapRatio = overlap.length / promptWords.size;
-    if (overlapRatio < 0.05) {
-      warnings.push({
-        code: 'low_relevance',
-        message: `Output has near-zero word overlap with prompt (${Math.round(overlapRatio * 100)}%). Possible hallucination.`,
-      });
-    }
-  }
-  return warnings;
-}
-
-function extractResultText(result: unknown): string {
-  if (typeof result === 'string') return result;
-  if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
-    const obj = result as Record<string, unknown>;
-    if (typeof obj.text === 'string') return obj.text;
-    if (typeof obj.content === 'string') return obj.content;
-    if (Array.isArray(obj.content)) {
-      return obj.content
-        .filter((b: unknown) => typeof b === 'object' && b !== null && 'text' in (b as Record<string, unknown>))
-        .map((b) => (b as Record<string, unknown>).text)
-        .join(' ');
-    }
-    const json = JSON.stringify(result);
-    return json.length > 5000 ? json.slice(0, 5000) : json;
-  }
-  return '';
-}
+import {
+  validatePromptOutput,
+  extractResultText,
+  HALLUCINATION_SIGNATURES,
+} from '../services/acp/content-validation.js';
 
 describe('ACP content validation (#3853)', () => {
   describe('hallucination signature detection', () => {
@@ -160,6 +102,41 @@ describe('ACP content validation (#3853)', () => {
       );
       const sig = warnings.find(w => w.code === 'hallucination_signature');
       expect(sig).toBeUndefined();
+    });
+  });
+
+  describe('extractResultText (unit)', () => {
+    it('returns string directly', () => {
+      expect(extractResultText('hello')).toBe('hello');
+    });
+
+    it('extracts from { text }', () => {
+      expect(extractResultText({ text: 'world' })).toBe('world');
+    });
+
+    it('extracts from { content: string }', () => {
+      expect(extractResultText({ content: 'foo' })).toBe('foo');
+    });
+
+    it('extracts from { content: [{text}] }', () => {
+      expect(extractResultText({ content: [{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }] })).toBe('a b');
+    });
+
+    it('returns empty for null', () => {
+      expect(extractResultText(null)).toBe('');
+    });
+
+    it('returns empty for undefined', () => {
+      expect(extractResultText(undefined)).toBe('');
+    });
+  });
+
+  describe('HALLUCINATION_SIGNATURES export', () => {
+    it('exports readonly signature array', () => {
+      expect(HALLUCINATION_SIGNATURES.length).toBeGreaterThanOrEqual(5);
+      for (const pattern of HALLUCINATION_SIGNATURES) {
+        expect(pattern).toBeInstanceOf(RegExp);
+      }
     });
   });
 });
