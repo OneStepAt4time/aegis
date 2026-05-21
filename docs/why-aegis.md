@@ -2,6 +2,45 @@
 
 Aegis is enterprise orchestration middleware for Claude Code. This page explains what makes Aegis different from developer tools and multi-agent frameworks — and why those differences matter for production deployments.
 
+## Aegis vs Claude Code Native
+
+Claude Code v2.1.141+ ships native orchestration features — `claude agents`, background sessions, a plugin marketplace, and agent teams. These are impressive for terminal-first workflows.
+
+**The key difference:** CC is a terminal REPL. Aegis is an API server.
+
+CC handles the conversation — prompts, tools, permissions, code generation. Aegis handles *everything around it*: routing prompts from any channel (Telegram, Slack, CI/CD), managing approvals from your phone, tracking costs across sessions, streaming events to monitoring systems, and maintaining an immutable audit trail.
+
+For a detailed feature-by-feature comparison, see the **[Why Aegis when CC has agents?](../README.md#why-aegis-when-claude-code-has-agents)** section in the README.
+
+### What CC native does well
+
+- **Terminal-first experience** — zero setup, instant start
+- **Background sessions** — sessions survive terminal close, can be resumed
+- **Plugin marketplace** — growing ecosystem of CC extensions
+- **Agent teams** — experimental multi-agent coordination within CC
+
+### What Aegis adds on top
+
+| Layer | What CC provides | What Aegis adds |
+|-------|-----------------|----------------|
+| **Access** | Terminal only | REST API, MCP server, Telegram, Slack, web dashboard |
+| **Approvals** | Terminal prompt | Phone approvals via Telegram/Slack, programmatic approve/reject |
+| **Observability** | `/usage` command | Prometheus metrics, OTel tracing, SSE event streams, per-session analytics |
+| **Compliance** | None | Hash-chained audit trail, RBAC, OIDC/SSO, immutable logs |
+| **Cost tracking** | Token count in terminal | Dashboard analytics, per-model breakdown, burn rate, budget enforcement |
+| **Integration** | `--json` flag | 65+ REST endpoints, 34 MCP tools, webhooks, session templates, pipelines |
+| **Security** | Local trust | API key management with roles, session isolation, workDir allowlists |
+
+### When to stay with CC native
+
+You're a solo developer who lives in the terminal, doesn't need CI/CD integration, and is happy approving everything on screen. CC native is a great experience for this.
+
+### When to add Aegis
+
+You need your agents reachable from *outside the terminal* — approvals from your phone, sessions triggered by CI/CD, costs tracked in a dashboard, events streamed to your monitoring stack, or an audit trail for compliance. That's the API server layer.
+
+---
+
 ## Aegis vs Developer Tools
 
 Some Claude Code wrappers focus on developer convenience — quick session management, browser-based UIs, and local-first workflows. Aegis is built for a different purpose: **production-grade orchestration at scale**.
