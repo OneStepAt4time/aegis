@@ -77,6 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Model string validation** — reject malformed model names on --model flag and API schema ([#3606](https://github.com/OneStepAt4time/aegis/pull/3606))
 - **MCP scope detection** — fix global configs incorrectly wired as project-scoped ([#3614](https://github.com/OneStepAt4time/aegis/pull/3614))
 - **Bundle hygiene** — direct ACP imports + shared backoff implementation ([#3781](https://github.com/OneStepAt4time/aegis/pull/3781))
+- **Project-local stateDir for new configs** — `ag init` now creates project-local state directories instead of using global paths ([#3901](https://github.com/OneStepAt4time/aegis/pull/3901), closes [#3888](https://github.com/OneStepAt4time/aegis/issues/3888))
+- **CI permissions narrowed to job-level** — remove workflow-level `contents: write`, use per-job minimal permissions ([#3943](https://github.com/OneStepAt4time/aegis/pull/3943))
+- **CI eslint in gate** — add eslint to `npm run gate` for local pre-push checks ([#3928](https://github.com/OneStepAt4time/aegis/pull/3928))
+- **CI remove unused actions:write** — remove unnecessary `actions:write` from create-release-branch workflow ([#3927](https://github.com/OneStepAt4time/aegis/pull/3927), closes [#3920](https://github.com/OneStepAt4time/aegis/issues/3920))
+- **CI npm audit + lockfile-lint in gate** — add security checks to local gate script ([#3926](https://github.com/OneStepAt4time/aegis/pull/3926), closes [#3918](https://github.com/OneStepAt4time/aegis/issues/3918))
+- **CI bundle size check extraction** — extract into shared script for reuse in local gate ([#3925](https://github.com/OneStepAt4time/aegis/pull/3925), closes [#3919](https://github.com/OneStepAt4time/aegis/issues/3919))
 
 ### Documentation
 
@@ -98,6 +104,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI prefix matching docs** — ag kill/tail prefix matching, ag status session-id ([#3679](https://github.com/OneStepAt4time/aegis/pull/3679))
 - **Claude CLI auto-install docs** — document guided install in ag init and ag run ([#3685](https://github.com/OneStepAt4time/aegis/pull/3685))
 - Document --model, --effort, --cwd, --passthrough flags in CLI reference ([#3571](https://github.com/OneStepAt4time/aegis/pull/3571), [#3588](https://github.com/OneStepAt4time/aegis/pull/3588), [#3589](https://github.com/OneStepAt4time/aegis/pull/3589))
+- **Document ag run exit codes** — CLI reference for all ag run exit codes ([#3944](https://github.com/OneStepAt4time/aegis/pull/3944))
+- **Document acpStrictValidation config** — config reference + remove stale `_validationWarnings` references ([#3916](https://github.com/OneStepAt4time/aegis/pull/3916))
+- **Document AEGIS_SESSION_CREATION_TIMEOUT_MS** — env var reference for session timeout ([#3914](https://github.com/OneStepAt4time/aegis/pull/3914))
+- **Document project-local stateDir** — ag init config docs for state directory behavior ([#3911](https://github.com/OneStepAt4time/aegis/pull/3911))
+- **Document _validationWarnings in resultMetadata** — ACP result metadata reference ([#3902](https://github.com/OneStepAt4time/aegis/pull/3902), closes [#3897](https://github.com/OneStepAt4time/aegis/issues/3897))
 - Document isolationMode session field in API reference ([#3595](https://github.com/OneStepAt4time/aegis/pull/3595))
 - Fix README Session States table — remove ghost `asking` state, add 8 real states ([#3597](https://github.com/OneStepAt4time/aegis/pull/3597))
 - SECURITY.md — security policy for ACP registry listing ([#3628](https://github.com/OneStepAt4time/aegis/pull/3628))
