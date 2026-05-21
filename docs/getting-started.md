@@ -74,7 +74,7 @@ ag init
 >
 > **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and regenerates auth keys. **You must restart the server** for the new keys to take effect — the running server does not hot-reload keys from disk. Without a restart, CLI commands will return `401 Unauthorized` with the new token.
 >
-> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interaction setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
+> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
 >
 > **Project-local state:** For new configs, `ag init` stores state (keys, auth-token) in the project `.aegis/` directory alongside `config.yaml`, not in the global `~/.aegis/`. This keeps each project isolated. Override with `AEGIS_STATE_DIR`.
 >
