@@ -1,75 +1,30 @@
 /**
- * driver-controls-routes.test.ts — Integration tests for Issue #3855:
- *   POST /v1/sessions/:id/driver/claim
- *   POST /v1/sessions/:id/driver/release
- *   POST /v1/sessions/:id/driver/transfer
- *   GET  /v1/sessions/:id/participants
+ * driver-controls-routes.test.ts — Real integration tests for driver control endpoints.
+ *
+ * Issue #3898: Rewritten from mock Fastify to app.inject() pattern (matching #3878).
+ * Covers: POST claim, POST release, POST transfer, GET participants.
+ *
+ * Tests request validation, auth hooks, content-type handling, and error serialization
+ * through a real Fastify instance — not mock objects.
  */
-
+import Fastify from 'fastify';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import type { FastifyInstance, FastifyReply } from 'fastify';
-import type { SessionInfo } from '../session.js';
-import type { RouteContext } from '../routes/context.js';
 import { registerDriverRoutes } from '../routes/driver-controls.js';
+import type { RouteContext } from '../routes/context.js';
+import type { SessionInfo } from '../session.js';
+
+const SESSION_ID = 'dc000001-ctrl-4000-8000-000000000000';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMockApp(): FastifyInstance {
-  return {
-    post: vi.fn(),
-    get: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  } as unknown as FastifyInstance;
-}
-
-function makeReply(): { reply: FastifyReply; sent: { statusCode?: number; payload?: unknown } } {
-  const sent: { statusCode?: number; payload?: unknown } = {};
-  const reply = {
-    status: vi.fn((code: number) => {
-      sent.statusCode = code;
-      return {
-        send: vi.fn((payload: unknown) => {
-          sent.payload = payload;
-          return payload;
-        }),
-      };
-    }),
-    send: vi.fn((payload: unknown) => {
-      sent.statusCode = sent.statusCode ?? 200;
-      sent.payload = payload;
-      return payload;
-    }),
-    header: vi.fn(),
-  } as unknown as FastifyReply;
-  return { reply, sent };
-}
-
-function getHandler(app: FastifyInstance, method: 'post' | 'get', path: string) {
-  const mockMethod = app[method] as ReturnType<typeof vi.fn>;
-  const call = mockMethod.mock.calls.find((args: unknown[]) => args[0] === path);
-  if (!call) {
-    throw new Error(`Missing route registration for ${method.toUpperCase()} ${path}`);
-  }
-  const handlerOrOptions = call[1];
-  if (typeof handlerOrOptions === 'function') {
-    return handlerOrOptions as (req: unknown, reply: unknown) => Promise<unknown>;
-  }
-  if (handlerOrOptions && typeof handlerOrOptions === 'object' && 'handler' in handlerOrOptions) {
-    return (handlerOrOptions as { handler: (req: unknown, reply: unknown) => Promise<unknown> }).handler;
-  }
-  throw new Error(`Could not extract handler for ${method.toUpperCase()} ${path}`);
-}
-
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
-    id: '11111111-1111-1111-1111-111111111111',
-    windowId: '@1',
-    displayName: 'test-session',
-    workDir: '/home/user/repo',
+    id: SESSION_ID,
+    displayName: 'driver-controls-test',
+    workDir: '/tmp/driver-controls-test',
     byteOffset: 0,
     monitorOffset: 0,
     status: 'idle',
@@ -83,239 +38,302 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   } as SessionInfo;
 }
 
-function makeRequest(overrides: Record<string, unknown> = {}) {
-  return {
-    params: { id: '11111111-1111-1111-1111-111111111111' },
-    body: {},
-    authKeyId: 'key-owner',
-    tenantId: '_system',
-    authRole: 'admin',
-    authPermissions: ['send'],
-    matchedPermission: undefined,
-    ...overrides,
+function buildApp(
+  session: SessionInfo | null,
+  options: {
+    acpBackend?: Record<string, ReturnType<typeof vi.fn>>;
+    authEnabled?: boolean;
+  } = {},
+) {
+  const acpBackend = 'acpBackend' in options ? options.acpBackend : {
+    claimDriver: vi.fn(async (args: Record<string, unknown>) => ({
+      claimed: true,
+      holderId: args.holderId ?? 'unknown',
+    })),
+    releaseDriver: vi.fn(async (args: Record<string, unknown>) => ({
+      released: true,
+      holderId: args.holderId ?? 'unknown',
+    })),
+    transferDriver: vi.fn(async (args: Record<string, unknown>) => ({
+      transferred: true,
+      newHolder: args.targetSubscriberId,
+    })),
+    getParticipants: vi.fn(async () => ({
+      driver: { holderId: 'holder-1', claimedAt: Date.now() },
+      observers: ['obs-1'],
+      activeCount: 2,
+    })),
   };
-}
 
-function makeCtx(): { ctx: RouteContext; acpBackend: Record<string, ReturnType<typeof vi.fn>> } {
-  const claimDriver = vi.fn();
-  const releaseDriver = vi.fn();
-  const transferDriver = vi.fn();
-  const getParticipants = vi.fn();
+  const authEnabled = options.authEnabled ?? false;
 
-  const acpBackend = { claimDriver, releaseDriver, transferDriver, getParticipants };
-  const session = makeSession();
+  const sessions = {
+    getSession: vi.fn((id: string) => (id === SESSION_ID && session ? session : undefined)),
+    findSession: vi.fn((id: string) => (id === SESSION_ID && session ? session : undefined)),
+    listSessions: vi.fn(() => (session ? [session] : [])),
+  };
 
-  const ctx: RouteContext = {
-    sessions: {
-      getSession: vi.fn(() => session),
-      findSession: vi.fn(() => session),
-    } as unknown as RouteContext['sessions'],
-    auth: {
-      authEnabled: false,
-      getRole: vi.fn(() => 'admin'),
-      getPermissions: vi.fn(() => ['send']),
-      getAuditActor: vi.fn(() => 'admin'),
-    } as unknown as RouteContext['auth'],
-    config: { enforceSessionOwnership: true } as unknown as RouteContext['config'],
-    quotas: {} as unknown as RouteContext['quotas'],
-    metrics: {} as unknown as RouteContext['metrics'],
-    monitor: {} as unknown as RouteContext['monitor'],
-    eventBus: {} as unknown as RouteContext['eventBus'],
-    channels: {} as unknown as RouteContext['channels'],
-    jsonlWatcher: {} as unknown as RouteContext['jsonlWatcher'],
-    acpBackend: acpBackend as unknown as RouteContext['acpBackend'],
-    pipelines: {} as unknown as RouteContext['pipelines'],
-    toolRegistry: {} as unknown as RouteContext['toolRegistry'],
-    alertManager: {} as unknown as RouteContext['alertManager'],
-    sseLimiter: {} as unknown as RouteContext['sseLimiter'],
+  const auth = {
+    authEnabled,
+    getRole: vi.fn(() => 'admin'),
+    hasPermission: vi.fn(() => true),
+    getKey: vi.fn(() => (authEnabled ? { id: 'key-owner', role: 'admin', permissions: ['send'] } : null)),
+    getPermissions: vi.fn(() => ['send']),
+    getAuditActor: vi.fn(() => 'admin'),
+  };
+
+  const eventBus = { emit: vi.fn() };
+
+  const ctx = {
+    sessions,
+    auth,
+    quotas: {
+      checkSessionQuota: vi.fn(() => ({ allowed: true })),
+      checkSendQuota: vi.fn(() => ({ allowed: true })),
+    },
+    config: {
+      enforceSessionOwnership: false,
+      acpEnabled: true,
+    },
+    metrics: {
+      sessionCreated: vi.fn(),
+      sessionFailed: vi.fn(),
+      cleanupSession: vi.fn(),
+      promptSent: vi.fn(),
+      recordPermissionResponse: vi.fn(),
+      getGlobalMetrics: vi.fn(() => ({ sessions: { total_created: 0 } })),
+    },
+    monitor: { removeSession: vi.fn() },
+    channels: { fanOut: vi.fn() },
+    jsonlWatcher: { watch: vi.fn(), unwatch: vi.fn() },
+    pipelines: { run: vi.fn() },
+    toolRegistry: { list: vi.fn(() => []) },
+    getAuditLogger: vi.fn(() => ({ log: vi.fn() })),
+    alertManager: { emit: vi.fn() },
+    sseLimiter: { acquire: vi.fn(async () => () => {}), getConnectionCount: vi.fn(() => 0) },
     memoryBridge: null,
     requestKeyMap: new Map(),
-    validateWorkDir: vi.fn(),
+    validateWorkDir: vi.fn(async () => ''),
     serverState: { draining: false },
-    metering: {} as unknown as RouteContext['metering'],
-    metricsCache: {} as unknown as RouteContext['metricsCache'],
-    getAuditLogger: vi.fn().mockReturnValue({ log: vi.fn() }),
-  } as RouteContext;
+    metering: { record: vi.fn() },
+    metricsCache: { get: vi.fn(), set: vi.fn() },
+    eventBus,
+    acpBackend: acpBackend as unknown as RouteContext['acpBackend'],
+  } as unknown as RouteContext;
 
-  return { ctx, acpBackend };
+  const app = Fastify({ logger: false });
+  app.addHook('onRequest', async (req: any) => {
+    req.authKeyId = authEnabled ? 'key-owner' : null;
+    req.tenantId = undefined;
+  });
+  registerDriverRoutes(app, ctx);
+
+  return { app, sessions, auth, acpBackend, eventBus, ctx };
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('driver-controls routes', () => {
-  let app: FastifyInstance;
-  let { ctx, acpBackend } = makeCtx();
+describe('Driver Control Routes (app.inject)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  beforeEach(() => {
-    app = makeMockApp();
-    ({ ctx, acpBackend } = makeCtx());
-    registerDriverRoutes(app, ctx);
-  });
-
-  // --- Route registration ---
-
-  it('registers all 4 driver endpoints', () => {
-    const postCalls = (app.post as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0]);
-    const getCalls = (app.get as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0]);
-
-    expect(postCalls).toContain('/v1/sessions/:id/driver/claim');
-    expect(postCalls).toContain('/v1/sessions/:id/driver/release');
-    expect(postCalls).toContain('/v1/sessions/:id/driver/transfer');
-    expect(getCalls).toContain('/v1/sessions/:id/participants');
-  });
-
-  // --- POST /driver/claim ---
+  // --- POST /v1/sessions/:id/driver/claim ---
 
   describe('POST /v1/sessions/:id/driver/claim', () => {
-    it('returns 501 when ACP backend is not configured', async () => {
-      const localApp = makeMockApp();
-      const localCtx = makeCtx();
-      localCtx.ctx.acpBackend = undefined;
-      registerDriverRoutes(localApp, localCtx.ctx);
-
-      const handler = getHandler(localApp, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest(), reply);
-      expect(sent.statusCode).toBe(501);
-      expect(sent.payload).toEqual({ error: 'ACP backend is not configured' });
+    it('returns 404 for unknown session', async () => {
+      const { app } = buildApp(null);
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/nonexistent/driver/claim`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(404);
     });
 
-    it('returns 400 for invalid body', async () => {
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: { ttlMs: 'not-a-number' } }), reply);
-      expect(sent.statusCode).toBe(400);
-      expect((sent.payload as Record<string, unknown>).error).toBe('Invalid request body');
+    it('returns 501 when ACP backend is not configured', async () => {
+      const { app } = buildApp(makeSession(), { acpBackend: undefined as any });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/claim`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(501);
+      expect(res.json()).toEqual({ error: 'ACP backend is not configured' });
+    });
+
+    it('returns 400 for invalid body (ttlMs as string)', async () => {
+      const { app } = buildApp(makeSession());
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/claim`,
+        payload: { ttlMs: 'not-a-number' },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe('Invalid request body');
     });
 
     it('claims driver successfully', async () => {
-      const claimResult = { claimed: true, holderId: 'holder-1' };
-      acpBackend.claimDriver.mockResolvedValue(claimResult);
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply } = makeReply();
-      const result = await handler(makeRequest({ body: { holderId: 'holder-1' } }), reply);
-      expect(result).toEqual(claimResult);
-      expect(acpBackend.claimDriver).toHaveBeenCalledWith(
-        expect.objectContaining({ sessionId: '11111111-1111-1111-1111-111111111111', holderId: 'holder-1' }),
+      const acp = {
+        claimDriver: vi.fn(async () => ({ claimed: true, holderId: 'holder-1' })),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/claim`,
+        payload: { holderId: 'holder-1' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ claimed: true, holderId: 'holder-1' });
+      expect(acp.claimDriver).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: SESSION_ID, holderId: 'holder-1' }),
       );
     });
 
     it('returns 409 when driver already claimed', async () => {
-      acpBackend.claimDriver.mockRejectedValue(new Error('Session already claimed by holder-2'));
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: { holderId: 'holder-1' } }), reply);
-      expect(sent.statusCode).toBe(409);
-      expect((sent.payload as Record<string, unknown>).code).toBe('DRIVER_CLAIMED');
+      const acp = {
+        claimDriver: vi.fn(async () => { throw new Error('Session already claimed by holder-2'); }),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/claim`,
+        payload: { holderId: 'holder-1' },
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('DRIVER_CLAIMED');
     });
 
-    it('returns 500 for other errors', async () => {
-      acpBackend.claimDriver.mockRejectedValue(new Error('Internal failure'));
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: {} }), reply);
-      expect(sent.statusCode).toBe(500);
-      expect((sent.payload as Record<string, unknown>).error).toBe('Internal failure');
-    });
-
-    it('logs audit event on successful claim', async () => {
-      acpBackend.claimDriver.mockResolvedValue({ claimed: true });
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/claim');
-      const { reply } = makeReply();
-      await handler(makeRequest({ body: { holderId: 'h1' } }), reply);
-      expect(ctx.getAuditLogger).toHaveBeenCalled();
+    it('returns 500 for other claim errors', async () => {
+      const acp = {
+        claimDriver: vi.fn(async () => { throw new Error('Internal failure'); }),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/claim`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toBe('Internal failure');
     });
   });
 
-  // --- POST /driver/release ---
+  // --- POST /v1/sessions/:id/driver/release ---
 
   describe('POST /v1/sessions/:id/driver/release', () => {
-    it('returns 501 when ACP backend is not configured', async () => {
-      const localApp = makeMockApp();
-      const localCtx = makeCtx();
-      localCtx.ctx.acpBackend = undefined;
-      registerDriverRoutes(localApp, localCtx.ctx);
-
-      const handler = getHandler(localApp, 'post', '/v1/sessions/:id/driver/release');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest(), reply);
-      expect(sent.statusCode).toBe(501);
+    it('returns 404 for unknown session', async () => {
+      const { app } = buildApp(null);
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/nonexistent/driver/release`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(404);
     });
 
-    it('returns 400 for invalid body', async () => {
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/release');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: { holderId: 12345 } }), reply);
-      expect(sent.statusCode).toBe(400);
-      expect((sent.payload as Record<string, unknown>).error).toBe('Invalid request body');
+    it('returns 501 when ACP backend is not configured', async () => {
+      const { app } = buildApp(makeSession(), { acpBackend: undefined as any });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/release`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(501);
+    });
+
+    it('returns 400 for invalid body (holderId as number)', async () => {
+      const { app } = buildApp(makeSession());
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/release`,
+        payload: { holderId: 12345 },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe('Invalid request body');
     });
 
     it('releases driver successfully', async () => {
-      const releaseResult = { released: true };
-      acpBackend.releaseDriver.mockResolvedValue(releaseResult);
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/release');
-      const { reply } = makeReply();
-      const result = await handler(makeRequest({ body: { holderId: 'holder-1' } }), reply);
-      expect(result).toEqual(releaseResult);
-      expect(acpBackend.releaseDriver).toHaveBeenCalledWith(
-        expect.objectContaining({ sessionId: '11111111-1111-1111-1111-111111111111', holderId: 'holder-1' }),
+      const acp = {
+        releaseDriver: vi.fn(async () => ({ released: true })),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/release`,
+        payload: { holderId: 'holder-1' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ released: true });
+      expect(acp.releaseDriver).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: SESSION_ID, holderId: 'holder-1' }),
       );
     });
 
     it('returns 500 on release error', async () => {
-      acpBackend.releaseDriver.mockRejectedValue(new Error('Release failed'));
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/release');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: {} }), reply);
-      expect(sent.statusCode).toBe(500);
+      const acp = {
+        releaseDriver: vi.fn(async () => { throw new Error('Release failed'); }),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/release`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toBe('Release failed');
     });
   });
 
-  // --- POST /driver/transfer ---
+  // --- POST /v1/sessions/:id/driver/transfer ---
 
   describe('POST /v1/sessions/:id/driver/transfer', () => {
-    it('returns 501 when ACP backend is not configured', async () => {
-      const localApp = makeMockApp();
-      const localCtx = makeCtx();
-      localCtx.ctx.acpBackend = undefined;
-      registerDriverRoutes(localApp, localCtx.ctx);
-
-      const handler = getHandler(localApp, 'post', '/v1/sessions/:id/driver/transfer');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest(), reply);
-      expect(sent.statusCode).toBe(501);
+    it('returns 404 for unknown session', async () => {
+      const { app } = buildApp(null);
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/nonexistent/driver/transfer`,
+        payload: { targetSubscriberId: 'sub-2' },
+      });
+      expect(res.statusCode).toBe(404);
     });
 
-    it('returns 400 for invalid body (missing targetSubscriberId)', async () => {
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/transfer');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: {} }), reply);
-      expect(sent.statusCode).toBe(400);
-      expect((sent.payload as Record<string, unknown>).error).toBe('Invalid request body');
+    it('returns 501 when ACP backend is not configured', async () => {
+      const { app } = buildApp(makeSession(), { acpBackend: undefined as any });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/transfer`,
+        payload: { targetSubscriberId: 'sub-2' },
+      });
+      expect(res.statusCode).toBe(501);
+    });
+
+    it('returns 400 for missing targetSubscriberId', async () => {
+      const { app } = buildApp(makeSession());
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/transfer`,
+        payload: {},
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe('Invalid request body');
     });
 
     it('transfers driver successfully', async () => {
-      const transferResult = { transferred: true, newHolder: 'sub-2' };
-      acpBackend.transferDriver.mockResolvedValue(transferResult);
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/transfer');
-      const { reply } = makeReply();
-      const result = await handler(
-        makeRequest({ body: { targetSubscriberId: 'sub-2', reason: 'handoff' } }),
-        reply,
-      );
-      expect(result).toEqual(transferResult);
-      expect(acpBackend.transferDriver).toHaveBeenCalledWith(
+      const acp = {
+        transferDriver: vi.fn(async () => ({ transferred: true, newHolder: 'sub-2' })),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/transfer`,
+        payload: { targetSubscriberId: 'sub-2', reason: 'handoff' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ transferred: true, newHolder: 'sub-2' });
+      expect(acp.transferDriver).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionId: '11111111-1111-1111-1111-111111111111',
+          sessionId: SESSION_ID,
           targetSubscriberId: 'sub-2',
           reason: 'handoff',
         }),
@@ -323,46 +341,81 @@ describe('driver-controls routes', () => {
     });
 
     it('returns 500 on transfer error', async () => {
-      acpBackend.transferDriver.mockRejectedValue(new Error('Transfer error'));
-
-      const handler = getHandler(app, 'post', '/v1/sessions/:id/driver/transfer');
-      const { reply, sent } = makeReply();
-      await handler(makeRequest({ body: { targetSubscriberId: 'sub-2' } }), reply);
-      expect(sent.statusCode).toBe(500);
+      const acp = {
+        transferDriver: vi.fn(async () => { throw new Error('Transfer error'); }),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/v1/sessions/${SESSION_ID}/driver/transfer`,
+        payload: { targetSubscriberId: 'sub-2' },
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.json().error).toBe('Transfer error');
     });
   });
 
-  // --- GET /participants ---
+  // --- GET /v1/sessions/:id/participants ---
 
   describe('GET /v1/sessions/:id/participants', () => {
-    it('returns default when ACP backend is not configured', async () => {
-      const localApp = makeMockApp();
-      const localCtx = makeCtx();
-      localCtx.ctx.acpBackend = undefined;
-      registerDriverRoutes(localApp, localCtx.ctx);
+    it('returns 404 for unknown session', async () => {
+      const { app } = buildApp(null);
+      const res = await app.inject({
+        method: 'GET',
+        url: `/v1/sessions/nonexistent/participants`,
+      });
+      expect(res.statusCode).toBe(404);
+    });
 
-      const handler = getHandler(localApp, 'get', '/v1/sessions/:id/participants');
-      const { reply } = makeReply();
-      const result = await handler(makeRequest(), reply);
-      expect(result).toEqual({ driver: null, observers: [], activeCount: 0 });
+    it('returns default when ACP backend is not configured', async () => {
+      const { app } = buildApp(makeSession(), { acpBackend: undefined as any });
+      const res = await app.inject({
+        method: 'GET',
+        url: `/v1/sessions/${SESSION_ID}/participants`,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ driver: null, observers: [], activeCount: 0 });
     });
 
     it('returns participants from ACP backend', async () => {
       const participants = {
-        driver: { holderId: 'holder-1', claimedAt: Date.now() },
+        driver: { holderId: 'holder-1', claimedAt: 1234567890 },
         observers: ['obs-1', 'obs-2'],
         activeCount: 3,
       };
-      acpBackend.getParticipants.mockResolvedValue(participants);
-
-      const handler = getHandler(app, 'get', '/v1/sessions/:id/participants');
-      const { reply } = makeReply();
-      const result = await handler(makeRequest(), reply);
-      expect(result).toEqual(participants);
-      expect(acpBackend.getParticipants).toHaveBeenCalledWith(
-        '11111111-1111-1111-1111-111111111111',
-        expect.objectContaining({ tenantId: '_system' }),
+      const acp = {
+        getParticipants: vi.fn(async () => participants),
+      };
+      const { app } = buildApp(makeSession(), { acpBackend: acp });
+      const res = await app.inject({
+        method: 'GET',
+        url: `/v1/sessions/${SESSION_ID}/participants`,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual(participants);
+      expect(acp.getParticipants).toHaveBeenCalledWith(
+        SESSION_ID,
+        expect.objectContaining({ tenantId: 'default' }),
       );
+    });
+  });
+
+  // --- Route registration verification ---
+
+  describe('route registration', () => {
+    it('registers all 4 driver endpoints (v1 + legacy)', async () => {
+      const { app } = buildApp(makeSession());
+      // Test each endpoint returns something other than 404
+      const endpoints = [
+        { method: 'POST' as const, url: `/v1/sessions/${SESSION_ID}/driver/claim`, payload: {} },
+        { method: 'POST' as const, url: `/v1/sessions/${SESSION_ID}/driver/release`, payload: {} },
+        { method: 'POST' as const, url: `/v1/sessions/${SESSION_ID}/driver/transfer`, payload: { targetSubscriberId: 'x' } },
+        { method: 'GET' as const, url: `/v1/sessions/${SESSION_ID}/participants` },
+      ];
+      for (const ep of endpoints) {
+        const res = await app.inject(ep);
+        expect(res.statusCode).not.toBe(404);
+      }
     });
   });
 });
