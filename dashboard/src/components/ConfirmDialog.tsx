@@ -23,7 +23,7 @@ const VARIANT_STYLES = {
   },
   warning: {
     confirm:
-      'bg-[var(--color-warning)]/10 hover:bg-[var(--color-warning)]/20 text-amber-300 border border-[var(--color-warning)]/30',
+      'bg-[var(--color-warning)]/10 hover:bg-[var(--color-warning)]/20 text-[var(--color-warning)] border border-[var(--color-warning)]/30',
   },
   default: {
     confirm:

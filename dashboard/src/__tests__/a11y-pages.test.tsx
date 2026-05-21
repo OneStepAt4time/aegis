@@ -172,6 +172,7 @@ vi.mock('../api/client', () => ({
     cacheHitRate: 0.8, estimatedCostUsd: 12.34,
     burnRateUsdPerHour: 1.5, sessions: 5,
   }),
+  getSessions: vi.fn().mockResolvedValue({ sessions: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } }),
   getCostByModel: vi.fn().mockResolvedValue({
     from: null, to: null,
     models: [{ model: 'claude-sonnet-4-20250514', inputTokens: 3000, outputTokens: 1500, cacheCreationTokens: 600, cacheReadTokens: 2400, estimatedCostUsd: 12.34, cacheHitRate: 0.8 }],

@@ -42,7 +42,7 @@ export default function EmptyState({
     'feature-unavailable': {
       container: 'border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5',
       iconBg: 'bg-[var(--color-warning)]/10',
-      titleColor: 'text-amber-300',
+      titleColor: 'text-[var(--color-warning)]',
     },
   };
 
