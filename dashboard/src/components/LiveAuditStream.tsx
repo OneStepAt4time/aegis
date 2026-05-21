@@ -108,7 +108,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${sseConnected ? 'bg-[var(--color-accent-cyan)]' : 'bg-[var(--color-void-lighter)]'}`} />
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-[var(--color-accent-cyan)] shadow-[0_0_6px_#67e8f9]' : 'bg-[var(--color-void-lighter)]'}`} />
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${sseConnected ? 'bg-[var(--color-accent-cyan)] shadow-[0_0_6px_var(--color-accent-cyan-glow)]' : 'bg-[var(--color-void-lighter)]'}`} />
           </span>
           {sseConnected ? (
             <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[var(--color-accent-cyan)]">

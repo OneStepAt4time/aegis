@@ -487,7 +487,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               void fetchSessions();
             }}
             aria-label={t("aria.retryLoading")}
-            className="rounded-md border border-amber-400/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
+            className="rounded-md border border-[var(--color-warning)]/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
           >
             Retry
           </button>

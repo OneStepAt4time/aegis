@@ -64,7 +64,7 @@ function actionBg(action: string): string {
   if (a.includes('reject') || a.includes('deny') || a.includes('permission_denied'))
     return 'bg-red-950/30 border-red-900/30';
   if (a.includes('prompt') || a.includes('request'))
-    return 'bg-amber-950/30 border-amber-900/30';
+    return 'bg-[var(--color-warning)]/30 border-[var(--color-warning)]/30';
   return 'bg-[var(--color-surface-strong)] border-[var(--color-border)]';
 }
 
@@ -83,7 +83,7 @@ export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProp
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-900/30 bg-red-950/20 p-4 text-[var(--color-danger)] text-sm">
+      <div className="rounded-lg border border-red-900/30 bg-[var(--color-danger)]/10 p-4 text-[var(--color-danger)] text-sm">
         Failed to load audit trail: {error}
       </div>
     );

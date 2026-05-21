@@ -1014,7 +1014,7 @@ export default function SessionDetailPage() {
                 onKeyDown={handleKeyDown}
                 placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder-gray-600 focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50"
               />
 
               <button

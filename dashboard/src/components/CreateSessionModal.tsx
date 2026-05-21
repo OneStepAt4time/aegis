@@ -273,7 +273,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={workDir}
               onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
               placeholder="/home/user/project"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
             />
           </div>
 
@@ -287,7 +287,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="my-session"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             />
             {workDirError && (
               <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
@@ -305,7 +305,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={claudeCommand}
               onChange={(e) => setClaudeCommand(e.target.value)}
               placeholder="claude --print"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
             />
           </div>
 
@@ -319,7 +319,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Fix the login bug..."
               rows={3}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
             />
           </div>
 
@@ -380,7 +380,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setSharedPrompt(e.target.value)}
               placeholder="Apply to all sessions without a per-row prompt..."
               rows={2}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
             />
           </div>
 
@@ -401,21 +401,21 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   value={row.workDir}
                   onChange={(e) => updateBatchRow(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
                 />
                 <input
                   type="text"
                   value={row.name}
                   onChange={(e) => updateBatchRow(i, 'name', e.target.value)}
                   placeholder="name"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <input
                   type="text"
                   value={row.prompt}
                   onChange={(e) => updateBatchRow(i, 'prompt', e.target.value)}
                   placeholder="Override prompt..."
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-gray-600 focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <button
                   type="button"

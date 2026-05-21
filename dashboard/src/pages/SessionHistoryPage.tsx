@@ -481,7 +481,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder={t('sessionHistory.searchPlaceholder')}
-              className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
+              className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -494,7 +494,7 @@ export default function SessionHistoryPage() {
               onChange={(e) => setFilterOwnerInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
               placeholder={t('sessionHistory.ownerPlaceholder')}
-              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder-gray-400 dark:placeholder-zinc-600 focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
+              className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
             />
           </div>
 
@@ -590,7 +590,7 @@ export default function SessionHistoryPage() {
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('sessionHistory.endpointMissingDescription')}</p>
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-12 text-center">
+        <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-[var(--color-danger)]" />
           <p className="font-medium text-[var(--color-danger)]">{t('sessionHistory.failedLoad')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>

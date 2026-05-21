@@ -200,12 +200,12 @@ export default function TemplatesPage() {
       ) : error ? (
         <div className="rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 p-4 text-sm text-amber-200" role="alert">
           <p className="font-medium">{t('templates.loadErrorTitle')}</p>
-          <p className="mt-1 text-amber-200/80">{error}</p>
+          <p className="mt-1 text-[var(--color-warning)]/80">{error}</p>
           <button
             type="button"
             onClick={() => void fetchTemplates()}
             aria-label={t('common.retry')}
-            className="mt-4 rounded border border-[var(--color-warning)]/30 px-3 py-2 text-xs font-medium text-amber-200 transition-colors hover:bg-[var(--color-warning)]/10"
+            className="mt-4 rounded border border-[var(--color-warning)]/30 px-3 py-2 text-xs font-medium text-[var(--color-warning)] transition-colors hover:bg-[var(--color-warning)]/10"
           >
             {t('common.retry')}
           </button>
@@ -303,7 +303,7 @@ export default function TemplatesPage() {
                     onClick={() => setDeleteTarget({ id: template.id, name: template.name })}
                     aria-label={`Delete template ${template.name}`}
                     disabled={deletingId === template.id}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-[var(--color-danger)] dark:text-red-300 transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     {deletingId === template.id ? t('templates.deleting') : t('templates.deleteButton')}

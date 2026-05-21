@@ -12,7 +12,7 @@ interface StaleDataBannerProps {
 export function StaleDataBanner({ error }: StaleDataBannerProps) {
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300"
+      className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-4 py-2.5 text-sm text-amber-300"
       role="alert"
       aria-label="Live updates disconnected — data may be stale"
     >
