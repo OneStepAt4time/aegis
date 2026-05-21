@@ -2582,6 +2582,26 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/terminal/close \
 |--------|------------|
 | 501 | ACP terminal bridge not configured |
 
+### ACP Action Result Metadata
+
+When ACP actions complete, the `resultMetadata` field on the action record contains key-value pairs extracted from the agent response. This metadata is stored as `Record<string, string | number | boolean | null>`.
+
+**Special fields:**
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `_validationWarnings` | `string` (JSON) | Present when ACP content validation detects issues. Contains a JSON-encoded array of `{ code: string, message: string }` objects. Consumers must `JSON.parse()` to access structured data. |
+
+**Validation warning codes:**
+
+| Code | Meaning |
+|------|---------|
+| `empty_output` | Prompt response contains no text output |
+| `hallucination_signature` | Output contains a known hallucination pattern (e.g. `[TRACE]`, `[THINKING]`, `<thinking>`, `[PROSE]`, `[INTERNAL_MONOLOGUE]`) |
+| `low_relevance` | Output has near-zero word overlap with the original prompt (<5%), indicating possible hallucination |
+
+> **Note:** The `_validationWarnings` field uses an underscore prefix to indicate it is system-generated metadata rather than agent output. This field is only present when validation warnings are detected — it is omitted when the output passes validation cleanly.
+
 ---
 
 ## 7. Analytics
