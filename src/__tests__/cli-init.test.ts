@@ -422,4 +422,58 @@ describe('ag init --model flag', () => {
       expect(config.clientAuthToken).toBeFalsy();
     });
   });
+
+  describe('#3888 — project-local stateDir for new configs', () => {
+    it('creates stateDir next to new config when no AEGIS_STATE_DIR env', async () => {
+      // Remove AEGIS_STATE_DIR so the fix activates
+      delete process.env.AEGIS_STATE_DIR;
+      process.env.AEGIS_HOST = '0.0.0.0'; // non-localhost to trigger token creation
+
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      // Config at project-local .aegis/config.yaml
+      const configPath = join(projectDir, '.aegis', 'config.yaml');
+      expect(existsSync(configPath)).toBe(true);
+
+      // State dir should be project-local (.aegis/), not HOME
+      const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
+        stateDir?: string;
+        clientAuthToken?: string;
+      };
+
+      // stateDir should be set to the .aegis/ directory under project
+      expect(config.stateDir).toBe(join(projectDir, '.aegis'));
+
+      // --force creates a new token, so keys.json should be in project-local .aegis/
+      const keysPath = join(projectDir, '.aegis', 'keys.json');
+      expect(existsSync(keysPath)).toBe(true);
+
+      // Verify the state directory message shows project-local path
+      expect(stdout.text()).toContain(join(projectDir, '.aegis'));
+    });
+
+    it('respects AEGIS_STATE_DIR env even for new configs', async () => {
+      // Set explicit state dir
+      process.env.AEGIS_STATE_DIR = stateDir;
+      process.env.AEGIS_HOST = '0.0.0.0';
+
+      const stdin = new PassThrough();
+      const stdout = new CaptureStream();
+      const stderr = new CaptureStream();
+      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      setImmediate(() => stdin.end());
+      const code = await runPromise;
+      expect(code).toBe(0);
+
+      // Keys should be in the env-overridden state dir
+      const keysPath = join(stateDir, 'keys.json');
+      expect(existsSync(keysPath)).toBe(true);
+    });
+  });
 });
