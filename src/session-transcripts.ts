@@ -587,7 +587,7 @@ export class SessionTranscripts {
     }
 
     try {
-      const result = await readNewEntries(session.jsonlPath, 0);
+      const result = await readNewEntries(session.jsonlPath, 0, true);
       return result.entries;
     } catch {
       // Fall back to cache (may be truncated, but better than nothing)
