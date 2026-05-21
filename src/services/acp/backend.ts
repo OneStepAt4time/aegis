@@ -851,7 +851,6 @@ export class AcpBackend {
       if (warnings.length > 0) {
         console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
 
-        // Issue #3897: Emit validation_warning event for monitoring/alerting
         // Issue #3897: Emit validation_warning event for monitoring/alerting (opt-in)
         if (this.emitValidationWarnings) {
           try {
@@ -859,8 +858,8 @@ export class AcpBackend {
               type: 'validation_warning',
               warnings,
             });
-          } catch {
-            // validation_warning transition is informational; ignore state errors
+          } catch (err) {
+            console.warn(`[ACP validation_warning] failed to emit: ${err}`);
           }
         }
 
@@ -876,10 +875,6 @@ export class AcpBackend {
         type: 'run_completed',
       });
       const metadata = primitiveResultMetadata(response.result);
-      // Issue #3897: Attach structured warnings (not JSON stringified)
-      if (warnings.length > 0) {
-      // Issue #3897: Structured warnings are emitted via validation_warning event and available via session record
-      }
       return { resultMetadata: metadata };
     } catch (error) {
       if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {
