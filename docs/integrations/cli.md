@@ -28,6 +28,8 @@ ag init --from-template code-reviewer
 
 The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite. In `--yes` mode, existing config is preserved by default — use `--force` (or `-f`) to allow overwriting.
 
+**Project-local state:** When `ag init` creates a **new** config (no existing file), state (keys, auth-token) is stored in the project-local `.aegis/` directory alongside `config.yaml`, not in the global `~/.aegis/`. Existing configs are unaffected. You can override this with `AEGIS_STATE_DIR`.
+
 If Claude Code (`claude`) is detected on your PATH, `ag init` will automatically offer to wire the Aegis MCP server into Claude Code. This adds Aegis tools to your Claude Code session without manual setup. In `--yes` mode, MCP wiring happens automatically (skipped in CI/test environments).
 
 **Claude CLI auto-install:** If `claude` is not found on your PATH and `ANTHROPIC_API_KEY` is not set, `ag init` will prompt you to install Claude Code (`curl -fsSL https://claude.ai/install.sh | bash`). In `--yes` mode, installation proceeds automatically. On Windows, the CLI provides `npm install -g @anthropic-ai/claude-code` guidance instead. If `ANTHROPIC_API_KEY` is already set, the install step is skipped (ACP can authenticate without the CLI).
@@ -124,7 +126,7 @@ AEGIS_AUTH_TOKEN=secret ag
 | `AEGIS_HOST` | `127.0.0.1` | Bind address |
 | `AEGIS_AUTH_TOKEN` | _(none)_ | Bearer token (required for production) |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
-| `AEGIS_STATE_DIR` | `~/.aegis` | Session state directory |
+| `AEGIS_STATE_DIR` | `~/.aegis` (global) or `.aegis/` (project-local) | Session state directory. `ag init` defaults new configs to project-local |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Max concurrent sessions |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Idle timeout (10 min) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall threshold (2 min) |

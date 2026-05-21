@@ -76,6 +76,8 @@ ag init
 >
 > `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
 >
+> **Project-local state:** For new configs, `ag init` stores state (keys, auth-token) in the project `.aegis/` directory alongside `config.yaml`, not in the global `~/.aegis/`. This keeps each project isolated. Override with `AEGIS_STATE_DIR`.
+>
 > **Claude Code auto-wiring:** If `claude` is on your PATH, `ag init` automatically offers to register Aegis as an MCP server in Claude Code. In `--yes` mode this happens automatically. You can verify with `claude mcp list`.
 
 ```bash
