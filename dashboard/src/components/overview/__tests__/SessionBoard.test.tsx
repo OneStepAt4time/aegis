@@ -46,7 +46,7 @@ describe('SessionBoard', () => {
   it('renders loading state', () => {
     mockGetSessions.mockReturnValue(new Promise(() => {}));
     render(<SessionBoard />);
-    expect(screen.getByText('Loading sessions...')).not.toBeNull();
+    expect(screen.getByText('Loading sessions…')).not.toBeNull();
   });
 
   it('renders board columns after data loads', async () => {
@@ -461,7 +461,7 @@ describe('SessionBoard', () => {
 
     // Button should show loading state
     await waitFor(() => {
-      expect(screen.getByText('Loading...')).not.toBeNull();
+      expect(screen.getByText('Loading…')).not.toBeNull();
     });
   });
 
