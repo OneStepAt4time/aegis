@@ -176,3 +176,104 @@ describe('ACP binary resolver', () => {
     }
   });
 });
+
+import {
+  filterCustomArgs,
+  resolveBlockedFlags,
+  DEFAULT_BLOCKED_ACP_FLAGS,
+} from '../services/acp/binary-resolver.js';
+
+describe('filterCustomArgs', () => {
+  const blocked = ['--output-format', '--resume', '--session-id', '--api-key', '--model'];
+
+  it('strips a blocked flag with a separate value', () => {
+    const result = filterCustomArgs(
+      ['--verbose', '--api-key', 'secret123', '--model', 'gpt-4'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose']);
+  });
+
+  it('strips a blocked flag with =value syntax', () => {
+    const result = filterCustomArgs(
+      ['--output-format=json', '--resume=sess-abc', '--debug'],
+      blocked
+    );
+    expect(result).toEqual(['--debug']);
+  });
+
+  it('passes through non-blocked args', () => {
+    const result = filterCustomArgs(
+      ['--verbose', '--debug', '--some-custom-flag', 'value'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose', '--debug', '--some-custom-flag', 'value']);
+  });
+
+  it('handles empty args array', () => {
+    expect(filterCustomArgs([], blocked)).toEqual([]);
+  });
+
+  it('handles empty blocked list (nothing filtered)', () => {
+    const result = filterCustomArgs(['--api-key', 'secret'], []);
+    expect(result).toEqual(['--api-key', 'secret']);
+  });
+
+  it('strips all blocked flags leaving only safe args', () => {
+    const result = filterCustomArgs(
+      ['--verbose', '--api-key', 'k', '--model', 'm', '--debug', '--output-format', 'json'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose', '--debug']);
+  });
+
+  it('does not strip --verbose or --debug (safe user-facing flags)', () => {
+    const result = filterCustomArgs(
+      ['--verbose', '--debug', '--api-key', 'secret'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose', '--debug']);
+  });
+
+  it('handles blocked flag at end of args without value', () => {
+    const result = filterCustomArgs(
+      ['--verbose', '--api-key'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose']);
+  });
+
+  it('handles consecutive blocked flags', () => {
+    const result = filterCustomArgs(
+      ['--model', 'gpt-4', '--api-key', 'k', '--verbose'],
+      blocked
+    );
+    expect(result).toEqual(['--verbose']);
+  });
+});
+
+describe('resolveBlockedFlags', () => {
+  it('returns default blocked flags when env var is not set', () => {
+    expect(resolveBlockedFlags({})).toEqual(DEFAULT_BLOCKED_ACP_FLAGS);
+  });
+
+  it('returns default blocked flags when env var is empty string', () => {
+    expect(resolveBlockedFlags({ AEGIS_BLOCKED_ACP_ARGS: '' })).toEqual(DEFAULT_BLOCKED_ACP_FLAGS);
+  });
+
+  it('returns default blocked flags when env var is whitespace', () => {
+    expect(resolveBlockedFlags({ AEGIS_BLOCKED_ACP_ARGS: '   ' })).toEqual(DEFAULT_BLOCKED_ACP_FLAGS);
+  });
+
+  it('parses comma-separated env var as custom block list', () => {
+    expect(resolveBlockedFlags({ AEGIS_BLOCKED_ACP_ARGS: '--foo,--bar' })).toEqual(['--foo', '--bar']);
+  });
+
+  it('trims whitespace from comma-separated flags', () => {
+    expect(resolveBlockedFlags({ AEGIS_BLOCKED_ACP_ARGS: ' --foo , --bar ' })).toEqual(['--foo', '--bar']);
+  });
+
+  it('filters out empty entries from comma-separated list', () => {
+    expect(resolveBlockedFlags({ AEGIS_BLOCKED_ACP_ARGS: '--foo,,--bar,' })).toEqual(['--foo', '--bar']);
+  });
+});
