@@ -271,6 +271,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_ACP_ENABLED` | `true` | Enable ACP backend for session creation and control actions |
 | `AEGIS_ACP_PROMPT_TIMEOUT_MS` | `120000` | Timeout in ms for ACP JSON-RPC requests (default 120s). Increase for slow BYO-LLM proxy setups (min: 1000) |
 | `AEGIS_ACP_STRICT_VALIDATION` | `false` | When `true`, ACP content validation warnings cause action failure instead of logging only. Useful for production deployments requiring hallucination-free output |
+| `AEGIS_BLOCKED_ACP_ARGS` | _see below_ | Comma-separated list of CLI flags blocked from user-configured args in ACP child process spawn. Prevents overriding protocol-critical flags like `--output-format`, `--resume`, `--session-id`, `--api-key`, `--model`. Defaults to the built-in list when empty |
 | `AEGIS_ACTION_SWEEPER_ENABLED` | `true` | Enable periodic sweeper that recovers orphaned ACP actions (actions stuck in `leased` state after a worker crash) |
 | `AEGIS_ACTION_SWEEPER_INTERVAL_MS` | `60000` | Sweep interval in milliseconds for orphan action recovery |
 | `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings, default), `enforce-worktree` (reject sessions without worktree — prevents file conflicts with concurrent sessions), `enforce-direct` (force direct edits, no worktree) |
