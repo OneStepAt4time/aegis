@@ -264,3 +264,84 @@ function quoteWindowsCmdArg(value: string): string {
   if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) return value;
   return `"${value.replace(/(["^&|<>%])/g, '^$1')}"`;
 }
+
+/**
+ * Default flags blocked from user-supplied ACP custom args.
+ * These are protocol-critical and must not be overridden by user config.
+ */
+export const DEFAULT_BLOCKED_ACP_FLAGS: string[] = [
+  '--output-format',
+  '--resume',
+  '--session-id',
+  '--api-key',
+  '--model',
+];
+
+/**
+ * Resolve the effective blocked-flags list.
+ * If AEGIS_BLOCKED_ACP_ARGS is set, it overrides the defaults (comma-separated).
+ */
+export function resolveBlockedFlags(
+  env?: NodeJS.ProcessEnv | Record<string, string | undefined>
+): string[] {
+  const effectiveEnv = env ?? process.env;
+  const envValue = effectiveEnv.AEGIS_BLOCKED_ACP_ARGS;
+  if (envValue !== undefined && envValue.trim() !== '') {
+    return envValue
+      .split(',')
+      .map(flag => flag.trim())
+      .filter(flag => flag !== '');
+  }
+  return DEFAULT_BLOCKED_ACP_FLAGS;
+}
+
+/**
+ * Filter user-supplied custom args, stripping blocked flags and their values.
+ * Blocked flags can take values as `--flag value` or `--flag=value`.
+ * Unrecognised args pass through untouched.
+ */
+export function filterCustomArgs(
+  args: string[],
+  blockedFlags: string[]
+): string[] {
+  const blockedSet = new Set(blockedFlags);
+  const filtered: string[] = [];
+  let i = 0;
+
+  while (i < args.length) {
+    const arg = args[i];
+
+    // Check if this arg is a blocked flag (with or without =)
+    const blocked = isBlockedFlag(arg, blockedSet);
+    if (blocked) {
+      // If the flag is `--flag=value`, skip just this arg
+      if (arg.includes('=')) {
+        i++;
+        continue;
+      }
+      // Otherwise skip flag and its value (next arg, if it doesn't start with --)
+      i++;
+      if (i < args.length && !args[i].startsWith('-')) {
+        i++;
+      }
+      continue;
+    }
+
+    filtered.push(arg);
+    i++;
+  }
+
+  return filtered;
+}
+
+function isBlockedFlag(arg: string, blockedSet: Set<string>): boolean {
+  // Exact match: --flag
+  if (blockedSet.has(arg)) return true;
+  // Prefixed match: --flag=value
+  const eqIndex = arg.indexOf('=');
+  if (eqIndex !== -1) {
+    const prefix = arg.slice(0, eqIndex);
+    return blockedSet.has(prefix);
+  }
+  return false;
+}
