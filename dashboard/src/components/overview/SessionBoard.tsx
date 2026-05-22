@@ -179,9 +179,20 @@ export function SessionBoard() {
     try {
       setError(null);
       const result = await getSessions({ limit: PAGE_SIZE, page: 1 });
-      setSessions(result.sessions);
       setTotalCount(result.pagination.total);
-      setCurrentPage(1);
+      setSessions((prev) => {
+        // Issue #4009: Merge-by-ID refresh instead of wipe.
+        // On poll, fetch page 1 and merge into the existing list:
+        // - Update existing sessions in-place (status changes, etc.)
+        // - Prepend new sessions not yet in the list
+        // - Keep sessions from pages 2+ intact even if not in page 1
+        const freshMap = new Map(result.sessions.map((s) => [s.id, s]));
+        const existingMap = new Map(prev.map((s) => [s.id, s]));
+        const updated = prev.map((s) => freshMap.get(s.id) ?? s);
+        const newFromPage1 = result.sessions.filter((s) => !existingMap.has(s.id));
+        return [...newFromPage1, ...updated];
+      });
+      // Do NOT reset currentPage — preserve loaded pages on refresh
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
