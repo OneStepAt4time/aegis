@@ -7,7 +7,7 @@ Get from zero to orchestrating Claude Code sessions in **two commands**.
 | Requirement | Minimum Version | Check Command |
 |---|---|---|
 | Node.js | ≥ 20 | `node --version` |
-| Claude Code CLI | Latest | `claude --version` |
+| Claude Code CLI | ≥ 2.1.145 | `claude --version` |
 | Claude Code auth | Logged in | `claude auth status` |
 
 Aegis bundles `claude-agent-acp` — no tmux installation required.

@@ -115,7 +115,7 @@ Built-in templates: `code-reviewer`, `ci-runner`, `pr-reviewer`, `docs-writer`.
 
 > **Claude Code must be authenticated.** Run `claude auth status` first — if it shows "Not logged in", run `claude login`. Sessions created without auth will silently produce no output.
 >
-> **Prerequisites:** [Node.js ≥ 20](https://nodejs.org/) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated). That's it.
+> **Prerequisites:** [Node.js ≥ 20](https://nodejs.org/) and [Claude Code CLI ≥ 2.1.145](https://docs.anthropic.com/en/docs/claude-code) (authenticated). That's it.
 >
 > **CLI naming:** the primary command is `ag`. The legacy name `aegis` is preserved as an alias.
 

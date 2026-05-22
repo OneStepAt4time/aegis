@@ -6,6 +6,7 @@ This guide covers deploying Aegis in development, CI/CD, and production environm
 
 - Node.js 20+ (LTS recommended)
 - npm 10+
+- Claude Code ≥ 2.1.145 ([security baseline](https://docs.anthropic.com/en/docs/claude-code/changelog))
 - Linux/macOS (Windows via WSL2)
 - Tailscale, Cloudflare Tunnel, or ngrok (optional, for remote access)
 
