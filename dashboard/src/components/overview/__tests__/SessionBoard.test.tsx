@@ -313,4 +313,16 @@ describe('SessionBoard', () => {
     expect(within(waitingRegion).getByText('context-warn')).not.toBeNull();
     expect(within(waitingRegion).getByText('wait-input')).not.toBeNull();
   });
+
+  // ── #3995: SSE-aware polling ──────────────────────────────────────
+
+  it('calls getSessions on mount via polling hook', async () => {
+    mockGetSessions.mockResolvedValue(emptyResponse);
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(mockGetSessions).toHaveBeenCalled();
+    });
+  });
 });
