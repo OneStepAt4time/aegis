@@ -51,7 +51,7 @@ Based on Themis security review (2026-05-22):
 - ✅ **Permission bypass neutralization** — `src/permission-guard.ts` neutralizes `bypassPermissions` in all 3 CC settings locations before spawn
 - ✅ **Minimal child env** — `src/acp-spawn-env.ts` constructs minimal env (not passthrough)
 - ✅ **CLI arg filtering** — added in #4019
-- ✅ **WorkDir restriction** — `AEGIS_ALLOWED_WORK_DIRS` config
+- ✅ **WorkDir allowlist** — restricts session root directories at creation time (not adapter-level filesystem sandbox)
 - ⚠️ **Filesystem sandboxing** — not enforced. Child processes inherit full workdir with no restriction on reading `/etc/shadow`, `~/.ssh/`, or traversing `/tmp`
 - ⚠️ **Network egress filtering** — documented as known limitation (ADR-0030). No localhost-only default or host allowlist for adapter child processes
 - ⚠️ **ANTHROPIC_/CLAUDE_ env vars forwarded** — intentional for auth but contradicts "explicit allowlist only" model. Needs documented decision
@@ -180,7 +180,7 @@ grep -rn "S3_\|GCS_\|AZURE_BLOB_\|aws-sdk\|@aws-sdk\|@google-cloud/storage" src/
 ```
 
 - ✅ **No external storage** — agents work in local workDir only
-- ✅ **WorkDir restriction** — `AEGIS_ALLOWED_WORK_DIRS` limits filesystem scope
+- ✅ **WorkDir allowlist** — restricts session root directories at creation time (not adapter-level filesystem sandbox)
 - ✅ **No agent-writable file upload endpoints**
 
 **Verdict: ✅ MET**
