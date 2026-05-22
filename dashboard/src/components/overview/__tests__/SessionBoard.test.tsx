@@ -5,7 +5,7 @@
  * session card data rendering, sorting, accessibility roles.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import { SessionBoard } from '../SessionBoard';
 
 vi.mock('../../../api/client', () => ({
@@ -326,3 +326,141 @@ describe('SessionBoard', () => {
     });
   });
 });
+
+  // ── #3996: Pagination ─────────────────────────────────────────────
+
+  it('shows "Load more" button when total exceeds loaded sessions', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 's1', status: 'working' }),
+        makeSession({ id: 's2', status: 'idle' }),
+      ],
+      pagination: { page: 1, limit: 100, total: 216, totalPages: 3 },
+    });
+
+    render(<SessionBoard />);
+
+    const loadMoreBtn = await screen.findByRole('button', { name: /Load 214 more/ });
+    expect(loadMoreBtn).not.toBeNull();
+  });
+
+  it('does not show "Load more" when all sessions are loaded', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1' })],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 sessions')).not.toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: /Load.*more/ })).toBeNull();
+  });
+
+  it('shows total count in header when there are unloaded sessions', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1' })],
+      pagination: { page: 1, limit: 100, total: 50, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      // Shows total (50) not just loaded count (1)
+      expect(screen.getByText(/50 sessions/)).not.toBeNull();
+    });
+  });
+
+  it('shows loaded/total breakdown when hasMore', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1' }), makeSession({ id: 's2' })],
+      pagination: { page: 1, limit: 100, total: 216, totalPages: 3 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/216 sessions \(2 loaded\)/)).not.toBeNull();
+    });
+  });
+
+  it('does not show loaded breakdown when all sessions fit in one page', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1' }), makeSession({ id: 's2' })],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      // Just "2 sessions" without loaded breakdown
+      expect(screen.getByText('2 sessions')).not.toBeNull();
+    });
+    expect(screen.queryByText(/loaded\)/)).toBeNull();
+  });
+
+  it('appends sessions when "Load more" is clicked', async () => {
+    // First page
+    mockGetSessions.mockResolvedValueOnce({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 's1', status: 'working', displayName: 'first-page' }),
+      ],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 2 },
+    });
+
+    // Second page
+    mockGetSessions.mockResolvedValueOnce({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 's2', status: 'idle', displayName: 'second-page' }),
+      ],
+      pagination: { page: 2, limit: 100, total: 2, totalPages: 2 },
+    });
+
+    render(<SessionBoard />);
+
+    // Wait for first page
+    await screen.findByText('first-page');
+
+    // Click load more
+    const loadMoreBtn = screen.getByRole('button', { name: /Load 1 more/ });
+    fireEvent.click(loadMoreBtn);
+
+    // Both sessions should be visible
+    await waitFor(() => {
+      expect(screen.getByText('first-page')).not.toBeNull();
+      expect(screen.getByText('second-page')).not.toBeNull();
+    });
+
+    // "Load more" button should disappear
+    expect(screen.queryByRole('button', { name: /Load.*more/ })).toBeNull();
+  });
+
+  it('shows loading spinner on "Load more" button while fetching', async () => {
+    // First page resolves immediately
+    mockGetSessions.mockResolvedValueOnce({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1' })],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 2 },
+    });
+
+    // Second page hangs
+    mockGetSessions.mockReturnValueOnce(new Promise(() => {}));
+
+    render(<SessionBoard />);
+
+    const loadMoreBtn = await screen.findByRole('button', { name: /Load 1 more/ });
+    fireEvent.click(loadMoreBtn);
+
+    // Button should show loading state
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).not.toBeNull();
+    });
+  });
