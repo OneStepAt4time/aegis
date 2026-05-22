@@ -122,7 +122,16 @@ export function useT() {
       }
       return typeof result === 'string' ? result : key;
     };
-    return resolve;
+    // Support parameter interpolation in fallback (for tests without I18nProvider)
+    return (key: string, params?: Record<string, string | number>) => {
+      let result = resolve(key);
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          result = result.replace(`{${k}}`, String(v));
+        }
+      }
+      return result;
+    };
   }
   return context.t;
 }

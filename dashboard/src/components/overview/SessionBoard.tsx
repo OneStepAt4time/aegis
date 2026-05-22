@@ -17,6 +17,7 @@ import StatusDot from './StatusDot';
 import { useStore } from '../../store/useStore';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { Loader2, Columns3, ChevronDown } from 'lucide-react';
+import { useT } from '../../i18n/context';
 
 const PAGE_SIZE = 100;
 
@@ -34,31 +35,31 @@ type BoardColumn = {
 const BOARD_COLUMNS: BoardColumn[] = [
   {
     id: 'running',
-    title: 'Running',
+    title: 'colRunning',
     statuses: ['working', 'compacting', 'plan_mode', 'settings'],
     color: 'text-[var(--color-success)]',
   },
   {
     id: 'waiting',
-    title: 'Waiting',
+    title: 'colWaiting',
     statuses: ['permission_prompt', 'ask_question', 'bash_approval', 'context_warning', 'waiting_for_input'],
     color: 'text-[var(--color-warning)]',
   },
   {
     id: 'idle',
-    title: 'Idle',
+    title: 'colIdle',
     statuses: ['idle'],
     color: 'text-[var(--color-text-muted)]',
   },
   {
     id: 'errors',
-    title: 'Errors',
+    title: 'colErrors',
     statuses: ['error', 'rate_limit', 'killed'],
     color: 'text-[var(--color-danger)]',
   },
   {
     id: 'completed',
-    title: 'Completed',
+    title: 'colCompleted',
     statuses: ['completed'],
     color: 'text-[var(--color-text-muted)]/70',
   },
@@ -71,29 +72,29 @@ function getStatusGroup(status: string): string {
   return 'other';
 }
 
-function formatTimeAgo(timestamp: number): string {
+function formatTimeAgo(timestamp: number, t: (key: string, params?: Record<string, string | number>) => string): string {
   const diff = Date.now() - timestamp;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('sessions.board.justNow');
+  if (mins < 60) return t('sessions.board.minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('sessions.board.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t('sessions.board.daysAgo', { count: days });
 }
 
-function formatDuration(start: number): string {
+function formatDuration(start: number, t: (key: string, params?: Record<string, string | number>) => string): string {
   const diff = Date.now() - start;
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return t('sessions.board.durationMinutes', { count: mins });
   const hours = Math.floor(mins / 60);
   const m = mins % 60;
-  return `${hours}h ${m}m`;
+  return t('sessions.board.durationHours', { count: hours, rest: m });
 }
 
-function SessionCard({ session }: { session: SessionInfo }) {
-  const age = formatDuration(session.createdAt);
-  const lastActive = formatTimeAgo(session.lastActivity);
+function SessionCard({ session, t }: { session: SessionInfo; t: (key: string, params?: Record<string, string | number>) => string }) {
+  const age = formatDuration(session.createdAt, t);
+  const lastActive = formatTimeAgo(session.lastActivity, t);
   const statusGroup = getStatusGroup(session.status);
 
   return (
@@ -127,7 +128,7 @@ function SessionCard({ session }: { session: SessionInfo }) {
       {statusGroup === 'waiting' && (
         <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--color-warning)]">
           <div className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)] animate-pulse" />
-          <span>Needs attention</span>
+          <span>{t('sessions.board.needsAttention')}</span>
         </div>
       )}
     </div>
@@ -137,12 +138,15 @@ function SessionCard({ session }: { session: SessionInfo }) {
 function BoardColumnView({
   column,
   sessions,
+  t,
 }: {
   column: BoardColumn;
   sessions: SessionInfo[];
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
+  const colTitle = t(`sessions.board.${column.title}`);
   return (
-    <div className="w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label={`${column.title} sessions`}>
+    <div className="w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label={`${colTitle} sessions`}>
       {/* Column header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -154,7 +158,7 @@ function BoardColumnView({
             'bg-[var(--color-text-muted)]'
           }`} />
           <h3 className={`text-xs font-semibold uppercase tracking-wider ${column.color}`}>
-            {column.title}
+            {colTitle}
           </h3>
           <span className="rounded-full bg-[var(--color-void-lighter)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
             {sessions.length}
@@ -163,15 +167,15 @@ function BoardColumnView({
       </div>
 
       {/* Cards */}
-      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto rounded-lg p-1" role="list" aria-label={`${column.title} session list`}>
+      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto rounded-lg p-1" role="list" aria-label={`${colTitle} session list`}>
         {sessions.length === 0 && (
           <div className="flex items-center justify-center py-8 text-xs text-[var(--color-text-muted)]/50">
-            No sessions
+            {t('sessions.board.columnEmpty')}
           </div>
         )}
         {sessions.map((session) => (
           <div key={session.id} role="listitem">
-            <SessionCard session={session} />
+            <SessionCard session={session} t={t} />
           </div>
         ))}
       </div>
@@ -180,6 +184,7 @@ function BoardColumnView({
 }
 
 export function SessionBoard() {
+  const t = useT();
   const sseConnected = useStore((s) => s.sseConnected);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -222,7 +227,7 @@ export function SessionBoard() {
       // Do NOT reset currentPage — preserve loaded pages on refresh
       setLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sessions');
+      setError(err instanceof Error ? err.message : t('sessions.board.loadError'));
       setLoading(false);
     }
   }, []);
@@ -300,7 +305,7 @@ export function SessionBoard() {
     return (
       <div className="flex items-center justify-center py-16" role="status" aria-busy="true" aria-label="Loading session board">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-text-muted)]" />
-        <span className="ml-2 text-sm text-[var(--color-text-muted)]">Loading sessions...</span>
+        <span className="ml-2 text-sm text-[var(--color-text-muted)]">{t('sessions.board.loading')}</span>
       </div>
     );
   }
@@ -308,7 +313,7 @@ export function SessionBoard() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-16" role="alert">
-        <p className="text-sm text-[var(--color-danger)]">Failed to load: {error}</p>
+        <p className="text-sm text-[var(--color-danger)]">{t('sessions.board.loadError')}: {error}</p>
       </div>
     );
   }
@@ -318,14 +323,14 @@ export function SessionBoard() {
       {/* Board header with stats */}
       <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
         <Columns3 className="h-4 w-4" />
-        <span>{totalCount} sessions{hasMore ? ` (${loadedSessions} loaded)` : ''}</span>
+        <span>{t('sessions.board.totalSessions', { count: totalCount })}{hasMore ? ` ${t('sessions.board.loadedCount', { count: loadedSessions })}` : ''}</span>
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
-          {runningCount} running
+          {t('sessions.board.runningCount', { count: runningCount })}
         </span>
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]" />
-          {waitingCount} waiting
+          {t('sessions.board.waitingCount', { count: waitingCount })}
         </span>
       </div>
 
@@ -341,6 +346,7 @@ export function SessionBoard() {
             key={col.id}
             column={col}
             sessions={columns.grouped.get(col.id) ?? []}
+            t={t}
           />
         ))}
 
@@ -350,7 +356,7 @@ export function SessionBoard() {
             <div className="flex items-center gap-2 px-1">
               <div className="h-2 w-2 rounded-full bg-[var(--color-text-muted)]/50" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                Other
+                {t('sessions.board.colOther')}
               </h3>
               <span className="rounded-full bg-[var(--color-void-lighter)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
                 {columns.grouped.get('other')?.length ?? 0}
@@ -359,7 +365,7 @@ export function SessionBoard() {
             <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto rounded-lg p-1" role="list">
               {(columns.grouped.get('other') ?? []).map((session) => (
                 <div key={session.id} role="listitem">
-                  <SessionCard session={session} />
+                  <SessionCard session={session} t={t} />
                 </div>
               ))}
             </div>
@@ -375,17 +381,17 @@ export function SessionBoard() {
             onClick={loadMore}
             disabled={loadingMore}
             className="flex items-center gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={`Load ${remaining} more sessions`}
+            aria-label={t('sessions.board.loadMore', { count: remaining })}
           >
             {loadingMore ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
+                {t('sessions.board.loadingMore')}
               </>
             ) : (
               <>
                 <ChevronDown className="h-4 w-4" />
-                Load {remaining} more
+                {t('sessions.board.loadMore', { count: remaining })}
               </>
             )}
           </button>
