@@ -1,6 +1,8 @@
 # Multica v1 Battle Card
 
-> Generated 2026-05-22 by Hermes (Release/DevOps). For internal use.
+> Generated 2026-05-22 by Orpheus (DevRel). Updated 2026-05-22 with strategic review by Boss, Argus, Daedalus.
+>
+> **Threat level: 🟡 MEDIUM** (downgraded from 🟡 HIGH per Boss + Argus review — architecture mismatch limits real overlap)
 
 ## Executive Summary
 
@@ -146,3 +148,59 @@ Multica is a **different product category** (project management for AI agents) t
 4. Market solo-dev simplicity aggressively (their weakness)
 
 The window is open. Multica has no MCP, no audit trail, no budget enforcement, no multi-channel notifications. These are enterprise table stakes that Aegis already has. Ship these harder while closing the runtime gap.
+
+---
+
+## Strategic Review — 2026-05-22
+
+### Source Assessment (Orpheus)
+
+- **Architecture:** B+ — Clean Go separation (Chi + sqlc + pgx/v5), Go 1.26.1, typed SQL via sqlc, test culture (PRs cite test counts — 748 frontend, 387 core)
+- **CLI UX:** 8/10 — Polished Cobra CLI, clear `multica <noun> <verb>` pattern, profile isolation, cross-platform (brew/curl/PowerShell)
+- **Security:** C+ — Email-only auth (good), PAT + daemon tokens, but no SECURITY.md, no formal audit trail, rate limiting optional/fail-open, default JWT secret weak, no SSO/SAML/OIDC
+- **Community:** B+ — 31K stars (~180/day), 4 core contributors (3 at ~800+ commits each), bus factor of 4
+- **License:** Modified Apache 2.0 — NOT OSI-approved. Source-available with commercial restrictions (can't offer as hosted SaaS without license). Aegis's MIT license is clearer for community.
+- **Release cadence:** v0.1.0 (Jan 15) → v0.3.5 (May 21) = 6 releases, accelerating. v0.3.5 had 925 downloads in <24h.
+
+### Boss's Strategic Direction
+
+- **Correct framing:** Horizontal (broad but shallow) vs vertical (narrow but deep). Multica's moat is operational UX. Aegis's moat is enterprise governance.
+- **Don't chase breadth** — correct today, but not forever. Squads and autopilots are on our roadmap for a reason. Phase 4, after enterprise depth is solid.
+- **925 downloads in 24h** — signal, not panic. Keep shipping velocity high.
+- **Task queue (#3970)** stays high priority — validate the spec, get Hep on it when current work clears.
+- **Orphan sweeper (#4004)** — foundation for reliability. Argus already spec'd it.
+
+### Argus's Threat Assessment (#3969)
+
+- Downgraded from 🟡 HIGH to 🟡 MEDIUM
+- Architecture mismatch limits real overlap
+- Our moat (dashboard, security, audit, cost, approvals) is defensible
+- Their moat (Squads, multi-runtime) is standard patterns already on our roadmap
+- **Strategic response:** ship quality, not feature parity
+- Most of Multica's "P0" features already in Aegis's roadmap or codebase
+- Only new gap found: orphan action recovery (#4004, P2)
+
+### Daedalus's Dashboard Analysis
+
+**In scope (adopt clean-room):**
+- Agent Profiles (#3971, P1) — keystone feature, prerequisite for everything else
+- Skills System (#3979, P2) — compounding knowledge is a genuine differentiator
+- Task Queue (#3970, P2) — retry/resume valuable but not blocking
+
+**Out of scope (don't adopt):**
+- Comments & @Mentions (#3978) — scope creep, we use GitHub issues
+- Autopilots (#3972) — already handled by our cron + webhook system
+- Squads (#3973) — too early, needs Agent Profiles + multi-session proven first
+
+**Our moat to invest harder in:**
+- Dashboard — they have zero web UI
+- Approval workflows — fully autonomous agents vs our human-in-the-loop gates
+- Audit trail — no competitor at our depth
+
+### Summary: Strategic Response
+
+1. **Double down on enterprise governance** — auth, audit, RBAC, cost tracking. That's the moat enterprises pay for.
+2. **Ship task queues** (#3970) — the one gap that matters operationally.
+3. **Build Agent Profiles** (#3971) — the keystone for everything downstream (skills, squads).
+4. **License clarity is an advantage** — MIT vs their source-available Modified Apache 2.0.
+5. **Keep shipping velocity high** — 925 downloads in 24h is a signal.
