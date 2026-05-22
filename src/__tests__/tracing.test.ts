@@ -77,14 +77,14 @@ describe('tracing', () => {
   describe('initTracing (disabled)', () => {
     it('returns no-op tracer when disabled', async () => {
       const { initTracing, isTracingEnabled } = await import('../tracing.js');
-      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       expect(tracer).toBeDefined();
       expect(isTracingEnabled()).toBe(false);
     });
 
     it('no-op tracer creates non-recording spans', async () => {
       const { initTracing } = await import('../tracing.js');
-      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = tracer.startSpan('test.span');
       expect(span.isRecording()).toBe(false);
       span.end(); // should not throw
@@ -92,7 +92,7 @@ describe('tracing', () => {
 
     it('no-op startActiveSpan does not throw', async () => {
       const { initTracing } = await import('../tracing.js');
-      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      const tracer = await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const result = tracer.startActiveSpan('test.active', (span) => {
         expect(span.isRecording()).toBe(false);
         return 42;
@@ -102,7 +102,7 @@ describe('tracing', () => {
 
     it('getTracer returns no-op tracer when disabled', async () => {
       const { initTracing, getTracer } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const tracer = getTracer();
       const span = tracer.startSpan('test');
       expect(span.isRecording()).toBe(false);
@@ -112,7 +112,7 @@ describe('tracing', () => {
   describe('span helpers', () => {
     it('startSessionSpan creates non-recording span when tracing is off', async () => {
       const { initTracing, startSessionSpan } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = startSessionSpan('create', 'session-123', { workDir: '/tmp/test' });
       expect(span.isRecording()).toBe(false);
       span.end();
@@ -120,7 +120,7 @@ describe('tracing', () => {
 
     it('startMonitorSpan creates non-recording span when tracing is off', async () => {
       const { initTracing, startMonitorSpan } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = startMonitorSpan('poll');
       expect(span.isRecording()).toBe(false);
       span.end();
@@ -128,7 +128,7 @@ describe('tracing', () => {
 
     it('spanError does not throw on no-op span', async () => {
       const { initTracing, startSessionSpan, spanError } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = startSessionSpan('create', 's-1');
       expect(() => spanError(span, new Error('test error'))).not.toThrow();
       span.end();
@@ -136,7 +136,7 @@ describe('tracing', () => {
 
     it('spanOk does not throw on no-op span', async () => {
       const { initTracing, startSessionSpan, spanOk } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = startSessionSpan('create', 's-1');
       expect(() => spanOk(span, 'created')).not.toThrow();
       span.end();
@@ -155,7 +155,7 @@ describe('tracing', () => {
         enabled: true,
         serviceName: 'test',
         otlpEndpoint: 'http://localhost:4318',
-        sampleRate: 1.0,
+        sampleRate: 1.0, includeHostname: true, includePid: true,
       });
 
       expect(tracer).toBeDefined();
@@ -166,7 +166,7 @@ describe('tracing', () => {
   describe('shutdownTracing', () => {
     it('does not throw when tracing is disabled', async () => {
       const { initTracing, shutdownTracing } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       await expect(shutdownTracing()).resolves.not.toThrow();
     });
   });

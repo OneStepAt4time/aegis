@@ -57,6 +57,10 @@ export interface TracingConfig {
   otlpEndpoint: string;
   /** Sample rate 0.0–1.0 (default: 1.0 = always sample) */
   sampleRate: number;
+  /** Include hostname in resource attributes (default: true for backward compat) */
+  includeHostname: boolean;
+  /** Include PID in resource attributes (default: true for backward compat) */
+  includePid: boolean;
 }
 
 /** Load tracing config from AEGIS_OTEL_* environment variables. */
@@ -66,6 +70,8 @@ export function loadTracingConfig(): TracingConfig {
     serviceName: process.env.AEGIS_OTEL_SERVICE_NAME || 'aegis',
     otlpEndpoint: process.env.AEGIS_OTEL_OTLP_ENDPOINT || 'http://localhost:4318',
     sampleRate: parseFloat(process.env.AEGIS_OTEL_SAMPLE_RATE || '1.0'),
+    includeHostname: process.env.AEGIS_OTEL_INCLUDE_HOSTNAME !== 'false',
+    includePid: process.env.AEGIS_OTEL_INCLUDE_PID !== 'false',
   };
 }
 
@@ -116,12 +122,17 @@ export async function initTracing(config: TracingConfig): Promise<Tracer> {
     // Build the resource with service identity attributes
     const resourcesModule = await import('@opentelemetry/resources');
     const semconvModule = await import('@opentelemetry/semantic-conventions');
-    const resource = resourcesModule.resourceFromAttributes({
+    const resourceAttrs: Record<string, string> = {
       [semconvModule.ATTR_SERVICE_NAME]: config.serviceName,
       [semconvModule.ATTR_SERVICE_VERSION]: serviceVersion,
-      'aegis.pid': String(process.pid),
-      'aegis.node': os.hostname(),
-    });
+    };
+    if (config.includePid) {
+      resourceAttrs['aegis.pid'] = String(process.pid);
+    }
+    if (config.includeHostname) {
+      resourceAttrs['aegis.node'] = os.hostname();
+    }
+    const resource = resourcesModule.resourceFromAttributes(resourceAttrs);
 
     // Sampler: AlwaysOn when sampleRate=1.0, ratio-based otherwise
     const sampler = config.sampleRate >= 1.0

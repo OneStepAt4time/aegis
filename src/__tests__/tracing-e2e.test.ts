@@ -253,7 +253,7 @@ describe('OpenTelemetry E2E trace correlation', () => {
   describe('tracing module integration', () => {
     it('startChannelSpan creates a span with channel name prefix', async () => {
       const { initTracing, startChannelSpan } = await import('../tracing.js');
-      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0 });
+      await initTracing({ enabled: false, serviceName: 'test', otlpEndpoint: 'http://localhost:4318', sampleRate: 1.0, includeHostname: true, includePid: true });
       const span = startChannelSpan('telegram', 'session.created', { 'aegis.channel.event': 'session.created' });
       expect(span).toBeDefined();
       expect(span.isRecording()).toBe(false);
