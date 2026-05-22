@@ -458,6 +458,31 @@ export class MemoryAcpActionQueue implements AcpActionQueue {
     this.state = state;
   }
 
+  async sweepOrphanedActions(now: Date = new Date()): Promise<AcpActionRecord[]> {
+    const recovered: AcpActionRecord[] = [];
+    for (const action of this.state.actions) {
+      if (
+        action.status === 'leased' &&
+        action.leasedUntil !== undefined &&
+        action.leasedUntil.getTime() <= now.getTime()
+      ) {
+        action.status = 'failed';
+        action.failedAt = new Date(now.getTime());
+        action.leasedUntil = undefined;
+        action.errorMetadata = {
+          sweeper: true,
+          reason: 'lease_expired',
+          recoveredAt: now.toISOString(),
+        };
+        recovered.push(cloneAction(action));
+      }
+    }
+    if (recovered.length > 0) {
+      await this.onMutation();
+    }
+    return recovered;
+  }
+
   private findByIdempotencyKey(
     input: AcpControlActionInput,
     idempotencyKey: string

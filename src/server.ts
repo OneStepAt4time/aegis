@@ -76,6 +76,7 @@ import { AcpBackend } from './services/acp/backend.js';
 import { AcpSessionService } from './services/acp/session-service.js';
 import { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
 import { createFileAcpLocalStorageProfile, type AcpLocalStorageProfile } from './services/acp/local-storage.js';
+import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweeper.js';
 import { mapAcpJsonRpcNotificationToEvent } from './services/acp/event-mapper.js';
 import {
   registerHealthRoutes,
@@ -158,6 +159,7 @@ let acpSessionService: AcpSessionService | null = null;
 let acpBackend: AcpBackend | null = null;
 let acpTerminalBridge: AcpTerminalBridge | null = null;
 let acpPauseStore: import('./services/acp/pause-intervention.js').AcpPauseInterventionStore | null = null;
+let actionSweeper: ActionSweeper | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
@@ -866,6 +868,28 @@ async function main(): Promise<void> {
   // Issue #3143: Wire ACP event store into session transcript reader
   sessions.setAcpEventStore(acpLocalProfile.eventStore);
 
+  // Issue #4004: Orphan action sweeper — recovers stale leased actions
+  const sweeperConfig = resolveSweeperConfig();
+  if (sweeperConfig.enabled) {
+    actionSweeper = new ActionSweeper(acpLocalProfile.actionQueue, sweeperConfig, {
+      onRecovered: (actions) => {
+        logger.info({
+          component: 'server',
+          operation: 'action_sweeper_recovered',
+          attributes: { count: actions.length, actionIds: actions.map(a => a.actionId) },
+        });
+      },
+      onError: (err) => {
+        logger.error({
+          component: 'server',
+          operation: 'action_sweeper_error',
+          errorCode: 'ACTION_SWEEPER_ERROR',
+          attributes: { error: err instanceof Error ? err.message : String(err) },
+        });
+      },
+    });
+  }
+
   // Memory bridge (Issue #783)
   if (config.memoryBridge?.enabled) {
     const persistPath = config.memoryBridge.persistPath ?? path.join(config.stateDir, 'memory.json');
@@ -1200,6 +1224,8 @@ async function main(): Promise<void> {
   const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
   // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
   const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
+  // Issue #4004: Start orphan action sweeper
+  actionSweeper?.start();
   // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
   let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
   let pidFilePath = '';
@@ -1275,6 +1301,8 @@ async function main(): Promise<void> {
       clearInterval(authFailPruneInterval);
       clearInterval(authSweepInterval);
       clearInterval(quotaSweepInterval);
+      // Issue #4004: Stop orphan action sweeper
+      actionSweeper?.stop();
       if (staticPruneInterval) clearInterval(staticPruneInterval);
       rateLimiter.dispose();
 

@@ -79,6 +79,12 @@ export interface AcpActionQueue {
     scope: AcpSessionScope,
     options?: AcpCancelActionOptions
   ): Promise<AcpActionRecord | null>;
+
+  /**
+   * Sweep all leased actions past their leasedUntil deadline, marking them as failed.
+   * Returns the list of recovered action records.
+   */
+  sweepOrphanedActions(now?: Date): Promise<AcpActionRecord[]>;
 }
 
 const MAX_ACTION_METADATA_KEYS = 20;
