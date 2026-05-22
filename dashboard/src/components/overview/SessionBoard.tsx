@@ -9,12 +9,16 @@
  * Each card shows: session name, model, status, last activity.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getSessions } from '../../api/client';
 import type { SessionInfo, UIState } from '../../types';
 import StatusDot from './StatusDot';
 import { useStore } from '../../store/useStore';
+import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { Loader2, Columns3 } from 'lucide-react';
+
+const FALLBACK_POLL_INTERVAL_MS = 5_000;
+const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 
 /** Status groupings for board columns */
 type BoardColumn = {
@@ -97,7 +101,7 @@ function SessionCard({ session }: { session: SessionInfo }) {
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--color-text-muted)]">
         {session.model && (
           <span className="rounded-full bg-[var(--color-void-lighter)]/50 px-2 py-0.5 font-mono" title={session.model}>
-            {session.model.replace('claude-', '').replace(/-d{8}$/, '')}
+            {session.model.replace('claude-', '').replace(/-\d{8}$/, '')}
           </span>
         )}
         <span title={`Started ${age} ago`}>⏱ {age}</span>
@@ -160,33 +164,30 @@ function BoardColumnView({
 
 export function SessionBoard() {
   const sseConnected = useStore((s) => s.sseConnected);
+  const latestActivity = useStore((s) => s.activities[0] ?? null);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
-      setLoading(true);
       setError(null);
       const result = await getSessions({ limit: 100 });
       setSessions(result.sessions);
+      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
-    } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void fetchSessions();
-  }, [fetchSessions]);
-
-  // Refetch on SSE reconnect
-  useEffect(() => {
-    if (sseConnected) {
-      void fetchSessions();
-    }
-  }, [sseConnected, fetchSessions]);
+  useSseAwarePolling({
+    refresh: fetchSessions,
+    sseConnected,
+    eventTrigger: latestActivity,
+    fallbackPollIntervalMs: FALLBACK_POLL_INTERVAL_MS,
+    healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
+  });
 
   const columns = useMemo(() => {
     const grouped = new Map<string, SessionInfo[]>();
