@@ -36,6 +36,10 @@ export interface UsageRecord {
   costUsd: number;
   /** Model name (if known). */
   model: string | undefined;
+  /** Issue #3946: Agent ID from CC OTEL spans — correlates subagent work. */
+  agentId?: string;
+  /** Issue #3946: Parent agent ID — nests subagent under dispatching tool span. */
+  parentAgentId?: string;
 }
 
 /** Configurable rate tier for cost estimation. */
@@ -261,7 +265,7 @@ export class MeteringService {
    * Record a token usage delta from JSONL parsing.
    * Called by the jsonlWatcher when new entries with token usage are detected.
    */
-  recordTokenUsage(sessionId: string, delta: TokenUsageDelta, model?: string): void {
+  recordTokenUsage(sessionId: string, delta: TokenUsageDelta, model?: string, agentContext?: { agentId?: string; parentAgentId?: string }): void {
     if (delta.inputTokens === 0 && delta.outputTokens === 0) return;
 
     const keyId = this.getSessionOwner(sessionId);
@@ -278,6 +282,8 @@ export class MeteringService {
       cacheReadTokens: delta.cacheReadTokens,
       costUsd,
       model,
+      agentId: agentContext?.agentId,
+      parentAgentId: agentContext?.parentAgentId,
     };
     this.records.push(record);
     this.autoPrune();

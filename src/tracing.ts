@@ -207,13 +207,14 @@ export function startSessionSpan(
   sessionId: string,
   attributes?: Record<string, string | number | boolean>,
 ): Span {
-  return _tracer.startSpan(`session.${operation}`, {
+  const span = _tracer.startSpan(`session.${operation}`, {
     kind: SpanKind.INTERNAL,
     attributes: {
       'aegis.session.id': sessionId,
       ...attributes,
     },
   });
+  return span;
 }
 
 /**
@@ -291,6 +292,10 @@ export interface ToolSpanAttributes {
   inputTokens?: number;
   /** Output token count for the tool result (if available) */
   outputTokens?: number;
+  /** Issue #3946: Agent ID from CC — correlates subagent work to originating session. */
+  agentId?: string;
+  /** Issue #3946: Parent agent ID — nests subagent under dispatching tool span. */
+  parentAgentId?: string;
 }
 
 /**

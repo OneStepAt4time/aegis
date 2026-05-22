@@ -384,8 +384,11 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         case 'PreToolUse': {
           const toolUseId = hookBody.tool_use_id || '';
           const toolName = hookBody.tool_name || 'unknown';
+          // Issue #3946: Extract agent context from CC hook payload for OTEL correlation.
+          const agentId = (hookBody as Record<string, unknown>).agent_id as string | undefined;
+          const parentAgentId = (hookBody as Record<string, unknown>).parent_agent_id as string | undefined;
           if (toolUseId) {
-            const span = startToolSpan('invoke', { sessionId, toolName, toolUseId });
+            const span = startToolSpan('invoke', { sessionId, toolName, toolUseId, agentId, parentAgentId });
             activeToolSpans.set(`${sessionId}:${toolUseId}`, span);
           }
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
