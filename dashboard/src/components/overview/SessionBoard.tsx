@@ -147,7 +147,7 @@ function BoardColumnView({
 }) {
   const colTitle = t(`sessions.board.${column.title}`);
   return (
-    <div className="w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label={`${colTitle} sessions`}>
+    <div className="w-full sm:w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label={`${colTitle} sessions`}>
       {/* Column header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -337,7 +337,7 @@ export function SessionBoard() {
 
       {/* Board */}
       <div
-        className="flex gap-4 overflow-x-auto pb-4"
+        className="flex flex-col sm:flex-row sm:gap-4 sm:overflow-x-auto pb-4"
         role="region"
         aria-label="Session board"
         tabIndex={0}
@@ -353,7 +353,7 @@ export function SessionBoard() {
 
         {/* Other column (only if there are sessions in it) */}
         {columns.hasOther && (
-          <div className="w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label="Other sessions">
+          <div className="w-full sm:w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label="Other sessions">
             <div className="flex items-center gap-2 px-1">
               <div className="h-2 w-2 rounded-full bg-[var(--color-text-muted)]/50" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
