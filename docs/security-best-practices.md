@@ -383,6 +383,31 @@ Before going to production:
 
 ---
 
+## Known Security Limitations
+
+### Network Egress Is Unrestricted
+
+ACP child processes (Claude Code sessions) run with **full host network access**. This means:
+
+- A compromised or malicious agent can make outbound network requests (`curl`, `scp`, `wget`, etc.) to any destination
+- Data exfiltration via network is possible if an agent is compromised
+- There is no built-in egress filtering or network namespace isolation
+
+**Solo-dev localhost deployment:** This is acceptable. The agent runs as the same user who owns the machine — if you trust yourself, you trust your agents.
+
+**Multi-user or hosted deployments:** Network isolation is **mandatory**. Use one of:
+
+- **Network namespaces** (`ip netns`) to restrict ACP child processes to isolated network contexts
+- **Egress proxy** (e.g., Squid with allowlists) to control outbound destinations
+- **Container-level isolation** (Docker networks with `--internal` flag) to block external access
+- **Service mesh policies** (e.g., Istio authorization policies) for Kubernetes deployments
+
+This limitation is tracked in the Phase 4 roadmap. Network isolation will be added when multi-user deployments are supported.
+
+> **See also:** [ADR-0030 — Network Isolation Scope by Deployment Tier](adr/0030-network-isolation-scope-by-deployment-tier.md)
+
+---
+
 ## Reporting Security Issues
 
 If you discover a security vulnerability:
