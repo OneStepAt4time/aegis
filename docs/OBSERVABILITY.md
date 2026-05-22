@@ -193,6 +193,8 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 | `AEGIS_OTEL_SERVICE_NAME` | `aegis` | Service name in traces |
 | `AEGIS_OTEL_OTLP_ENDPOINT` | `http://localhost:4318` | OTLP collector endpoint |
 | `AEGIS_OTEL_SAMPLE_RATE` | `1.0` | Sampling ratio (0.0–1.0) |
+| `AEGIS_OTEL_INCLUDE_HOSTNAME` | `true` | Include `os.hostname()` in resource attributes (set `false` to redact PII) |
+| `AEGIS_OTEL_INCLUDE_PID` | `true` | Include process PID in resource attributes (set `false` to redact) |
 
 ### Span Taxonomy
 
