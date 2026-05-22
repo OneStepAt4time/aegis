@@ -201,7 +201,7 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 | `session.create` | INTERNAL | `aegis.session.id`, `workDir` |
 | `session.send` | INTERNAL | `aegis.session.id` |
 | `session.kill` | INTERNAL | `aegis.session.id` |
-| `tool.invoke` | INTERNAL | `aegis.session.id`, `aegis.tool.name`, `aegis.tool.use_id`, `aegis.tool.result`, `aegis.tool.duration_ms` |
+| `tool.invoke` | INTERNAL | `aegis.session.id`, `aegis.tool.name`, `aegis.tool.use_id`, `aegis.tool.result`, `aegis.tool.duration_ms`, `aegis.agent.id`, `aegis.agent.parent_id` |
 | `acp.send_prompt` | INTERNAL | `aegis.session.id` |
 | `acp.respond_approval` | INTERNAL | `aegis.session.id` |
 | `monitor.poll` | INTERNAL | — |
@@ -232,6 +232,8 @@ Aegis creates `tool.*` spans for every tool invocation (Bash, Read, Write, Edit,
 | `aegis.tool.output_tokens` | Output token count (optional) |
 | `aegis.tool.result` | `"success"` or `"failure"` |
 | `aegis.tool.duration_ms` | Execution duration in milliseconds |
+| `aegis.agent.id` | CC agent ID for subagent correlation (v2.1.141+; CC hooks + ACP) |
+| `aegis.agent.parent_id` | Parent agent ID when invoked from a subagent (v2.1.141+) |
 
 **Querying in Jaeger/Tempo:**
 
