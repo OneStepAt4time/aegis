@@ -260,6 +260,14 @@ export interface CreateSessionRequest {
   autoApprove?: boolean;
   parentId?: string;
   memoryKeys?: string[];
+  /** Issue #2535 / #3948: Model name at creation (e.g. "claude-sonnet-4-6"). Carried over on resume. */
+  model?: string;
+  /** Issue #3948: Effort level at creation. Carried over on resume. */
+  effort?: string;
+  /** Issue #2913: Per-session custom system prompt. */
+  systemPrompt?: string;
+  /** Issue #3613: Per-session isolation policy override. */
+  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
 }
 
 export interface PaneResponse {

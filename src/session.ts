@@ -807,6 +807,20 @@ export class SessionManager {
     windowId = '';
     finalName = displayName;
 
+    // Issue #3948: When resuming, carry over model/effort from the original session
+    // if no explicit override is provided. This preserves /model changes made mid-session.
+    let effectiveModel = opts.model || detectedModel;
+    let effectiveEffort = opts.effort;
+    if (opts.resumeSessionId && !opts.model) {
+      const oldSession = this.state.sessions[opts.resumeSessionId];
+      if (oldSession?.model) {
+        effectiveModel = oldSession.model;
+      }
+      if (!opts.effort && oldSession?.effort) {
+        effectiveEffort = oldSession.effort;
+      }
+    }
+
     const session: SessionInfo = {
       id,
       windowId,
@@ -831,8 +845,9 @@ export class SessionManager {
       tenantId: opts.tenantId,
       // Issue #2535: Store model at creation so analytics can group by model
       // Issue #3740: Fall back to model from CC settings if not provided at creation.
-      model: opts.model || detectedModel,
-      effort: opts.effort,
+      // Issue #3948: effectiveModel includes resume carry-over from original session.
+      model: effectiveModel,
+      effort: effectiveEffort,
       runnerName: opts.runnerName,
       isolationMode: isolationMode,
       isolationPolicy: policy,
