@@ -7,6 +7,7 @@
  *
  * Columns: Running | Waiting | Idle | Other
  * Each card shows: session name, model, status, last activity.
+ * Pagination: "Load X more" button when sessions exceed page size.
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -15,7 +16,9 @@ import type { SessionInfo, UIState } from '../../types';
 import StatusDot from './StatusDot';
 import { useStore } from '../../store/useStore';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
-import { Loader2, Columns3 } from 'lucide-react';
+import { Loader2, Columns3, ChevronDown } from 'lucide-react';
+
+const PAGE_SIZE = 100;
 
 const FALLBACK_POLL_INTERVAL_MS = 5_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
@@ -167,13 +170,18 @@ export function SessionBoard() {
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchSessions = useCallback(async () => {
     try {
       setError(null);
-      const result = await getSessions({ limit: 100 });
+      const result = await getSessions({ limit: PAGE_SIZE, page: 1 });
       setSessions(result.sessions);
+      setTotalCount(result.pagination.total);
+      setCurrentPage(1);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
@@ -188,6 +196,24 @@ export function SessionBoard() {
     fallbackPollIntervalMs: FALLBACK_POLL_INTERVAL_MS,
     healthyPollIntervalMs: SSE_HEALTHY_POLL_INTERVAL_MS,
   });
+
+  const loadMore = useCallback(async () => {
+    const nextPage = currentPage + 1;
+    try {
+      setLoadingMore(true);
+      const result = await getSessions({ limit: PAGE_SIZE, page: nextPage });
+      setSessions((prev) => [...prev, ...result.sessions]);
+      setTotalCount(result.pagination.total);
+      setCurrentPage(nextPage);
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentPage]);
+
+  const hasMore = sessions.length < totalCount;
+  const remaining = totalCount - sessions.length;
 
   const columns = useMemo(() => {
     const grouped = new Map<string, SessionInfo[]>();
@@ -210,7 +236,7 @@ export function SessionBoard() {
     return { grouped, hasOther: (grouped.get('other')?.length ?? 0) > 0 };
   }, [sessions]);
 
-  const totalSessions = sessions.length;
+  const loadedSessions = sessions.length;
   const runningCount = sessions.filter(s => BOARD_COLUMNS[0].statuses.includes(s.status)).length;
   const waitingCount = sessions.filter(s => BOARD_COLUMNS[1].statuses.includes(s.status)).length;
 
@@ -236,7 +262,7 @@ export function SessionBoard() {
       {/* Board header with stats */}
       <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
         <Columns3 className="h-4 w-4" />
-        <span>{totalSessions} sessions</span>
+        <span>{totalCount} sessions{hasMore ? ` (${loadedSessions} loaded)` : ''}</span>
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
           {runningCount} running
@@ -284,6 +310,31 @@ export function SessionBoard() {
           </div>
         )}
       </div>
+
+      {/* Load more */}
+      {hasMore && (
+        <div className="flex justify-center py-2">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={`Load ${remaining} more sessions`}
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                Load {remaining} more
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
