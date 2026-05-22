@@ -321,7 +321,7 @@ export function startToolSpan(
   operation: string,
   attrs: ToolSpanAttributes,
 ): Span {
-  const { sessionId, toolName, toolUseId, inputTokens, outputTokens } = attrs;
+    const { sessionId, toolName, toolUseId, inputTokens, outputTokens, agentId, parentAgentId } = attrs;
   return _tracer.startSpan(`tool.${operation}`, {
     kind: SpanKind.INTERNAL,
     attributes: {
@@ -330,6 +330,8 @@ export function startToolSpan(
       ...(toolUseId && { 'aegis.tool.use_id': toolUseId }),
       ...(inputTokens !== undefined && { 'aegis.tool.input_tokens': inputTokens }),
       ...(outputTokens !== undefined && { 'aegis.tool.output_tokens': outputTokens }),
+      ...(agentId && { 'aegis.agent.id': agentId }),
+      ...(parentAgentId && { 'aegis.agent.parent_id': parentAgentId }),
     },
   });
 }
