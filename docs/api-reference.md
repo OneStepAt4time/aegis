@@ -782,7 +782,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `label` | string | no | Alias for `name` (same character restrictions; `name` takes precedence) |
 | `prompt` | string | no | Initial prompt to send after boot (max 100k chars; must be non-empty if provided). For follow-up messages after creation, use `POST /v1/sessions/:id/send` with `text` field. |
 | `prd` | string | no | Product Requirements Document text (max 100k chars) |
-| `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
+| `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID. When resuming, `model` and `effort` are inherited from the original session unless explicitly overridden. |
 | `model` | string | no | Model name for analytics grouping and per-session model override (max 200 chars, `a-zA-Z0-9._/-` only, must start with alphanumeric). When set, passed to the CC session via `--model` flag. |
 | `effort` | string | no | Reasoning effort level: `low`, `medium`, `high`. When set, passed to the CC session via `--effort` flag. |
 | `isolationPolicy` | string | no | Override server-level isolation policy for this session: `respect-cc` (default), `enforce-worktree`, or `enforce-direct`. See [isolation policy](#isolation-policy) below. |
