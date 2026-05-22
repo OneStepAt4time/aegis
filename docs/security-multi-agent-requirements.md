@@ -269,6 +269,8 @@ Feature PR authors should include this checklist in their PR description:
 
 ## Blocking Relationships
 
+> **⚠️ HARD BLOCKERS: Req 1 and Req 2 must be resolved before #3970 and #3971 can ship. No feature code for Task Queue or Agent Profiles should be written until the sandboxing infrastructure (Req 1) and identity model (Req 2) are designed. Building features that can't pass the security gate wastes cycles.**
+
 This issue **blocks** the following from merging without security review:
 
 | Issue | Feature | Applicable Requirements |
