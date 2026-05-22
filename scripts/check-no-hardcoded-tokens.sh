@@ -17,8 +17,8 @@ PATTERNS=(
 
 FOUND=0
 
-# Only scan tracked files (respect .gitignore)
-TRACKED_FILES=$(git ls-files -- ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml')
+# Only scan tracked files (respect .gitignore), exclude test fixtures
+TRACKED_FILES=$(git ls-files -- ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml' ':!*.test.ts' ':!*.test.js')
 
 for file in $TRACKED_FILES; do
   for pattern in "${PATTERNS[@]}"; do

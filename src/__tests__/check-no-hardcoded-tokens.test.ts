@@ -23,9 +23,10 @@ describe("check-no-hardcoded-tokens.sh", () => {
   it("detects a hardcoded gho_ token", () => {
     mkdirSync(tmpDir, { recursive: true });
     const fakeFile = join(tmpDir, "fake-config.ts");
+    // Use obviously-fake pattern: all zeros (not a real token)
     writeFileSync(
       fakeFile,
-      'const token = "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";'
+      'const token = "gho_000000000000000000000000000000000000";'
     );
 
     const pattern = "gho_[a-zA-Z0-9]{36}";
@@ -38,9 +39,10 @@ describe("check-no-hardcoded-tokens.sh", () => {
   it("detects a hardcoded ghp_ token", () => {
     mkdirSync(tmpDir, { recursive: true });
     const fakeFile = join(tmpDir, "fake-pat.ts");
+    // Use obviously-fake pattern: all zeros (not a real token)
     writeFileSync(
       fakeFile,
-      'const pat = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";'
+      'const pat = "ghp_000000000000000000000000000000000000";'
     );
 
     const pattern = "ghp_[a-zA-Z0-9]{36}";
