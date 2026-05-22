@@ -109,11 +109,11 @@ The tracking issue is #2574 and the child issue catalog spans #2575 through
       Redis coordination, local-dev storage profile (#2584–#2593)
 - [x] M2 — ACP runtime adapter, event mapping, action queue, fanout, terminal
       bridge, and golden contract tests (#2594–#2602)
-- [ ] M3 — breaking REST/MCP/OpenAPI/SDK contract cleanup and migration docs
+- [x] M3 — breaking REST/MCP/OpenAPI/SDK contract cleanup and migration docs
       (#2603–#2610)
 - [x] M4 — native ACP dashboard: chat, tool cards, approvals, driver/observer,
       pause/intervention, terminal debug, and timeline views (#2611–#2619)
-- [ ] M5 — soak, cutover, tmux deletion, deployment/docs cleanup, and final gate
+- [x] M5 — soak, cutover, tmux deletion, deployment/docs cleanup, and final gate
       (#2620–#2627)
 
 ---
