@@ -264,10 +264,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
           {/* Work Dir */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-workDir" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Working Directory <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
+              id="modal-workDir"
               type="text"
               ref={workDirRef}
               value={workDir}
@@ -279,10 +280,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Name */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-name" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Session Name
             </label>
             <input
+              id="modal-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -311,10 +313,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Prompt */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-prompt" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Initial Prompt
             </label>
             <textarea
+              id="modal-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Fix the login bug..."
@@ -325,10 +328,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Permission mode */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-permissionMode" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Permission Mode
             </label>
             <select
+              id="modal-permissionMode"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
@@ -372,10 +376,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         <form onSubmit={handleBatchSubmit} className="p-4 sm:p-5 space-y-4">
           {/* Shared prompt */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-sharedPrompt" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Shared Prompt
             </label>
             <textarea
+              id="modal-sharedPrompt"
               value={sharedPrompt}
               onChange={(e) => setSharedPrompt(e.target.value)}
               placeholder="Apply to all sessions without a per-row prompt..."
@@ -401,6 +406,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   value={row.workDir}
                   onChange={(e) => updateBatchRow(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
+                  aria-label={`Batch row ${i + 1} working directory`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
                 />
                 <input
@@ -408,6 +414,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   value={row.name}
                   onChange={(e) => updateBatchRow(i, 'name', e.target.value)}
                   placeholder="name"
+                  aria-label={`Batch row ${i + 1} session name`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <input
@@ -415,6 +422,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   value={row.prompt}
                   onChange={(e) => updateBatchRow(i, 'prompt', e.target.value)}
                   placeholder="Override prompt..."
+                  aria-label={`Batch row ${i + 1} prompt`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
                 />
                 <button
@@ -448,10 +456,11 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Permission mode */}
           <div>
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
+            <label htmlFor="modal-permissionMode" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
               Permission Mode
             </label>
             <select
+              id="modal-permissionMode"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
