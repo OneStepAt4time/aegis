@@ -10,7 +10,7 @@
  * Pagination: "Load X more" button when sessions exceed page size.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { getSessions } from '../../api/client';
 import type { SessionInfo, UIState } from '../../types';
 import StatusDot from './StatusDot';
@@ -49,6 +49,18 @@ const BOARD_COLUMNS: BoardColumn[] = [
     title: 'Idle',
     statuses: ['idle'],
     color: 'text-[var(--color-text-muted)]',
+  },
+  {
+    id: 'errors',
+    title: 'Errors',
+    statuses: ['error', 'rate_limit', 'killed'],
+    color: 'text-[var(--color-danger)]',
+  },
+  {
+    id: 'completed',
+    title: 'Completed',
+    statuses: ['completed'],
+    color: 'text-[var(--color-text-muted)]/70',
   },
 ];
 
@@ -136,6 +148,8 @@ function BoardColumnView({
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${
             column.id === 'running' ? 'bg-[var(--color-success)]' :
+            column.id === 'errors' ? 'bg-[var(--color-danger)]' :
+            column.id === 'completed' ? 'bg-[var(--color-text-muted)]/70' :
             column.id === 'waiting' ? 'bg-[var(--color-warning)]' :
             'bg-[var(--color-text-muted)]'
           }`} />
@@ -174,8 +188,21 @@ export function SessionBoard() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  // Issue #4012: AbortController to cancel in-flight loadMore when poll fires
+  const loadMoreAbortRef = useRef<AbortController | null>(null);
+
+  // Cancel any in-flight loadMore on unmount
+  useEffect(() => {
+    return () => {
+      loadMoreAbortRef.current?.abort();
+    };
+  }, []);
 
   const fetchSessions = useCallback(async () => {
+    // Issue #4012: Cancel in-flight loadMore to prevent race condition
+    loadMoreAbortRef.current?.abort();
+    loadMoreAbortRef.current = null;
+
     try {
       setError(null);
       const result = await getSessions({ limit: PAGE_SIZE, page: 1 });
@@ -210,16 +237,29 @@ export function SessionBoard() {
 
   const loadMore = useCallback(async () => {
     const nextPage = currentPage + 1;
+    // Issue #4012: Abort any previous in-flight loadMore
+    loadMoreAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadMoreAbortRef.current = controller;
+
     try {
       setLoadingMore(true);
       const result = await getSessions({ limit: PAGE_SIZE, page: nextPage });
-      setSessions((prev) => [...prev, ...result.sessions]);
+      if (controller.signal.aborted) return;
+      // Issue #4012: Dedup by session ID to prevent duplicates from race conditions
+      setSessions((prev) => {
+        const existingIds = new Set(prev.map((s) => s.id));
+        const newSessions = result.sessions.filter((s) => !existingIds.has(s.id));
+        return [...prev, ...newSessions];
+      });
       setTotalCount(result.pagination.total);
       setCurrentPage(nextPage);
     } catch {
       // Silently fail — user can retry
     } finally {
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoadingMore(false);
+      }
     }
   }, [currentPage]);
 
@@ -239,9 +279,14 @@ export function SessionBoard() {
       grouped.get(groupId)!.push(session);
     }
 
-    // Sort within each column: running first by most recent activity
+    // Sort within each column: primary by most recent activity, secondary by createdAt
+    // Issue #4010: Secondary sort key prevents jitter when sessions share lastActivity
     for (const [, colSessions] of grouped) {
-      colSessions.sort((a, b) => b.lastActivity - a.lastActivity);
+      colSessions.sort((a, b) => {
+        const activityDiff = b.lastActivity - a.lastActivity;
+        if (activityDiff !== 0) return activityDiff;
+        return b.createdAt - a.createdAt;
+      });
     }
 
     return { grouped, hasOther: (grouped.get('other')?.length ?? 0) > 0 };

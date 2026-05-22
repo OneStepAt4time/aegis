@@ -53,8 +53,8 @@ describe('SessionBoard', () => {
     mockGetSessions.mockResolvedValue({
       ...emptyResponse,
       sessions: [
-        makeSession({ id: 's1', status: 'working' }),
-        makeSession({ id: 's2', status: 'idle' }),
+        makeSession({ id: 's1', status: 'working', displayName: 'working-s1' }),
+        makeSession({ id: 's2', status: 'idle', displayName: 'idle-s2' }),
         makeSession({ id: 's3', status: 'permission_prompt' }),
       ],
       pagination: { page: 1, limit: 100, total: 3, totalPages: 1 },
@@ -198,8 +198,8 @@ describe('SessionBoard', () => {
     mockGetSessions.mockResolvedValue({
       ...emptyResponse,
       sessions: [
-        makeSession({ id: 's1', status: 'working' }),
-        makeSession({ id: 's2', status: 'idle' }),
+        makeSession({ id: 's1', status: 'working', displayName: 'working-s1' }),
+        makeSession({ id: 's2', status: 'idle', displayName: 'idle-s2' }),
       ],
       pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
     });
@@ -214,7 +214,7 @@ describe('SessionBoard', () => {
     mockGetSessions.mockResolvedValue({
       ...emptyResponse,
       sessions: [
-        makeSession({ id: 's1', status: 'working' }),
+        makeSession({ id: 's1', status: 'working', displayName: 'working-s1' }),
         makeSession({ id: 's2', status: 'compacting' }),
         makeSession({ id: 's3', status: 'permission_prompt' }),
         makeSession({ id: 's4', status: 'idle' }),
@@ -333,8 +333,8 @@ describe('SessionBoard', () => {
     mockGetSessions.mockResolvedValue({
       ...emptyResponse,
       sessions: [
-        makeSession({ id: 's1', status: 'working' }),
-        makeSession({ id: 's2', status: 'idle' }),
+        makeSession({ id: 's1', status: 'working', displayName: 'working-s1' }),
+        makeSession({ id: 's2', status: 'idle', displayName: 'idle-s2' }),
       ],
       pagination: { page: 1, limit: 100, total: 216, totalPages: 3 },
     });
@@ -463,4 +463,131 @@ describe('SessionBoard', () => {
     await waitFor(() => {
       expect(screen.getByText('Loading...')).not.toBeNull();
     });
+  });
+
+  // ── Issue #4010: New column structure ──────────────────────
+
+  it('renders Errors column for error/killed/rate_limit sessions', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 'e1', status: 'error', displayName: 'error-session' }),
+        makeSession({ id: 'e2', status: 'killed', displayName: 'killed-session' }),
+        makeSession({ id: 'e3', status: 'rate_limit', displayName: 'rate_limit-session' }),
+      ],
+      pagination: { page: 1, limit: 100, total: 3, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Errors')).not.toBeNull();
+    });
+
+    // All three error-type statuses should appear in the Errors column
+    expect(screen.getByText('error-session')).not.toBeNull();
+    expect(screen.getByText('killed-session')).not.toBeNull();
+    expect(screen.getByText('rate_limit-session')).not.toBeNull();
+  });
+
+  it('renders Completed column for completed sessions', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 'c1', status: 'completed', displayName: 'completed-session' }),
+      ],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).not.toBeNull();
+    });
+
+    expect(screen.getByText('completed-session')).not.toBeNull();
+  });
+
+  it('shows 5 columns for mixed status sessions', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [
+        makeSession({ id: 'r1', status: 'working', displayName: 'working-r1' }),
+        makeSession({ id: 'w1', status: 'permission_prompt', displayName: 'waiting-w1' }),
+        makeSession({ id: 'i1', status: 'idle', displayName: 'idle-i1' }),
+        makeSession({ id: 'e1', status: 'error', displayName: 'error-session' }),
+        makeSession({ id: 'c1', status: 'completed', displayName: 'completed-session' }),
+      ],
+      pagination: { page: 1, limit: 100, total: 5, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running')).not.toBeNull();
+    });
+
+    expect(screen.getByText('Waiting')).not.toBeNull();
+    expect(screen.getByText('Idle')).not.toBeNull();
+    expect(screen.getByText('Errors')).not.toBeNull();
+    expect(screen.getByText('Completed')).not.toBeNull();
+
+    // "Other" column should NOT appear — all statuses have dedicated columns
+    expect(screen.queryByText('Other')).toBeNull();
+  });
+
+  // ── Issue #4012: Race condition dedup ──────────────────────
+
+  it('loadMore deduplicates sessions by ID', async () => {
+    mockGetSessions
+      .mockResolvedValueOnce({
+        ...emptyResponse,
+        sessions: [makeSession({ id: 's1', status: 'working', displayName: 'working-s1' })],
+        pagination: { page: 1, limit: 1, total: 3, totalPages: 3 },
+      })
+      .mockResolvedValueOnce({
+        ...emptyResponse,
+        sessions: [makeSession({ id: 's2', status: 'idle', displayName: 'idle-s2' }), makeSession({ id: 's1', status: 'working', displayName: 'working-s1' })],
+        pagination: { page: 2, limit: 1, total: 3, totalPages: 3 },
+      });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('working-s1')).not.toBeNull();
+    });
+
+    // Click "Load more"
+    const loadMoreBtn = screen.getByRole('button', { name: /Load/ });
+    fireEvent.click(loadMoreBtn);
+
+    await waitFor(() => {
+      // s2 should be added
+      expect(screen.getByText('idle-s2')).not.toBeNull();
+    });
+
+    // Verify getSessions was called for page 2
+    expect(mockGetSessions).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+  });
+
+  // ── Issue #4010: Secondary sort key ──────────────────────
+
+  it('sorts sessions with same lastActivity by createdAt descending', async () => {
+    const now = Date.now();
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [
+        { ...makeSession({ id: 'old', status: 'working', displayName: 'working-old' }), createdAt: now - 10000, lastActivity: now },
+        { ...makeSession({ id: 'new', status: 'working', displayName: 'working-new' }), createdAt: now - 5000, lastActivity: now },
+      ],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('working-old')).not.toBeNull();
+    });
+
+    expect(screen.getByText('working-new')).not.toBeNull();
   });
