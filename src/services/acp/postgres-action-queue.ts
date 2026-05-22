@@ -289,6 +289,27 @@ export class PostgresAcpActionQueue implements AcpActionQueue {
     return record;
   }
 
+  async sweepOrphanedActions(now: Date = new Date()): Promise<AcpActionRecord[]> {
+    const errorMetadata = {
+      sweeper: true,
+      reason: 'lease_expired',
+      recoveredAt: now.toISOString(),
+    };
+    const result = await this.requirePool().query<AcpActionRow>(
+      `UPDATE ${this.qt()}
+       SET status = 'failed',
+           failed_at = $1,
+           error_metadata = $2,
+           leased_until = NULL
+       WHERE status = 'leased'
+         AND leased_until IS NOT NULL
+         AND leased_until <= $1
+       RETURNING ${returningColumns()}`,
+      [now, errorMetadata]
+    );
+    return result.rows.map(rowToRecord);
+  }
+
   private async findByIdempotencyKey(
     tenantId: string,
     ownerKeyId: string,

@@ -266,6 +266,10 @@ class ScriptedActionQueue implements AcpActionQueue {
   async cancel(): Promise<AcpActionRecord | null> {
     throw new Error('not used by this test');
   }
+
+  async sweepOrphanedActions(): Promise<AcpActionRecord[]> {
+    return [];
+  }
 }
 
 class ThrowingLeaseQueue implements AcpActionQueue {
@@ -288,6 +292,10 @@ class ThrowingLeaseQueue implements AcpActionQueue {
   }
 
   async cancel(): Promise<AcpActionRecord | null> {
+    throw new Error('not used by this test');
+  }
+
+  async sweepOrphanedActions(): Promise<AcpActionRecord[]> {
     throw new Error('not used by this test');
   }
 }

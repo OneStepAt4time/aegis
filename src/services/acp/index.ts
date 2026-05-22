@@ -63,6 +63,7 @@ export type {
   AcpLeaseActionOptions,
 } from './action-queue.js';
 export { normalizeAcpActionMetadata } from './action-queue.js';
+export { ActionSweeper, resolveSweeperConfig, type ActionSweeperConfig, type ActionSweeperCallbacks } from './action-sweeper.js';
 export {
   ACP_ACTION_WORKER_STALE_LEASE_RECOVERY_POLICY,
   AcpActionWorker,
