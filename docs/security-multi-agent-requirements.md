@@ -45,11 +45,18 @@ Multica implements this in `filterCustomArgs` (`server/pkg/agent/claude.go`), wh
 
 ### Current Aegis Coverage
 
-- ✅ **Env var denylist** — enforced in `src/validation.ts` (see [security-best-practices.md](security-best-practices.md#environment-variable-denylist))
+Based on Themis security review (2026-05-22):
+
+- ✅ **Env var denylist** — 50+ entries in `src/validation.ts`, blocks `AWS_*`, `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, `LD_PRELOAD`, `npm_config_*`, `ssh_*`, etc. Config-driven additive denylist + admin allowlist
+- ✅ **Permission bypass neutralization** — `src/permission-guard.ts` neutralizes `bypassPermissions` in all 3 CC settings locations before spawn
+- ✅ **Minimal child env** — `src/acp-spawn-env.ts` constructs minimal env (not passthrough)
 - ✅ **CLI arg filtering** — added in #4019
 - ✅ **WorkDir restriction** — `AEGIS_ALLOWED_WORK_DIRS` config
-- ⚠️ **Filesystem sandboxing** — not yet enforced at adapter level
-- ⚠️ **Network egress filtering** — documented as known limitation (ADR-0030), not yet enforced
+- ⚠️ **Filesystem sandboxing** — not enforced. Child processes inherit full workdir with no restriction on reading `/etc/shadow`, `~/.ssh/`, or traversing `/tmp`
+- ⚠️ **Network egress filtering** — documented as known limitation (ADR-0030). No localhost-only default or host allowlist for adapter child processes
+- ⚠️ **ANTHROPIC_/CLAUDE_ env vars forwarded** — intentional for auth but contradicts "explicit allowlist only" model. Needs documented decision
+
+**Verdict: ❌ NOT MET** — Infrastructure exists for env sanitization but filesystem, network, and CLI arg controls need work.
 
 ---
 
@@ -82,10 +89,18 @@ Without these checks:
 
 ### Current Aegis Coverage
 
+Based on Themis security review (2026-05-22):
+
 - ✅ **Session ownership** — `createdByKeyId` on sessions (ADR-0019)
 - ✅ **RBAC** — viewer/operator/admin roles with `strictRBAC` option
-- ⚠️ **Agent identity model** — not yet implemented (depends on #3971 Agent Profiles)
-- ⚠️ **Health-based dispatch** — session health exists but not wired to dispatch
+- ✅ **Provider env allowlist** — enforced in `src/acp-lifecycle-probe.ts`
+- ✅ **Workspace ownership validation** — session routing validates workspace ownership in `src/routes/sessions.ts`
+- ⚠️ **Agent identity model** — no agent registry or profile system exists yet (depends on #3971)
+- ⚠️ **Runtime health check** — no `last_heartbeat` tracking for agent runtimes
+- ⚠️ **Dispatch authentication** — no mechanism to verify dispatching entity rights
+- ⚠️ **Cross-workspace isolation** — no multi-tenancy model
+
+**Verdict: ❌ NOT MET** — Feature code doesn't exist yet. Must be implemented with #3970/#3971.
 
 ---
 
@@ -123,10 +138,13 @@ Squad leaders have delegation power — they can assign work to squad members. T
 
 ### Current Aegis Coverage
 
+Based on Themis security review (2026-05-22):
+
+- No `Squad`, `squad`, or related types in `src/`. Feature code does not exist yet.
 - ✅ **Audit trail** — structured audit logs for all API operations
 - ✅ **Human approval gates** — permission system with approve/reject flow
-- ⚠️ **Squad model** — not yet implemented (depends on #3973)
-- ⚠️ **Delegation audit** — no squad-specific delegation logging
+
+**Verdict: ⏸️ NOT YET APPLICABLE** — #3973 is the spec issue. All 5 sub-requirements and 3 gate tests must pass when squad code ships.
 
 ---
 
@@ -155,31 +173,97 @@ If file storage is needed in the future, it will be a separate security-reviewed
 
 ### Current Aegis Coverage
 
+Based on Themis security review (2026-05-22):
+
+```
+grep -rn "S3_\|GCS_\|AZURE_BLOB_\|aws-sdk\|@aws-sdk\|@google-cloud/storage" src/ → zero hits (excluding tests)
+```
+
 - ✅ **No external storage** — agents work in local workDir only
 - ✅ **WorkDir restriction** — `AEGIS_ALLOWED_WORK_DIRS` limits filesystem scope
+- ✅ **No agent-writable file upload endpoints**
+
+**Verdict: ✅ MET**
 
 ---
 
 ## Review Process
 
-1. **Feature PR author** self-certifies against each applicable requirement
-2. **Themis** reviews and approves/rejects with specific remediation
-3. **Argus** includes security gate check in merge review
+### Step 1: Feature PR Author — Self-Certification
+
+Before requesting review, the PR author must complete the self-certification checklist:
+
+1. Identify which requirements apply to your feature (see [Blocking Relationships](#blocking-relationships))
+2. For each applicable requirement, provide evidence:
+   - Gate test results (pass/fail with output)
+   - Code references showing implementation
+   - Design decisions with rationale
+3. For requirements marked N/A, explain why the feature doesn't trigger them
+
+### Step 2: Themis — Security Review
+
+Themis reviews the self-certification against the codebase:
+
+1. **Verify claims** — run gate tests independently, check code references
+2. **Assess coverage** — determine if each requirement is met, partially met, or not met
+3. **Identify gaps** — specific remediation required before approval
+4. **Issue verdict** per requirement:
+   - ✅ MET — no action needed
+   - ⚠️ PARTIAL — specific gaps to address
+   - ❌ NOT MET — blocking, must resolve before merge
+   - ⏸️ N/A — not yet applicable (e.g., Req 3 before squad implementation)
+5. **Publish findings** — comment on the PR with detailed assessment
+
+Themis holds veto. A feature PR cannot merge without her approval on all applicable requirements.
+
+### Step 3: Argus — Merge Gate Check
+
+Argus includes the security gate in the standard merge review:
+
+1. Verify Themis has approved all applicable requirements
+2. Confirm gate tests pass in CI
+3. Check for any new security-sensitive code paths not covered by the requirements
+4. Merge only when all checks pass
+
+### Review Timeline
+
+| Step | Owner | SLA |
+|------|-------|-----|
+| Self-certification | PR author | Before review request |
+| Security review | Themis | 24 hours from request |
+| Merge gate | Argus | Standard review queue |
 
 ### Self-Certification Template
 
 Feature PR authors should include this checklist in their PR description:
 
-```
+```markdown
 ### Security Gate (#3980)
 
-- [ ] Req 1 (Sandboxing): [N/A | Evidence: ...]
-- [ ] Req 2 (Identity): [N/A | Evidence: ...]
-- [ ] Req 3 (Squad Scope): [N/A | Evidence: ...]
-- [ ] Req 4 (No External Storage): [N/A | Evidence: ...]
-```
+**Applicable requirements:** Req X, Req Y (see [docs/security-multi-agent-requirements.md](docs/security-multi-agent-requirements.md))
 
-Mark requirements as N/A if the feature does not trigger them (e.g., Req 3 only applies to #3973 Squads).
+- [ ] **Req 1 (Sandboxing):** [N/A | ✅ Evidence: ... | ⚠️ Gaps: ...]
+  - Filesystem: [evidence]
+  - Network: [evidence]
+  - Env vars: [evidence]
+  - CLI args: [evidence]
+  - Gate tests: [pass/fail with output]
+- [ ] **Req 2 (Identity):** [N/A | ✅ Evidence: ... | ⚠️ Gaps: ...]
+  - Agent active check: [evidence]
+  - Workspace access: [evidence]
+  - Runtime health: [evidence]
+  - Dispatch auth: [evidence]
+  - Gate tests: [pass/fail with output]
+- [ ] **Req 3 (Squad Scope):** [N/A | ✅ Evidence: ... | ⚠️ Gaps: ...]
+  - Delegation boundary: [evidence]
+  - Audit trail: [evidence]
+  - Human approval gate: [evidence]
+  - Archiving cascade: [evidence]
+  - Leader rotation: [evidence]
+  - Gate tests: [pass/fail with output]
+- [ ] **Req 4 (No External Storage):** [N/A | ✅ Evidence: ...]
+  - Grep assertion results: [output]
+  ```
 
 ---
 
