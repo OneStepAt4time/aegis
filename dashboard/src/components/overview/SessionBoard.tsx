@@ -97,7 +97,7 @@ function SessionCard({ session }: { session: SessionInfo }) {
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--color-text-muted)]">
         {session.model && (
           <span className="rounded-full bg-[var(--color-void-lighter)]/50 px-2 py-0.5 font-mono" title={session.model}>
-            {session.model.replace('claude-', '').replace(/-d{8}$/, '')}
+            {session.model.replace('claude-', '').replace(/-\d{8}$/, '')}
           </span>
         )}
         <span title={`Started ${age} ago`}>⏱ {age}</span>
