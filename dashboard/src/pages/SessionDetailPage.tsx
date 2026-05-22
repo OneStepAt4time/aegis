@@ -3,6 +3,7 @@
  */
 
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import type { AuditRecord, ParsedEntry } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -686,9 +687,9 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <StreamTab sessionId={s.id} isDriver={isDriver} />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                 </motion.div>
               )}
 
@@ -705,9 +706,9 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <SessionMetricsPanel sessionId={s.id} />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                   <div className="mt-4">
                     <LatencyPanel latency={latency} loading={latencyLoading} />
                   </div>
@@ -727,9 +728,9 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="overflow-auto p-3 sm:p-4"
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <AuditTrailPanel records={auditRecords} loading={auditLoading} error={auditError} />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                 </motion.div>
               )}
 
@@ -746,12 +747,12 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className={fullBleed ? 'h-full min-h-[200px]' : 'h-[calc(100vh-300px)] min-h-[200px] sm:h-[calc(100vh-420px)] sm:min-h-[300px]'}
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <SessionTimelineView
                     events={timelineEvents}
                     isLoading={timelineLoading}
                   />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                   {timelineError && (
                     <div className="absolute bottom-2 left-2 right-2 rounded-md bg-[var(--color-danger)]/10 px-3 py-2 text-xs text-[var(--color-danger)]">
                       {timelineError}
@@ -780,12 +781,12 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="p-4"
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <PRStatusPanel
                     entries={prEntries}
                     isLoading={prLoading}
                   />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                 </motion.div>
               )}
 
@@ -802,12 +803,12 @@ export default function SessionDetailPage() {
                   tabIndex={0}
                   className="p-4"
                 >
-                  <Suspense fallback={<TabLoadingFallback />}>
+                  <ErrorBoundary><Suspense fallback={<TabLoadingFallback />}>
                     <DiffViewer
                     entries={prEntries}
                     isLoading={prLoading}
                   />
-                  </Suspense>
+                  </Suspense></ErrorBoundary>
                 </motion.div>
               )}
             </AnimatePresence>
