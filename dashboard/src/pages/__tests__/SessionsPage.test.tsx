@@ -2,43 +2,41 @@
  * SessionsPage tab routing tests — #3991.
  *
  * Verifies tab switching renders the correct panel content.
+ * SessionBoard and SessionHistoryPage are lazy-loaded via React.lazy,
+ * so all board/all assertions must use waitFor for Suspense resolution.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import SessionsPage from '../SessionsPage';
 
-// Mock SessionBoard
 vi.mock('../../components/overview/SessionBoard', () => ({
+  __esModule: true,
   SessionBoard: () => <div data-testid="session-board">Board View</div>,
 }));
 
-// Mock SessionTable
 vi.mock('../../components/overview/SessionTable', () => ({
   __esModule: true,
   default: () => <div data-testid="session-table">Active Table</div>,
 }));
 
-// Mock SessionHistoryPage (lazy loaded)
 vi.mock('../SessionHistoryPage', () => ({
   __esModule: true,
   default: () => <div data-testid="session-history">History Page</div>,
 }));
 
-// Mock ErrorBoundary
 vi.mock('../../components/shared/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-// Mock Skeleton
 vi.mock('../../components/shared/Skeleton', () => ({
-  SkeletonTable: () => <div>Loading skeleton</div>,
+  SkeletonTable: () => <div data-testid="skeleton">Loading skeleton</div>,
 }));
 
-// Mock i18n
 vi.mock('../../i18n/context', () => ({
   useT: () => (key: string) => key,
 }));
+
+import SessionsPage from '../SessionsPage';
 
 function renderWithRouter(initialPath: string = '/sessions') {
   return render(
@@ -63,10 +61,13 @@ describe('SessionsPage tab routing', () => {
     expect(activeTab.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('renders Board tab panel when ?tab=board', () => {
+  it('renders Board tab panel when ?tab=board', async () => {
     renderWithRouter('/sessions?tab=board');
 
-    expect(screen.getByTestId('session-board')).not.toBeNull();
+    // SessionBoard is lazy-loaded via React.lazy — needs waitFor
+    await waitFor(() => {
+      expect(screen.getByTestId('session-board')).not.toBeNull();
+    });
     const boardTab = screen.getByRole('tab', { name: 'Board' });
     expect(boardTab.getAttribute('aria-selected')).toBe('true');
   });
@@ -74,7 +75,6 @@ describe('SessionsPage tab routing', () => {
   it('renders All tab panel when ?tab=all', async () => {
     renderWithRouter('/sessions?tab=all');
 
-    // SessionHistoryPage is lazy loaded
     await waitFor(() => {
       expect(screen.getByTestId('session-history')).not.toBeNull();
     });
@@ -91,7 +91,7 @@ describe('SessionsPage tab routing', () => {
     // Click Board tab
     fireEvent.click(screen.getByRole('tab', { name: 'Board' }));
 
-    // Board panel should appear
+    // Board is lazy — wait for Suspense to resolve
     await waitFor(() => {
       expect(screen.getByTestId('session-board')).not.toBeNull();
     });
