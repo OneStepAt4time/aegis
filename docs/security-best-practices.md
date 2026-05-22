@@ -4,6 +4,14 @@ Hardening guide for production Aegis deployments. Covers authentication, network
 
 For the full security policy, see [SECURITY.md](../SECURITY.md).
 
+## Minimum Version Requirements
+
+| Dependency | Minimum Version | Reason |
+|-----------|----------------|--------|
+| Claude Code CLI | ≥ 2.1.145 | Security baseline: fixes bash permission-prompt bypass where bare variable assignments to non-allowlisted env vars were auto-approved |
+
+> Future security fixes in Claude Code may raise this floor. Always run the latest available version.
+
 ---
 
 ## Authentication
