@@ -54,13 +54,13 @@ const BOARD_COLUMNS: BoardColumn[] = [
   {
     id: 'errors',
     title: 'colErrors',
-    statuses: ['error', 'rate_limit', 'killed'],
+    statuses: ['error', 'rate_limit', 'crashed'],
     color: 'text-[var(--color-danger)]',
   },
   {
     id: 'completed',
     title: 'colCompleted',
-    statuses: ['completed'],
+    statuses: ['completed', 'killed'],
     color: 'text-[var(--color-text-muted)]/70',
   },
 ];
@@ -290,7 +290,7 @@ export function SessionBoard() {
       colSessions.sort((a, b) => {
         const activityDiff = b.lastActivity - a.lastActivity;
         if (activityDiff !== 0) return activityDiff;
-        return b.createdAt - a.createdAt;
+        return a.id.localeCompare(b.id);
       });
     }
 
