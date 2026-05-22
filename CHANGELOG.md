@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ag status session-id** — `ag status` accepts a session ID argument ([#3674](https://github.com/OneStepAt4time/aegis/pull/3674))
 - **Health includes session counts** — unauthenticated `/v1/health` now returns active/total session counts ([#3739](https://github.com/OneStepAt4time/aegis/pull/3739))
 - **Model auto-detection** — auto-detect model from Claude Code settings at session creation ([#3740](https://github.com/OneStepAt4time/aegis/pull/3740))
+- **Dashboard: Kanban board view** — new Kanban-style session board with drag-and-drop columns ([#3987](https://github.com/OneStepAt4time/aegis/pull/3987))
+- **Dashboard: session cost breakdown table** — per-session cost table on Cost page ([#3967](https://github.com/OneStepAt4time/aegis/pull/3967))
+- **Orphan action sweeper** — automatically clean up stale leased ACP actions ([#4007](https://github.com/OneStepAt4time/aegis/pull/4007))
+- **Dashboard: SessionBoard pagination** — load-more button for large session lists ([#4005](https://github.com/OneStepAt4time/aegis/pull/4005))
+- **GET /v1/sessions/:id/status** — lightweight status endpoint for polling ([#3869](https://github.com/OneStepAt4time/aegis/pull/3869))
+- **ag run --timeout flag** — configurable timeout for ag run with `AEGIS_RUN_TIMEOUT` env var ([#3881](https://github.com/OneStepAt4time/aegis/pull/3881))
+- **cwd alias for workDir** — accept `cwd` as alias for `workDir` in POST /v1/sessions ([#3870](https://github.com/OneStepAt4time/aegis/pull/3870))
+- **SessionBoard column restructure** — split Other column into dedicated Running/Pending columns ([#4018](https://github.com/OneStepAt4time/aegis/pull/4018))
 
 ### Security
 
@@ -49,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **XSS in esc()** — escape double quotes to prevent attribute injection ([#3209](https://github.com/OneStepAt4time/aegis/pull/3209))
 - **ACP validation enforcement + structured warnings** — `acpStrictValidation` flag rejects malformed ACP messages with structured warning output ([#3912](https://github.com/OneStepAt4time/aegis/pull/3912), closes [#3900](https://github.com/OneStepAt4time/aegis/issues/3900))
 - **Telegram HTML sanitizer hardened** — escape single quotes, sanitize hrefs and callback_data ([#3219](https://github.com/OneStepAt4time/aegis/pull/3219))
+- **CLI arg filtering for ACP spawn** — sanitize command-line arguments passed to ACP child processes ([#4019](https://github.com/OneStepAt4time/aegis/pull/4019), closes [#3997](https://github.com/OneStepAt4time/aegis/issues/3997))
+- **AEGIS_AUTH_TOKEN added to ENV_DENYLIST** — prevent auth token from leaking into sessions ([#3866](https://github.com/OneStepAt4time/aegis/pull/3866), closes [#3852](https://github.com/OneStepAt4time/aegis/issues/3852))
+- **ACP content validation** — detect and reject hallucinated outputs in ACP responses ([#3871](https://github.com/OneStepAt4time/aegis/pull/3871), closes [#3853](https://github.com/OneStepAt4time/aegis/issues/3853))
 
 ### Bug Fixes
 
@@ -71,6 +82,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Config watcher accepts all fs.watch event types** — handles `rename` and other events beyond `change` to prevent missed reloads ([#3913](https://github.com/OneStepAt4time/aegis/pull/3913), closes [#3905](https://github.com/OneStepAt4time/aegis/issues/3905))
 - **Preserve original error on runtime_failed transition** — nested errors no longer swallowed when transitioning to `runtime_failed` ([#3923](https://github.com/OneStepAt4time/aegis/pull/3923), closes [#3922](https://github.com/OneStepAt4time/aegis/issues/3922))
 - **Eliminate TOCTOU race in driver lifecycle** — `claimDriver`/`releaseDriver`/`transferDriver` now use atomic check-and-set to prevent race conditions ([#3924](https://github.com/OneStepAt4time/aegis/pull/3924), closes [#3921](https://github.com/OneStepAt4time/aegis/issues/3921))
+- **Prevent shared claudeSessionId across concurrent sessions** — isolate CC session IDs to prevent cross-session contamination ([#3882](https://github.com/OneStepAt4time/aegis/pull/3882), closes [#3880](https://github.com/OneStepAt4time/aegis/issues/3880))
+- **Carry over model/effort on session resume** — resumeSessionId inherits model and effort from original session ([#4013](https://github.com/OneStepAt4time/aegis/pull/4013), closes [#3948](https://github.com/OneStepAt4time/aegis/issues/3948))
+- **Transcript API returns full untruncated messages** — no longer silently truncates transcript entries ([#3874](https://github.com/OneStepAt4time/aegis/pull/3874))
+- **fanOut non-blocking** — prevent concurrent session creation from hanging on fanOut errors ([#3843](https://github.com/OneStepAt4time/aegis/pull/3843), closes [#3837](https://github.com/OneStepAt4time/aegis/issues/3837))
+- **ag init crashes with DUPLICATE_KEY_NAME** — handle existing key gracefully instead of crashing ([#3877](https://github.com/OneStepAt4time/aegis/pull/3877), closes [#3876](https://github.com/OneStepAt4time/aegis/issues/3876))
+- **Kill session on SIGTERM/SIGINT during ag run** — clean up sessions when user Ctrl+C during ag run ([#3889](https://github.com/OneStepAt4time/aegis/pull/3889), closes [#3887](https://github.com/OneStepAt4time/aegis/issues/3887))
+- **Trim inputs and reject whitespace-only prompts/names** — prevent empty sessions from whitespace input ([#3964](https://github.com/OneStepAt4time/aegis/pull/3964), closes [#3956](https://github.com/OneStepAt4time/aegis/issues/3956), [#3957](https://github.com/OneStepAt4time/aegis/issues/3957))
+- **MCP paginate sessions** — fix AegisClient.listSessions to handle pagination ([#3965](https://github.com/OneStepAt4time/aegis/pull/3965), closes [#3947](https://github.com/OneStepAt4time/aegis/issues/3947))
+- **Prevent polling from resetting pagination** — SSE-aware polling doesn't reset page state ([#4015](https://github.com/OneStepAt4time/aegis/pull/4015), closes [#4009](https://github.com/OneStepAt4time/aegis/issues/4009))
+- **Resilient session creation with fallback refetch** — retry session creation on transient failures ([#3778](https://github.com/OneStepAt4time/aegis/pull/3778))
 - **Non-zero exit when no output + surface rate-limit** — `ag run` exits non-zero when CLI produces no output; rate-limit errors now surfaced to the caller ([#3942](https://github.com/OneStepAt4time/aegis/pull/3942), closes [#3929](https://github.com/OneStepAt4time/aegis/issues/3929), [#3930](https://github.com/OneStepAt4time/aegis/issues/3930))
 - **Missing peer deps** — move playwright, open, OTLP to optionalDependencies ([#3574](https://github.com/OneStepAt4time/aegis/pull/3574))
 - **Auth-token file desync** — resolve client/server token mismatch
@@ -83,6 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI remove unused actions:write** — remove unnecessary `actions:write` from create-release-branch workflow ([#3927](https://github.com/OneStepAt4time/aegis/pull/3927), closes [#3920](https://github.com/OneStepAt4time/aegis/issues/3920))
 - **CI npm audit + lockfile-lint in gate** — add security checks to local gate script ([#3926](https://github.com/OneStepAt4time/aegis/pull/3926), closes [#3918](https://github.com/OneStepAt4time/aegis/issues/3918))
 - **CI bundle size check extraction** — extract into shared script for reuse in local gate ([#3925](https://github.com/OneStepAt4time/aegis/pull/3925), closes [#3919](https://github.com/OneStepAt4time/aegis/issues/3919))
+- **Dashboard: replace 40+ hardcoded colors with CSS variables** — design token migration ([#3966](https://github.com/OneStepAt4time/aegis/pull/3966))
+- **Dashboard: Claude Code sessions discovery panel** — show active CC sessions on dashboard ([#3962](https://github.com/OneStepAt4time/aegis/pull/3962), closes [#3945](https://github.com/OneStepAt4time/aegis/issues/3945))
+- **Dashboard: focus-visible outlines** — a11y sweep on navigation elements ([#3963](https://github.com/OneStepAt4time/aegis/pull/3963))
+- **Dashboard: i18n extraction** — StatusDot, CostPage Budget Alerts, AnalyticsPage ([#3883](https://github.com/OneStepAt4time/aegis/pull/3883))
+- **Dashboard: safe component-based syntax highlighting** — refactor CodeBlock for resilience ([#3958](https://github.com/OneStepAt4time/aegis/pull/3958))
+- **Dashboard: loading state + error surface** — SettingsPage silent catch errors fixed ([#3960](https://github.com/OneStepAt4time/aegis/pull/3960))
 
 ### Documentation
 
@@ -113,6 +140,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix README Session States table — remove ghost `asking` state, add 8 real states ([#3597](https://github.com/OneStepAt4time/aegis/pull/3597))
 - SECURITY.md — security policy for ACP registry listing ([#3628](https://github.com/OneStepAt4time/aegis/pull/3628))
 - CHANGELOG catch-up — dogfooding fixes, TTL pricing, SECURITY.md ([#3637](https://github.com/OneStepAt4time/aegis/pull/3637))
+- **Network egress gap documented** — known security limitation for ACP child processes ([#4017](https://github.com/OneStepAt4time/aegis/pull/4017), closes [#3998](https://github.com/OneStepAt4time/aegis/issues/3998))
+- **Multica competitive intel** — battle card, feature gap, architecture, security assessment ([#4006](https://github.com/OneStepAt4time/aegis/pull/4006))
+- **"Why Aegis when CC has agents?"** — new README section addressing Claude Code native agent features ([#3959](https://github.com/OneStepAt4time/aegis/pull/3959))
+- **ROADMAP M3/M5 complete** — mark Phase 3.5 milestones as done ([#4014](https://github.com/OneStepAt4time/aegis/pull/4014))
+- **Action sweeper env vars docs** — AEGIS_ACTION_SWEEPER_ENABLED/INTERVAL_MS ([#4008](https://github.com/OneStepAt4time/aegis/pull/4008))
+- **Resume model carry-over docs** — note model/effort inheritance in resumeSessionId description ([#4020](https://github.com/OneStepAt4time/aegis/pull/4020))
+- **Dogfooding dashboard fixes** — 24 UI issues from sprint testing ([#3827](https://github.com/OneStepAt4time/aegis/pull/3827)–[#3834](https://github.com/OneStepAt4time/aegis/pull/3834))
 
 ---
 
