@@ -591,3 +591,33 @@ describe('SessionBoard', () => {
 
     expect(screen.getByText('working-new')).not.toBeNull();
   });
+
+  // ── Issue #4043: Keyboard focusable cards ──────────────────────
+
+  it('session cards have tabIndex for keyboard focus', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1', status: 'working' })],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    const card = await screen.findByRole('article');
+    expect(card.getAttribute('tabIndex')).toBe('0');
+  });
+
+  it('session cards have focus ring styles', async () => {
+    mockGetSessions.mockResolvedValue({
+      ...emptyResponse,
+      sessions: [makeSession({ id: 's1', status: 'working' })],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    render(<SessionBoard />);
+
+    const card = await screen.findByRole('article');
+    const classList = card.getAttribute('class') ?? '';
+    expect(classList).toContain('focus-visible:ring-2');
+    expect(classList).toContain('outline-none');
+  });

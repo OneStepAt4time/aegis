@@ -99,8 +99,9 @@ function SessionCard({ session, t }: { session: SessionInfo; t: (key: string, pa
 
   return (
     <div
-      className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)]/80 p-3 hover:bg-[var(--color-surface-hover)] transition-colors cursor-default"
+      className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)]/80 p-3 hover:bg-[var(--color-surface-hover)] transition-colors cursor-default outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-surface)]"
       role="article"
+      tabIndex={0}
       aria-label={`Session ${session.displayName}, status ${session.status}`}
     >
       {/* Header: status + name */}
