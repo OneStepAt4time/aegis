@@ -434,3 +434,55 @@ Do **not** report security issues in public GitHub issues.
 - [Deployment Guide](deployment.md) — production deployment
 - [API Rate Limiting](api-rate-limiting.md) — rate limit configuration
 - [Webhook Retry](api-reference.md#dead-letter-queue) — webhook delivery with retry
+
+---
+
+## MCP Configuration Secrets
+
+### Never Hardcode Tokens in .mcp.json
+
+The `.mcp.json` file configures MCP servers for Claude Code sessions. It is gitignored by default, but secrets stored in plaintext are still a risk:
+
+- The file could be accidentally committed during onboarding
+- Developers may share or copy the config between machines
+- Secret scanning tools (Gitleaks) only scan git history, not local files
+
+### Use Environment Variables
+
+Copy `.mcp.json.example` and replace placeholders with env var references:
+
+```bash
+# Copy the example template
+cp .mcp.json.example .mcp.json
+
+# Set required environment variables in your shell profile
+export AEGIS_MCP_GITHUB_TOKEN="gho_your_token_here"
+export ZAI_API_KEY="your_zai_key_here"
+export SUPABASE_PROJECT_REF="your_project_ref"
+export SUPABASE_ACCESS_TOKEN="your_supabase_token"
+```
+
+Claude Code automatically expands `${ENV_VAR}` references in `.mcp.json` at runtime.
+
+### Required Environment Variables
+
+| Variable | Used By | Description |
+|----------|---------|-------------|
+| `AEGIS_MCP_GITHUB_TOKEN` | GitHub MCP server | GitHub OAuth token (`gho_...`) |
+| `ZAI_API_KEY` | ZAI MCP servers | ZAI API key |
+| `SUPABASE_PROJECT_REF` | Supabase MCP server | Supabase project reference |
+| `SUPABASE_ACCESS_TOKEN` | Supabase MCP server | Supabase access token (`sbp_...`) |
+
+### CI Secret Scanning
+
+Gitleaks runs on every PR and push to `main`/`develop` (see `.github/workflows/security-scan.yml`). The config (`.gitleaks.toml`) detects `gho_` tokens in tracked files.
+
+To run locally:
+
+```bash
+# Install gitleaks
+brew install gitleaks  # or: go install github.com/zizmorheart/gitleaks@latest
+
+# Scan current tree
+gitleaks detect --source . --no-git
+```
