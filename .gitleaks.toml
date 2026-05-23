@@ -4,6 +4,16 @@
 [extend]
 useDefault = true
 
+# Exclude test fixtures from secret scanning entirely.
+# Test files intentionally contain fake credentials for verification.
+# This is the root cause fix — .gitleaksignore handles individual exceptions,
+# but path exclusion prevents future false positives from new test files.
+[[ruleset]]
+  [[ruleset.paths]]
+    exclude = [
+      '''src/__tests__/.*''',
+    ]
+
 # Allow test fixtures and CI configs that may contain example patterns
 [allowlist]
   paths = [
@@ -21,4 +31,9 @@ useDefault = true
     '''<your-api-key>''',
     '''sk-ant-example''',
     '''ghp_example''',
+    # Fake token patterns used in test fixtures — all zeros/sequential, never real
+    '''gho_0+''',
+    '''ghp_0+''',
+    '''xoxb-[a-f0-9]{13}-[a-f0-9]{13}-[a-f0-9]{24}''',
+    '''AKIAIOSFODNN7EXAMPLE''',
   ]
