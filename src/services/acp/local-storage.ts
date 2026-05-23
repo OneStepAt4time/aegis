@@ -214,7 +214,15 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   private async flush(): Promise<void> {
     if (!this.dirty) return;
     this.dirty = false;
-    await this.persist();
+    try {
+      await this.persist();
+    } finally {
+      // Resolve any callers that awaited onMutation() so they don't hang.
+      const resolvers = this.pendingPersistResolvers.splice(0);
+      for (const r of resolvers) {
+        try { r(); } catch {}
+      }
+    }
   }
 
   /**
@@ -223,14 +231,14 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
    */
   private schedulePersist(): Promise<void> {
     this.dirty = true;
-    if (this.persistTimer !== null) {
-      // Already scheduled — no need to re-schedule.
-      return Promise.resolve();
-    }
     return new Promise<void>((resolve) => {
+      // Track resolver so callers can be notified when persist completes.
+      this.pendingPersistResolvers.push(resolve);
+      if (this.persistTimer !== null) return;
       this.persistTimer = setTimeout(() => {
         this.persistTimer = null;
-        this.flush().then(resolve, resolve);
+        // When flush finishes, we'll resolve all pending resolvers there.
+        void this.flush().catch(() => {});
       }, this.persistDebounceMs);
     });
   }
