@@ -54,7 +54,7 @@ import { useT } from '../i18n/context';
 function TabLoadingFallback() {
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-accent)]" />
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-cta-bg)]" />
     </div>
   );
 }

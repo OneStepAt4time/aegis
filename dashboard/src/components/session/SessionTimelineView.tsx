@@ -23,7 +23,7 @@ const CATEGORY_CONFIG: Record<AcpTimelineCategory, {
   color: string;
   dotColor: string;
 }> = {
-  driver:       { label: 'Driver',       icon: User,          color: 'text-[var(--color-accent)]',          dotColor: 'bg-[var(--color-accent-cyan)]' },
+  driver:       { label: 'Driver',       icon: User,          color: 'text-[var(--color-cta-bg)]',          dotColor: 'bg-[var(--color-accent-cyan)]' },
   prompt:       { label: 'Prompt',       icon: Terminal,      color: 'text-[var(--color-text-primary)]', dotColor: 'bg-[var(--color-text-primary)]' },
   tool:         { label: 'Tool',         icon: Wrench,        color: 'text-[var(--color-warning)]',         dotColor: 'bg-[var(--color-warning)]' },
   approval:     { label: 'Approval',     icon: Shield,        color: 'text-emerald-400',       dotColor: 'bg-emerald-400' },
@@ -138,7 +138,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
           <button
             type="button"
             onClick={() => setShowFilters(v => !v)}
-            className={`text-xs transition-colors ${showFilters ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}
+            className={`text-xs transition-colors ${showFilters ? 'text-[var(--color-cta-bg)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}
             aria-label={t("aria.toggleEventFilters")}
             aria-expanded={showFilters}
           >
@@ -201,7 +201,7 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
                 <button
                   type="button"
                   onClick={() => toggleExpand(event.id)}
-                  className="w-full text-left flex items-start gap-2 rounded p-1.5 -m-1.5 hover:bg-[var(--color-void)]/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
+                  className="w-full text-left flex items-start gap-2 rounded p-1.5 -m-1.5 hover:bg-[var(--color-void)]/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-cta-bg)]"
                   aria-expanded={expanded}
                   aria-label={`${cfg.label}: ${event.description}`}
                 >

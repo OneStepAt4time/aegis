@@ -26,7 +26,7 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
   const total = Math.max(inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens, 1);
 
   const bars = [
-    { label: 'Input', value: inputTokens, color: 'var(--color-accent)' },
+    { label: 'Input', value: inputTokens, color: 'var(--color-cta-bg)' },
     { label: 'Output', value: outputTokens, color: 'var(--color-success)' },
     { label: 'Cache Create', value: cacheCreationTokens, color: 'var(--color-warning)' },
     { label: 'Cache Read', value: cacheReadTokens, color: 'var(--color-accent-purple-alt)' },

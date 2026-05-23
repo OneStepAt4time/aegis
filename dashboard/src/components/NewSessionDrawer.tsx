@@ -243,7 +243,7 @@ export function NewSessionDrawer() {
                       if (tpl.claudeCommand) setClaudeCommand(tpl.claudeCommand);
                       useToastStore.getState().addToast('info', `Applied template: ${tpl.name || 'Untitled'}`, undefined, { duration: 2000 });
                     }}
-                    className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                    className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                   >
                     <option value="" disabled>
                       {templates.length} template{templates.length !== 1 ? 's' : ''} available…

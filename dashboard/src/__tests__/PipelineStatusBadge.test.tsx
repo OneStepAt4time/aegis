@@ -7,7 +7,7 @@ describe('PipelineStatusBadge', () => {
     render(<PipelineStatusBadge status="running" />);
     const badge = screen.getByText('running');
     expect(badge).toBeDefined();
-    expect(badge.className).toContain('text-cyan');
+    expect(badge.className).toContain('text-[var(--color-accent-cyan)]');
   });
 
   it('renders completed status with green color', () => {

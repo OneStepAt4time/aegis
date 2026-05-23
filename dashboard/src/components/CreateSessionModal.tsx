@@ -219,7 +219,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 onClick={() => setMode('single')}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   mode === 'single'
-                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                    ? 'bg-[var(--color-cta-bg)]/10 text-[var(--color-cta-bg)]'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
@@ -230,7 +230,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 onClick={() => setMode('batch')}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   mode === 'batch'
-                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                    ? 'bg-[var(--color-cta-bg)]/10 text-[var(--color-cta-bg)]'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
@@ -274,7 +274,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={workDir}
               onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
               placeholder="/home/user/project"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
             />
           </div>
 
@@ -289,7 +289,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="my-session"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
             {workDirError && (
               <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
@@ -307,7 +307,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               value={claudeCommand}
               onChange={(e) => setClaudeCommand(e.target.value)}
               placeholder="claude --print"
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
           </div>
 
@@ -322,7 +322,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Fix the login bug..."
               rows={3}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
             />
           </div>
 
@@ -335,7 +335,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               id="modal-permissionMode"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             >
               {PERMISSION_MODES.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -385,7 +385,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setSharedPrompt(e.target.value)}
               placeholder="Apply to all sessions without a per-row prompt..."
               rows={2}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] resize-none"
+              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
             />
           </div>
 
@@ -407,7 +407,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   onChange={(e) => updateBatchRow(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
                   aria-label={`Batch row ${i + 1} working directory`}
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
                 />
                 <input
                   type="text"
@@ -415,7 +415,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   onChange={(e) => updateBatchRow(i, 'name', e.target.value)}
                   placeholder="name"
                   aria-label={`Batch row ${i + 1} session name`}
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
                 <input
                   type="text"
@@ -423,7 +423,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   onChange={(e) => updateBatchRow(i, 'prompt', e.target.value)}
                   placeholder="Override prompt..."
                   aria-label={`Batch row ${i + 1} prompt`}
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
                 <button
                   type="button"
@@ -463,7 +463,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               id="modal-permissionMode"
               value={permissionMode}
               onChange={(e) => setPermissionMode(e.target.value)}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             >
               {PERMISSION_MODES.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -649,7 +649,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                     <button
                       type="button"
                       onClick={() => { handleClose(); navigate(`/sessions/${s.id}`); }}
-                      className="text-xs text-[var(--color-accent)] hover:underline font-mono"
+                      className="text-xs text-[var(--color-cta-bg)] hover:underline font-mono"
                     >
                       {s.id.slice(0, 8)}...{s.name ? ` - ${s.name}` : ''}
                     </button>

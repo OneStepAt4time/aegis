@@ -92,7 +92,7 @@ export function DriverControlBar({
       {/* Current driver indicator */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Gamepad2 className="h-4 w-4 text-[var(--color-accent)]" />
+          <Gamepad2 className="h-4 w-4 text-[var(--color-cta-bg)]" />
           {hasDriver ? (
             <span className="text-sm text-[var(--color-text-primary)]">
               Driver: <span className="font-medium">{participants!.driver!.subscriberId}</span>
@@ -123,7 +123,7 @@ export function DriverControlBar({
           <button type="button"
             onClick={() => onClaim?.()}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-cta-bg)]/20 px-3 py-2 text-sm font-medium text-[var(--color-cta-bg)] transition-colors hover:bg-[var(--color-cta-bg)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={t("aria.claimDriver")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gamepad2 className="h-4 w-4" />}

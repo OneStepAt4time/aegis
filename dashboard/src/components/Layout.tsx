@@ -391,7 +391,7 @@ export default function Layout() {
 
 
   return (
-    <div className="flex h-screen overflow-hidden bg-void">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-void-dark)]">
       {/* Skip-to-content link */}
       <a
         href="#main-content"
@@ -435,7 +435,7 @@ export default function Layout() {
               onClick={closeMobile}
               tabIndex={hiddenMobileSidebarControlTabIndex}
               disabled={isMobileSidebarHidden}
-              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]"
               aria-label={t("aria.closeMenu")}
               aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
             >
@@ -462,8 +462,8 @@ export default function Layout() {
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                       isActive
-                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
+                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-[var(--color-accent-cyan)] dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-accent-cyan)] glow-nav-active'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
                     } ${isCollapsed ? 'justify-center' : ''}`
                   }
                   title={isCollapsed ? label : undefined}
@@ -495,8 +495,8 @@ export default function Layout() {
             className={({ isActive }) =>
               `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                 isActive
-                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-cyan dark:bg-cyan/10 dark:text-cyan glow-nav-active'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]'
+                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-[var(--color-accent-cyan)] dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-accent-cyan)] glow-nav-active'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
               } ${isCollapsed ? 'justify-center' : ''}`
             }
             title={isCollapsed ? 'Settings' : undefined}
@@ -509,7 +509,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
+            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -526,7 +526,7 @@ export default function Layout() {
             type="button"
             onClick={handleLogout}
             tabIndex={hiddenMobileSidebarControlTabIndex}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
             aria-label={t("aria.signOut")}
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -547,7 +547,7 @@ export default function Layout() {
                 onClick={toggleMobile}
                 tabIndex={isMobileDrawerOpen ? -1 : undefined}
                 aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
-                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
+                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
                 aria-label={t("aria.openMenu")}
               >
                 <Menu className="h-5 w-5" />
@@ -559,7 +559,7 @@ export default function Layout() {
 
             <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
-              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-[var(--color-accent)]/50 dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)] dark:ring-0">
+              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-[var(--color-cta-bg)]/50 dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)] dark:ring-0">
                 PREVIEW
               </span>
 
@@ -572,7 +572,7 @@ export default function Layout() {
                 onClick={openNewSession}
                 aria-label={t("aria.newSessionCmd")}
                 title="New Session (⌘N)"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)] transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -590,11 +590,11 @@ export default function Layout() {
               </button>
 
               {/* Version + theme toggle */}
-              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-void-lighter dark:bg-void dark:text-[var(--color-text-primary)]">
+              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-[var(--color-void-lighter)] dark:bg-[var(--color-void-dark)] dark:text-[var(--color-text-primary)]">
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-void-lighter dark:hover:text-[var(--color-text-primary)]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]"
                   aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -608,7 +608,7 @@ export default function Layout() {
                 type="button"
                 onClick={handleCheckUpdates}
                 disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-void-lighter dark:hover:bg-void-lighter disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-[var(--color-text-primary)] dark:disabled:border-void-lighter dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
+                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-[var(--color-void-lighter)] dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-[var(--color-text-primary)] dark:disabled:border-[var(--color-void-lighter)] dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
               >
                 <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
                 {updateCheckLoading ? 'Checking…' : 'Check updates'}
@@ -621,7 +621,7 @@ export default function Layout() {
                       href={updateResult.releaseUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-cyan hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
+                      className="text-[var(--color-accent-cyan)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
                     >
                       Update available: v{updateResult.latestVersion}
                     </a>

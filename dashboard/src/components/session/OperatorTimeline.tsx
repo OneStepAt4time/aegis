@@ -44,7 +44,7 @@ import type {
 
 /** Map categories to display config. */
 const CATEGORY_CONFIG: Record<AcpTimelineCategory, { label: string; icon: typeof Terminal; color: string }> = {
-  driver: { label: 'Driver', icon: User, color: 'text-[var(--color-accent)]' },
+  driver: { label: 'Driver', icon: User, color: 'text-[var(--color-cta-bg)]' },
   prompt: { label: 'Prompt', icon: Terminal, color: 'text-[var(--color-text-primary)]' },
   tool: { label: 'Tool', icon: Wrench, color: 'text-[var(--color-warning)]' },
   approval: { label: 'Approval', icon: Shield, color: 'text-[var(--color-success)]' },
@@ -254,7 +254,7 @@ export function OperatorTimeline({
           onClick={() => setShowFilters((prev) => !prev)}
           className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
             showFilters
-              ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+              ? 'bg-[var(--color-cta-bg)]/20 text-[var(--color-cta-bg)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
           }`}
           aria-expanded={showFilters}
@@ -263,7 +263,7 @@ export function OperatorTimeline({
           <Filter className="h-3.5 w-3.5" />
           Filter
           {filters.categories.size < ALL_CATEGORIES.length && (
-            <span className="ml-1 rounded-full bg-[var(--color-accent)]/20 px-1 py-0.5 text-[10px] text-[var(--color-accent)]">
+            <span className="ml-1 rounded-full bg-[var(--color-cta-bg)]/20 px-1 py-0.5 text-[10px] text-[var(--color-cta-bg)]">
               {filters.categories.size}
             </span>
           )}
@@ -275,7 +275,7 @@ export function OperatorTimeline({
             value={filters.search}
             onChange={handleSearch}
             placeholder="Search events..."
-            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-void)] py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus-visible:outline-none"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-void)] py-1.5 pl-7 pr-3 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)]/50 focus-visible:outline-none"
             aria-label={t("aria.searchTimeline")}
           />
         </div>
@@ -320,7 +320,7 @@ export function OperatorTimeline({
       >
         {isLoading && (
           <div className="flex items-center justify-center p-8" role="status">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)]" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-cta-bg)]" />
             <span className="ml-3 text-sm text-[var(--color-text-muted)]">Loading events...</span>
           </div>
         )}

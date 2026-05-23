@@ -134,7 +134,7 @@ function MessageBubble({ message, showPerMessageUsage }: { message: AcpChatMessa
         <div
           className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
             isUser
-              ? 'bg-[var(--color-accent)]/15 text-[var(--color-text-primary)] border border-[var(--color-accent)]/20'
+              ? 'bg-[var(--color-cta-bg)]/15 text-[var(--color-text-primary)] border border-[var(--color-cta-bg)]/20'
               : isSystem
                 ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-border-strong)]'
                 : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border-strong)]'
@@ -282,7 +282,7 @@ export function AcpChatView({
               onKeyDown={handleKeyDown}
               placeholder="Send a prompt to the agent..."
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]/50 focus-visible:outline-none"
+              className="flex-1 resize-none rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)]/50 focus-visible:outline-none"
               disabled={!isDriver}
               aria-label={t("aria.messageInput")}
             />
@@ -300,7 +300,7 @@ export function AcpChatView({
                 type="button"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)]/20 text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-cta-bg)]/20 text-[var(--color-cta-bg)] transition-colors hover:bg-[var(--color-cta-bg)]/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={t("aria.sendMessage")}
               >
                 <Send className="h-4 w-4" />

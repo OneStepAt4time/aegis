@@ -27,7 +27,7 @@ function MessagePreview({ msg }: { msg: ParsedEntry }) {
       <span className={`shrink-0 text-xs font-medium w-12 text-right ${isUser ? 'text-[var(--color-accent-cyan)]' : 'text-[var(--color-text-muted)]'}`}>
         {isUser ? 'You' : 'CC'}
       </span>
-      <div className={`rounded px-2 py-1 text-xs ${isUser ? 'bg-[var(--color-accent-cyan)]/40 text-cyan-200' : 'bg-[var(--color-void-light)] text-[var(--color-text-primary)]'}`}>
+      <div className={`rounded px-2 py-1 text-xs ${isUser ? 'bg-[var(--color-accent-cyan)]/40 text-[var(--color-accent-cyan-glow)]' : 'bg-[var(--color-void-light)] text-[var(--color-text-primary)]'}`}>
         {text}
       </div>
     </div>

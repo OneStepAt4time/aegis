@@ -96,7 +96,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
               onClick={() => setFilterMode(mode)}
               className={`min-h-[44px] px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-all ${
                 filterMode === mode
-                  ? 'bg-[var(--color-accent)] text-white shadow-sm'
+                  ? 'bg-[var(--color-cta-bg)] text-white shadow-sm'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
               }`}
             >

@@ -113,7 +113,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
 
   const tokenRows = tu
     ? [
-        { label: 'Input', value: tu.inputTokens, colorVar: 'var(--color-accent)' },
+        { label: 'Input', value: tu.inputTokens, colorVar: 'var(--color-cta-bg)' },
         { label: 'Output', value: tu.outputTokens, colorVar: 'var(--color-success)' },
         { label: 'Cache Create', value: tu.cacheCreationTokens, colorVar: 'var(--color-warning)' },
         { label: 'Cache Read', value: tu.cacheReadTokens, colorVar: 'var(--color-metrics-purple)' },

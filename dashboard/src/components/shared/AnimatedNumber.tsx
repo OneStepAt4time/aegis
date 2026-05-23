@@ -18,7 +18,7 @@ export interface AnimatedNumberProps {
   suffix?: string;
   /** Flash accent color on value change. Default: false */
   flash?: boolean;
-  /** Accent color for flash. Default: var(--color-accent) */
+  /** Accent color for flash. Default: var(--color-cta-bg) */
   flashColor?: string;
   /** CSS classes for the root element */
   className?: string;
@@ -36,7 +36,7 @@ export function AnimatedNumber({
   value,
   suffix,
   flash = false,
-  flashColor = 'var(--color-accent)',
+  flashColor = 'var(--color-cta-bg)',
   className,
   decimals = 0,
 }: AnimatedNumberProps) {

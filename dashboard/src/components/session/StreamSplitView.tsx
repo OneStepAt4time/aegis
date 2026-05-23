@@ -61,8 +61,8 @@ export function StreamSplitView({ sessionId, isDriver }: StreamSplitViewProps) {
       <button
         type="button"
         onMouseDown={handleMouseDown}
-        className={`w-1 h-full bg-[var(--color-void-lighter)] hover:bg-[var(--color-accent)] cursor-col-resize transition-colors shrink-0 ${
-          isDragging ? 'bg-[var(--color-accent)]' : ''
+        className={`w-1 h-full bg-[var(--color-void-lighter)] hover:bg-[var(--color-cta-bg)] cursor-col-resize transition-colors shrink-0 ${
+          isDragging ? 'bg-[var(--color-cta-bg)]' : ''
         }`}
         aria-label={t("aria.resizePanes")}
       />

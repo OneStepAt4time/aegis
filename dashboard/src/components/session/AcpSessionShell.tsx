@@ -157,13 +157,13 @@ export function AcpSessionShell({
                     <Icon className="h-4 w-4" />
                     {tab.label}
                     {tab.badge !== undefined && (
-                      <span className="ml-1 rounded-full bg-[var(--color-accent)]/20 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-accent)]">
+                      <span className="ml-1 rounded-full bg-[var(--color-cta-bg)]/20 px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-cta-bg)]">
                         {tab.badge}
                       </span>
                     )}
                     {/* Active indicator */}
                     {isActive && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--color-accent)]" />
+                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--color-cta-bg)]" />
                     )}
                   </button>
                 );

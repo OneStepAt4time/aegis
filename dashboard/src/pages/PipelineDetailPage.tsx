@@ -142,8 +142,8 @@ export default function PipelineDetailPage() {
       </div>
 
       {/* Steps Table */}
-      <div className="rounded-lg border border-void-lighter bg-[var(--color-surface)]">
-        <div className="px-4 py-3 border-b border-void-lighter">
+      <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)]">
+        <div className="px-4 py-3 border-b border-[var(--color-void-lighter)]">
           <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t('pipelines.stepsLabel')} ({pipeline.stages.length})
           </h3>
@@ -156,7 +156,7 @@ export default function PipelineDetailPage() {
           <div className="overflow-x-auto" tabIndex={0} aria-label={t('pipelines.stepsLabel')}>
           <table className="w-full text-left text-sm" aria-label={t('pipelines.stepsLabel')}>
             <thead>
-              <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
+              <tr className="border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)]">
                 <th className="px-4 py-3 font-medium w-16">#</th>
                 <th className="px-4 py-3 font-medium">{t('pipelines.statusLabel')}</th>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -167,7 +167,7 @@ export default function PipelineDetailPage() {
               {pipeline.stages.map((stage, i) => (
                 <tr
                   key={stage.name}
-                  className="border-b border-void-lighter/50 transition-colors hover:border-l-2 hover:border-l-cyan"
+                  className="border-b border-[var(--color-void-lighter)]/50 transition-colors hover:border-l-2 hover:border-l-[var(--color-accent-cyan)]"
                 >
                   <td className="px-4 py-3 text-[var(--color-text-muted)] font-mono text-xs">
                     #{i + 1}
@@ -179,7 +179,7 @@ export default function PipelineDetailPage() {
                     {stage.sessionId ? (
                       <Link
                         to={`/sessions/${encodeURIComponent(stage.sessionId)}`}
-                        className="font-medium text-[var(--color-text-primary)] hover:text-cyan transition-colors"
+                        className="font-medium text-[var(--color-text-primary)] hover:text-[var(--color-accent-cyan)] transition-colors"
                       >
                         {stage.name}
                       </Link>

@@ -527,7 +527,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setPage(1);
                   }}
                   aria-label={t("aria.filterByStatus")}
-                  className="min-h-[44px] rounded-md border border-void-lighter bg-void px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-cyan"
+                  className="min-h-[44px] rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-cyan)]"
                 >
                   {STATUS_FILTERS.map((status) => (
                     <option key={status} value={status}>
@@ -543,8 +543,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 aria-label={groupByDir ? 'Show ungrouped session list' : 'Group sessions by directory'}
                 aria-pressed={groupByDir}
                 className={`flex min-h-[36px] items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${groupByDir
-                  ? 'border-cyan bg-cyan/10 text-cyan'
-                  : 'border-void-lighter bg-void text-[var(--color-text-muted)] hover:border-cyan/40 hover:text-[var(--color-text-primary)]'}`}
+                  ? 'border-[var(--color-accent-cyan)] bg-[var(--color-cta-bg)]/10 text-[var(--color-accent-cyan)]'
+                  : 'border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-cyan)]/40 hover:text-[var(--color-text-primary)]'}`}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 {groupByDir ? 'Ungroup' : 'By Directory'}
@@ -560,7 +560,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       setPage(1);
                     }}
                     aria-label={t("aria.filterByDirectory")}
-                    className="min-h-[36px] rounded-md border border-void-lighter bg-void px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-cyan max-w-[180px]"
+                    className="min-h-[36px] rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-cyan)] max-w-[180px]"
                   >
                     <option value="all">{t("aria.allDirectories")} ({sessions.length})</option>
                     {uniqueWorkDirs.map(([key, full]) => (
@@ -592,8 +592,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       setPage(1);
                     }}
                     className={`min-h-[44px] rounded-full border px-3 py-1.5 text-xs transition-colors ${isActive
-                      ? 'border-cyan bg-cyan/10 text-cyan'
-                      : 'border-void-lighter bg-void text-[var(--color-text-muted)] hover:border-cyan/40 hover:text-[var(--color-text-primary)]'}`}
+                      ? 'border-[var(--color-accent-cyan)] bg-[var(--color-cta-bg)]/10 text-[var(--color-accent-cyan)]'
+                      : 'border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-cyan)]/40 hover:text-[var(--color-text-primary)]'}`}
                   >
                     {formatStatusLabel(status)} <span className="text-[var(--color-text-muted)]">{statusCounts[status] ?? 0}</span>
                   </button>
@@ -624,7 +624,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           <div
             role="status"
             aria-live="polite"
-            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-void-lighter bg-void px-3 py-2"
+            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] px-3 py-2"
           >
             <div className="text-xs text-[var(--color-text-muted)]">{loadError ?? 'Session data is using polling fallback while real-time updates recover.'}</div>
             {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
@@ -632,7 +632,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         )}
 
         {selectedIds.length > 0 && (
-          <div className="mt-4 flex flex-col gap-3 rounded-md border border-cyan/20 bg-cyan/5 p-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-md border border-[var(--color-accent-cyan)]/20 bg-[var(--color-cta-bg)]/5 p-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm text-[var(--color-text-primary)]">
               {selectedIds.length} session{selectedIds.length === 1 ? '' : 's'} selected
             </div>
@@ -661,7 +661,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => setSelectedIds([])}
                 disabled={bulkAction !== null}
                 aria-label={t("aria.clearSelection")}
-                className="min-h-[44px] rounded-md border border-void-lighter px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md border border-[var(--color-void-lighter)] px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
               >
                 Clear
               </button>
@@ -715,12 +715,12 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               <button
                 type="button"
                 onClick={handleSurpriseMe}
-                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/5 px-4 py-2 text-sm font-medium text-cyan-300 transition-all hover:bg-[var(--color-accent-cyan)]/10 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/5 px-4 py-2 text-sm font-medium text-[var(--color-accent-cyan-glow)] transition-all hover:bg-[var(--color-accent-cyan)]/10 active:scale-95"
               >
                 <Sparkles className="h-4 w-4" />
                 Surprise me
               </button>
-              <code className="mt-2 px-4 py-2 font-mono text-xs text-cyan-300/70 bg-[var(--color-accent-cyan)]/20 border border-cyan-900/40 rounded-lg">
+              <code className="mt-2 px-4 py-2 font-mono text-xs text-[var(--color-accent-cyan-glow)]/70 bg-[var(--color-accent-cyan)]/20 border border-[var(--color-accent-cyan)]/40 rounded-lg">
                 $ ag create "brief"
               </code>
             </div>
@@ -729,14 +729,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       ) : (
         <>
           <div className="flex flex-col gap-3 md:hidden">
-            <div className="flex items-center justify-between rounded-md border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
+            <div className="flex items-center justify-between rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   aria-label={t("aria.selectAll")}
                   checked={allVisibleSelected}
                   onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                  className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+                  className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
                 />
                 Select visible
               </label>
@@ -750,7 +750,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     <Fragment key={`group-${dirKey}`}>
                       <button
                         type="button"
-                        className="flex min-h-[44px] items-center gap-2 w-full rounded-md border border-void-lighter bg-[var(--color-void)] px-4 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-cyan/40 hover:text-[var(--color-text-primary)]"
+                        className="flex min-h-[44px] items-center gap-2 w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-4 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-cyan)]/40 hover:text-[var(--color-text-primary)]"
                         onClick={() => toggleGroup(dirKey)}
                         aria-expanded={!isCollapsed}
                       >
@@ -797,17 +797,17 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             }
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-void-lighter bg-[var(--color-surface)] md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
+          <div className="hidden overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
             <table className="w-full text-left text-sm" aria-label={t("aria.sessionsTable")}>
               <thead>
-                <tr className="border-b border-void-lighter text-[var(--color-text-muted)]">
+                <tr className="border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)]">
                   <th className="px-4 py-3 font-medium">
                     <input
                       type="checkbox"
                       aria-label={t("aria.selectAll")}
                       checked={allVisibleSelected}
                       onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+                      className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
                     />
                   </th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -842,7 +842,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
           </div>
 
           {deferredSearch.length === 0 && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
+            <div className="flex items-center justify-between rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
               <span>
                 Page {pagination.page} of {pagination.totalPages}
               </span>
@@ -852,7 +852,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={pagination.page <= 1}
                   aria-label={t("aria.prevPage")}
-                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-[var(--color-void-lighter)] px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </button>
@@ -861,7 +861,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                   disabled={pagination.page >= pagination.totalPages}
                   aria-label={t("aria.nextPage")}
-                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-void-lighter px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1 rounded-md border border-[var(--color-void-lighter)] px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next <ChevronRight className="h-4 w-4" />
                 </button>

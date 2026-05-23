@@ -39,7 +39,7 @@ const COLOR_MAP: Record<KPIItem['color'], string> = {
   output: 'text-[var(--color-accent-purple)]',
   cost: 'text-[var(--color-warning)]',
   efficiency: 'text-[var(--color-success)]',
-  time: 'text-[var(--color-accent)]',
+  time: 'text-[var(--color-cta-bg)]',
   neutral: 'text-[var(--color-text-primary)]',
 };
 

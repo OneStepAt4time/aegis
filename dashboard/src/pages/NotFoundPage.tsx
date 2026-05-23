@@ -15,7 +15,7 @@ export default function NotFoundPage() {
       <p className="text-lg text-[var(--color-text-muted)]">{t('errors.notFound')}</p>
       <Link
         to="/"
-        className="mt-2 rounded-lg bg-cyan px-4 py-2 text-sm font-medium text-void transition-colors hover:bg-cyan/80"
+        className="mt-2 rounded-lg bg-[var(--color-cta-bg)] px-4 py-2 text-sm font-medium text-[var(--color-void)] transition-colors hover:bg-[var(--color-cta-bg)]/80"
       >
         {t('errors.goHome')}
       </Link>
