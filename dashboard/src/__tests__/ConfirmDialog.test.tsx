@@ -139,7 +139,7 @@ describe('ConfirmDialog', () => {
       />,
     );
     const confirmBtn = screen.getByText('Confirm');
-    expect(confirmBtn.className).toContain('text-red-300');
+    expect(confirmBtn.className).toContain('text-[var(--color-danger-glow)]');
   });
 
   it('applies warning variant styles to confirm button', () => {
