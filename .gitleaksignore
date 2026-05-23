@@ -1,4 +1,7 @@
-# False positives in docs — curl examples with REDACTED placeholders and generic API key patterns
+# False positives — explicit ignores for patterns flagged by gitleaks despite .gitleaks.toml path allowlists.
+# NOTE: gitleaks-action v1 does not fully honor [allowlist] paths in .gitleaks.toml.
+# If a finding is in tests/ or docs/ and .gitleaks.toml should catch it but doesn't, add it here.
+# See: .gitleaks.toml [allowlist] paths (src/__tests__/.*, docs/.*) — these work in v2 but not reliably in v1.
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:132
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:145
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:155
