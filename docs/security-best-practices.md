@@ -387,6 +387,7 @@ Before going to production:
 - [ ] Stale sessions monitored and cleaned up regularly
 - [ ] No credentials in `.env` files in working directories
 - [ ] Docker runs as non-root with resource limits
+- [ ] OTEL data classification reviewed if exporting traces to external backends
 - [ ] SSO/SAML configured for team access (enterprise tier)
 
 ---
@@ -413,6 +414,31 @@ ACP child processes (Claude Code sessions) run with **full host network access**
 This limitation is tracked in the Phase 4 roadmap. Network isolation will be added when multi-user deployments are supported.
 
 > **See also:** [ADR-0030 — Network Isolation Scope by Deployment Tier](adr/0030-network-isolation-scope-by-deployment-tier.md)
+
+---
+
+## OTEL Data Classification
+
+When exporting OpenTelemetry traces to third-party backends (Datadog, Honeycomb, Grafana Cloud, New Relic), verify the data classification of emitted attributes:
+
+**Non-sensitive attributes (safe to export):**
+
+- `aegis.agent.id`, `aegis.agent.parent_id` — CC-generated correlation IDs (e.g. `sess_abc123`). These are **not PII** under GDPR/CCPA. They identify agent sessions, not people.
+- `aegis.session.id` — Aegis UUID, server-generated.
+- `aegis.tool.name`, `aegis.tool.result` — tool metadata, no user content.
+- `service.name`, `service.version` — deployment identifiers.
+
+**Potentially sensitive attributes:**
+
+- `aegis.node` — exposes `os.hostname()`. May reveal internal infrastructure naming conventions (e.g. `prod-worker-03`). Suppress with `AEGIS_OTEL_INCLUDE_HOSTNAME=false`.
+- `aegis.pid` — process identifier, low risk. Suppress with `AEGIS_OTEL_INCLUDE_PID=false`.
+
+**Never exported by Aegis:**
+
+- User prompts, tool inputs/outputs, file contents, API keys, or any conversation data.
+- OTEL spans capture metadata about operations, not the data flowing through them.
+
+**Enterprise recommendation:** Configure your OTEL collector to redact or transform `aegis.node` before forwarding to external backends if infrastructure naming is considered sensitive. See [OBSERVABILITY.md](OBSERVABILITY.md#otel-data-classification-pii-compliance) for the full attribute reference.
 
 ---
 
