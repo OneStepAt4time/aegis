@@ -16,7 +16,7 @@ const COLOR_CLASSES: Record<string, string> = {
   green: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
   blue: "bg-blue-500/15 text-blue-400 border-blue-500/25",
   amber: "bg-[var(--color-warning)]/15 text-amber-400 border-[var(--color-warning)]/25",
-  cyan: "bg-[var(--color-cta-bg)]-500/15 text-[var(--color-accent-cyan)]-400 border-[var(--color-accent-cyan)]-500/25",
+  cyan: "bg-[var(--color-accent-cyan)]/15 text-[var(--color-accent-cyan-glow)] border-[var(--color-accent-cyan)]/25",
   rose: "bg-rose-500/15 text-rose-400 border-rose-500/25",
   gray: "bg-gray-500/15 text-gray-400 border-gray-500/25",
 };

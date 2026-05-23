@@ -234,7 +234,7 @@ function VirtualizedRow(props: {
       </div>
       <div className="flex items-center gap-1 px-3">
         {currentAction === 'working' && (
-          <span className="inline-flex items-center gap-1 rounded bg-[var(--color-cta-bg)]-900/30 px-1.5 py-0.5 text-xs text-[var(--color-accent-cyan)]">
+          <span className="inline-flex items-center gap-1 rounded bg-[var(--color-accent-cyan)]/30 px-1.5 py-0.5 text-xs text-[var(--color-accent-cyan)]">
             <Play className="h-2.5 w-2.5" />
             running
           </span>

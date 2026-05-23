@@ -649,7 +649,7 @@ export default function SessionHistoryPage() {
                       type="checkbox"
                       checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-accent-cyan)] focus:ring-[var(--color-accent-cyan)]-500/30"
+                      className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-accent-cyan)] focus:ring-[var(--color-accent-cyan)]/30"
                     />
                   </th>
                   <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">{t('sessionHistory.nameColumn')}</th>
@@ -704,7 +704,7 @@ export default function SessionHistoryPage() {
                           checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-accent-cyan)] focus:ring-[var(--color-accent-cyan)]-500/30"
+                          className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-accent-cyan)] focus:ring-[var(--color-accent-cyan)]/30"
                         />
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]" aria-hidden="true">—</td>
