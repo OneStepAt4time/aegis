@@ -2,6 +2,29 @@
 # NOTE: gitleaks-action v1 does not fully honor [allowlist] paths in .gitleaks.toml.
 # If a finding is in tests/ or docs/ and .gitleaks.toml should catch it but doesn't, add it here.
 # See: .gitleaks.toml [allowlist] paths (src/__tests__/.*, docs/.*) — these work in v2 but not reliably in v1.
+
+# check-no-hardcoded-tokens.test.ts — fake GitHub tokens in test fixtures
+92ca96974672f6d6cc1fea5dc17dace41d7a080a:src/__tests__/check-no-hardcoded-tokens.test.ts:Github OAuth Access Token:29
+92ca96974672f6d6cc1fea5dc17dace41d7a080a:src/__tests__/check-no-hardcoded-tokens.test.ts:Github Personal Access Token:45
+
+# acp-event-redaction-3617.test.ts — fake Slack tokens, private keys, AWS keys in test fixtures
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Slack:23
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Slack:83
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Slack:86
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Asymmetric Private Key:108
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Asymmetric Private Key:112
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:Asymmetric Private Key:116
+
+# hygiene-check-1905.test.ts — mock AWS key in test fixture
+7f9f1f07b9b2202f430799547703c1b2108dff46:src/__tests__/hygiene-check-1905.test.ts:AWS Access Key ID:95
+a2171764f5761a8e01441b5b8ad3398eb572fd93:src/__tests__/hygiene-check-1905.test.ts:AWS Access Key:95
+
+# docs — example keys in ADR and user guide (not real credentials)
+94832628d316a99de4144200355b27906f597afb:docs/adr/0016-release-please-github-app-token.md:RSA Private Key:37
+94832628d316a99de4144200355b27906f597afb:docs/adr/0016-release-please-github-app-token.md:Asymmetric Private Key:37
+3b8c29be1265552e541eeeee6a0a026fb59c1e65:docs/adr/0016-release-please-github-app-token.md:Asymmetric Private Key:37
+
+# Existing entries (docs curl examples)
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:132
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:145
 76de56542b23aeba05a081b434698a7aa8eba2ae:docs/enterprise/06-disaster-recovery.md:curl-auth-header:155
@@ -9,5 +32,3 @@
 94bf96e01df2193355abe838b61a112dd765c4ff:docs/api-examples.md:generic-api-key:121
 94bf96e01df2193355abe838b61a112dd765c4ff:docs/api-examples.md:generic-api-key:138
 3b8c29be1265552e541eeeee6a0a026fb59c1e65:docs/user-guide.md:curl-auth-header:88
-7f9f1f07b9b2202f430799547703c1b2108dff46:src/__tests__/hygiene-check-1905.test.ts:AWS Access Key ID:95
-94832628d316a99de4144200355b27906f597afb:docs/adr/0016-release-please-github-app-token.md:RSA Private Key:37

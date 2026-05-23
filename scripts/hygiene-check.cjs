@@ -128,6 +128,12 @@ function scanContentForCredentials(filePath, content) {
     return [];
   }
 
+  // Gitleaks config files intentionally contain example credential patterns
+  // for allowlist/regex definitions — skip them to avoid false positives.
+  if (filePath === '.gitleaks.toml' || filePath === '.gitleaksignore') {
+    return [];
+  }
+
   const findings = [];
   const lines = content.split(/\r?\n/);
 
