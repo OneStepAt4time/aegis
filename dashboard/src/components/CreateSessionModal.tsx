@@ -629,7 +629,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         <div className="p-4 sm:p-5 space-y-4">
           <div className="flex items-center gap-3">
             {batchResult.created > 0 && (
-              <span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-3 py-1.5">
+              <span className="text-xs font-medium text-[var(--color-success-glow)] bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 rounded px-3 py-1.5">
                 {batchResult.created} created
               </span>
             )}

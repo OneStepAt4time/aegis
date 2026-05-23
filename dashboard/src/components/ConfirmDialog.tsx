@@ -19,7 +19,7 @@ interface ConfirmDialogProps {
 const VARIANT_STYLES = {
   danger: {
     confirm:
-      'bg-[var(--color-danger)]/10 hover:bg-[var(--color-danger)]/20 text-red-300 border border-[var(--color-danger)]/30',
+      'bg-[var(--color-danger)]/10 hover:bg-[var(--color-danger)]/20 text-[var(--color-danger-glow)] border border-[var(--color-danger)]/30',
   },
   warning: {
     confirm:

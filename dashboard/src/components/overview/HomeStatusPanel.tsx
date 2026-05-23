@@ -42,19 +42,19 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
       value: 'text-[var(--color-accent-cyan-glow)]',
     },
     green: {
-      border: 'border-emerald-500/20',
-      icon: 'text-emerald-400',
-      value: 'text-emerald-300',
+      border: 'border-[var(--color-success)]/20',
+      icon: 'text-[var(--color-success-glow)]',
+      value: 'text-[var(--color-success-glow)]',
     },
     amber: {
       border: 'border-[var(--color-warning)]/20',
       icon: 'text-[var(--color-warning)]',
-      value: 'text-amber-300',
+      value: 'text-[var(--color-warning-glow)]',
     },
     red: {
       border: 'border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 shadow-[0_0_20px_rgba(239,68,68,0.15),0_20px_40px_-15px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-[var(--color-danger)]/20',
       icon: 'text-[var(--color-danger)]',
-      value: 'text-red-300',
+      value: 'text-[var(--color-danger-glow)]',
     },
   };
 
@@ -89,7 +89,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
             type="button"
             onClick={actionButton.onClick}
             className={`ml-11 sm:ml-14 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-              tone === 'red' ? 'text-[var(--color-danger)] hover:text-red-300' : 'text-[var(--color-warning)] hover:text-amber-300'
+              tone === 'red' ? 'text-[var(--color-danger)] hover:text-[var(--color-danger-glow)]' : 'text-[var(--color-warning)] hover:text-[var(--color-warning-glow)]'
             }`}
           >
             <ExternalLink className="h-3 w-3" />

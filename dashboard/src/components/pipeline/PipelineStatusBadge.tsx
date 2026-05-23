@@ -8,7 +8,7 @@ interface PipelineStatusBadgeProps {
 
 const STATUS_STYLES: Record<string, string> = {
   running: 'bg-[var(--color-cta-bg)]/10 text-[var(--color-accent-cyan)] border-[var(--color-accent-cyan)]/30',
-  completed: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30',
+  completed: 'bg-[var(--color-success)]/10 text-[var(--color-success-glow)] border-[var(--color-success)]/30',
   failed: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border-[var(--color-danger)]/30',
   pending: 'bg-[var(--color-void-lighter)] text-[var(--color-text-muted)] border-[var(--color-void-lighter)]',
 };

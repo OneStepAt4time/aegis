@@ -220,7 +220,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
         <button
           type="button"
           onClick={handleKill}
-          className="px-6 py-2.5 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-red-300 font-medium transition-colors hover:bg-[var(--color-danger)]/20"
+          className="px-6 py-2.5 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-[var(--color-danger-glow)] font-medium transition-colors hover:bg-[var(--color-danger)]/20"
         >
           Kill Session
         </button>
@@ -229,7 +229,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     complete: {
       title: 'Tour complete!',
       description: 'You now know the basics: create sessions, handle permissions, and manage cleanup. Happy orchestrating!',
-      icon: <CheckCircle2 className="h-12 w-12 text-emerald-400" />,
+      icon: <CheckCircle2 className="h-12 w-12 text-[var(--color-success-glow)]" />,
     },
   };
 
@@ -286,7 +286,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
             </p>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-sm text-red-300">
+              <div className="mb-4 p-3 rounded-lg bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 text-sm text-[var(--color-danger-glow)]">
                 {error}
               </div>
             )}

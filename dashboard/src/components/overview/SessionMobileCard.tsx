@@ -65,7 +65,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
               onClick={(e) => onApprove(e, session.id)}
               disabled={currentAction === 'approve'}
               aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-green-900/30 p-2 text-[var(--color-success)] transition-colors hover:bg-green-900/50 disabled:pointer-events-none disabled:opacity-40"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-success)]/15 p-2 text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
               title="Approve"
             >
               <Play className="h-4 w-4" />
@@ -84,7 +84,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             onClick={(e) => onKill(e, session.id)}
             disabled={currentAction === 'kill'}
             aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-red-900/30 p-2 text-[var(--color-danger)] transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 p-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
             title="Kill"
           >
             <XCircle className="h-4 w-4" />
@@ -101,7 +101,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
           </span>
         )}
         {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-[var(--color-success)]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)]/15 px-2 py-0.5 text-[var(--color-success)]">
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
           </span>
         ) : (

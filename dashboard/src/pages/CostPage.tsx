@@ -120,13 +120,13 @@ function BudgetOverview({ dailyData, budgetSettings, navigateToSettings }: Budge
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-[var(--color-warning)] flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-medium text-amber-200">{t('cost.budgetAlertSection.title')}</h4>
+            <h4 className="text-sm font-medium text-[var(--color-warning-glow)]">{t('cost.budgetAlertSection.title')}</h4>
             <p className="mt-1 text-xs text-[var(--color-warning)]/80">
               {t('cost.budgetAlertSection.description')}{' '}
               <button
                 type="button"
                 onClick={navigateToSettings}
-                className="inline-flex min-h-[44px] items-center underline hover:text-amber-200"
+                className="inline-flex min-h-[44px] items-center underline hover:text-[var(--color-warning-glow)]"
               >
                 Settings
               </button>

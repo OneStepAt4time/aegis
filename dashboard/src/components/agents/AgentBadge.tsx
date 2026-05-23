@@ -12,12 +12,12 @@ import { getAgentMeta } from "./agent-registry";
 
 /** Tailwind color → dark-theme badge classes. */
 const COLOR_CLASSES: Record<string, string> = {
-  purple: "bg-purple-500/15 text-purple-400 border-purple-500/25",
-  green: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-  blue: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  amber: "bg-[var(--color-warning)]/15 text-amber-400 border-[var(--color-warning)]/25",
+  purple: "bg-[var(--color-accent-purple)]/15 text-[var(--color-accent-purple-glow)] border-[var(--color-accent-purple)]/25",
+  green: "bg-[var(--color-success)]/15 text-[var(--color-success-glow)] border-[var(--color-success)]/25",
+  blue: "bg-[var(--color-info)]/15 text-[var(--color-info-glow)] border-[var(--color-info)]/25",
+  amber: "bg-[var(--color-warning)]/15 text-[var(--color-warning-glow)] border-[var(--color-warning)]/25",
   cyan: "bg-[var(--color-accent-cyan)]/15 text-[var(--color-accent-cyan-glow)] border-[var(--color-accent-cyan)]/25",
-  rose: "bg-rose-500/15 text-rose-400 border-rose-500/25",
+  rose: "bg-[var(--color-danger)]/15 text-[var(--color-danger-glow)] border-[var(--color-danger)]/25",
   gray: "bg-gray-500/15 text-gray-400 border-gray-500/25",
 };
 

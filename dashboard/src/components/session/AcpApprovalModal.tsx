@@ -160,7 +160,7 @@ export function AcpApprovalModal({
         <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button type="button" onClick={onClearError} className="text-[var(--color-danger)] hover:text-red-300" aria-label={t("aria.dismissError")}>
+            <button type="button" onClick={onClearError} className="text-[var(--color-danger)] hover:text-[var(--color-danger-glow)]" aria-label={t("aria.dismissError")}>
               ✕
             </button>
           )}
