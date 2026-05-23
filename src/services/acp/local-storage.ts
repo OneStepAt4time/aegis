@@ -145,6 +145,8 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   private dirty = false;
   /** Issue #4032: Debounce timer for persist. */
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Issue #4032: Resolvers for pending persist promises. */
+  private pendingPersistResolvers: Array<() => void> = [];
   private readonly maxEventsPerSession: number;
   private readonly persistDebounceMs: number;
   private readonly memorySessionStore: MemoryAcpSessionStore;
