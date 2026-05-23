@@ -79,13 +79,13 @@ function buildTimeline(record: AcpPauseInterventionRecord): TimelineEntry[] {
 
 const TONE_STYLES = {
   amber: 'border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5',
-  blue: 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5',
+  blue: 'border-[var(--color-cta-bg)]/30 bg-[var(--color-cta-bg)]/5',
   green: 'border-[var(--color-success)]/30 bg-[var(--color-success)]/5',
 } as const;
 
 const TONE_ICON_STYLES = {
   amber: 'text-[var(--color-warning)]',
-  blue: 'text-[var(--color-accent)]',
+  blue: 'text-[var(--color-cta-bg)]',
   green: 'text-[var(--color-success)]',
 } as const;
 

@@ -145,7 +145,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
               onChange={(e) => setPipelineName(e.target.value)}
               placeholder="my-pipeline"
               aria-label={t("aria.pipelineName")}
-              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+              className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
           </div>
 
@@ -166,21 +166,21 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
                   value={step.workDir}
                   onChange={(e) => updateStep(i, 'workDir', e.target.value)}
                   placeholder="/home/user/project"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)] font-mono"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
                 />
                 <input
                   type="text"
                   value={step.name}
                   onChange={(e) => updateStep(i, 'name', e.target.value)}
                   placeholder="name"
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
                 <input
                   type="text"
                   value={step.prompt}
                   onChange={(e) => updateStep(i, 'prompt', e.target.value)}
                   placeholder="Initial prompt..."
-                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent)]"
+                  className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
                 <button
                   type="button"
@@ -226,7 +226,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
             <button
               type="submit"
               disabled={loading || !canSubmit}
-              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-cta-bg)]/10 hover:bg-[var(--color-cta-bg)]/20 text-[var(--color-cta-bg)] border border-[var(--color-cta-bg)]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
               Create Pipeline

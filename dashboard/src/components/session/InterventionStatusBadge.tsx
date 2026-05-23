@@ -22,8 +22,8 @@ const STATUS_CONFIG = {
   },
   intervening: {
     label: 'Intervening',
-    bg: 'bg-[var(--color-accent)]/20',
-    text: 'text-[var(--color-accent)]',
+    bg: 'bg-[var(--color-cta-bg)]/20',
+    text: 'text-[var(--color-cta-bg)]',
     icon: Hand,
   },
   resumed: {

@@ -140,7 +140,7 @@ function actionBadgeClass(action: string): string {
     return 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
   }
   if (action.includes('create') || action.includes('authenticated')) {
-    return 'border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-cyan-300';
+    return 'border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan-glow)]';
   }
   return 'border border-[var(--color-void-lighter)] bg-[var(--color-void-lighter)]/40 text-[var(--color-text-primary)]';
 }

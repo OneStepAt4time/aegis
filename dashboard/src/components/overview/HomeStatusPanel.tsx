@@ -39,7 +39,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
     blue: {
       border: 'border-[var(--color-accent-cyan)]/20',
       icon: 'text-[var(--color-accent-cyan)]',
-      value: 'text-cyan-300',
+      value: 'text-[var(--color-accent-cyan-glow)]',
     },
     green: {
       border: 'border-emerald-500/20',
@@ -217,7 +217,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
         <div
           role="status"
           aria-live="polite"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-void-lighter bg-[var(--color-surface)] px-4 py-3"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-3"
         >
           <div className="text-xs text-[var(--color-text-muted)]">
             {loadError ?? 'Using the latest available home status data.'}

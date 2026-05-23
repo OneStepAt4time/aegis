@@ -280,7 +280,7 @@ export default function SettingsPage() {
                         title={description}
                         className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                           theme === value || (theme === 'auto' && value === 'light')
-                            ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)]'
+                            ? 'border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)]/10 text-[var(--color-cta-bg)] font-medium dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)]'
                             : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                         }`}
                       >
@@ -338,7 +338,7 @@ export default function SettingsPage() {
                       title={description}
                       className={`min-h-[44px] px-2.5 py-1 text-xs rounded border transition-colors ${
                         readingFont === value
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium dark:bg-[var(--color-accent)]/10 dark:text-[var(--color-accent)]'
+                          ? 'border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)]/10 text-[var(--color-cta-bg)] font-medium dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)]'
                           : 'border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                       }`}
                     >

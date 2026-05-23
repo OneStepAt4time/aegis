@@ -45,7 +45,7 @@ function getToolIcon(toolName: string) {
 /** Status configuration. */
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Loader2; color: string; bgColor: string }> = {
   pending: { label: 'Pending', icon: Clock, color: 'text-[var(--color-text-muted)]', bgColor: 'bg-[var(--color-void-lighter)]' },
-  running: { label: 'Running', icon: Loader2, color: 'text-[var(--color-accent)]', bgColor: 'bg-[var(--color-accent)]/10' },
+  running: { label: 'Running', icon: Loader2, color: 'text-[var(--color-cta-bg)]', bgColor: 'bg-[var(--color-cta-bg)]/10' },
   completed: { label: 'Completed', icon: CheckCircle, color: 'text-[var(--color-success)]', bgColor: 'bg-[var(--color-success)]/10' },
   failed: { label: 'Failed', icon: XCircle, color: 'text-[var(--color-error)]', bgColor: 'bg-[var(--color-error)]/10' },
   cancelled: { label: 'Cancelled', icon: XCircle, color: 'text-[var(--color-text-muted)]', bgColor: 'bg-[var(--color-void-lighter)]' },

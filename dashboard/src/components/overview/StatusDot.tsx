@@ -8,12 +8,12 @@ import type { SessionHealthState } from '../../types';
 
 const STATUS_COLORS: Record<UIState, string> = {
   idle: 'var(--color-success)',
-  working: 'var(--color-accent)',
+  working: 'var(--color-cta-bg)',
   permission_prompt: 'var(--color-warning)',
   bash_approval: 'var(--color-warning)',
   plan_mode: 'var(--color-dot-orange)',
   ask_question: 'var(--color-error)',
-  settings: 'var(--color-accent)',
+  settings: 'var(--color-cta-bg)',
   error: 'var(--color-dot-red)',
   rate_limit: 'var(--color-dot-red)',
   compacting: 'var(--color-warning)',

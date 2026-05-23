@@ -31,7 +31,7 @@ interface MetricCardProps {
 }
 
 const colorMap: Record<string, string> = {
-  blue: 'text-[var(--color-accent)]',
+  blue: 'text-[var(--color-cta-bg)]',
   green: 'text-[var(--color-success)]',
   amber: 'text-[var(--color-warning)]',
   red: 'text-[var(--color-error)]',
@@ -39,7 +39,7 @@ const colorMap: Record<string, string> = {
 };
 
 const barColorMap: Record<string, string> = {
-  blue: 'bg-[var(--color-accent)]',
+  blue: 'bg-[var(--color-cta-bg)]',
   green: 'bg-[var(--color-success)]',
   amber: 'bg-[var(--color-warning)]',
   red: 'bg-[var(--color-error)]',
@@ -52,9 +52,9 @@ function sparkColor(color: string): string {
     green: 'var(--color-success)',
     amber: 'var(--color-warning)',
     red: 'var(--color-error)',
-    purple: 'var(--color-accent)',
+    purple: 'var(--color-cta-bg)',
   };
-  return map[color] ?? 'var(--color-accent)';
+  return map[color] ?? 'var(--color-cta-bg)';
 }
 
 export default function MetricCard({

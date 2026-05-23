@@ -35,7 +35,7 @@ export interface ModelDistributionBarProps {
 /** Map known model patterns to CSS var colors */
 const MODEL_STYLES: Record<string, { color: string; label: string }> = {
   opus: { color: 'var(--color-accent-purple)', label: 'Opus' },
-  sonnet: { color: 'var(--color-accent)', label: 'Sonnet' },
+  sonnet: { color: 'var(--color-cta-bg)', label: 'Sonnet' },
   haiku: { color: 'var(--color-success)', label: 'Haiku' },
 };
 

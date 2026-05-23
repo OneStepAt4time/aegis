@@ -27,7 +27,7 @@ const VARIANT_STYLES = {
   },
   default: {
     confirm:
-      'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30',
+      'bg-[var(--color-cta-bg)]/10 hover:bg-[var(--color-cta-bg)]/20 text-[var(--color-cta-bg)] border border-[var(--color-cta-bg)]/30',
   },
 } as const;
 

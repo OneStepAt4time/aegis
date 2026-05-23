@@ -94,7 +94,7 @@ function ToolUseCard({ entry }: { entry: ParsedEntry }) {
       <div className="max-w-[80%] w-full bg-[var(--color-void-deepest)] border border-[var(--color-void-lighter)] rounded-lg overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-void-lighter)]">
           <span className="text-base">{getToolIcon(entry.toolName)}</span>
-          <span className="text-xs font-semibold text-[var(--color-accent)] font-mono">
+          <span className="text-xs font-semibold text-[var(--color-cta-bg)] font-mono">
             {entry.toolName ?? 'Tool'}
           </span>
           <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">tool_use</span>

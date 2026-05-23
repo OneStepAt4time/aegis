@@ -35,7 +35,7 @@ export const AgentFilter: FC<AgentFilterProps> = ({ value, onChange, className =
         id="agent-filter"
         value={value ?? ""}
         onChange={handleChange}
-        className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
+        className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--color-cta-bg)] transition-colors"
         aria-label="Filter sessions by agent type"
       >
         <option value="">All Agents</option>

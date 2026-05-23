@@ -157,9 +157,9 @@ export default function CalendarGrid({
               onClick={() => onSelectDate(day)}
               disabled={!inCurrentMonth}
               className={`
-                relative p-2 min-h-[4rem] text-left transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-inset
+                relative p-2 min-h-[4rem] text-left transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-cta-bg)] focus:ring-inset
                 ${!inCurrentMonth ? 'opacity-30 cursor-default' : 'hover:bg-[var(--color-void-dark)] cursor-pointer'}
-                ${isSelected ? 'bg-[var(--color-accent)]/10 ring-1 ring-[var(--color-accent)]/30' : ''}
+                ${isSelected ? 'bg-[var(--color-cta-bg)]/10 ring-1 ring-[var(--color-cta-bg)]/30' : ''}
               `}
               aria-label={`${format(day, 'EEEE, MMMM d, yyyy')}${hasRoutines ? `, ${dayRoutines.length} routine${dayRoutines.length > 1 ? 's' : ''}` : ''}`}
               aria-current={today ? 'date' : undefined}
@@ -167,7 +167,7 @@ export default function CalendarGrid({
               <span
                 className={`
                   text-sm font-medium
-                  ${today ? 'text-[var(--color-accent)]' : inCurrentMonth ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}
+                  ${today ? 'text-[var(--color-cta-bg)]' : inCurrentMonth ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}
                 `}
               >
                 {format(day, 'd')}

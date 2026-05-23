@@ -175,7 +175,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
             aria-pressed={filters[key]}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
               filters[key]
-                ? 'border-[var(--color-accent)]/40 text-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                ? 'border-[var(--color-cta-bg)]/40 text-[var(--color-cta-bg)] bg-[var(--color-cta-bg)]/10'
                 : 'border-[var(--color-void-lighter)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
             }`}
           >
@@ -257,7 +257,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
         <button type="button"
           onClick={scrollToBottom}
           aria-label="Scroll to bottom"
-          className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-accent)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
+          className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-cta-bg)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
           title="Scroll to bottom"
         >
           ↓

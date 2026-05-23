@@ -91,7 +91,7 @@ export default function RoutinesPage() {
           </div>
           <button type="button"
             onClick={handleCreate}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-accent)] hover:bg-[var(--color-accent)] text-white text-sm font-medium transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)]"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg)] text-white text-sm font-medium transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-cta-bg)] focus:ring-offset-2 focus:ring-offset-[var(--color-void)]"
             aria-label={t('routines.createNew')}
           >
             <Plus className="w-4 h-4" />
@@ -117,7 +117,7 @@ export default function RoutinesPage() {
         </div>
         <button type="button"
           onClick={handleCreate}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-accent)] hover:bg-[var(--color-accent)] text-white text-sm font-medium transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)]"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg)] text-white text-sm font-medium transition-colors focus-visible:outline-none focus:ring-2 focus:ring-[var(--color-cta-bg)] focus:ring-offset-2 focus:ring-offset-[var(--color-void)]"
           aria-label={t('routines.createNew')}
         >
           <Plus className="w-4 h-4" />

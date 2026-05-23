@@ -183,7 +183,7 @@ function VirtualizedRow(props: {
           aria-label={`Select session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
           checked={selected}
           onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-          className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+          className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
         />
       </div>
       <div className="flex items-center px-2">
@@ -198,7 +198,7 @@ function VirtualizedRow(props: {
       <div className="flex min-w-0 items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
+          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)]"
           title={session.displayName || session.id}
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
@@ -224,7 +224,7 @@ function VirtualizedRow(props: {
             {session.permissionMode}
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-void-lighter px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
+          <span className="inline-flex items-center rounded-full bg-[var(--color-void-lighter)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
             default
           </span>
         )}
@@ -234,7 +234,7 @@ function VirtualizedRow(props: {
       </div>
       <div className="flex items-center gap-1 px-3">
         {currentAction === 'working' && (
-          <span className="inline-flex items-center gap-1 rounded bg-cyan-900/30 px-1.5 py-0.5 text-xs text-[var(--color-accent-cyan)]">
+          <span className="inline-flex items-center gap-1 rounded bg-[var(--color-cta-bg)]-900/30 px-1.5 py-0.5 text-xs text-[var(--color-accent-cyan)]">
             <Play className="h-2.5 w-2.5" />
             running
           </span>
@@ -315,10 +315,10 @@ export function VirtualizedSessionList({
   };
 
   return (
-    <div className="rounded-lg border border-void-lighter overflow-hidden">
+    <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden">
       {showHeader && (
         <div
-          className="grid border-b border-void-lighter text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
+          className="grid border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
         >
           <div className="px-3 py-3 font-medium">
@@ -327,7 +327,7 @@ export function VirtualizedSessionList({
               aria-label={t("aria.selectAll")}
               checked={allVisibleSelected}
               onChange={(e) => onToggleSelectAll(e.target.checked)}
-              className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+              className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
             />
           </div>
           <div className="px-2 py-3 font-medium" role="columnheader">Status</div>

@@ -40,14 +40,14 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             aria-label={`Select session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             checked={selected}
             onChange={(e) => onToggleSelect(session.id, e.target.checked)}
-            className="h-4 w-4 rounded border border-void-lighter bg-void text-cyan focus:ring-1 focus:ring-cyan"
+            className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <StatusDot status={session.status} health={health} />
               <Link
                 to={`/sessions/${encodeURIComponent(session.id)}`}
-                className="inline-flex min-h-[44px] items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-cyan"
+                className="inline-flex min-h-[44px] items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)]"
               >
                 {formatSessionName(session.displayName, session.id.slice(0, 8))}
               </Link>
@@ -105,7 +105,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             <CheckCircle2 className="h-3 w-3" /> {session.permissionMode}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-void-lighter px-2 py-0.5 text-[var(--color-text-muted)]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-void-lighter)] px-2 py-0.5 text-[var(--color-text-muted)]">
             default
           </span>
         )}

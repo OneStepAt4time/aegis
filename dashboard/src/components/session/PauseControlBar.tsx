@@ -160,7 +160,7 @@ export function PauseControlBar({
           <button type="button"
             onClick={() => onIntervene?.()}
             disabled={!canAct}
-            className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md bg-[var(--color-cta-bg)]/20 px-3 py-2 text-sm font-medium text-[var(--color-cta-bg)] transition-colors hover:bg-[var(--color-cta-bg)]/30 disabled:opacity-50"
             aria-label={t("aria.startIntervention")}
           >
             <Hand className="h-4 w-4" />
@@ -182,14 +182,14 @@ export function PauseControlBar({
       {isIntervening && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-[var(--color-accent)]/20 px-2 py-1 text-xs font-medium text-[var(--color-accent)]">
+            <span className="rounded bg-[var(--color-cta-bg)]/20 px-2 py-1 text-xs font-medium text-[var(--color-cta-bg)]">
               Intervening
             </span>
             {!showGuidanceForm && (
               <button type="button"
                 onClick={() => setShowGuidanceForm(true)}
                 disabled={!canAct}
-                className="flex items-center gap-2 rounded-md bg-[var(--color-accent)]/20 px-3 py-2 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/30 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-md bg-[var(--color-cta-bg)]/20 px-3 py-2 text-sm font-medium text-[var(--color-cta-bg)] transition-colors hover:bg-[var(--color-cta-bg)]/30 disabled:opacity-50"
                 aria-label={t("aria.completeWithGuidance")}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -208,7 +208,7 @@ export function PauseControlBar({
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
                 placeholder="Provide instructions for the agent to follow after resuming..."
-                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-accent)]/50 focus-visible:outline-none resize-y"
+                className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-cta-bg)]/50 focus-visible:outline-none resize-y"
                 rows={3}
                 autoFocus
               />
@@ -216,7 +216,7 @@ export function PauseControlBar({
                 <button type="button"
                   onClick={handleComplete}
                   disabled={isLoading}
-                  className="flex items-center gap-1 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent)] disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-md bg-[var(--color-cta-bg)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta-bg)] disabled:opacity-50"
                   aria-label={t("aria.submitGuidance")}
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}

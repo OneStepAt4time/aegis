@@ -113,7 +113,7 @@ export default function RoutineCard({
           </button>
           <button type="button"
             onClick={() => onTriggerNow?.(routine.id)}
-            className="p-1.5 rounded text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+            className="p-1.5 rounded text-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg)]/10 transition-colors"
             aria-label={t("aria.triggerRoutine")}
             title="Run now"
           >

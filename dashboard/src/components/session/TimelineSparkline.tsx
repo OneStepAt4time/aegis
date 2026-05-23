@@ -123,7 +123,7 @@ export function TimelineSparkline({
               onClick={() => setRange(r)}
               className={`px-2 py-0.5 text-[10px] font-mono uppercase rounded transition-colors ${
                 range === r
-                  ? 'bg-[var(--color-accent)] text-[var(--color-void)]'
+                  ? 'bg-[var(--color-cta-bg)] text-[var(--color-void)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
               }`}
             >
