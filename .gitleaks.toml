@@ -31,4 +31,9 @@ useDefault = true
     '''<your-api-key>''',
     '''sk-ant-example''',
     '''ghp_example''',
+    # Fake token patterns used in test fixtures — all zeros/sequential, never real
+    '''gho_0+''',
+    '''ghp_0+''',
+    '''xoxb-[a-f0-9]{13}-[a-f0-9]{13}-[a-f0-9]{24}''',
+    '''AKIAIOSFODNN7EXAMPLE''',
   ]
