@@ -806,8 +806,13 @@ async function main(): Promise<void> {
   sessions = new SessionManager(config, sessionStore);
 
   // Issue #2607 / ACP-064: Initialize ACP local storage profile and backend
+  // Issue #4032: Allow test override of persist debounce via env var.
+  const persistDebounceMs = process.env.AEGIS_PERSIST_DEBOUNCE_MS
+    ? parseInt(process.env.AEGIS_PERSIST_DEBOUNCE_MS, 10)
+    : undefined;
   acpLocalProfile = createFileAcpLocalStorageProfile({
     filePath: path.join(config.stateDir, 'acp-local-storage.json'),
+    ...(persistDebounceMs !== undefined ? { persistDebounceMs } : {}),
   });
   await acpLocalProfile.start();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

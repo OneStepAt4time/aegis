@@ -210,7 +210,7 @@ describe('file ACP local-dev storage profile', () => {
 
   it('persists sessions, event replay, and queued actions across profile restart', async () => {
     const storageFile = path.join(scratchDir, 'local-acp-storage.json');
-    const firstProfile = createFileAcpLocalStorageProfile({ filePath: storageFile });
+    const firstProfile = createFileAcpLocalStorageProfile({ filePath: storageFile, persistDebounceMs: 0 });
     await firstProfile.start();
 
     await firstProfile.sessionStore.create(makeSessionRecord({ status: 'running' }));
@@ -227,7 +227,7 @@ describe('file ACP local-dev storage profile', () => {
     );
     await firstProfile.stop();
 
-    const secondProfile = createFileAcpLocalStorageProfile({ filePath: storageFile });
+    const secondProfile = createFileAcpLocalStorageProfile({ filePath: storageFile, persistDebounceMs: 0 });
     await secondProfile.start();
 
     const session = await secondProfile.sessionStore.get('session-1', scope);

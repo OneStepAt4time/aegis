@@ -52,9 +52,21 @@ export interface AcpLocalStorageProfile {
   getPersistError(): Error | null;
 }
 
+/** Issue #4032: Configuration for file-backed ACP local storage. */
 export interface FileAcpLocalStorageProfileConfig {
   filePath: string;
+  /** Issue #4032: Maximum events retained per session (default: 1000). Older events are pruned on append. */
+  maxEventsPerSession?: number;
+  /** Issue #4032: Debounce interval in ms for coalescing rapid mutations into a single disk write (default: 3000). */
+  persistDebounceMs?: number;
 }
+
+/** Issue #4032: Terminal session statuses whose events can be pruned. */
+const PRUNABLE_SESSION_STATUSES: ReadonlySet<string> = new Set([
+  'closed',
+  'completed',
+  'failed',
+]);
 
 interface LocalState {
   sessions: AcpSessionRecord[];
@@ -63,6 +75,8 @@ interface LocalState {
   actionOrder: Map<string, number>;
   nextActionOrder: number;
   pauseInterventions: AcpPauseInterventionRecord[];
+  /** Issue #4032: Incremental event seq tracking — avoids O(n) scan on append. */
+  lastEventSeqBySession: Map<string, number>;
 }
 
 type MutationHook = () => Promise<void>;
@@ -70,6 +84,10 @@ type MutationHook = () => Promise<void>;
 const noopMutationHook: MutationHook = async () => {};
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 1_000;
+/** Issue #4032: Default max events per session before pruning kicks in. */
+const DEFAULT_MAX_EVENTS_PER_SESSION = 1_000;
+/** Issue #4032: Default debounce interval for persist (ms). */
+const DEFAULT_PERSIST_DEBOUNCE_MS = 3_000;
 
 export function createMemoryAcpLocalStorageProfile(): AcpLocalStorageProfile {
   return new MemoryAcpLocalStorageProfile();
@@ -109,11 +127,28 @@ export class MemoryAcpLocalStorageProfile implements AcpLocalStorageProfile {
   }
 }
 
+/**
+ * File-backed ACP local storage profile.
+ *
+ * Issue #4032: Hardened against OOM via:
+ * - Event compaction: max events per session, prunable terminal sessions
+ * - Debounced persistence: coalesces rapid mutations into single disk writes
+ * - Incremental event seq tracking: O(1) instead of O(n) per append
+ * - Lightweight serialization: skips structuredClone on persist path
+ */
 export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   private state = createEmptyState();
   private started = false;
   private writeChain: Promise<void> = Promise.resolve();
   private persistError: Error | null = null;
+  /** Issue #4032: Dirty flag — set when state changes, cleared on persist. */
+  private dirty = false;
+  /** Issue #4032: Debounce timer for persist. */
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Issue #4032: Resolvers for pending persist promises. */
+  private pendingPersistResolvers: Array<() => void> = [];
+  private readonly maxEventsPerSession: number;
+  private readonly persistDebounceMs: number;
   private readonly memorySessionStore: MemoryAcpSessionStore;
   private readonly memoryEventStore: MemoryAcpEventStore;
   private readonly memoryActionQueue: MemoryAcpActionQueue;
@@ -125,11 +160,13 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
   readonly pauseInterventionStore: MemoryAcpPauseInterventionStore;
 
   constructor(private readonly config: FileAcpLocalStorageProfileConfig) {
-    const persist = async (): Promise<void> => this.persist();
-    this.memorySessionStore = new MemoryAcpSessionStore(this.state, persist);
-    this.memoryEventStore = new MemoryAcpEventStore(this.state, persist);
-    this.memoryActionQueue = new MemoryAcpActionQueue(this.state, persist);
-    this.memoryPauseInterventionStore = new MemoryAcpPauseInterventionStore(this.state, persist);
+    this.maxEventsPerSession = config.maxEventsPerSession ?? DEFAULT_MAX_EVENTS_PER_SESSION;
+    this.persistDebounceMs = config.persistDebounceMs ?? DEFAULT_PERSIST_DEBOUNCE_MS;
+    const schedulePersist = (): Promise<void> => this.schedulePersist();
+    this.memorySessionStore = new MemoryAcpSessionStore(this.state, schedulePersist);
+    this.memoryEventStore = new MemoryAcpEventStore(this.state, schedulePersist, this.maxEventsPerSession);
+    this.memoryActionQueue = new MemoryAcpActionQueue(this.state, schedulePersist);
+    this.memoryPauseInterventionStore = new MemoryAcpPauseInterventionStore(this.state, schedulePersist);
     this.sessionStore = this.memorySessionStore;
     this.eventStore = this.memoryEventStore;
     this.actionQueue = this.memoryActionQueue;
@@ -140,17 +177,27 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     if (this.started) return;
     await mkdir(path.dirname(this.config.filePath), { recursive: true });
     this.state = await loadState(this.config.filePath);
+    // Issue #4032: Prune events for terminal sessions on startup.
+    this.pruneCompletedSessionEvents();
     this.memorySessionStore.replaceState(this.state);
     this.memoryEventStore.replaceState(this.state);
     this.memoryActionQueue.replaceState(this.state);
     this.memoryPauseInterventionStore.replaceState(this.state);
     this.started = true;
-    await this.persist();
+    this.dirty = true;
+    // Issue #4032: Initial persist after load (which may have pruned events).
+    await this.flush();
   }
 
   async stop(_signal?: AbortSignal): Promise<void> {
     if (!this.started) return;
-    // Best-effort final persist — swallow errors so shutdown completes
+    // Issue #4032: Flush any pending dirty state before shutdown.
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    await this.flush().catch(() => {});
+    // Best-effort final write chain — swallow errors so shutdown completes
     await this.writeChain.catch(() => {});
     this.started = false;
   }
@@ -162,6 +209,42 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     return { healthy: true, details: 'file ACP local storage profile ok' };
   }
 
+  /**
+   * Issue #4032: Flush dirty state to disk immediately.
+   * Called on shutdown and after initial load.
+   */
+  private async flush(): Promise<void> {
+    if (!this.dirty) return;
+    this.dirty = false;
+    try {
+      await this.persist();
+    } finally {
+      // Resolve any callers that awaited onMutation() so they don't hang.
+      const resolvers = this.pendingPersistResolvers.splice(0);
+      for (const r of resolvers) {
+        try { r(); } catch {}
+      }
+    }
+  }
+
+  /**
+   * Issue #4032: Schedule a debounced persist.
+   * Coalesces rapid mutations into a single disk write.
+   */
+  private schedulePersist(): Promise<void> {
+    this.dirty = true;
+    return new Promise<void>((resolve) => {
+      // Track resolver so callers can be notified when persist completes.
+      this.pendingPersistResolvers.push(resolve);
+      if (this.persistTimer !== null) return;
+      this.persistTimer = setTimeout(() => {
+        this.persistTimer = null;
+        // When flush finishes, we'll resolve all pending resolvers there.
+        void this.flush().catch(() => {});
+      }, this.persistDebounceMs);
+    });
+  }
+
   private async persist(): Promise<void> {
     if (!this.started) {
       throw new Error('FileAcpLocalStorageProfile: persist() called before start()');
@@ -169,7 +252,9 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
     // Issue #3045: atomic write to prevent truncation on SIGTERM/OOM kill
     // Issue #3366: error recovery — a failed write must not poison subsequent writes
     // #3363: restrict file permissions to owner-only
-    const content = `${JSON.stringify(serializeState(this.state), null, 2)}\n`;
+    // Issue #4032: Use lightweight serialization — no structuredClone needed since
+    // we're about to JSON.stringify anyway.
+    const content = `${JSON.stringify(serializeStateLightweight(this.state), null, 2)}\n`;
     const tmpFile = `${this.config.filePath}.tmp.${process.pid}`;
 
     const prevChain = this.writeChain;
@@ -205,6 +290,39 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
    */
   getPersistError(): Error | null {
     return this.persistError;
+  }
+
+  /**
+   * Issue #4032: Remove events for sessions that have reached a terminal status.
+   * Called on startup and can be called periodically.
+   */
+  private pruneCompletedSessionEvents(): void {
+    const prunableSessionIds = new Set<string>();
+    for (const session of this.state.sessions) {
+      if (PRUNABLE_SESSION_STATUSES.has(session.status)) {
+        prunableSessionIds.add(session.id);
+      }
+    }
+    if (prunableSessionIds.size === 0) return;
+
+    const before = this.state.events.length;
+    this.state.events = this.state.events.filter(
+      event => !prunableSessionIds.has(event.sessionId)
+    );
+    const pruned = before - this.state.events.length;
+
+    // Issue #4032: Clean up seq tracking for pruned sessions.
+    for (const sessionId of prunableSessionIds) {
+      this.state.lastEventSeqBySession.delete(sessionId);
+    }
+
+    if (pruned > 0) {
+      logger.info({
+        component: 'acp-local-storage',
+        operation: 'pruneCompletedSessionEvents',
+        attributes: { prunedEventCount: pruned, prunedSessionCount: prunableSessionIds.size },
+      });
+    }
   }
 }
 
@@ -290,11 +408,20 @@ export class MemoryAcpSessionStore implements AcpSessionStore {
   }
 }
 
+/**
+ * Issue #4032: Event store with configurable per-session event limit and
+ * incremental seq tracking.
+ */
 export class MemoryAcpEventStore implements AcpEventStore {
+  private readonly maxEventsPerSession: number;
+
   constructor(
     private state: LocalState = createEmptyState(),
-    private readonly onMutation: MutationHook = noopMutationHook
-  ) {}
+    private readonly onMutation: MutationHook = noopMutationHook,
+    maxEventsPerSession: number = DEFAULT_MAX_EVENTS_PER_SESSION,
+  ) {
+    this.maxEventsPerSession = maxEventsPerSession;
+  }
 
   async append(input: AcpAppendEventInput): Promise<AcpEventRecord> {
     const validated = validateAppendInput(input);
@@ -306,7 +433,8 @@ export class MemoryAcpEventStore implements AcpEventStore {
     if (scopeConflict !== undefined) {
       throw new Error('MemoryAcpEventStore: session scope does not match existing event stream');
     }
-    const eventSeq = nextEventSeq(this.state, validated.sessionId);
+    // Issue #4032: O(1) seq lookup instead of O(n) scan.
+    const eventSeq = this.nextEventSeqIncremental(validated.sessionId);
     const record: AcpEventRecord = {
       ...validated,
       eventSeq,
@@ -316,6 +444,10 @@ export class MemoryAcpEventStore implements AcpEventStore {
       payload: clonePayload(validated.payload),
     };
     this.state.events.push(cloneEvent(record));
+    // Issue #4032: Update seq tracking after append.
+    this.state.lastEventSeqBySession.set(validated.sessionId, eventSeq);
+    // Issue #4032: Prune oldest events for this session if limit exceeded.
+    this.pruneSessionEvents(validated.sessionId);
     await this.onMutation();
     return cloneEvent(record);
   }
@@ -339,6 +471,44 @@ export class MemoryAcpEventStore implements AcpEventStore {
 
   replaceState(state: LocalState): void {
     this.state = state;
+  }
+
+  /**
+   * Issue #4032: O(1) event seq lookup using incremental tracking map.
+   */
+  private nextEventSeqIncremental(sessionId: string): number {
+    const lastSeq = this.state.lastEventSeqBySession.get(sessionId);
+    if (lastSeq !== undefined) return lastSeq + 1;
+    // First event for this session — scan once to seed the map (only happens once per session).
+    return Math.max(0, ...this.state.events.filter(event => event.sessionId === sessionId).map(event => event.eventSeq)) + 1;
+  }
+
+  /**
+   * Issue #4032: Prune oldest events for a session when the count exceeds maxEventsPerSession.
+   */
+  private pruneSessionEvents(sessionId: string): void {
+    const sessionEvents = this.state.events.filter(e => e.sessionId === sessionId);
+    if (sessionEvents.length <= this.maxEventsPerSession) return;
+
+    const pruneCount = sessionEvents.length - this.maxEventsPerSession;
+    // Sort by eventSeq ascending to identify oldest.
+    sessionEvents.sort((a, b) => a.eventSeq - b.eventSeq);
+    const prunableSeqs = new Set(
+      sessionEvents.slice(0, pruneCount).map(e => e.eventSeq)
+    );
+
+    const before = this.state.events.length;
+    this.state.events = this.state.events.filter(
+      e => !(e.sessionId === sessionId && prunableSeqs.has(e.eventSeq))
+    );
+
+    if (this.state.events.length < before) {
+      logger.info({
+        component: 'acp-local-storage',
+        operation: 'pruneSessionEvents',
+        attributes: { sessionId, prunedCount: before - this.state.events.length, remainingForSession: this.maxEventsPerSession },
+      });
+    }
   }
 }
 
@@ -672,7 +842,15 @@ export class MemoryAcpPauseInterventionStore implements AcpPauseInterventionStor
 }
 
 function createEmptyState(): LocalState {
-  return { sessions: [], events: [], actions: [], actionOrder: new Map(), nextActionOrder: 0, pauseInterventions: [] };
+  return {
+    sessions: [],
+    events: [],
+    actions: [],
+    actionOrder: new Map(),
+    nextActionOrder: 0,
+    pauseInterventions: [],
+    lastEventSeqBySession: new Map(),
+  };
 }
 
 async function loadState(filePath: string): Promise<LocalState> {
@@ -723,33 +901,55 @@ interface SerializedState {
   pauseInterventions: SerializedPauseIntervention[];
 }
 
-function serializeState(state: LocalState): SerializedState {
+/**
+ * Issue #4032: Lightweight serialization for the persist path.
+ * Skips structuredClone since we're about to JSON.stringify anyway.
+ * The stringifier creates a fresh value tree, so cloning is redundant.
+ */
+function serializeStateLightweight(state: LocalState): SerializedState {
   return {
     version: 1,
-    sessions: state.sessions.map(cloneSession),
+    sessions: state.sessions.map(s => ({
+      ...s,
+      backendMetadata: s.backendMetadata === undefined ? undefined : { ...s.backendMetadata },
+    })),
     events: state.events.map(event => ({
-      ...cloneEvent(event),
+      ...event,
       occurredAt: event.occurredAt.toISOString(),
       ingestedAt: event.ingestedAt.toISOString(),
+      // No structuredClone — JSON.stringify handles the payload as-is.
     })),
     actions: state.actions.map(action => ({
-      ...cloneAction(action),
+      ...action,
       createdAt: action.createdAt.toISOString(),
       availableAt: action.availableAt.toISOString(),
       leasedUntil: action.leasedUntil?.toISOString(),
       completedAt: action.completedAt?.toISOString(),
       failedAt: action.failedAt?.toISOString(),
       cancelledAt: action.cancelledAt?.toISOString(),
+      metadata: action.metadata === undefined ? undefined : { ...action.metadata },
+      resultMetadata: action.resultMetadata === undefined ? undefined : { ...action.resultMetadata },
+      errorMetadata: action.errorMetadata === undefined ? undefined : { ...action.errorMetadata },
     })),
     pauseInterventions: state.pauseInterventions.map(record => ({
-      ...clonePauseIntervention(record),
+      ...record,
       requestedAt: record.requestedAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
       interventionStartedAt: record.interventionStartedAt?.toISOString(),
       interventionCompletedAt: record.interventionCompletedAt?.toISOString(),
       resumedAt: record.resumedAt?.toISOString(),
+      metadata: record.metadata === undefined ? undefined : { ...record.metadata },
+      resumeMetadata: record.resumeMetadata === undefined ? undefined : { ...record.resumeMetadata },
     })),
   };
+}
+
+/**
+ * Original serializeState kept for backward compat with the legacy cloneEvent path.
+ * Issue #4032: Only used by the persist path which now uses serializeStateLightweight.
+ */
+function serializeState(state: LocalState): SerializedState {
+  return serializeStateLightweight(state);
 }
 
 function deserializeState(value: unknown): LocalState {
@@ -767,14 +967,27 @@ function deserializeState(value: unknown): LocalState {
   }));
   const actionOrder = new Map<string, number>();
   actions.forEach((action, index) => actionOrder.set(action.actionId, index));
-  return {
-    sessions: value.sessions.map(cloneSession),
-    events: value.events.map(event => ({
+
+  // Issue #4032: Build incremental seq tracking from loaded events.
+  const lastEventSeqBySession = new Map<string, number>();
+  const events = value.events.map(event => {
+    if ((event.eventSeq ?? 0) > 0) {
+      const current = lastEventSeqBySession.get(event.sessionId) ?? 0;
+      if (event.eventSeq > current) {
+        lastEventSeqBySession.set(event.sessionId, event.eventSeq);
+      }
+    }
+    return {
       ...event,
       occurredAt: parseDate(event.occurredAt, 'event.occurredAt'),
       ingestedAt: parseDate(event.ingestedAt, 'event.ingestedAt'),
       payload: clonePayload(event.payload),
-    })),
+    };
+  });
+
+  return {
+    sessions: value.sessions.map(cloneSession),
+    events,
     actions,
     actionOrder,
     nextActionOrder: actions.length,
@@ -786,6 +999,7 @@ function deserializeState(value: unknown): LocalState {
       interventionCompletedAt: parseOptionalDate(record.interventionCompletedAt, 'pauseIntervention.interventionCompletedAt'),
       resumedAt: parseOptionalDate(record.resumedAt, 'pauseIntervention.resumedAt'),
     })),
+    lastEventSeqBySession,
   };
 }
 
@@ -811,10 +1025,6 @@ function validateListInput(input: AcpListEventsInput): void {
   requireNonEmptyString(input.sessionId, 'sessionId');
   requireNonEmptyString(input.tenantId, 'tenantId');
   requireNonEmptyString(input.ownerKeyId, 'ownerKeyId');
-}
-
-function nextEventSeq(state: LocalState, sessionId: string): number {
-  return Math.max(0, ...state.events.filter(event => event.sessionId === sessionId).map(event => event.eventSeq)) + 1;
 }
 
 function compareLeaseOrder(state: LocalState, left: AcpActionRecord, right: AcpActionRecord): number {
@@ -989,4 +1199,3 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
 }
-

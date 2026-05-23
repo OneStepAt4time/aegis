@@ -48,7 +48,7 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
   });
 
   it('recovers from a failed persist — subsequent writes succeed', async () => {
-    const profile = createFileAcpLocalStorageProfile({ filePath });
+    const profile = createFileAcpLocalStorageProfile({ filePath, persistDebounceMs: 0 });
     await profile.start();
     expect(profile.getPersistError()).toBeNull();
 
@@ -75,7 +75,7 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
   });
 
   it('does NOT cascade rejection across multiple sequential failures', async () => {
-    const profile = createFileAcpLocalStorageProfile({ filePath });
+    const profile = createFileAcpLocalStorageProfile({ filePath, persistDebounceMs: 0 });
     await profile.start();
 
     // Make dir read-only
@@ -106,7 +106,7 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
   });
 
   it('stop() does not throw even when writeChain has a rejection', async () => {
-    const profile = createFileAcpLocalStorageProfile({ filePath });
+    const profile = createFileAcpLocalStorageProfile({ filePath, persistDebounceMs: 0 });
     await profile.start();
 
     // Make dir read-only so persist fails
