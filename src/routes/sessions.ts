@@ -590,13 +590,11 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       updates.isPinned = body.isPinned;
     }
     if (Object.keys(updates).length === 0) {
-      reply.code(400);
-      return { error: 'No valid fields to update', code: 'INVALID_UPDATE' };
+      return reply.status(400).send({ error: 'No valid fields to update', code: 'INVALID_UPDATE' });
     }
     const updated = await sessions.updateSessionMetadata(session.id, updates);
     if (!updated) {
-      reply.code(404);
-      return { error: 'Session not found', code: 'NOT_FOUND' };
+      return reply.status(404).send({ error: 'Session not found', code: 'NOT_FOUND' });
     }
     return addActionHints(updated, sessions, channels);
   }));
