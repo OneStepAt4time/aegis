@@ -29,6 +29,7 @@ import { type MetricsCollector } from './metrics.js';
 import { startToolSpan, setToolResult, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
 import { computeDelayMs, retryWithJitter } from './retry.js';
+import { RateLimitCoordinator } from './rate-limit-coordinator.js';
 
 /** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
 function parseCogitatedDuration(_statusText: string): number | null {
@@ -121,6 +122,8 @@ export class SessionMonitor {
   private deadNotified = new Set<string>();  // don't spam dead session events
   private prevStatusForStall = new Map<string, UIState>();  // track previous status for stall transition detection
   private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
+  /** Issue #3931: Cross-session rate-limit retry coordinator. */
+  private rateLimitCoordinator = new RateLimitCoordinator();
   // Issue #1324: Track statusText per session to detect extended thinking ("Cogitated for Xm Ys")
   private lastStatusText = new Map<string, string | null>();
   /** Thinking stall threshold multiplier — CC extended thinking gets 5x the normal stall threshold. */
@@ -608,49 +611,57 @@ export class SessionMonitor {
         sessionId: session.id,
         attributes: { attempt: retryAttempt, maxRetries, delayMs, stopReason },
       });
-      // Fire-and-forget retry after delay (non-blocking to main monitor loop)
+      // Issue #3931: Coordinate retry with other sessions to avoid concurrent
+      // rate-limit retries that amplify the problem. Acquire a slot, wait for
+      // the backoff delay, then restart. Release the slot when done.
       const backend = this.acpBackend;
       const sid = session.id;
       const cwd = session.workDir;
       const tenantId = session.tenantId ?? SYSTEM_TENANT;
       const ownerKeyId = session.ownerKeyId ?? 'master';
-      setTimeout(() => {
-        backend.restartSession({
+      const coordinator = this.rateLimitCoordinator;
+      // Fire-and-forget: acquire slot → delay → restart → release
+      coordinator.acquire(sid).then(() => {
+        return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      }).then(() => {
+        return backend.restartSession({
           sessionId: sid,
           cwd,
           tenantId,
           ownerKeyId,
           reason: `rate_limit_retry_${retryAttempt}`,
-        }).then((result) => {
-          logger.info({
-            component: 'monitor',
-            operation: 'rate_limit_retry_success',
-            sessionId: sid,
-            attributes: { attempt: retryAttempt, backoffDelayMs: result.backoffDelayMs },
-          });
-          this.rateLimitedSessions.delete(sid);
-        }).catch((err: unknown) => {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          logger.error({
-            component: 'monitor',
-            operation: 'rate_limit_retry_failed',
-            sessionId: sid,
-            errorCode: 'RATE_LIMIT_RETRY_ERROR',
-            attributes: { attempt: retryAttempt, error: errMsg },
-          });
-          // If this was the last attempt, notify the user and clean up
-          if (retryAttempt >= maxRetries) {
-            this.rateLimitRetryAttempts.delete(sid);
-            this.channels.statusChange(
-              this.makePayload('status.error', { ...session, status: 'error' } as SessionInfo,
-                `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
-            );
-            this.alertManager?.recordFailure('session_failure',
-              `Session "${session.displayName}" rate-limit retries exhausted: ${errMsg}`);
-            this.metrics?.sessionFailed(sid);
-          }
         });
-      }, delayMs);
+      }).then((result) => {
+        logger.info({
+          component: 'monitor',
+          operation: 'rate_limit_retry_success',
+          sessionId: sid,
+          attributes: { attempt: retryAttempt, backoffDelayMs: result.backoffDelayMs },
+        });
+        this.rateLimitedSessions.delete(sid);
+        coordinator.release(sid);
+      }).catch((err: unknown) => {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.error({
+          component: 'monitor',
+          operation: 'rate_limit_retry_failed',
+          sessionId: sid,
+          errorCode: 'RATE_LIMIT_RETRY_ERROR',
+          attributes: { attempt: retryAttempt, error: errMsg },
+        });
+        coordinator.release(sid);
+        // If this was the last attempt, notify the user and clean up
+        if (retryAttempt >= maxRetries) {
+          this.rateLimitRetryAttempts.delete(sid);
+          this.channels.statusChange(
+            this.makePayload('status.error', { ...session, status: 'error' } as SessionInfo,
+              `Rate-limit retry exhausted (${maxRetries}/${maxRetries}). Session requires manual intervention.`),
+            );
+          this.alertManager?.recordFailure('session_failure',
+            `Session "${session.displayName}" rate-limit retries exhausted: ${errMsg}`);
+          this.metrics?.sessionFailed(sid);
+        }
+      });
     } else if (!this.acpBackend) {
       // No ACP backend available — legacy notification only
       this.channels.statusChange(
@@ -1120,6 +1131,8 @@ export class SessionMonitor {
     this.rateLimitedSessions.delete(sessionId);
     // Issue #3754: Clear retry tracking
     this.rateLimitRetryAttempts.delete(sessionId);
+    // Issue #3931: Remove from rate-limit coordinator queue.
+    this.rateLimitCoordinator.dequeue(sessionId);
     this.stallRecovering.delete(sessionId);
     // Issue #89 L4: Clear pending debounce timer
     const pending = this.statusChangeDebounce.get(sessionId);
