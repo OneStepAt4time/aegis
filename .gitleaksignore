@@ -11,3 +11,8 @@
 3b8c29be1265552e541eeeee6a0a026fb59c1e65:docs/user-guide.md:curl-auth-header:88
 7f9f1f07b9b2202f430799547703c1b2108dff46:src/__tests__/hygiene-check-1905.test.ts:AWS Access Key ID:95
 94832628d316a99de4144200355b27906f597afb:docs/adr/0016-release-please-github-app-token.md:RSA Private Key:37
+92ca96974672f6d6cc1fea5dc17dace41d7a080a:src/__tests__/check-no-hardcoded-tokens.test.ts:GitHub OAuth Access Token:29
+92ca96974672f6d6cc1fea5dc17dace41d7a080a:src/__tests__/check-no-hardcoded-tokens.test.ts:GitHub Personal Access Token:45
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:GitHub Personal Access Token:16
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:GitHub OAuth Access Token:17
+15651b5846a243d340ba70c5a4a18ebaa5ad26fe:src/__tests__/acp-event-redaction-3617.test.ts:AWS Access Key ID:25
