@@ -13,7 +13,7 @@ export function LastUpdatedIndicator({ relativeTime, isStale }: LastUpdatedIndic
     <span
       className={`inline-flex items-center gap-1.5 text-xs tabular-nums transition-colors ${
         isStale
-          ? 'text-amber-400'
+          ? 'text-[var(--color-warning-glow)]'
           : 'text-[var(--color-text-muted)]'
       }`}
       role="status" aria-live="polite"
@@ -22,8 +22,8 @@ export function LastUpdatedIndicator({ relativeTime, isStale }: LastUpdatedIndic
       <span
         className={`inline-block h-1.5 w-1.5 rounded-full ${
           isStale
-            ? 'bg-amber-400 animate-pulse'
-            : 'bg-emerald-400'
+            ? 'bg-[var(--color-warning-glow)] animate-pulse'
+            : 'bg-[var(--color-success-glow)]'
         }`}
       />
       Updated {relativeTime}

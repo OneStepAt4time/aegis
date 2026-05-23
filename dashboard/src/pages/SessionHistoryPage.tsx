@@ -48,8 +48,8 @@ function formatTimestamp(ts?: number): string {
 }
 
 function statusClass(status: SessionHistoryRecord['finalStatus']): string {
-  if (status === 'active') return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25';
-  if (status === 'killed') return 'text-rose-300 bg-rose-500/10 border-rose-500/25';
+  if (status === 'active') return 'text-[var(--color-success-glow)] bg-[var(--color-success)]/10 border-[var(--color-success)]/25';
+  if (status === 'killed') return 'text-[var(--color-danger-glow)] bg-[var(--color-danger)]/10 border-[var(--color-danger)]/25';
   return 'text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] bg-[var(--color-void-lighter)]/40 border-[var(--color-void-lighter)]';
 }
 
@@ -613,7 +613,7 @@ export default function SessionHistoryPage() {
               </button>
               <button type="button"
                 onClick={() => setConfirmDeleteOpen(true)}
-                className="flex min-h-[44px] items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
+                className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-danger-glow)] transition-colors hover:bg-[var(--color-danger)]/20"
                 aria-label={t('sessionHistory.kill')}
               >
                 <Trash2 className="h-3 w-3" />
@@ -809,7 +809,7 @@ export default function SessionHistoryPage() {
               <button type="button"
                 onClick={handleBulkDelete}
                 disabled={deleting}
-                className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+                className="flex-1 rounded bg-[var(--color-danger)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-danger)] disabled:opacity-50"
               >
                 {deleting ? t('sessionHistory.killing') : t('sessionHistory.killCount', { count: selectedIds.size })}
               </button>

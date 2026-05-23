@@ -86,7 +86,7 @@ export default function MetricCards() {
 
   if (loadError && !metrics && !health) {
     return (
-      <div className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-6 text-sm text-amber-200">
+      <div className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-6 text-sm text-[var(--color-warning-glow)]">
         {loadError}
       </div>
     );
@@ -157,7 +157,7 @@ export default function MetricCards() {
           <p className="font-mono text-2xl text-[var(--color-danger)] font-bold">{failedSessions}</p>
           <NavLink
             to="/audit"
-            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-danger)] hover:text-red-300 transition-colors"
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-danger)] hover:text-[var(--color-danger-glow)] transition-colors"
           >
             <ExternalLink className="h-3 w-3" />
             View Error Logs
@@ -190,7 +190,7 @@ export default function MetricCards() {
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-emerald-400">{promptsDelivered}</p>
+                    <p className="text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Delivered</p>
                   </div>
                 )}

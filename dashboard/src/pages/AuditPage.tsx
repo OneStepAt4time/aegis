@@ -131,13 +131,13 @@ function hasActiveFilters(filters: AuditFilterState): boolean {
 
 function actionBadgeClass(action: string): string {
   if (action.includes('deny') || action.includes('kill')) {
-    return 'border border-rose-500/30 bg-rose-500/10 text-rose-300';
+    return 'border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 text-[var(--color-danger-glow)]';
   }
   if (action.includes('reject')) {
-    return 'border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 text-amber-300';
+    return 'border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 text-[var(--color-warning-glow)]';
   }
   if (action.includes('approve') || action.includes('allowed')) {
-    return 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+    return 'border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success-glow)]';
   }
   if (action.includes('create') || action.includes('authenticated')) {
     return 'border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan-glow)]';
@@ -222,8 +222,8 @@ function MetadataField({
 function ExportMetadataCard({ result }: { result: AuditExportResult }) {
   const t = useT();
   const integrityTone = result.integrity?.valid
-    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-    : 'border-rose-500/30 bg-rose-500/10 text-rose-300';
+    ? 'border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success-glow)]'
+    : 'border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 text-[var(--color-danger-glow)]';
   const integrityLabel = result.integrity?.valid ? 'Integrity verified' : 'Integrity check failed';
 
   return (
@@ -259,7 +259,7 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
       </div>
 
       {result.integrity && result.integrity.brokenAt !== undefined ? (
-        <p className="mt-3 text-xs text-rose-300">
+        <p className="mt-3 text-xs text-[var(--color-danger-glow)]">
           Chain verification failed at line {result.integrity.brokenAt}.
         </p>
       ) : null}
@@ -281,7 +281,7 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-xs">
         <ShieldAlert className="h-4 w-4 text-[var(--color-warning)]" />
-        <span className="text-amber-300">Integrity check failed: {state.error}</span>
+        <span className="text-[var(--color-warning-glow)]">Integrity check failed: {state.error}</span>
       </div>
     );
   }
@@ -297,11 +297,11 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
 
   if (state.integrity && !state.integrity.valid) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs">
-        <ShieldAlert className="h-4 w-4 text-rose-400" />
-        <span className="text-rose-300 font-medium">Chain broken</span>
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-3 py-2 text-xs">
+        <ShieldAlert className="h-4 w-4 text-[var(--color-danger-glow)]" />
+        <span className="text-[var(--color-danger-glow)] font-medium">Chain broken</span>
         {state.integrity.brokenAt !== undefined && (
-          <span className="text-rose-400">(at seq {state.integrity.brokenAt})</span>
+          <span className="text-[var(--color-danger-glow)]">(at seq {state.integrity.brokenAt})</span>
         )}
       </div>
     );
@@ -309,9 +309,9 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
 
   if (state.chain) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
-        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-        <span className="text-emerald-300 font-medium">
+      <div className="flex items-center gap-2 rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 px-3 py-2 text-xs">
+        <CheckCircle2 className="h-4 w-4 text-[var(--color-success-glow)]" />
+        <span className="text-[var(--color-success-glow)] font-medium">
           Chain verified ({state.chain.count} records)
         </span>
       </div>
@@ -662,7 +662,7 @@ export default function AuditPage() {
             disabled={page !== 1}
             className={`flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               liveTail
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                ? 'border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success-glow)] hover:bg-[var(--color-success)]/20'
                 : 'border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)]'
             }`}
             aria-label={liveTail ? 'Pause live tail' : 'Start live tail'}
@@ -797,10 +797,10 @@ export default function AuditPage() {
         </div>
 
         {filterError ? (
-          <p className="mt-3 text-xs text-rose-400">{filterError}</p>
+          <p className="mt-3 text-xs text-[var(--color-danger-glow)]">{filterError}</p>
         ) : null}
         {exportError ? (
-          <p className="mt-3 text-xs text-rose-400">{exportError}</p>
+          <p className="mt-3 text-xs text-[var(--color-danger-glow)]">{exportError}</p>
         ) : null}
       </div>
 

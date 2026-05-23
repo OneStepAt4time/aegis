@@ -26,7 +26,7 @@ const CATEGORY_CONFIG: Record<AcpTimelineCategory, {
   driver:       { label: 'Driver',       icon: User,          color: 'text-[var(--color-cta-bg)]',          dotColor: 'bg-[var(--color-accent-cyan)]' },
   prompt:       { label: 'Prompt',       icon: Terminal,      color: 'text-[var(--color-text-primary)]', dotColor: 'bg-[var(--color-text-primary)]' },
   tool:         { label: 'Tool',         icon: Wrench,        color: 'text-[var(--color-warning)]',         dotColor: 'bg-[var(--color-warning)]' },
-  approval:     { label: 'Approval',     icon: Shield,        color: 'text-emerald-400',       dotColor: 'bg-emerald-400' },
+  approval:     { label: 'Approval',     icon: Shield,        color: 'text-[var(--color-success-glow)]',       dotColor: 'bg-[var(--color-success-glow)]' },
   session:      { label: 'Session',      icon: Pause,         color: 'text-[var(--color-text-muted)]', dotColor: 'bg-[var(--color-text-muted)]' },
   intervention: { label: 'Intervention', icon: AlertTriangle, color: 'text-[var(--color-warning)]',        dotColor: 'bg-[var(--color-warning)]' },
   system:       { label: 'System',       icon: Server,        color: 'text-[var(--color-text-muted)]', dotColor: 'bg-[var(--color-text-muted)]' },

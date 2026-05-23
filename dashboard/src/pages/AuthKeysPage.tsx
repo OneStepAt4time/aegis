@@ -285,11 +285,11 @@ export default function AuthKeysPage() {
           </form>
 
           {createdKey ? (
-            <div className="mt-5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4" role="status">
+            <div className="mt-5 rounded-lg border border-[var(--color-success)]/20 bg-[var(--color-success)]/5 p-4" role="status">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-emerald-300">{t('authKeys.storeKeyNow')}</h3>
-                  <p className="mt-1 text-xs text-emerald-200/80">
+                  <h3 className="text-sm font-semibold text-[var(--color-success-glow)]">{t('authKeys.storeKeyNow')}</h3>
+                  <p className="mt-1 text-xs text-[var(--color-success-glow)]/80">
                     {t('authKeys.secretShownOnce')}
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export default function AuthKeysPage() {
                     setCreatedKey(null);
                     setSecretVisible(false);
                   }}
-                  className="text-xs font-medium text-emerald-200/80 transition-colors hover:text-emerald-200"
+                  className="text-xs font-medium text-[var(--color-success-glow)]/80 transition-colors hover:text-[var(--color-success-glow)]"
                   aria-label={t('authKeys.dismiss')}
                 >
                   {t('authKeys.dismiss')}
@@ -401,7 +401,7 @@ export default function AuthKeysPage() {
                       onClick={() => void handleRevoke(key.id, key.name)}
                       disabled={revokingId === key.id}
                       aria-label={`Revoke auth key ${key.name}`}
-                       className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-[var(--color-danger)] dark:text-red-300 transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                       className="flex min-h-[40px] items-center justify-center gap-2 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-[var(--color-danger)] dark:text-[var(--color-danger-glow)] transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       {revokingId === key.id ? t('authKeys.revoking') : t('authKeys.revoke')}

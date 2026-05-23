@@ -60,9 +60,9 @@ function actionColor(action: string): string {
 function actionBg(action: string): string {
   const a = action.toLowerCase();
   if (a.includes('approve') || a.includes('permission_granted'))
-    return 'bg-green-950/30 border-green-900/30';
+    return 'bg-[var(--color-success)]/10 border-[var(--color-success)]/20';
   if (a.includes('reject') || a.includes('deny') || a.includes('permission_denied'))
-    return 'bg-red-950/30 border-red-900/30';
+    return 'bg-[var(--color-danger)]/10 border-[var(--color-danger)]/20';
   if (a.includes('prompt') || a.includes('request'))
     return 'bg-[var(--color-warning)]/30 border-[var(--color-warning)]/30';
   return 'bg-[var(--color-surface-strong)] border-[var(--color-border)]';
@@ -83,7 +83,7 @@ export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProp
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-900/30 bg-[var(--color-danger)]/10 p-4 text-[var(--color-danger)] text-sm">
+      <div className="rounded-lg border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 p-4 text-[var(--color-danger)] text-sm">
         Failed to load audit trail: {error}
       </div>
     );

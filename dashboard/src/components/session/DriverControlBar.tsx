@@ -80,7 +80,7 @@ export function DriverControlBar({
           {onClearError && (
             <button type="button"
               onClick={onClearError}
-              className="text-[var(--color-danger)] hover:text-red-300"
+              className="text-[var(--color-danger)] hover:text-[var(--color-danger-glow)]"
               aria-label={t("aria.dismissError")}
             >
               ✕

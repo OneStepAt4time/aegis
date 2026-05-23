@@ -198,7 +198,7 @@ export function DiffViewer({ entries, isLoading }: DiffViewerProps) {
           <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${
             selectedChange.type === 'edit'
               ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
-              : 'bg-emerald-500/10 text-emerald-400'
+              : 'bg-[var(--color-success)]/10 text-[var(--color-success-glow)]'
           }`}>
             {selectedChange.type === 'edit' ? 'modified' : 'created'}
           </span>
@@ -223,7 +223,7 @@ function DiffContent({ change }: { change: FileChange }) {
           key={i}
           className={`flex ${
             line.type === 'add'
-              ? 'bg-emerald-500/10'
+              ? 'bg-[var(--color-success)]/10'
               : line.type === 'remove'
                 ? 'bg-[var(--color-danger)]/10'
                 : ''
@@ -234,7 +234,7 @@ function DiffContent({ change }: { change: FileChange }) {
           </span>
           <span className={
             line.type === 'add'
-              ? 'text-emerald-400'
+              ? 'text-[var(--color-success-glow)]'
               : line.type === 'remove'
                 ? 'text-[var(--color-danger)]'
                 : 'text-[var(--color-text-muted)]'

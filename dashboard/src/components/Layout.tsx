@@ -559,7 +559,7 @@ export default function Layout() {
 
             <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
               {/* PREVIEW badge — hidden on very small screens */}
-              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-blue-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-800 ring-1 ring-blue-200 dark:border-[var(--color-cta-bg)]/50 dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)] dark:ring-0">
+              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-[var(--color-info)]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-info)] ring-1 ring-[var(--color-info)]/30 dark:border-[var(--color-cta-bg)]/50 dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)] dark:ring-0">
                 PREVIEW
               </span>
 
@@ -632,7 +632,7 @@ export default function Layout() {
               )}
 
               {updateCheckError && (
-                <div className="hidden sm:block text-xs text-amber-500" title={updateCheckError}>
+                <div className="hidden sm:block text-xs text-[var(--color-warning)]" title={updateCheckError}>
                   Update check failed
                 </div>
               )}

@@ -478,7 +478,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     return (
       <div className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-amber-200">{loadError}</p>
+          <p className="text-sm text-[var(--color-warning-glow)]">{loadError}</p>
           <button
             type="button"
             onClick={() => {
@@ -487,7 +487,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               void fetchSessions();
             }}
             aria-label={t("aria.retryLoading")}
-            className="rounded-md border border-[var(--color-warning)]/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-100 transition-colors hover:border-amber-300 hover:text-amber-900 dark:hover:text-white"
+            className="rounded-md border border-[var(--color-warning)]/40 px-3 py-2 text-sm text-[var(--color-warning)] dark:text-[var(--color-warning-glow)] transition-colors hover:border-[var(--color-warning)] hover:text-[var(--color-warning)] dark:hover:text-white"
           >
             Retry
           </button>
@@ -652,7 +652,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => runBulkAction('kill')}
                 disabled={bulkAction !== null}
                 aria-label={`Kill ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
-                className="min-h-[44px] rounded-md bg-red-900/30 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-900/50 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md bg-[var(--color-danger)]/15 px-3 py-2 text-sm font-medium text-[var(--color-danger-glow)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
               >
                 Kill Selected
               </button>

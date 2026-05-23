@@ -38,14 +38,14 @@ function formatTokens(n: number): string {
 }
 
 function getUsageColor(percentage: number): string {
-  if (percentage < 0.5) return 'bg-emerald-500';
+  if (percentage < 0.5) return 'bg-[var(--color-success)]';
   if (percentage < 0.75) return 'bg-[var(--color-warning)]';
   if (percentage < 0.9) return 'bg-[var(--color-warning)]';
   return 'bg-[var(--color-danger)]';
 }
 
 function getUsageTextColor(percentage: number): string {
-  if (percentage < 0.5) return 'text-emerald-400';
+  if (percentage < 0.5) return 'text-[var(--color-success-glow)]';
   if (percentage < 0.75) return 'text-[var(--color-warning)]';
   if (percentage < 0.9) return 'text-[var(--color-warning)]';
   return 'text-[var(--color-danger)]';

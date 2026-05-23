@@ -87,6 +87,11 @@
   --color-metrics-purple: #8b5cf6;
   --color-success-bg: #064e3b;
   --color-error-bg: #4c1d1f;
+  --color-success-glow: #4ade80; /* emerald-400 — text on dark surfaces */
+  --color-danger-glow: #fca5a5;  /* red-300 — text on dark surfaces */
+  --color-warning-glow: #fcd34d; /* amber-300 — text on dark surfaces */
+  --color-info-glow: #93c5fd;    /* blue-300 — text on dark surfaces */
+  --color-accent-purple-glow: #c4b5fd; /* purple-300 — text on dark surfaces */
 
   /* ------------------------------------------------------------------ */
   /* Motion tokens (mirror of dashboard/src/design/tokens.ts).          */
@@ -205,6 +210,11 @@
   --color-success: #047857;     /* emerald-700 on white ≈ 6.3:1 */
   --color-warning: #92400e;     /* amber-800 on tinted light surfaces clears AA */
   --color-danger: #dc2626;      /* red-600 on white ≈ 4.8:1 */
+  --color-success-glow: #059669; /* emerald-600 on white */
+  --color-danger-glow: #b91c1c;  /* red-700 on white */
+  --color-warning-glow: #92400e; /* amber-800 on white */
+  --color-info-glow: #2563eb;    /* blue-600 on white */
+  --color-accent-purple-glow: #7c3aed; /* purple-600 on white */
 
   /* Primary CTA: emerald-600 on white ≈ 4.6:1 (AA normal). */
   --color-cta-bg: #059669;
@@ -615,23 +625,23 @@ body::before {
 [data-theme="light-aaa"] .text-cyan-400 {
   color: var(--color-accent-cyan) !important;
 }
-[data-theme="light"] .text-emerald-300,
-[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-[var(--color-success-glow)],
+[data-theme="light"] .text-[var(--color-success-glow)],
 [data-theme="light"] .text-green-400,
-[data-theme="light-paper"] .text-emerald-300,
-[data-theme="light-paper"] .text-emerald-400,
+[data-theme="light-paper"] .text-[var(--color-success-glow)],
+[data-theme="light-paper"] .text-[var(--color-success-glow)],
 [data-theme="light-paper"] .text-green-400,
-[data-theme="light-aaa"] .text-emerald-300,
-[data-theme="light-aaa"] .text-emerald-400,
+[data-theme="light-aaa"] .text-[var(--color-success-glow)],
+[data-theme="light-aaa"] .text-[var(--color-success-glow)],
 [data-theme="light-aaa"] .text-green-400 {
   color: var(--color-success) !important;
 }
-[data-theme="light"] .text-amber-300,
-[data-theme="light"] .text-amber-400,
-[data-theme="light-paper"] .text-amber-300,
-[data-theme="light-paper"] .text-amber-400,
-[data-theme="light-aaa"] .text-amber-300,
-[data-theme="light-aaa"] .text-amber-400 {
+[data-theme="light"] .text-[var(--color-warning-glow)],
+[data-theme="light"] .text-[var(--color-warning-glow)],
+[data-theme="light-paper"] .text-[var(--color-warning-glow)],
+[data-theme="light-paper"] .text-[var(--color-warning-glow)],
+[data-theme="light-aaa"] .text-[var(--color-warning-glow)],
+[data-theme="light-aaa"] .text-[var(--color-warning-glow)] {
   color: var(--color-warning) !important;
 }
 /* ------------------------------------------------------------------
@@ -640,14 +650,14 @@ body::before {
  * amber-200 (#fde68a) has ~1.4:1 contrast on white — fails WCAG AA.
  * bg-white/5 and border-white/5 are invisible on light backgrounds.
  * ------------------------------------------------------------------ */
-[data-theme="light"] .text-amber-200,
-[data-theme="light-paper"] .text-amber-200,
-[data-theme="light-aaa"] .text-amber-200 {
+[data-theme="light"] .text-[var(--color-warning-glow)],
+[data-theme="light-paper"] .text-[var(--color-warning-glow)],
+[data-theme="light-aaa"] .text-[var(--color-warning-glow)] {
   color: var(--color-warning) !important;
 }
-[data-theme="light"] .text-amber-200\/80,
-[data-theme="light-paper"] .text-amber-200\/80,
-[data-theme="light-aaa"] .text-amber-200\/80 {
+[data-theme="light"] .text-[var(--color-warning-glow)]\/80,
+[data-theme="light-paper"] .text-[var(--color-warning-glow)]\/80,
+[data-theme="light-aaa"] .text-[var(--color-warning-glow)]\/80 {
   color: var(--color-warning) !important;
 }
 [data-theme="light"] .border-amber-500\/20,
@@ -799,22 +809,22 @@ body::before {
  * fail WCAG contrast on light backgrounds.
  * Placed AFTER body::before closes so rules are top-level.
  * ------------------------------------------------------------------ */
-[data-theme="light"] .text-rose-300,
-[data-theme="light"] .text-rose-400,
-[data-theme="light-paper"] .text-rose-300,
-[data-theme="light-paper"] .text-rose-400,
-[data-theme="light-aaa"] .text-rose-300,
-[data-theme="light-aaa"] .text-rose-400 {
+[data-theme="light"] .text-[var(--color-danger-glow)],
+[data-theme="light"] .text-[var(--color-danger-glow)],
+[data-theme="light-paper"] .text-[var(--color-danger-glow)],
+[data-theme="light-paper"] .text-[var(--color-danger-glow)],
+[data-theme="light-aaa"] .text-[var(--color-danger-glow)],
+[data-theme="light-aaa"] .text-[var(--color-danger-glow)] {
   color: var(--color-danger) !important;
 }
-[data-theme="light"] .text-red-300,
-[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-[var(--color-danger-glow)],
+[data-theme="light"] .text-[var(--color-danger-glow)],
 [data-theme="light"] .text-red-500,
-[data-theme="light-paper"] .text-red-300,
-[data-theme="light-paper"] .text-red-400,
+[data-theme="light-paper"] .text-[var(--color-danger-glow)],
+[data-theme="light-paper"] .text-[var(--color-danger-glow)],
 [data-theme="light-paper"] .text-red-500,
-[data-theme="light-aaa"] .text-red-300,
-[data-theme="light-aaa"] .text-red-400,
+[data-theme="light-aaa"] .text-[var(--color-danger-glow)],
+[data-theme="light-aaa"] .text-[var(--color-danger-glow)],
 [data-theme="light-aaa"] .text-red-500 {
   color: var(--color-danger) !important;
 }

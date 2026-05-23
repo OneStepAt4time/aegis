@@ -254,7 +254,7 @@ export default function MetricsPage() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[var(--color-warning)] mt-0.5" />
             <div>
-              <h4 className="text-sm font-medium text-amber-200">
+              <h4 className="text-sm font-medium text-[var(--color-warning-glow)]">
                 Anomalous Sessions ({data.anomalies?.length})
               </h4>
               <p className="mt-1 text-xs text-[var(--color-warning)]/80">
@@ -263,7 +263,7 @@ export default function MetricsPage() {
               <div className="mt-2 space-y-1">
                 {data.anomalies.map((a) => (
                   <div key={a.sessionId} className="flex items-center gap-2 text-xs">
-                    <span className="inline-flex rounded bg-[var(--color-warning)]/20 px-1.5 py-0.5 font-mono text-amber-200">
+                    <span className="inline-flex rounded bg-[var(--color-warning)]/20 px-1.5 py-0.5 font-mono text-[var(--color-warning-glow)]">
                       {a.sessionId.slice(0, 12)}
                     </span>
                     <span className="text-[var(--color-warning)]/80">

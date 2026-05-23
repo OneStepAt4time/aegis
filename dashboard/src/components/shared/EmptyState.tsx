@@ -37,7 +37,7 @@ export default function EmptyState({
     'empty-error': {
       container: 'border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/5',
       iconBg: 'bg-[var(--color-danger)]/10',
-      titleColor: 'text-red-300',
+      titleColor: 'text-[var(--color-danger-glow)]',
     },
     'feature-unavailable': {
       container: 'border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5',
