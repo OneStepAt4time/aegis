@@ -21,6 +21,7 @@ function makeMockApp(): FastifyInstance {
     get: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
+    patch: vi.fn(),
   } as unknown as FastifyInstance;
 }
 
