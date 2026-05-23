@@ -17,6 +17,7 @@ const originalEnv: Record<string, string | undefined> = {
   AEGIS_HOST: process.env.AEGIS_HOST,
   AEGIS_AUTH_TOKEN: process.env.AEGIS_AUTH_TOKEN,
   AEGIS_ALLOWED_WORK_DIRS: process.env.AEGIS_ALLOWED_WORK_DIRS,
+  AEGIS_PERSIST_DEBOUNCE_MS: process.env.AEGIS_PERSIST_DEBOUNCE_MS,
 };
 
 const authToken = 'server-core-token';
@@ -100,6 +101,7 @@ describe('server core coverage integration', () => {
     process.env.AEGIS_HOST = '127.0.0.1';
     process.env.AEGIS_AUTH_TOKEN = authToken;
     process.env.AEGIS_ALLOWED_WORK_DIRS = sandboxRoot;
+    process.env.AEGIS_PERSIST_DEBOUNCE_MS = '0';
 
     vi.spyOn(globalThis, 'setInterval').mockImplementation((() => 0) as any);
     vi.spyOn(globalThis, 'clearInterval').mockImplementation((() => undefined) as any);
