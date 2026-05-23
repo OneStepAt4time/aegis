@@ -196,6 +196,35 @@ Aegis emits distributed traces via OTLP HTTP when tracing is enabled.
 | `AEGIS_OTEL_INCLUDE_HOSTNAME` | `true` | Include `os.hostname()` in resource attributes (set `false` to redact PII) |
 | `AEGIS_OTEL_INCLUDE_PID` | `true` | Include process PID in resource attributes (set `false` to redact) |
 
+### OTEL Data Classification (PII Compliance)
+
+When exporting traces to external backends (Datadog, Honeycomb, Grafana Cloud, etc.),
+it's important to understand what Aegis emits:
+
+**Not PII — machine-generated correlation IDs:**
+
+| Field | Source | Format |
+|-------|--------|--------|
+| `aegis.agent.id` | Claude Code session identifier | CC-generated (e.g. `sess_abc123`) |
+| `aegis.agent.parent_id` | Parent agent correlation ID | CC-generated (same format) |
+| `aegis.session.id` | Aegis session UUID | Server-generated UUID |
+| `aegis.node` | Hostname (configurable) | `os.hostname()` |
+| `aegis.pid` | Process ID (configurable) | `process.pid` |
+
+These fields are **not personal data under GDPR or CCPA**. They are internal
+correlation identifiers used to trace request flows across services and agents.
+No user names, emails, or account identifiers are included in OTEL spans.
+
+**Suppress hostname/PID for strict environments:**
+
+```bash
+# Disable hostname and PID in resource attributes
+AEGIS_OTEL_INCLUDE_HOSTNAME=false
+AEGIS_OTEL_INCLUDE_PID=false
+```
+
+For enterprise compliance documentation, see [Security Best Practices → OTEL Data Classification](security-best-practices.md#otel-data-classification).
+
 ### Span Taxonomy
 
 | Span | Kind | Key Attributes |
