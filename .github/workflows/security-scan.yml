@@ -86,5 +86,7 @@ jobs:
       # TODO: evaluate v2 license or alternative secret scanning (Trivy fs scan already covers secrets).
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v1
+        with:
+          config-path: .gitleaks.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
