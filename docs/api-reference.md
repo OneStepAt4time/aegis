@@ -875,6 +875,49 @@ curl http://localhost:9100/v1/sessions/abc123 \
 
 ---
 
+### Update Session Metadata
+
+```
+PATCH /v1/sessions/:id
+```
+
+Updates mutable session metadata fields. Currently supports pinning sessions to protect them from automatic reaping.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+# Pin a session (reapers will never kill it)
+curl -X PATCH http://localhost:9100/v1/sessions/abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"isPinned": true}'
+
+# Unpin a session
+curl -X PATCH http://localhost:9100/v1/sessions/abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"isPinned": false}'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `isPinned` | boolean | yes | Pin (`true`) or unpin (`false`) the session. Pinned sessions are skipped by stale and zombie reapers. |
+
+**Response:** Updated session object with `actionHints`. The `isPinned` field appears in the session metadata.
+
+**Errors:**
+
+| Status | Code | Condition |
+|--------|------|------------|
+| 400 | `INVALID_UPDATE` | No valid fields in request body |
+| 404 | `NOT_FOUND` | Session not found |
+
+---
+
 ### Batch Create Sessions
 
 ```
