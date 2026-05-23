@@ -81,9 +81,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      # gitleaks-action v2 auto-detects .gitleaks.toml config
-      # and runs: gitleaks detect --source . [--config .gitleaks.toml]
+      # gitleaks-action v2 requires a paid license (GITLEAKS_LICENSE secret).
+      # Pin to v1 which remains free for open-source use.
+      # TODO: evaluate v2 license or alternative secret scanning (Trivy fs scan already covers secrets).
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
