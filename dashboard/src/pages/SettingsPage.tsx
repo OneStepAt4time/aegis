@@ -38,7 +38,7 @@ function loadSettings(): Settings {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
   } catch (err) {
-    console.warn('SettingsPage: failed to load settings from localStorage:', err);
+    if (import.meta.env.DEV) console.warn('SettingsPage: failed to load settings from localStorage:', err);
   }
   return DEFAULT_SETTINGS;
 }
@@ -47,7 +47,7 @@ function saveSettings(s: Settings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
   } catch (err) {
-    console.warn('SettingsPage: failed to save settings to localStorage:', err);
+    if (import.meta.env.DEV) console.warn('SettingsPage: failed to save settings to localStorage:', err);
   }
 }
 
@@ -155,7 +155,7 @@ export default function SettingsPage() {
       localStorage.removeItem('aegis:onboarded');
       sessionStorage.removeItem('aegis:onboarded');
     } catch (err) {
-      console.warn('SettingsPage: failed to clear onboarding flag:', err);
+      if (import.meta.env.DEV) console.warn('SettingsPage: failed to clear onboarding flag:', err);
     }
     window.location.reload();
   }, []);
