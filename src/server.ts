@@ -580,6 +580,8 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
   for (const session of snapshot) {
     // Guard: session may have been deleted by DELETE handler between snapshot and here
     if (!sessions.getSession(session.id)) continue;
+    // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
+    if (session.isPinned) continue;
     const age = now - session.createdAt;
     if (age > maxAgeMs) {
     const ageMin = Math.round(age / 60000);
@@ -631,6 +633,8 @@ async function reapZombieSessions(): Promise<void> {
   for (const session of snapshot) {
     // Guard: session may have been deleted between snapshot and here
     if (!sessions.getSession(session.id)) continue;
+    // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
+    if (session.isPinned) continue;
     if (!session.lastDeadAt) continue;
     const deadDuration = now - session.lastDeadAt;
     if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;

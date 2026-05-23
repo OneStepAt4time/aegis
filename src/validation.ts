@@ -322,6 +322,7 @@ export const persistedStateSchema = z.record(
     circuitBreakerTripped: z.boolean().optional(),
     toolUseCount: z.number().int().nonnegative().optional(),
     prematureTermination: z.boolean().optional(),
+    isPinned: z.boolean().optional(),
   }),
 );
 

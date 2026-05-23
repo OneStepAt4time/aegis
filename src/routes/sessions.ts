@@ -582,6 +582,25 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     return addActionHints(session, sessions, channels);
   }));
 
+  // Issue #4027: PATCH session metadata (isPinned, etc.)
+  registerWithLegacy(app, 'patch', '/v1/sessions/:id', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    const body = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if ('isPinned' in body && typeof body.isPinned === 'boolean') {
+      updates.isPinned = body.isPinned;
+    }
+    if (Object.keys(updates).length === 0) {
+      reply.code(400);
+      return { error: 'No valid fields to update', code: 'INVALID_UPDATE' };
+    }
+    const updated = await sessions.updateSessionMetadata(session.id, updates);
+    if (!updated) {
+      reply.code(404);
+      return { error: 'Session not found', code: 'NOT_FOUND' };
+    }
+    return addActionHints(updated, sessions, channels);
+  }));
+
   // Issue #3860: Lightweight status endpoint for polling
   registerWithLegacy(app, 'get', '/v1/sessions/:id/status', withOwnership(sessions, async (_req, _reply, session) => {
     return { id: session.id, status: session.status, lastActivity: session.lastActivity };

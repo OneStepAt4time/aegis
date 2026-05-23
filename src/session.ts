@@ -143,6 +143,8 @@ export interface SessionInfo {
   // Issue #2520: Premature termination detection for background agents
   toolUseCount?: number;               // Count of PreToolUse hook events
   prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
+  // Issue #4027: Pinned session flag — reaper skips pinned sessions.
+  isPinned?: boolean;
 }
 
 /** Persisted session store keyed by Aegis session ID. */
@@ -891,6 +893,17 @@ export class SessionManager {
       return null;
     }
     return this.state.sessions[id] || null;
+  }
+
+  /** Issue #4027: Update session metadata (isPinned, etc.).
+   *  Merges the provided fields into the session and persists. */
+  async updateSessionMetadata(id: string, updates: Partial<Pick<SessionInfo, 'isPinned'>>): Promise<SessionInfo | null> {
+    const session = this.state.sessions[id];
+    if (!session) return null;
+    Object.assign(session, updates);
+    this.invalidateSessionsListCache();
+    await this.save();
+    return session;
   }
 
   /** Issue #169 Phase 3: Update session status from a hook event.
