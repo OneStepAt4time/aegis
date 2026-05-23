@@ -944,14 +944,6 @@ function serializeStateLightweight(state: LocalState): SerializedState {
   };
 }
 
-/**
- * Original serializeState kept for backward compat with the legacy cloneEvent path.
- * Issue #4032: Only used by the persist path which now uses serializeStateLightweight.
- */
-function serializeState(state: LocalState): SerializedState {
-  return serializeStateLightweight(state);
-}
-
 function deserializeState(value: unknown): LocalState {
   if (!isSerializedState(value)) {
     throw new Error('FileAcpLocalStorageProfile: invalid storage file');
