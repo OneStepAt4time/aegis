@@ -39,7 +39,7 @@ describe('EmptyState', () => {
     const { container } = render(<EmptyState variant="empty-error" title="Failed" />);
     const h3 = container.querySelector('h3');
     expect(h3).not.toBeNull();
-    expect(h3!.className).toContain('text-red-300');
+    expect(h3!.className).toContain('text-[var(--color-danger-glow)]');
   });
 
   it('applies feature-unavailable variant styles', () => {

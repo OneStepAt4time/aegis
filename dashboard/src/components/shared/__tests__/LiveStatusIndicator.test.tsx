@@ -32,7 +32,7 @@ describe('LiveStatusIndicator', () => {
     );
     const { container } = render(<LiveStatusIndicator />);
     const badge = container.querySelector('span.inline-flex');
-    expect(badge?.className).toContain('bg-emerald-500/10');
+    expect(badge?.className).toContain('bg-[var(--color-success)]/10');
   });
 
   it('applies warning styles when disconnected', () => {
