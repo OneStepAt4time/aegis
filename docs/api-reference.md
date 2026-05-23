@@ -883,9 +883,7 @@ PATCH /v1/sessions/:id
 
 Updates mutable session metadata fields. Currently supports pinning sessions to protect them from automatic reaping.
 
-| Role | Required |
-|------|----------|
-| admin, operator | Yes |
+> **Ownership:** Requires a valid API key that owns the session (enforced by `withOwnership`).
 
 ```bash
 # Pin a session (reapers will never kill it)
