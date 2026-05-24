@@ -297,6 +297,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
 | `AEGIS_ENFORCE_SESSION_OWNERSHIP` | `true` | Enforce session ownership — tenants can only access their own sessions |
 | `AEGIS_REQUIRE_SESSION_APPROVAL` | `false` | Require explicit approval before new sessions start Claude Code. Sessions enter `awaiting_approval` status until approved or rejected via `POST /v1/sessions/:id/session-approve` or `/session-reject` |
+| `AEGIS_SESSION_APPROVAL_TIMEOUT_MS` | `300000` (5 min) | Auto-reject `awaiting_approval` sessions after this many milliseconds of inactivity. Set to `0` to disable auto-reject timeout |
 | `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for single-tenant deployments |
 
 #### Hooks
