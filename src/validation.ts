@@ -783,7 +783,7 @@ export async function validateWorkDir(
   if (!preAllowed) {
     const hint = windowsSuggestion
       ? ` Did you mean \`${windowsSuggestion}\`?`
-      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. Allowed: ${candidateSafeDirs.join(", ")}`;
+      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. See: https://github.com/OneStepAt4time/aegis/blob/develop/docs/five-minute-setup.md#troubleshooting. Allowed: ${candidateSafeDirs.join(", ")}`;
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
@@ -792,7 +792,7 @@ export async function validateWorkDir(
   try {
     realPath = await fs.realpath(resolved);
   } catch { /* path does not exist on disk */
-    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : '';
+    const hint = windowsSuggestion ? ` Did you mean \`${windowsSuggestion}\`?` : ' See: https://github.com/OneStepAt4time/aegis/blob/develop/docs/five-minute-setup.md#troubleshooting.';
     return { error: `workDir does not exist: ${resolved}.${hint}`, code: 'INVALID_WORKDIR' };
   }
 
@@ -801,7 +801,7 @@ export async function validateWorkDir(
   if (!allowed) {
     const hint = windowsSuggestion
       ? ` Did you mean \`${windowsSuggestion}\`?`
-      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. Allowed: ${candidateSafeDirs.join(", ")}`;
+      : ` Add it to allowedWorkDirs in .aegis/config.yaml, or run from your home directory. See: https://github.com/OneStepAt4time/aegis/blob/develop/docs/five-minute-setup.md#troubleshooting. Allowed: ${candidateSafeDirs.join(", ")}`;
     return { error: `workDir ${resolved} is not in the allowed directories list.${hint}`, code: 'INVALID_WORKDIR' };
   }
 

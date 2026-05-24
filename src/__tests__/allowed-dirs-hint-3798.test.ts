@@ -62,3 +62,27 @@ describe('Issue #3798: error message includes allowed directories', () => {
     }
   });
 });
+
+describe('Issue #4126: error message includes docs link for troubleshooting', () => {
+  it('includes docs link in rejection message for non-allowed dir', async () => {
+    const result = await validateWorkDir('/tmp');
+    expect(typeof result).toBe('object');
+    if (typeof result === 'object') {
+      expect(result.code).toBe('INVALID_WORKDIR');
+      expect(result.error).toContain('five-minute-setup.md');
+      expect(result.error).toContain('troubleshooting');
+    }
+  });
+
+  it('includes docs link when path does not exist', async () => {
+    // Use a path under homedir (allowed prefix) but that doesn't exist
+    const nonexistent = path.join(os.homedir(), 'nonexistent-dir-for-test-4126');
+    const result = await validateWorkDir(nonexistent);
+    expect(typeof result).toBe('object');
+    if (typeof result === 'object') {
+      expect(result.code).toBe('INVALID_WORKDIR');
+      expect(result.error).toContain('five-minute-setup.md');
+      expect(result.error).toContain('troubleshooting');
+    }
+  });
+});
