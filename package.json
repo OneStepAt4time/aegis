@@ -2,7 +2,7 @@
   "name": "@onestepat4time/aegis",
   "version": "0.6.7",
   "type": "module",
-  "description": "Orchestrate Claude Code sessions via API. Create, brief, monitor, refine, ship.",
+  "description": "Run Claude Code agents from your terminal. Approve from your phone. One command: npx @onestepat4time/aegis init",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
   "exports": {

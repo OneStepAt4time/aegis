@@ -2,6 +2,14 @@
   <img src="docs/assets/aegis-banner.jpg" alt="Aegis" width="600">
 </p>
 
+<h3 align="center">
+  <code>npx @onestepat4time/aegis init</code>
+</h3>
+
+<p align="center">
+  One command. Dashboard open. Claude Code running.
+</p>
+
 <p align="center">
   <img src="https://img.shields.io/npm/v/@onestepat4time/aegis.svg" alt="npm" />
   <img src="https://img.shields.io/github/actions/workflow/status/OneStepAt4time/aegis/ci.yml?branch=main" alt="CI" />
@@ -11,22 +19,25 @@
   <a href="https://github.com/OneStepAt4time/aegis/blob/main/ROADMAP.md"><img src="https://img.shields.io/badge/roadmap-preview-blue" alt="Roadmap" /></a>
 </p>
 
-> ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
+---
+
+### What you get
+
+- **🖥️ Dashboard** — live sessions, cost analytics, audit trails at <http://127.0.0.1:9100/dashboard>
+- **📱 Phone approvals** — approve agent actions from Telegram with one tap → [Setup guide](docs/guides/phone-approvals.md)
+- **⚡ `ag run`** — spin up Claude Code sessions from the terminal
+- **🔌 MCP server** — 34 tools for multi-agent workflows → `claude mcp add --scope user aegis -- ag mcp`
+- **📡 REST API** — 65+ endpoints for CI/CD, orchestration, and custom integrations
+
+---
+
+> **Prerequisites:** [Node.js ≥ 20](https://nodejs.org/) and [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (authenticated with `claude login`).
 >
-> 📦 **Package:** [`@onestepat4time/aegis`](https://www.npmjs.com/package/@onestepat4time/aegis) on npm. See [ACP Migration Guide](docs/acp-migration-guide.md) if upgrading from `aegis-bridge`.
-
-<p align="center">
-  <strong>Run Claude Code agents from your terminal. Approve from your phone. See everything on one dashboard.</strong>
-</p>
-
-<p align="center">
-  <img src="docs/assets/aegis-architecture-hero.jpg" alt="Message Claude. Ship Code. — Aegis x Claude Code" width="800">
-</p>
+> ⚠️ **Aegis is in Preview.** APIs may change. See [ROADMAP.md](./ROADMAP.md) for the path to stable.
 
 ---
 
 ## Quick Start
-
 
 One command. Zero config. Claude Code responds in your terminal.
 
@@ -80,7 +91,7 @@ ag run "Your prompt here" --cwd ./my-project
 After your first session, you might want to:
 
 - **Dashboard** — open <http://127.0.0.1:9100/dashboard> to see sessions, cost analytics, and audit trails
-- **Telegram** — approve agent actions from your phone: run `ag init` and follow the Telegram setup prompt, or see the [Notification Channels guide](docs/integrations/notifications.md)
+- **Telegram** — approve agent actions from your phone: run `ag init` and follow the Telegram setup prompt, or see the [Phone Approvals guide](docs/guides/phone-approvals.md)
 - **MCP** — let Claude Code control Aegis: `claude mcp add --scope user aegis -- ag mcp`
 - **Multiple sessions** — `ag run "fix the tests" & ag run "update the README"` (parallel agents)
 
@@ -132,6 +143,7 @@ For troubleshooting, see [Windows Setup](docs/windows-setup.md).
 
 **Learn more:** [Getting Started](docs/getting-started.md) · [MCP Tools](docs/mcp-tools.md) · [BYO LLM](docs/byo-llm.md) · [Advanced Features](docs/advanced.md) · [Deployment Guide](docs/deployment.md)
 
+---
 ---
 
 ## Why Aegis when Claude Code has agents?
