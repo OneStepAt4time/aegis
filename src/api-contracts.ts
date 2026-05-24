@@ -352,6 +352,8 @@ export interface SessionStats {
   totalCreated: number;
   totalCompleted: number;
   totalFailed: number;
+  /** Total sessions currently in memory (including killed). */
+  total?: number;
 }
 
 /** Issue #754: Bulk-delete request body. */

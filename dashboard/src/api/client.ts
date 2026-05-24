@@ -367,7 +367,7 @@ export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
   });
 
   const counts: SessionStatusCounts = {
-    all: stats.active,
+    all: stats.total ?? stats.active,
     idle: 0,
     working: 0,
     compacting: 0,

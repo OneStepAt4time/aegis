@@ -231,6 +231,7 @@ export const SessionStatsSchema: z.ZodType<SessionStats> = z.object({
   totalCreated: z.number(),
   totalCompleted: z.number(),
   totalFailed: z.number(),
+  total: z.number().optional(),
 });
 
 // ── SessionHealth ──────────────────────────────────────────────
