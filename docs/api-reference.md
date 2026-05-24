@@ -1602,6 +1602,36 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123 \
 
 ---
 
+### Purge Killed Sessions
+
+```
+DELETE /v1/sessions/purge
+```
+
+Removes killed sessions older than a threshold from in-memory state. Cleans up associated permission requests, questions, and approval timeouts.
+
+**RBAC:** `admin`, `operator`
+
+```bash
+curl -X DELETE "http://localhost:9100/v1/sessions/purge?olderThanHours=24" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Query Parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `olderThanHours` | number | `24` | Minimum age in hours (1–8760) |
+
+**Response:** `{ "ok": true, "purged": 5, "olderThanHours": 24, "olderThanMs": 86400000 }`
+
+| Status | Error |
+|--------|-------|
+| `400` | Invalid `olderThanHours` value |
+| `403` | Insufficient role (requires admin or operator) |
+
+---
+
 
 
 ### Session Approval
@@ -4086,6 +4116,7 @@ All core session endpoints are available without the `/v1` prefix for backward c
 | `GET /v1/sessions/:id/read` | `GET /sessions/:id/read` |
 | `POST /v1/sessions/:id/send` | `POST /sessions/:id/send` |
 | `POST /v1/sessions/:id/interrupt` | `POST /sessions/:id/interrupt` |
+| `DELETE /v1/sessions/purge` | `DELETE /sessions/purge` |
 | `DELETE /v1/sessions/:id` | `DELETE /sessions/:id` |
 | `POST /v1/sessions/:id/spawn` | `POST /sessions/:id/spawn` |
 | `POST /v1/sessions/:id/fork` | `POST /sessions/:id/fork` |

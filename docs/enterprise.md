@@ -274,6 +274,8 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_BLOCKED_ACP_ARGS` | _see below_ | Comma-separated list of CLI flags blocked from user-configured args in ACP child process spawn. Prevents overriding protocol-critical flags like `--output-format`, `--resume`, `--session-id`, `--api-key`, `--model`. Defaults to the built-in list when empty |
 | `AEGIS_ACTION_SWEEPER_ENABLED` | `true` | Enable periodic sweeper that recovers orphaned ACP actions (actions stuck in `leased` state after a worker crash) |
 | `AEGIS_ACTION_SWEEPER_INTERVAL_MS` | `60000` | Sweep interval in milliseconds for orphan action recovery |
+| `AEGIS_SESSION_CLEANUP_INTERVAL_MS` | `3600000` | Auto-cleanup interval for killed sessions. Set to `0` to disable |
+| `AEGIS_SESSION_CLEANUP_AGE_MS` | `86400000` | Minimum age (ms) before a killed session is eligible for auto-cleanup |
 | `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings, default), `enforce-worktree` (reject sessions without worktree — prevents file conflicts with concurrent sessions), `enforce-direct` (force direct edits, no worktree) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |

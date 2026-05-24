@@ -17,6 +17,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/sessions/stats` | Bearer | Aggregated session statistics |
 | `GET` | `/v1/sessions/health` | Bearer | Bulk health check for all sessions |
 | `DELETE` | `/v1/sessions/batch` | Bearer | Kill and remove sessions by ID or status |
+| `DELETE` | `/v1/sessions/purge` | Bearer | Purge killed sessions older than threshold |
 
 ## Session (by ID)
 
