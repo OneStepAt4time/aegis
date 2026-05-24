@@ -20,6 +20,7 @@ const STATUS_LABELS: Record<UIState, string> = {
   unknown: 'Unknown',
   killed: 'Killed',
   completed: 'Completed',
+  awaiting_approval: 'Awaiting Approval',
   crashed: 'Crashed',
 };
 

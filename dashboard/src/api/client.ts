@@ -384,6 +384,7 @@ export async function getSessionStatusCounts(): Promise<SessionStatusCounts> {
     unknown: 0,
     killed: 0,
     completed: 0,
+    awaiting_approval: 0,
     crashed: 0,
   };
 

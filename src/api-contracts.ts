@@ -23,7 +23,7 @@ export type UIState =
   | 'pending'
   | 'killed'
   | 'completed'
-  | 'crashed'
+  | 'awaiting_approval' | 'crashed'
   | 'unknown';
 
 export type SessionStatusFilter = 'all' | UIState;

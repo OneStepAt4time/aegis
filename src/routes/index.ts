@@ -8,6 +8,7 @@ export { registerAuditRoutes } from './audit.js';
 export { registerSessionRoutes } from './sessions.js';
 export { registerSessionActionRoutes } from './session-actions.js';
 export { registerSessionDataRoutes } from './session-data.js';
+export { registerSessionApprovalRoutes } from './session-approval.js';
 export { registerEventRoutes } from './events.js';
 export { registerTemplateRoutes } from './templates.js';
 export { registerPipelineRoutes } from './pipelines.js';

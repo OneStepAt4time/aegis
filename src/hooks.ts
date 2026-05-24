@@ -24,7 +24,7 @@ import type { MetricsCollector } from './metrics.js';
 type UIState =
   | 'idle' | 'working' | 'compacting' | 'context_warning'
   | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
-  | 'ask_question' | 'bash_approval' | 'settings' | 'error';
+  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'awaiting_approval';
 import { evaluatePermissionProfile } from './services/permission/index.js';
 import { timingSafeStringEqual } from './crypto-utils.js';
 import { startToolSpan, setToolResult, spanOk as tracingSpanOk, spanError as tracingSpanError } from './tracing.js';
