@@ -17,10 +17,10 @@ const STATUS_LABELS: Record<UIState, string> = {
   context_warning: 'Context warning',
   waiting_for_input: 'Waiting for input',
   pending: 'Pending',
+  awaiting_approval: 'Pending Approval',
   unknown: 'Unknown',
   killed: 'Killed',
   completed: 'Completed',
-  awaiting_approval: 'Awaiting Approval',
   crashed: 'Crashed',
 };
 

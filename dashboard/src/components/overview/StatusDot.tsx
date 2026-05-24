@@ -20,10 +20,10 @@ const STATUS_COLORS: Record<UIState, string> = {
   context_warning: 'var(--color-warning)',
   waiting_for_input: 'var(--color-warning)',
   pending: 'var(--color-dot-pending)',
+  awaiting_approval: 'var(--color-dot-awaiting-approval)',
   unknown: 'var(--color-dot-unknown)',
   killed: 'var(--color-dot-killed)',
   completed: 'var(--color-dot-completed)',
-  awaiting_approval: 'var(--color-dot-pending-approval)',
   crashed: 'var(--color-dot-crashed)',
 };
 
@@ -58,10 +58,10 @@ const STATUS_KEYS: Record<UIState, string> = {
   context_warning: 'statusDot.contextWarning',
   waiting_for_input: 'statusDot.waitingForInput',
   pending: 'statusDot.pending',
+  awaiting_approval: 'statusDot.pendingApproval',
   unknown: 'statusDot.unknown',
   killed: 'statusDot.killed',
   completed: 'statusDot.completed',
-  awaiting_approval: 'statusDot.awaiting_approval',
   crashed: 'statusDot.crashed',
 };
 

@@ -216,10 +216,10 @@ describe('getSessionStatusCounts', () => {
       error: 0,
       rate_limit: 0,
       pending: 0,
+      awaiting_approval: 0,
       unknown: 0,
       killed: 0,
       completed: 0,
-      awaiting_approval: 0,
       crashed: 0,
     });
 

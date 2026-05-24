@@ -123,6 +123,7 @@ describe('Issue 309 accessibility fixes', () => {
       settings: 0,
       error: 0,
       pending: 0,
+      awaiting_approval: 0,
       unknown: 0,
     });
   });
