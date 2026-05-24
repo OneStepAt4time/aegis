@@ -83,8 +83,8 @@ export function AcpApprovalModal({
   const [approveReason, setApproveReason] = useState('');
   const [showApproveReason, setShowApproveReason] = useState(false);
 
-  const { tool } = approval;
-  const riskConfig = tool.riskLevel ? RISK_LEVEL_CONFIG[tool.riskLevel] : null;
+  const tool = approval?.tool;
+  const riskConfig = tool?.riskLevel ? RISK_LEVEL_CONFIG[tool.riskLevel] : null;
 
   const handleApprove = async () => {
     if (!onApprove) return;
@@ -118,7 +118,7 @@ export function AcpApprovalModal({
               Tool Approval Required
             </div>
             <h2 className="mt-0.5 text-base font-semibold text-[var(--color-text-primary)]">
-              {tool.toolName}
+              {tool?.toolName ?? 'Unknown Tool'}
             </h2>
           </div>
         </div>
@@ -144,11 +144,11 @@ export function AcpApprovalModal({
 
       {/* Description */}
       <p className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)]">
-        {tool.description}
+        {tool?.description ?? 'No description available.'}
       </p>
 
       {/* Tool input preview */}
-      <ToolInputPreview input={tool.input} />
+      <ToolInputPreview input={tool?.input} />
 
       {/* Expired warning */}
       {isExpired && (
