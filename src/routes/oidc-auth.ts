@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
-  DASHBOARD_SESSION_COOKIE,
+  dashboardSessionCookie,
   DASHBOARD_SESSION_TTL_MS,
   OIDC_AUTH_REQUEST_TTL_MS,
-  OIDC_STATE_COOKIE,
+  oidcStateCookie,
   OidcAuthError,
   type DashboardSessionStore,
   type DashboardOIDCManager,
@@ -120,7 +120,7 @@ async function sendOidcRedirect(ctx: OidcRouteContext, req: LoginRequest, reply:
   }
   try {
     const login = await manager.beginLogin({ loginHint: sanitizeLoginHint(req.query.login_hint) });
-    appendSetCookie(reply, buildCookie(OIDC_STATE_COOKIE, login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax', isSecureRequest(req)));
+    appendSetCookie(reply, buildCookie(oidcStateCookie(isSecureRequest(req)), login.state, OIDC_AUTH_REQUEST_TTL_MS / 1000, 'Lax', isSecureRequest(req)));
     await reply.status(302).header('Location', login.redirectUrl.href).send();
   } catch {
     await reply.status(503).type('text/html').send(genericOidcErrorPage());
@@ -143,10 +143,10 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
         if (!manager) return reply.status(404).send({ error: 'Not found' });
-        appendSetCookie(reply, buildClearedCookie(OIDC_STATE_COOKIE, 'Lax', isSecureRequest(req)));
+        appendSetCookie(reply, buildClearedCookie(oidcStateCookie(isSecureRequest(req)), 'Lax', isSecureRequest(req)));
         try {
-          const session = await manager.completeCallback(buildCallbackUrl(req, manager), getCookie(req, OIDC_STATE_COOKIE));
-          appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
+          const session = await manager.completeCallback(buildCallbackUrl(req, manager), getCookie(req, oidcStateCookie(isSecureRequest(req))));
+          appendSetCookie(reply, buildCookie(dashboardSessionCookie(isSecureRequest(req)), session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
           return reply.status(302).header('Location', '/dashboard/').send();
         } catch (error: unknown) {
           const statusCode = error instanceof OidcAuthError ? error.statusCode : 502;
@@ -160,7 +160,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       { config: { rateLimit: SESSION_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
-        const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const sessionId = getCookie(req, dashboardSessionCookie(isSecureRequest(req)));
         const tokenSessionStore = ctx.dashboardTokenSessions ?? null;
         const tokenSession = tokenSessionStore?.get(sessionId) ?? null;
         if (tokenSession && tokenSessionStore) {
@@ -169,7 +169,7 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
         if (!manager) return { oidcAvailable: false, authenticated: false };
         const session = manager.getSession(sessionId);
         if (!session) {
-          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
+          appendSetCookie(reply, buildClearedCookie(dashboardSessionCookie(isSecureRequest(req)), 'Strict', isSecureRequest(req)));
           return reply.status(401).send({ oidcAvailable: true, authenticated: false });
         }
         return { oidcAvailable: true, authMethod: 'oidc', ...manager.sessions.toView(session) };
@@ -181,15 +181,15 @@ export function registerOidcAuthRoutes(app: FastifyInstance, ctx: OidcRouteConte
       { config: { rateLimit: LOGOUT_RATE_LIMIT } },
       async (req, reply) => {
         const manager = getDashboardOidc(ctx);
-        const sessionId = getCookie(req, DASHBOARD_SESSION_COOKIE);
+        const sessionId = getCookie(req, dashboardSessionCookie(isSecureRequest(req)));
         const tokenSessionDeleted = ctx.dashboardTokenSessions?.delete(sessionId) ?? false;
         if (!manager) {
-          appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
+          appendSetCookie(reply, buildClearedCookie(dashboardSessionCookie(isSecureRequest(req)), 'Strict', isSecureRequest(req)));
           return reply.status(204).send();
         }
         const session = manager.getSession(sessionId);
         manager.deleteSession(sessionId);
-        appendSetCookie(reply, buildClearedCookie(DASHBOARD_SESSION_COOKIE, 'Strict', isSecureRequest(req)));
+        appendSetCookie(reply, buildClearedCookie(dashboardSessionCookie(isSecureRequest(req)), 'Strict', isSecureRequest(req)));
         if (tokenSessionDeleted) return reply.status(204).send();
         const endSessionUrl = manager.buildEndSessionUrl(session);
         if (endSessionUrl && acceptsHtml(req)) {

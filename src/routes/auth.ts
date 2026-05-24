@@ -16,7 +16,7 @@ function isSecureRequest(req: FastifyRequest): boolean {
   if (proto) return proto === 'https';
   return req.protocol === 'https';
 }
-import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_TTL_MS } from '../services/auth/OIDCManager.js';
+import { dashboardSessionCookie, DASHBOARD_SESSION_TTL_MS } from '../services/auth/OIDCManager.js';
 
 const setQuotasSchema = z.object({
   maxConcurrentSessions: z.number().int().positive().nullable().optional(),
@@ -56,7 +56,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
         claims: { authMethod: 'token', keyId: null },
       });
       if (session) {
-        appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
+        appendSetCookie(reply, buildCookie(dashboardSessionCookie(isSecureRequest(req)), session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
       }
       return { valid: true, role };
     }
@@ -78,7 +78,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: RouteContext): voi
       claims: { authMethod: 'token', keyId: result.keyId },
     });
     if (session) {
-      appendSetCookie(reply, buildCookie(DASHBOARD_SESSION_COOKIE, session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
+      appendSetCookie(reply, buildCookie(dashboardSessionCookie(isSecureRequest(req)), session.sessionId, DASHBOARD_SESSION_TTL_MS / 1000, 'Strict', isSecureRequest(req)));
     }
     return { valid: true, role };
   }));

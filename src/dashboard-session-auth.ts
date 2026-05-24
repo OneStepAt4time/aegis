@@ -1,7 +1,8 @@
 import type { FastifyRequest } from 'fastify';
 import type { ApiKeyPermission, ApiKeyRole } from './services/auth/index.js';
 import {
-  DASHBOARD_SESSION_COOKIE,
+  DASHBOARD_SESSION_COOKIE_SECURE,
+  DASHBOARD_SESSION_COOKIE_INSECURE,
   getDashboardSessionAuthContext,
   type DashboardOIDCManager,
   type DashboardRequestAuthContext,
@@ -31,7 +32,8 @@ export function resolveDashboardSessionAuthContext(
   manager: Pick<DashboardOIDCManager, 'getSession'> | null | undefined,
 ): DashboardRequestAuthContext | null {
   if (!manager) return null;
-  const sessionId = parseCookies(cookieHeader).get(DASHBOARD_SESSION_COOKIE);
+  const cookies = parseCookies(cookieHeader);
+  const sessionId = cookies.get(DASHBOARD_SESSION_COOKIE_SECURE) || cookies.get(DASHBOARD_SESSION_COOKIE_INSECURE);
   const session = manager.getSession(sessionId);
   return session ? getDashboardSessionAuthContext(session) : null;
 }

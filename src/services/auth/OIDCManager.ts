@@ -7,8 +7,21 @@ import { parseDashboardOidcConfig, type DashboardOidcConfig } from './oidc-confi
 import { permissionsForRole, type ApiKeyPermission } from './permissions.js';
 import type { ApiKeyRole } from './types.js';
 
-export const DASHBOARD_SESSION_COOKIE = '__Host-aegis_dashboard_session';
-export const OIDC_STATE_COOKIE = '__Host-aegis_oidc_state';
+export const DASHBOARD_SESSION_COOKIE_SECURE = '__Host-aegis_dashboard_session';
+export const DASHBOARD_SESSION_COOKIE_INSECURE = 'aegis_dashboard_session';
+
+/** Return the cookie name appropriate for the request protocol.
+ *  __Host- prefix requires HTTPS (browsers silently drop it over HTTP).
+ *  Issue #4146: unconditional __Host- broke localhost/HTTP deployments. */
+export function dashboardSessionCookie(isSecure: boolean): string {
+  return isSecure ? DASHBOARD_SESSION_COOKIE_SECURE : DASHBOARD_SESSION_COOKIE_INSECURE;
+}
+export const OIDC_STATE_COOKIE_SECURE = '__Host-aegis_oidc_state';
+export const OIDC_STATE_COOKIE_INSECURE = 'aegis_oidc_state';
+
+export function oidcStateCookie(isSecure: boolean): string {
+  return isSecure ? OIDC_STATE_COOKIE_SECURE : OIDC_STATE_COOKIE_INSECURE;
+}
 export const DASHBOARD_SESSION_TTL_MS = 60 * 60 * 1000;
 export const OIDC_AUTH_REQUEST_TTL_MS = 10 * 60 * 1000;
 export const OIDC_DISCOVERY_TTL_MS = 60 * 60 * 1000;

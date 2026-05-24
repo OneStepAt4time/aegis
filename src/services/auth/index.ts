@@ -4,8 +4,12 @@ export type { QuotaCheckResult, QuotaUsage } from './QuotaManager.js';
 export { RateLimiter } from './RateLimiter.js';
 export type { RateLimitBucketInfo } from './RateLimiter.js';
 export {
-  DASHBOARD_SESSION_COOKIE,
-  OIDC_STATE_COOKIE,
+  DASHBOARD_SESSION_COOKIE_SECURE,
+  DASHBOARD_SESSION_COOKIE_INSECURE,
+  dashboardSessionCookie,
+  OIDC_STATE_COOKIE_SECURE,
+  OIDC_STATE_COOKIE_INSECURE,
+  oidcStateCookie,
   DashboardOIDCManager,
   DashboardSessionStore,
   OpenidClientProvider,
