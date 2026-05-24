@@ -237,10 +237,34 @@ End-to-end latency: typically under 2 seconds.
 
 ## What's Next
 
+- [Session Approval](../api-reference.md#session-approval) — gate new sessions with explicit approval before Claude Code starts
 - [Notification Channels](../integrations/notifications.md) — Slack, email, webhooks
 - [Dashboard](../dashboard.md) — visual session management
 - [API Reference](../api-reference.md) — approve/reject via REST API
 - [Security Best Practices](../security-best-practices.md) — production hardening
+
+---
+
+## Session-Level Approval
+
+In addition to **permission prompts** (described above), Aegis supports **session-level approval** — requiring explicit approval before Claude Code even starts.
+
+Enable it with:
+
+```bash
+export AEGIS_REQUIRE_SESSION_APPROVAL=true
+```
+
+When enabled, new sessions enter `awaiting_approval` status. You receive a Telegram notification with **Approve ✅** and **Reject ❌** inline buttons. The session only starts Claude Code after you tap Approve.
+
+### Session vs Permission Approval
+
+| | Permission Approval | Session Approval |
+|---|---|---|
+| **When** | CC asks for permission mid-run | Before CC starts |
+| **Endpoints** | `POST /v1/sessions/:id/approval/approve` | `POST /v1/sessions/:id/session-approve` |
+| **Config** | Always on (when Telegram configured) | `AEGIS_REQUIRE_SESSION_APPROVAL=true` |
+| **Status** | `permission_prompt` | `awaiting_approval` |
 
 ---
 
