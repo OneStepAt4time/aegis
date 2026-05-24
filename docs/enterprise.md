@@ -296,6 +296,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
 | `AEGIS_ENFORCE_SESSION_OWNERSHIP` | `true` | Enforce session ownership — tenants can only access their own sessions |
+| `AEGIS_REQUIRE_SESSION_APPROVAL` | `false` | Require explicit approval before new sessions start Claude Code. Sessions enter `awaiting_approval` status until approved or rejected via `POST /v1/sessions/:id/session-approve` or `/session-reject` |
 | `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for single-tenant deployments |
 
 #### Hooks

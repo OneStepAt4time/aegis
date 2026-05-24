@@ -1089,9 +1089,11 @@ curl http://localhost:9100/v1/sessions/abc123/read \
 }
 ```
 
-> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `killed`, `completed`, `crashed`, `unknown`.
+> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `awaiting_approval`, `killed`, `completed`, `crashed`, `unknown`.
 >
-> **Terminal states:** `killed` (session was stopped via API), `completed` (session finished normally), `crashed` (session terminated unexpectedly). Terminal sessions return 404 on kill attempts and are retained for audit.
+> **Terminal states:** `killed` (session was stopped via API or rejected during approval), `completed` (session finished normally), `crashed` (session terminated unexpectedly). Terminal sessions return 404 on kill attempts and are retained for audit.
+>
+> **Approval state:** `awaiting_approval` — session is gated by the approval system (see [Session Approval](#session-approval)). The session will not start Claude Code until explicitly approved. If rejected, the session transitions to `killed`.
 
 ---
 
@@ -1601,6 +1603,76 @@ curl -X DELETE http://localhost:9100/v1/sessions/abc123 \
 ---
 
 
+
+### Session Approval
+
+When `requireSessionApproval` is enabled, new sessions enter `awaiting_approval` status instead of starting immediately. Use these endpoints to approve or reject them.
+
+#### Approve Session
+
+```
+POST /v1/sessions/:id/session-approve
+```
+
+Approves a session that is awaiting approval. The session transitions from `awaiting_approval` to its normal running lifecycle. Telegram (and other channels) receive a `session.approved` event.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/session-approve \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "ok": true,
+  "status": "pending",
+  "approvedBy": "key_abc123",
+  "approvedAt": "2026-05-24T08:00:00.000Z"
+}
+```
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 409 | `SESSION_NOT_AWAITING_APPROVAL` | Session is not in `awaiting_approval` status |
+
+**RBAC:** Requires session ownership (`send` permission). See [Authentication](#authentication).
+
+---
+
+#### Reject Session
+
+```
+POST /v1/sessions/:id/session-reject
+```
+
+Rejects a session that is awaiting approval. The session is immediately killed (`status: "killed"`). Telegram (and other channels) receive a `session.rejected` event.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/session-reject \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "ok": true,
+  "status": "killed"
+}
+```
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 409 | `SESSION_NOT_AWAITING_APPROVAL` | Session is not in `awaiting_approval` status |
+
+**RBAC:** Requires session ownership (`kill` permission). See [Authentication](#authentication).
+
+---
+
+> **Configuration:** Enable session approval by setting `requireSessionApproval: true` in your Aegis config, or set the environment variable `AEGIS_REQUIRE_SESSION_APPROVAL=true`. Sessions will wait in `awaiting_approval` until approved or rejected. If the server restarts while sessions are awaiting approval, they are automatically recovered and re-notified via configured channels.
+
+---
 
 ### Answer Pending Question
 
