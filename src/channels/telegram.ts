@@ -1915,12 +1915,12 @@ export class TelegramChannel implements Channel {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
         } else if (data.startsWith('session_approve:' )) {
-          await this.onInbound?.({ sessionId, action: 'session_approve'  });
+          await this.onInbound?.({ sessionId, action: 'session_approve', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
           if (cb.message.message_id) {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
         } else if (data.startsWith('session_reject:' )) {
-          await this.onInbound?.({ sessionId, action: 'session_reject'  });
+          await this.onInbound?.({ sessionId, action: 'session_reject', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
           if (cb.message.message_id) {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }

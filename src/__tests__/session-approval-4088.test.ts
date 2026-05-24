@@ -41,7 +41,7 @@ function buildApp(session: SessionInfo | null) {
   const approveSessionFn = vi.fn(async (id: string, approvedBy?: string) => {
     if (!session || id !== SESSION_ID) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval`);
     }
     session.status = 'pending';
     session.awaitingApproval = false;
@@ -53,7 +53,7 @@ function buildApp(session: SessionInfo | null) {
   const rejectSessionFn = vi.fn(async (id: string) => {
     if (!session || id !== SESSION_ID) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval`);
     }
     session.status = 'killed';
     session.awaitingApproval = false;

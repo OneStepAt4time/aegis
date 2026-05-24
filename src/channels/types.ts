@@ -63,6 +63,8 @@ export interface InboundCommand {
   sessionId: string;
   action: 'approve' | 'reject' | 'escape' | 'kill' | 'message' | 'command' | 'session_approve' | 'session_reject';
   text?: string;
+  /** Issue #4117: Actor who triggered this command (e.g. Telegram user info). */
+  actor?: { type: 'telegram'; userId: number; firstName: string };
 }
 
 /** Callback for inbound commands. */
