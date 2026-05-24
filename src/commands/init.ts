@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { spawn, execFileSync as execSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import open from 'open';
 import { detectFreePort, isPortAvailable } from '../utils/detect-free-port.js';
 import { detectRunningInstance } from '../utils/detect-running.js';
@@ -884,7 +884,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   }
 
   // 2. Check if already running
-  const runningUrl = detectRunningInstance(port);
+  const runningUrl = await detectRunningInstance(port);
   if (runningUrl) {
     writeLine(io.stdout, `\n  ✅ Aegis is already running!`);
     writeLine(io.stdout, `  Dashboard: ${runningUrl}`);
@@ -915,7 +915,7 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   let healthDelay = 500;
 
   while (Date.now() - healthStart < maxHealthWait) {
-    const checkUrl = detectRunningInstance(port);
+    const checkUrl = await detectRunningInstance(port);
     if (checkUrl) {
       healthy = true;
       break;
