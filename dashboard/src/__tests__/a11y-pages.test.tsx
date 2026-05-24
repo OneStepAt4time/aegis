@@ -139,7 +139,7 @@ vi.mock('../api/client', () => ({
     topApiKeys: [],
     durationTrends: [],
     errorRates: {
-      totalSessions: 0,
+      totalSessions: 1,
       failedSessions: 0,
       failureRate: 0,
       approvals: 0,
