@@ -27,7 +27,7 @@ export function registerSessionApprovalRoutes(
     if (session.status !== 'awaiting_approval') {
       return reply.status(409).send({
         error: 'SESSION_NOT_AWAITING_APPROVAL',
-        message: `Session is not awaiting approval (status: ${session.status})`,
+        message: `Session is not awaiting approval`,
       });
     }
 
@@ -61,7 +61,7 @@ export function registerSessionApprovalRoutes(
     if (session.status !== 'awaiting_approval') {
       return reply.status(409).send({
         error: 'SESSION_NOT_AWAITING_APPROVAL',
-        message: `Session is not awaiting approval (status: ${session.status})`,
+        message: `Session is not awaiting approval`,
       });
     }
 

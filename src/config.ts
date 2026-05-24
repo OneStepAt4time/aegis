@@ -131,6 +131,8 @@ export interface Config {
   strictRBAC: boolean;
   /** Issue #4088: Require explicit session approval before CC starts (default: false). */
   requireSessionApproval?: boolean;
+  /** Issue #4114: Timeout in ms before auto-rejecting an awaiting_approval session. Default: 300000 (5 min). */
+  sessionApprovalTimeoutMs?: number;
   /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
   sseIdleMs: number;
   /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
@@ -230,6 +232,7 @@ const defaults: Config = {
   enforceSessionOwnership: true,
   strictRBAC: false,
   requireSessionApproval: false,
+  sessionApprovalTimeoutMs: 300_000,
   sseIdleMs: 60_000,
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
@@ -477,6 +480,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_REQUIRE_SESSION_APPROVAL', manus: '', key: 'requireSessionApproval' },
+    { aegis: 'AEGIS_SESSION_APPROVAL_TIMEOUT_MS', manus: '', key: 'sessionApprovalTimeoutMs' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
     { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
     { aegis: 'AEGIS_ACP_STRICT_VALIDATION', manus: '', key: 'acpStrictValidation' },

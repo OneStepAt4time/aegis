@@ -155,6 +155,8 @@ let alertManager: AlertManager;
 let dashboardOidc: DashboardOIDCManager | null = null;
 let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
+// Issue #4116: Debounce Set for session approval callbacks (prevents duplicate notifications from rapid Telegram clicks).
+const recentApprovalActions = new Set<string>();
 let acpLocalProfile: AcpLocalStorageProfile | null = null;
 let acpSessionService: AcpSessionService | null = null;
 let acpBackend: AcpBackend | null = null;
@@ -184,15 +186,23 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
         break;
       case 'session_approve': {
+        // Issue #4116: Debounce — skip if this session was already processed recently.
+        if (recentApprovalActions.has(cmd.sessionId)) break;
+        recentApprovalActions.add(cmd.sessionId);
+        setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
+        // Issue #4117: Include actor info (Telegram user) in approvedBy.
+        const approveActor = cmd.actor?.type === 'telegram'
+          ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
+          : 'telegram';
         // Issue #4092: Wrap in try/catch — stale Telegram callbacks (e.g. user taps
         // Approve after session was already approved via API) should not crash callback processing.
         try {
-          await sessions.approveSession(cmd.sessionId, 'telegram');
+          await sessions.approveSession(cmd.sessionId, approveActor);
           channels.statusChange({
             event: 'session.approved',
             timestamp: new Date().toISOString(),
             session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
-            detail: 'Session approved via Telegram',
+            detail: `Session approved by ${approveActor}`,
           });
         } catch (e) {
           logger.error({ component: 'server', operation: 'session_approve', sessionId: cmd.sessionId, attributes: { error: String(e) } });
@@ -200,13 +210,21 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         break;
       }
       case 'session_reject': {
+        // Issue #4116: Debounce — skip if this session was already processed recently.
+        if (recentApprovalActions.has(cmd.sessionId)) break;
+        recentApprovalActions.add(cmd.sessionId);
+        setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
+        // Issue #4117: Include actor info in rejection log.
+        const rejectActor = cmd.actor?.type === 'telegram'
+          ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
+          : 'telegram';
         try {
           await sessions.rejectSession(cmd.sessionId);
           channels.statusChange({
             event: 'session.rejected',
             timestamp: new Date().toISOString(),
             session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
-            detail: 'Session rejected via Telegram',
+            detail: `Session rejected by ${rejectActor}`,
           });
         } catch (e) {
           logger.error({ component: 'server', operation: 'session_reject', sessionId: cmd.sessionId, attributes: { error: String(e) } });

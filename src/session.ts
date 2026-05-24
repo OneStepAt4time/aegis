@@ -355,6 +355,8 @@ export class SessionManager {
   private readonly store: StateStore | null;
   /** Issue #4092: Recovery callback for sessions stuck in awaiting_approval after restart. */
   onSessionApprovalRecovery: ((session: SessionInfo) => void) | null = null;
+  /** Issue #4114: Active approval timeouts — session ID → timeout handle. */
+  private readonly approvalTimeouts = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private config: Config,
@@ -897,6 +899,8 @@ export class SessionManager {
       session.awaitingApproval = true;
       this.invalidateSessionsListCache();
       await this.save();
+      // Issue #4114: Auto-reject after timeout.
+      this.scheduleApprovalTimeout(session.id);
       return session;
     }
     // Start coordinated discovery polling:
@@ -1112,6 +1116,37 @@ export class SessionManager {
 
   /** Issue #4088: Approve a session awaiting approval. Starts CC. */
 
+  /** Issue #4114: Schedule auto-reject for a session awaiting approval. */
+  private scheduleApprovalTimeout(sessionId: string): void {
+    const timeoutMs = this.config.sessionApprovalTimeoutMs ?? 300_000;
+    const handle = setTimeout(async () => {
+      this.approvalTimeouts.delete(sessionId);
+      const session = this.state.sessions[sessionId];
+      if (session && session.status === 'awaiting_approval') {
+        console.warn(`[session] Auto-rejecting session ${sessionId} after ${timeoutMs}ms approval timeout`);
+        try {
+          await this.rejectSession(sessionId);
+          // Notify channels about auto-rejection
+          if (this.onSessionApprovalRecovery) {
+            this.onSessionApprovalRecovery({ ...session, status: 'killed' });
+          }
+        } catch (e) {
+          console.error(`[session] Failed to auto-reject session ${sessionId}:`, e);
+        }
+      }
+    }, timeoutMs);
+    this.approvalTimeouts.set(sessionId, handle);
+  }
+
+  /** Issue #4114: Clear an active approval timeout. */
+  private clearApprovalTimeout(sessionId: string): void {
+    const handle = this.approvalTimeouts.get(sessionId);
+    if (handle) {
+      clearTimeout(handle);
+      this.approvalTimeouts.delete(sessionId);
+    }
+  }
+
   /** Issue #4092: Emit awaiting_approval event for recovery after restart. */
   private emitSessionAwaitingApproval(session: SessionInfo): void {
     // Re-notify channels that this session still needs approval.
@@ -1124,13 +1159,15 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval`);
     }
     session.status = 'pending';
     session.awaitingApproval = false;
     session.approvedBy = approvedBy;
     session.approvedAt = Date.now();
     this.invalidateSessionsListCache();
+    // Issue #4114: Clear approval timeout.
+    this.clearApprovalTimeout(id);
     await this.save();
     // Start discovery polling now that session is approved.
     // Issue #4092: Wrap in try/catch — if discovery fails, session is still approved
@@ -1148,11 +1185,13 @@ export class SessionManager {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval`);
     }
     session.status = 'killed';
     session.awaitingApproval = false;
     this.invalidateSessionsListCache();
+    // Issue #4114: Clear approval timeout.
+    this.clearApprovalTimeout(id);
     await this.save();
   }
 
