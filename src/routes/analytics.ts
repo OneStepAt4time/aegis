@@ -151,7 +151,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
       if (role === 'viewer' && !isSystemTenant) {
         const allKeys = auth.listKeys();
         const keys = allKeys.filter(k => k.tenantId === callerTenantId);
-        const allSessions = sessions.listSessions();
+        const allSessions = sessions.listSessions().filter(s => s.status !== 'killed');
         const perKey: RateLimitKeyUsage[] = keys.map((key) => {
           const owned = allSessions.filter((s) => s.ownerKeyId === key.id);
           const usage = quotas.getUsage(key as unknown as ApiKey, owned.length);
@@ -179,7 +179,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, ctx: RouteContext)
       // Admin/operator/system: show all keys
 
       const keys = auth.listKeys();
-      const allSessions = sessions.listSessions();
+      const allSessions = sessions.listSessions().filter(s => s.status !== 'killed');
 
       // Build per-key usage snapshots
       // listKeys() omits 'hash' but QuotaManager.getUsage only reads id + quotas
