@@ -61,6 +61,7 @@ const EMPTY_COUNTS: SessionStatusCounts = {
     unknown: 0,
     killed: 0,
     completed: 0,
+    awaiting_approval: 0,
     crashed: 0,
 };
 const STATUS_FILTERS: SessionStatusFilter[] = [

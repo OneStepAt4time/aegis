@@ -35,7 +35,7 @@ export type UIState =
   | 'idle' | 'working' | 'compacting' | 'context_warning'
   | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
   | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown'
-  | 'killed' | 'completed' | 'crashed';
+  | 'awaiting_approval' | 'killed' | 'completed' | 'crashed';
 
 /** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
@@ -132,6 +132,10 @@ export interface SessionInfo {
   ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
   tenantId?: string;           // Issue #1944: Tenant isolation scoping
   autoApprove?: boolean;        // API contract compat: auto-approve flag
+  // Issue #4088: Session-level approval gate
+  awaitingApproval?: boolean;       // True when session requires approval before CC starts
+  approvedBy?: string;              // Who approved the session (user ID or API key)
+  approvedAt?: number;              // Unix timestamp when session was approved
   pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
   promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
@@ -349,6 +353,8 @@ export class SessionManager {
   private readonly discovery: SessionDiscovery;
   /** Issue #1937: Pluggable persistence backend (null = legacy file I/O). */
   private readonly store: StateStore | null;
+  /** Issue #4092: Recovery callback for sessions stuck in awaiting_approval after restart. */
+  onSessionApprovalRecovery: ((session: SessionInfo) => void) | null = null;
 
   constructor(
     private config: Config,
@@ -459,6 +465,19 @@ export class SessionManager {
 
     // Issue #657: Invalidate sessions list cache after loading state
     this.invalidateSessionsListCache();
+
+    // Issue #4092: Recover sessions stuck in awaiting_approval after server restart.
+    // setTimeout-based auto-reject is in-memory only and lost on restart.
+    // Re-emit awaiting_approval events so channels (e.g. Telegram) re-notify the user.
+    const stuckSessions = Object.values(this.state.sessions).filter(
+      (s) => s.status === 'awaiting_approval'
+    );
+    if (stuckSessions.length > 0) {
+      console.warn(`[session] Recovering ${stuckSessions.length} session(s) stuck in awaiting_approval after restart`);
+      for (const session of stuckSessions) {
+        this.emitSessionAwaitingApproval(session);
+      }
+    }
 
       }
   /** Save state to disk atomically (write to temp, then rename).
@@ -872,6 +891,14 @@ export class SessionManager {
     // Fire-and-forget — PID is not needed synchronously.
     // Issue #574: Add .catch() to prevent unhandled rejection if runtime fails mid-lookup.
 
+    // Issue #4088: Session approval gate — skip CC launch when approval is required.
+    if (this.config.requireSessionApproval) {
+      session.status = 'awaiting_approval';
+      session.awaitingApproval = true;
+      this.invalidateSessionsListCache();
+      await this.save();
+      return session;
+    }
     // Start coordinated discovery polling:
     // - Hook/session_map sync: fast path
     // - Filesystem scan fallback: works when hooks fail or are skipped (Issue #16)
@@ -1082,6 +1109,52 @@ export class SessionManager {
 
   /** Escape session (ACP stub). */
   async escape(_id: string): Promise<void> {}
+
+  /** Issue #4088: Approve a session awaiting approval. Starts CC. */
+
+  /** Issue #4092: Emit awaiting_approval event for recovery after restart. */
+  private emitSessionAwaitingApproval(session: SessionInfo): void {
+    // Re-notify channels that this session still needs approval.
+    // This is a no-op if no recovery callback is registered.
+    if (this.onSessionApprovalRecovery) {
+      this.onSessionApprovalRecovery(session);
+    }
+  }
+  async approveSession(id: string, approvedBy?: string): Promise<SessionInfo> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`"Session not found: ${id}`);
+    if (session.status !== 'awaiting_approval') {
+      throw new Error(`"Session is not awaiting approval (status: ${session.status})`);
+    }
+    session.status = 'pending';
+    session.awaitingApproval = false;
+    session.approvedBy = approvedBy;
+    session.approvedAt = Date.now();
+    this.invalidateSessionsListCache();
+    await this.save();
+    // Start discovery polling now that session is approved.
+    // Issue #4092: Wrap in try/catch — if discovery fails, session is still approved
+    // but we log the error instead of crashing the approval flow.
+    try {
+      this.discovery.startDiscoveryPolling(id, session.workDir);
+    } catch (e) {
+      console.error(`[session] approveSession: discovery polling failed for ${id}:`, e);
+    }
+    return session;
+  }
+
+  /** Issue #4088: Reject a session awaiting approval. Cleans up. */
+  async rejectSession(id: string): Promise<void> {
+    const session = this.state.sessions[id];
+    if (!session) throw new Error(`"Session not found: ${id}`);
+    if (session.status !== 'awaiting_approval') {
+      throw new Error(`"Session is not awaiting approval (status: ${session.status})`);
+    }
+    session.status = 'killed';
+    session.awaitingApproval = false;
+    this.invalidateSessionsListCache();
+    await this.save();
+  }
 
   /** Interrupt session (ACP stub — use JSON-RPC cancel). */
   async interrupt(_id: string): Promise<void> {}

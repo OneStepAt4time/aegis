@@ -84,6 +84,7 @@ import {
   registerAuditRoutes,
   registerSessionRoutes,
   registerSessionActionRoutes,
+  registerSessionApprovalRoutes,
   registerSessionDataRoutes,
   registerEventRoutes,
   registerTemplateRoutes,
@@ -181,6 +182,24 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         await sessions.killSession(cmd.sessionId);
         channels.sessionEnded(makePayloadFromCtx(sessions, 'session.ended', cmd.sessionId, 'killed'));
         cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
+        break;
+      case 'session_approve':
+        await sessions.approveSession(cmd.sessionId, 'telegram');
+        channels.statusChange({
+          event: 'session.approved',
+          timestamp: new Date().toISOString(),
+          session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
+          detail: 'Session approved via Telegram',
+        });
+        break;
+      case 'session_reject':
+        await sessions.rejectSession(cmd.sessionId);
+        channels.statusChange({
+          event: 'session.rejected',
+          timestamp: new Date().toISOString(),
+          session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
+          detail: 'Session rejected via Telegram',
+        });
         break;
       case 'message':
       case 'command':
@@ -808,6 +827,15 @@ async function main(): Promise<void> {
   await sessionStore.start();
 
   sessions = new SessionManager(config, sessionStore);
+  // Issue #4092: Wire recovery callback for stuck awaiting_approval sessions.
+  sessions.onSessionApprovalRecovery = (session) => {
+    channels.statusChange({
+      event: 'session.awaiting_approval',
+      timestamp: new Date().toISOString(),
+      session: { id: session.id, name: session.displayName ?? '', workDir: session.workDir },
+      detail: `Session still awaiting approval after restart: ${session.displayName ?? session.id}`,
+    });
+  };
 
   // Issue #2607 / ACP-064: Initialize ACP local storage profile and backend
   // Issue #4032: Allow test override of persist debounce via env var.
@@ -1204,6 +1232,7 @@ async function main(): Promise<void> {
   registerAuditRoutes(app, routeCtx);
   registerSessionRoutes(app, routeCtx);
   registerSessionActionRoutes(app, routeCtx);
+  registerSessionApprovalRoutes(app, routeCtx);
   registerSessionDataRoutes(app, routeCtx);
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);

@@ -129,6 +129,8 @@ export interface Config {
    *  When true, all RBAC checks are enforced regardless of auth status — returns 401 for
    *  unauthenticated requests to role-protected endpoints. Recommended for production. */
   strictRBAC: boolean;
+  /** Issue #4088: Require explicit session approval before CC starts (default: false). */
+  requireSessionApproval?: boolean;
   /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
   sseIdleMs: number;
   /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
@@ -227,6 +229,7 @@ const defaults: Config = {
   envAdminAllowlist: [],
   enforceSessionOwnership: true,
   strictRBAC: false,
+  requireSessionApproval: false,
   sseIdleMs: 60_000,
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
@@ -473,6 +476,7 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_DEFAULT_TENANT_ID', manus: '', key: 'defaultTenantId' },
     { aegis: 'AEGIS_ENFORCE_SESSION_OWNERSHIP', manus: '', key: 'enforceSessionOwnership' },
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
+    { aegis: 'AEGIS_REQUIRE_SESSION_APPROVAL', manus: '', key: 'requireSessionApproval' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
     { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
     { aegis: 'AEGIS_ACP_STRICT_VALIDATION', manus: '', key: 'acpStrictValidation' },

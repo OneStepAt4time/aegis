@@ -38,7 +38,10 @@ export type SessionEvent =
   | 'status.recovered'
   | 'status.context_warning'
   | 'swarm.teammate_spawned'
-  | 'swarm.teammate_finished';
+  | 'swarm.teammate_finished'
+  | 'session.awaiting_approval'
+  | 'session.approved'
+  | 'session.rejected';
 
 /** Payload for all session events. */
 export interface SessionEventPayload {
@@ -58,7 +61,7 @@ export interface SessionEventPayload {
 /** Inbound command from a channel (user replied in Telegram, webhook callback, etc.) */
 export interface InboundCommand {
   sessionId: string;
-  action: 'approve' | 'reject' | 'escape' | 'kill' | 'message' | 'command';
+  action: 'approve' | 'reject' | 'escape' | 'kill' | 'message' | 'command' | 'session_approve' | 'session_reject';
   text?: string;
 }
 

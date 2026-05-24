@@ -492,6 +492,16 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       meta: prompt ? { prompt: prompt.slice(0, 200), permissionMode: permissionMode ?? (autoApprove ? 'bypassPermissions' : undefined) } : undefined,
     });
 
+    // Issue #4088: If session is awaiting approval, notify channels
+    if (session.status === 'awaiting_approval') {
+      channels.statusChange({
+        event: 'session.awaiting_approval',
+        timestamp: new Date().toISOString(),
+        session: { id: session.id, name: session.displayName ?? '', workDir },
+        detail: `Session awaiting approval: ${session.displayName}`,
+      });
+    }
+
     let promptDelivery: { delivered: boolean; attempts: number; status?: 'pending' | 'delivered' | 'failed' | 'timeout'; error?: string } | undefined;
     if (prompt) {
       let finalPrompt = prompt;

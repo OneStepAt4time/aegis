@@ -138,7 +138,7 @@ function stripXmlTags(text: string): string {
     // Replace the command block with clean status
     result = result.replace(/<command-name>[\s\S]*?<\/command-name>/gi, clean);
     result = result.replace(/<command-args>[\s\S]*?<\/command-args>/gi, '');
-  }
+    }
 
   // 3. Strip all remaining CC internal tags (caveat, thinking, tool_use, etc.)
   result = result.replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/gi, '');
@@ -1259,6 +1259,33 @@ export class TelegramChannel implements Channel {
         await this.flushReads(payload.session.id);
         const teammateName = (payload.meta?.teammateName as string) || 'unknown';
         await this.sendImmediate(payload.session.id, `✅ Teammate ${bold(teammateName)} finished`);
+
+        break;
+      }
+      case 'session.awaiting_approval': {
+        const sessionName = esc(payload.session.name || payload.session.id.slice(0, 8));
+        const workDir = esc(shortPath(payload.session.workDir));
+        const approveStyled: StyledMessage = {
+          text: `🔐 <b>Session Approval Required</b>\n\nSession ${bold(sessionName)} in ${code(workDir)} is waiting for your approval.`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '✅ Approve', callback_data: safeCallbackData(`session_approve:${payload.session.id}`) },
+              { text: '❌ Reject', callback_data: safeCallbackData(`session_reject:${payload.session.id}`) },
+            ]],
+          },
+        };
+        await this.sendStyled(payload.session.id, approveStyled);
+        break;
+      }
+
+      case 'session.approved': {
+        await this.sendImmediate(payload.session.id, `✅ Session ${bold(esc(payload.session.name || payload.session.id.slice(0, 8)))} approved`);
+        break;
+      }
+
+      case 'session.rejected': {
+        await this.sendImmediate(payload.session.id, `❌ Session ${bold(esc(payload.session.name || payload.session.id.slice(0, 8)))} rejected`);
         break;
       }
     }
@@ -1884,6 +1911,16 @@ export class TelegramChannel implements Channel {
           }
         } else if (data.startsWith('perm_reject:')) {
           await this.onInbound?.({ sessionId, action: 'reject' });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('session_approve:' )) {
+          await this.onInbound?.({ sessionId, action: 'session_approve'  });
+          if (cb.message.message_id) {
+            await this.removeReplyMarkup(sessionId, cb.message.message_id);
+          }
+        } else if (data.startsWith('session_reject:' )) {
+          await this.onInbound?.({ sessionId, action: 'session_reject'  });
           if (cb.message.message_id) {
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
