@@ -292,10 +292,12 @@ function printHelp(io: CliIO): void {
 
   Usage:
     ag                     Start the server (port 9100)
-    ag init                Bootstrap .aegis/config.yaml
+    ag init                Bootstrap + start server + open browser (default)
+    ag init --no-start     Bootstrap config only, don't start server
     ag init --yes          Non-interactive bootstrap for CI
-    ag init --force          Overwrite existing config (use with caution)
-    ag run "prompt"         Zero-to-session in one command
+    ag init --force        Overwrite existing config (use with caution)
+    ag init --no-open      Start server but skip browser open
+    ag run "prompt"        Zero-to-session in one command
     ag init --list-templates
     ag init --from-template code-reviewer
     ag doctor              Validate starter templates here or run local diagnostics
@@ -307,6 +309,7 @@ function printHelp(io: CliIO): void {
 
   Init:
     ag init
+    ag init --no-start
     ag init --yes
     ag init --list-templates
     ag init --from-template docs-writer

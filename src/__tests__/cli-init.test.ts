@@ -10,6 +10,27 @@ vi.mock("../utils/claude-installer.js", () => ({
   checkClaudeInstalled: vi.fn(() => Promise.resolve({ installed: true })),
   installClaudeCli: vi.fn(() => Promise.resolve(true)),
 }));
+
+vi.mock('../utils/detect-free-port.js', () => ({
+  detectFreePort: vi.fn(async () => 9100),
+  isPortAvailable: vi.fn(async () => true),
+}));
+
+vi.mock('../utils/detect-running.js', () => ({
+  detectRunningInstance: vi.fn(async () => null),
+}));
+
+vi.mock('open', () => ({
+  default: vi.fn(async () => {}),
+}));
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawn: vi.fn(() => ({ unref: vi.fn(), pid: 12345 })),
+  };
+});
 import { parse as parseYaml } from 'yaml';
 
 import { runCli } from '../cli.js';
@@ -78,7 +99,7 @@ describe('ag init', () => {
   }
 
   it('bootstraps .aegis/config.yaml from interactive answers', async () => {
-    const result = await runInit(['init'], [
+    const result = await runInit(['init', '--no-start'], [
       '',               // name (empty)
       'y',
       'http://127.0.0.1:9200',
@@ -131,7 +152,7 @@ describe('ag init', () => {
   });
 
   it('supports non-interactive --yes bootstrap (zero-config on localhost)', async () => {
-    const result = await runInit(['init', '--yes']);
+    const result = await runInit(['init', '--yes', '--no-start']);
     const configPath = join(projectDir, '.aegis', 'config.yaml');
     const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
       baseUrl?: string;
@@ -150,13 +171,13 @@ describe('ag init', () => {
   });
 
   it('does not overwrite an existing config without confirmation', async () => {
-    const firstRun = await runInit(['init', '--yes']);
+    const firstRun = await runInit(['init', '--yes', '--no-start']);
     const configPath = join(projectDir, '.aegis', 'config.yaml');
     const initialConfig = readFileSync(configPath, 'utf-8');
 
     expect(firstRun.code).toBe(0);
 
-    const secondRun = await runInit(['init'], [
+    const secondRun = await runInit(['init', '--no-start'], [
       '',               // name (empty)
       'n',
       'http://127.0.0.1:9300',
@@ -204,7 +225,7 @@ describe('ag init --model flag', () => {
     const stdout = new CaptureStream();
     const stderr = new CaptureStream();
 
-    const runPromise = runCli(['init', '--yes', '--model', 'claude-opus-4'], { stdin, stdout, stderr });
+    const runPromise = runCli(['init', '--yes', '--no-start', '--model', 'claude-opus-4'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
 
     const code = await runPromise;
@@ -222,7 +243,7 @@ describe('ag init --model flag', () => {
     const stdout = new CaptureStream();
     const stderr = new CaptureStream();
 
-    const runPromise = runCli(['init', '--yes', '--name', 'Ada'], { stdin, stdout, stderr });
+    const runPromise = runCli(['init', '--yes', '--no-start', '--name', 'Ada'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
 
     const code = await runPromise;
@@ -242,7 +263,7 @@ describe('ag init --model flag', () => {
     const stdout = new CaptureStream();
     const stderr = new CaptureStream();
 
-    const runPromise = runCli(['init'], { stdin, stdout, stderr });
+    const runPromise = runCli(['init', '--no-start'], { stdin, stdout, stderr });
     setImmediate(() => {
       stdin.end([
         'Grace',           // name
@@ -268,7 +289,7 @@ describe('ag init --model flag', () => {
     const stdout = new CaptureStream();
     const stderr = new CaptureStream();
 
-    const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+    const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
 
     const code = await runPromise;
@@ -283,7 +304,7 @@ describe('ag init --model flag', () => {
     const stdout = new CaptureStream();
     const stderr = new CaptureStream();
 
-    const runPromise = runCli(['init', '--yes', '--name', 'Turing', '--model', 'gpt-5'], { stdin, stdout, stderr });
+    const runPromise = runCli(['init', '--yes', '--no-start', '--name', 'Turing', '--model', 'gpt-5'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
 
     const code = await runPromise;
@@ -307,7 +328,7 @@ describe('ag init --model flag', () => {
     let stdin = new PassThrough();
     let stdout = new CaptureStream();
     let stderr = new CaptureStream();
-    let runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+    let runPromise = runCli(['init', '--yes', '--no-start', '--force'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
     let code = await runPromise;
     expect(code).toBe(0);
@@ -322,7 +343,7 @@ describe('ag init --model flag', () => {
     stdin = new PassThrough();
     stdout = new CaptureStream();
     stderr = new CaptureStream();
-    runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+    runPromise = runCli(['init', '--yes', '--no-start', '--force'], { stdin, stdout, stderr });
     setImmediate(() => stdin.end());
     code = await runPromise;
     expect(code).toBe(0);
@@ -340,7 +361,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -366,7 +387,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -381,7 +402,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start', '--force'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -397,7 +418,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -412,7 +433,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -432,7 +453,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes', '--force'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start', '--force'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -466,7 +487,7 @@ describe('ag init --model flag', () => {
       const stdin = new PassThrough();
       const stdout = new CaptureStream();
       const stderr = new CaptureStream();
-      const runPromise = runCli(['init', '--yes'], { stdin, stdout, stderr });
+      const runPromise = runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
       setImmediate(() => stdin.end());
       const code = await runPromise;
       expect(code).toBe(0);
@@ -475,5 +496,95 @@ describe('ag init --model flag', () => {
       const keysPath = join(stateDir, 'keys.json');
       expect(existsSync(keysPath)).toBe(true);
     });
+  });
+});
+// Issue #4100: --start server flow tests (mocks already set up at top of file)
+describe('ag init --start (#4100)', () => {
+  let projectDir: string;
+  let originalCwd: string;
+  let originalEnv: NodeJS.ProcessEnv;
+  let stateDir: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    originalEnv = { ...process.env };
+    projectDir = mkdtempSync(join(tmpdir(), 'aegis-start-init-'));
+    stateDir = join(projectDir, 'state');
+    process.chdir(projectDir);
+
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('AEGIS_') || key.startsWith('MANUS_')) {
+        delete process.env[key];
+      }
+    }
+    process.env.AEGIS_STATE_DIR = stateDir;
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    process.env = originalEnv;
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it('re-run detects already running instance (exit code 2)', async () => {
+    // Simulate Aegis already running: detectRunningInstance returns URL
+    const { detectRunningInstance } = await import('../utils/detect-running.js');
+    (detectRunningInstance as ReturnType<typeof vi.fn>).mockResolvedValueOnce('http://127.0.0.1:9100');
+
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+    setImmediate(() => stdin.end());
+
+    const code = await runCli(['init', '--yes', '--start'], { stdin, stdout, stderr });
+
+    // Should exit with code 2 (already running) and print the URL
+    expect(code).toBe(2);
+    expect(stdout.text()).toContain('already running');
+    expect(stdout.text()).toContain('http://127.0.0.1:9100');
+  });
+
+  it('--no-start does not call spawn', async () => {
+    const { spawn } = await import('node:child_process');
+    (spawn as ReturnType<typeof vi.fn>).mockClear();
+
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+    setImmediate(() => stdin.end());
+
+    await runCli(['init', '--yes', '--no-start'], { stdin, stdout, stderr });
+
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it('detectFreePort mock returns 9100', async () => {
+    const { detectFreePort } = await import('../utils/detect-free-port.js');
+    const port = await detectFreePort();
+    expect(port).toBe(9100);
+  });
+
+  it('detectRunningInstance mock returns null (no server)', async () => {
+    const { detectRunningInstance } = await import('../utils/detect-running.js');
+    const result = await detectRunningInstance(9100);
+    expect(result).toBeNull();
+  });
+
+  it('re-run with --no-open skips browser but still detects running', async () => {
+    const { detectRunningInstance } = await import('../utils/detect-running.js');
+    (detectRunningInstance as ReturnType<typeof vi.fn>).mockResolvedValueOnce('http://127.0.0.1:9100');
+
+    const openModule = await import('open');
+    (openModule.default as ReturnType<typeof vi.fn>).mockClear();
+
+    const stdin = new PassThrough();
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+    setImmediate(() => stdin.end());
+
+    const code = await runCli(['init', '--yes', '--start', '--no-open'], { stdin, stdout, stderr });
+
+    expect(code).toBe(2);
+    expect(openModule.default).not.toHaveBeenCalled();
   });
 });
