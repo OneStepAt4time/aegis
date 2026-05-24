@@ -85,7 +85,7 @@ jobs:
       # Pin to v1 which remains free for open-source use.
       # TODO: evaluate v2 license or alternative secret scanning (Trivy fs scan already covers secrets).
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v1
+        uses: gitleaks/gitleaks-action@v2
         with:
           config-path: .gitleaks.toml
         env:
