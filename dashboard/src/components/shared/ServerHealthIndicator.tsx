@@ -24,7 +24,7 @@ export function ServerHealthDot() {
   const config = STATUS_CONFIG[health.status];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2" role="status" aria-label={`Server status: ${config.label}`}>
+    <div className="flex items-center gap-2 px-3 py-2" role="status" aria-label={`Server health: ${config.label}`}>
       <config.Icon
         className={`h-3.5 w-3.5 ${config.color} ${health.status === 'reconnecting' || health.status === 'checking' ? 'animate-spin' : ''}`}
         aria-hidden="true"
