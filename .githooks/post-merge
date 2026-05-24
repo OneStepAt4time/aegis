@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# post-merge hook — auto-rebuild and restart Aegis after develop merges.
+#
+# Triggers when `git pull` (or merge) completes on the develop branch.
+# Rebuilds the server and restarts the systemd service.
+#
+# To install: npm run hooks:install
+# (or: git config core.hooksPath .githooks)
+
+set -eu
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+if [ "$BRANCH" != "develop" ]; then
+  exit 0
+fi
+
+echo "[post-merge] Develop branch updated. Rebuilding Aegis..."
+
+# Rebuild
+if ! npm run build > /dev/null 2>&1; then
+  echo "[post-merge] ❌ Build failed. Not restarting."
+  exit 1
+fi
+
+echo "[post-merge] ✅ Build succeeded."
+
+# Restart if Aegis service is running
+if systemctl --user is-active --quiet aegis 2>/dev/null; then
+  echo "[post-merge] Restarting Aegis service..."
+  systemctl --user restart aegis
+  echo "[post-merge] ✅ Aegis restarted."
+elif systemctl --user is-active --quiet manus 2>/dev/null; then
+  echo "[post-merge] Restarting manus service (legacy name)..."
+  systemctl --user restart manus
+  echo "[post-merge] ✅ manus restarted."
+else
+  echo "[post-merge] ℹ️  No running Aegis service found. Start manually: npm start"
+fi
