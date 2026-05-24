@@ -7,9 +7,9 @@ import { parseDashboardOidcConfig, type DashboardOidcConfig } from './oidc-confi
 import { permissionsForRole, type ApiKeyPermission } from './permissions.js';
 import type { ApiKeyRole } from './types.js';
 
-export const DASHBOARD_SESSION_COOKIE = '__Host-aegis_dashboard_session';
-export const OIDC_STATE_COOKIE = '__Host-aegis_oidc_state';
-export const DASHBOARD_SESSION_TTL_MS = 60 * 60 * 1000;
+export const DASHBOARD_SESSION_COOKIE = 'aegis_dashboard_session';
+export const OIDC_STATE_COOKIE = 'aegis_oidc_state';
+export const DASHBOARD_SESSION_TTL_MS = 24 * 60 * 60 * 1000; // Issue #4152: 24h for local dev usability
 export const OIDC_AUTH_REQUEST_TTL_MS = 10 * 60 * 1000;
 export const OIDC_DISCOVERY_TTL_MS = 60 * 60 * 1000;
 export const MAX_DASHBOARD_SESSIONS_PER_USER = 5;
