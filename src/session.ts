@@ -1122,9 +1122,9 @@ export class SessionManager {
   }
   async approveSession(id: string, approvedBy?: string): Promise<SessionInfo> {
     const session = this.state.sessions[id];
-    if (!session) throw new Error(`"Session not found: ${id}`);
+    if (!session) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`"Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
     }
     session.status = 'pending';
     session.awaitingApproval = false;
@@ -1146,9 +1146,9 @@ export class SessionManager {
   /** Issue #4088: Reject a session awaiting approval. Cleans up. */
   async rejectSession(id: string): Promise<void> {
     const session = this.state.sessions[id];
-    if (!session) throw new Error(`"Session not found: ${id}`);
+    if (!session) throw new Error(`Session not found: ${id}`);
     if (session.status !== 'awaiting_approval') {
-      throw new Error(`"Session is not awaiting approval (status: ${session.status})`);
+      throw new Error(`Session is not awaiting approval (status: ${session.status})`);
     }
     session.status = 'killed';
     session.awaitingApproval = false;

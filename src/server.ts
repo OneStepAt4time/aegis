@@ -183,24 +183,36 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         channels.sessionEnded(makePayloadFromCtx(sessions, 'session.ended', cmd.sessionId, 'killed'));
         cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
         break;
-      case 'session_approve':
-        await sessions.approveSession(cmd.sessionId, 'telegram');
-        channels.statusChange({
-          event: 'session.approved',
-          timestamp: new Date().toISOString(),
-          session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
-          detail: 'Session approved via Telegram',
-        });
+      case 'session_approve': {
+        // Issue #4092: Wrap in try/catch — stale Telegram callbacks (e.g. user taps
+        // Approve after session was already approved via API) should not crash callback processing.
+        try {
+          await sessions.approveSession(cmd.sessionId, 'telegram');
+          channels.statusChange({
+            event: 'session.approved',
+            timestamp: new Date().toISOString(),
+            session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
+            detail: 'Session approved via Telegram',
+          });
+        } catch (e) {
+          logger.error({ component: 'server', operation: 'session_approve', sessionId: cmd.sessionId, attributes: { error: String(e) } });
+        }
         break;
-      case 'session_reject':
-        await sessions.rejectSession(cmd.sessionId);
-        channels.statusChange({
-          event: 'session.rejected',
-          timestamp: new Date().toISOString(),
-          session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
-          detail: 'Session rejected via Telegram',
-        });
+      }
+      case 'session_reject': {
+        try {
+          await sessions.rejectSession(cmd.sessionId);
+          channels.statusChange({
+            event: 'session.rejected',
+            timestamp: new Date().toISOString(),
+            session: { id: cmd.sessionId, name: '', workDir: '', runnerName: undefined },
+            detail: 'Session rejected via Telegram',
+          });
+        } catch (e) {
+          logger.error({ component: 'server', operation: 'session_reject', sessionId: cmd.sessionId, attributes: { error: String(e) } });
+        }
         break;
+      }
       case 'message':
       case 'command':
         if (cmd.text) await sessions.sendMessage(cmd.sessionId, cmd.text);
