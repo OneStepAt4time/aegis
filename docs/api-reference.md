@@ -1671,6 +1671,8 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/session-reject \
 ---
 
 > **Configuration:** Enable session approval by setting `requireSessionApproval: true` in your Aegis config, or set the environment variable `AEGIS_REQUIRE_SESSION_APPROVAL=true`. Sessions will wait in `awaiting_approval` until approved or rejected. If the server restarts while sessions are awaiting approval, they are automatically recovered and re-notified via configured channels.
+>
+> **Auto-reject timeout:** Sessions stuck in `awaiting_approval` for longer than `AEGIS_SESSION_APPROVAL_TIMEOUT_MS` (default: 5 minutes) are automatically rejected and transition to `killed`. Set to `0` to disable the timeout.
 
 ---
 
