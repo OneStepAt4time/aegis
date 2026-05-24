@@ -550,6 +550,7 @@ export const en = {
     contextWarning: 'Context warning',
     waitingForInput: 'Waiting for input',
     pending: 'Pending',
+    pendingApproval: 'Pending approval',
     unknown: 'Unknown',
     killed: 'Killed',
     completed: 'Completed',
