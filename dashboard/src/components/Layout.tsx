@@ -33,6 +33,7 @@ import {
   Cog,
   Terminal,
   Radio,
+  MessageCircle,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -80,6 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'ADMIN',
     items: [
       { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
+      { to: '/settings/notifications', label: 'Notifications', icon: MessageCircle },
     ],
   },
 ];
