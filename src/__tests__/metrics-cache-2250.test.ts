@@ -264,7 +264,8 @@ describe('MetricsCache (Issue #2250)', () => {
           totalSessionsCreated: 5,
           totalSessionsFailed: 1,
           totalSessionsInfraFailed: 0,
-          totalSessionsKilled: 0,
+totalSessionsKilled: 0,
+accumulatedSessionIds: [],
           savedAt: Date.now(),
         }),
         save: async () => {},
@@ -522,12 +523,93 @@ describe('MetricsCache (Issue #2250)', () => {
         totalSessionsCreated: 1,
         totalSessionsFailed: 0,
         totalSessionsInfraFailed: 0,
-          totalSessionsKilled: 0,
+totalSessionsKilled: 0,
+accumulatedSessionIds: [],
         savedAt: Date.now(),
       };
       await b.save(data);
       const loaded = await b.load();
       expect(loaded).toEqual(data);
     });
+
+  });
+
+  // ── Issue #4149: Metrics persistence across session lifecycle ──────
+
+  it('preserves cost/token data after sessions end (Issue #4149)', async () => {
+    deps.metricsMap.set('s-cost-1', {
+      messages: 10,
+      durationSec: 120,
+      toolCalls: 0,
+      statusChanges: [],
+      approvals: 0,
+      autoApprovals: 0,
+      tokenUsage: {
+        inputTokens: 1000,
+        outputTokens: 500,
+        cacheCreationTokens: 100,
+        cacheReadTokens: 50,
+        estimatedCostUsd: 0.015,
+      },
+    });
+
+    deps.sessionsMap.set('s-cost-1', { id: 's-cost-1', createdAt: '2026-05-24T10:00:00Z', model: 'claude-3.5-sonnet', ownerKeyId: 'key1' } as any);
+
+    const cache1 = new MetricsCache(deps.sessions, deps.metrics, deps.auth, backend, deps.eventBus);
+    await cache1.start();
+
+    const liveMetrics = cache1.getMetrics();
+    expect(liveMetrics.costTrends).toHaveLength(1);
+    expect(liveMetrics.costTrends[0].cost).toBe(0.015);
+    expect(liveMetrics.tokenUsageByModel[0].inputTokens).toBe(1000);
+
+    // Flush (persist)
+    await cache1.flush();
+
+    // Now the session ends and disappears from live list
+    deps.sessionsMap.delete('s-cost-1');
+
+    // Recreate cache from persisted data (simulates server restart)
+    const cache2 = new MetricsCache(deps.sessions, deps.metrics, deps.auth, backend, deps.eventBus);
+    await cache2.start();
+
+    const persistedMetrics = cache2.getMetrics();
+    // Cost and token data should survive
+    expect(persistedMetrics.costTrends).toHaveLength(1);
+    expect(persistedMetrics.costTrends[0].cost).toBeCloseTo(0.015, 4);
+    expect(persistedMetrics.tokenUsageByModel[0].inputTokens).toBe(1000);
+    expect(persistedMetrics.tokenUsageByModel[0].outputTokens).toBe(500);
+  });
+
+  it('does not double-count sessions across recompute cycles (Issue #4149)', async () => {
+    deps.metricsMap.set('s-dup-1', {
+      messages: 5,
+      durationSec: 60,
+      toolCalls: 0,
+      statusChanges: [],
+      approvals: 0,
+      autoApprovals: 0,
+      tokenUsage: {
+        inputTokens: 500,
+        outputTokens: 250,
+        cacheCreationTokens: 0,
+        cacheReadTokens: 0,
+        estimatedCostUsd: 0.008,
+      },
+    });
+
+    deps.sessionsMap.set('s-dup-1', { id: 's-dup-1', createdAt: '2026-05-24T10:00:00Z', model: 'claude-3.5-sonnet', ownerKeyId: 'key1' } as any);
+
+    const cache = new MetricsCache(deps.sessions, deps.metrics, deps.auth, backend, deps.eventBus);
+    await cache.start();
+
+    // Trigger multiple recomputes — session should only be counted once
+    cache.invalidate();
+    cache.invalidate();
+    cache.invalidate();
+
+    const metrics = cache.getMetrics();
+    expect(metrics.costTrends[0].cost).toBeCloseTo(0.008, 4);
+    expect(metrics.tokenUsageByModel[0].inputTokens).toBe(500);
   });
 });

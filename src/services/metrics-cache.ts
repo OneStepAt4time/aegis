@@ -62,6 +62,8 @@ interface CacheFile {
   totalSessionsFailed: number;
   totalSessionsInfraFailed: number;
   totalSessionsKilled: number;
+  /** Session IDs already accumulated into daily/model/key buckets (Issue #4149). */
+  accumulatedSessionIds: string[];
   savedAt: number;
 }
 
@@ -127,6 +129,8 @@ export class MetricsCache {
   private totalSessionsFailed = 0;
   private totalSessionsInfraFailed = 0;
   private totalSessionsKilled = 0;
+  /** Session IDs already accumulated into daily/model/key buckets (Issue #4149). */
+  private accumulatedSessionIds = new Set<string>();
 
   private dirty = false;
   private unsub: (() => void) | null = null;
@@ -281,24 +285,22 @@ export class MetricsCache {
     this.totalSessionsKilled = global.sessions.killed ?? 0;
   }
 
-  /** Full recomputation from live MetricsCollector + SessionManager. */
+  /** Incremental recomputation — only accumulates sessions not yet tracked (Issue #4149). */
   private recompute(): void {
     const allSessions = this.sessions.listSessions();
     const global = this.metrics.getGlobalMetrics(allSessions.length);
 
-    this.dailyMap.clear();
-    this.modelMap.clear();
-    this.keyUsageMap.clear();
-    this.totalPermissionPrompts = 0;
-    this.totalApprovals = 0;
-    this.totalAutoApprovals = 0;
+    // Lifetime counters always refresh from MetricsCollector (idempotent).
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
     this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
     this.totalSessionsKilled = global.sessions.killed ?? 0;
 
-    for (const session of allSessions) {
+    // Only accumulate sessions not already counted in the persisted cache.
+    const newSessions = allSessions.filter((s) => !this.accumulatedSessionIds.has(s.id));
+    for (const session of newSessions) {
       this.accumulateSession(session);
+      this.accumulatedSessionIds.add(session.id);
     }
 
     this.dirty = false;
@@ -369,12 +371,14 @@ export class MetricsCache {
     this.totalAutoApprovals = data.totalAutoApprovals;
     this.totalSessionsCreated = data.totalSessionsCreated;
     this.totalSessionsFailed = data.totalSessionsFailed;
+    this.accumulatedSessionIds = new Set(data.accumulatedSessionIds ?? []);
     this.dirty = false;
   }
 
   async flush(): Promise<void> {
-    // Recompute before saving so persisted data is accurate
-    this.recompute();
+    // Persist current in-memory state (Issue #4149: do NOT recompute —
+    // that would clear maps and lose historical data from ended sessions).
+    this.refreshLifetimeCounters();
     const data: CacheFile = {
       daily: Object.fromEntries(this.dailyMap),
       models: Object.fromEntries(this.modelMap),
@@ -386,6 +390,7 @@ export class MetricsCache {
       totalSessionsFailed: this.totalSessionsFailed,
       totalSessionsInfraFailed: this.totalSessionsInfraFailed,
       totalSessionsKilled: this.totalSessionsKilled,
+accumulatedSessionIds: [...this.accumulatedSessionIds],
       savedAt: Date.now(),
     };
     await this.backend.save(data);
