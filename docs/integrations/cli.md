@@ -16,17 +16,38 @@ npx --package=@onestepat4time/aegis ag
 
 ### `ag init` — Bootstrap a Project
 
-Create `.aegis/config.yaml` with an API token, preferred base URL, optional BYO-LLM defaults, and dashboard settings.
+Create `.aegis/config.yaml` with an API token, preferred base URL, optional BYO-LLM defaults, and dashboard settings. **Zero-config mode**: `ag init` scaffolds the config, starts the server, and opens the dashboard in your browser — all in one command.
 
 ```bash
-ag init
-ag init --yes            # Non-interactive defaults for CI
-ag init --yes --force     # Overwrite existing config in non-interactive mode
+ag init                              # Scaffold + start server + open browser
+ag init --no-open                    # Scaffold + start server, skip browser
+ag init --no-start                   # Scaffold only, don't start server
+ag init --yes                        # Non-interactive defaults for CI
+ag init --yes --force                # Overwrite existing config in non-interactive mode
 ag init --list-templates
 ag init --from-template code-reviewer
 ```
 
+**Zero-config behavior (default):**
+
+1. Scaffolds `.aegis/config.yaml` with safe defaults (localhost only)
+2. Auto-detects a free port (9100 default, increments until free)
+3. Starts the Aegis server as a detached child process
+4. Waits for health check (up to 30s)
+5. Opens the dashboard in your default browser
+6. Prints success message with URL, config path, and PID
+
+If Aegis is **already running** on the target port, `ag init` prints the dashboard URL and exits with code 2. No duplicate instance is created.
+
 The interactive flow is idempotent: if `.aegis/config.yaml` already exists, `ag init` keeps it unless you confirm an overwrite. In `--yes` mode, existing config is preserved by default — use `--force` (or `-f`) to allow overwriting.
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|----------|
+| `0` | Success — config scaffolded, server started, browser opened |
+| `1` | Error (port exhaustion, health check timeout, etc.) |
+| `2` | Aegis already running (prints existing URL) |
 
 **Project-local state:** When `ag init` creates a **new** config (no existing file), state (keys, auth-token) is stored in the project-local `.aegis/` directory alongside `config.yaml`, not in the global `~/.aegis/`. Existing configs are unaffected. You can override this with `AEGIS_STATE_DIR`.
 
@@ -47,6 +68,19 @@ Scaffold one into the current directory, then validate it:
 ag init --from-template docs-writer
 ag doctor
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|------------|
+| `--yes` | Non-interactive mode — use all defaults |
+| `--force` / `-f` | Overwrite existing config |
+| `--no-start` | Scaffold config only, don't start the server |
+| `--no-open` | Start server but skip opening the browser |
+| `--model <provider/model>` | Set default model during setup |
+| `--name <name>` | Set display name for the session |
+| `--list-templates` | List available starter templates |
+| `--from-template <name>` | Scaffold from a starter template |
 
 ### `ag run "prompt"` — Zero-to-Session
 

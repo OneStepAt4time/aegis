@@ -70,23 +70,28 @@ npm install -g @onestepat4time/aegis
 ag init
 ```
 
+`ag init` now runs in **zero-config mode**: it scaffolds the config, auto-detects a free port (9100 default), starts the Aegis server, and opens the dashboard in your browser. On a fresh machine, you're up and running in under 60 seconds.
+
+If Aegis is already running, `ag init` prints the dashboard URL and exits (code 2).
+
+```bash
+ag init --no-open     # Start server but skip browser
+ag init --no-start    # Scaffold config only
+ag init --yes          # Non-interactive — use all defaults
+ag init --force        # Overwrite existing config
+```
+
 > **Zero-config on localhost:** On `localhost`, `127.0.0.1`, or `::1`, `ag init` skips admin token creation by default. No auth setup needed.
 >
 > **Warning:** Running `ag init` a second time overwrites `.aegis/config.yaml` and regenerates auth keys. **You must restart the server** for the new keys to take effect — the running server does not hot-reload keys from disk. Without a restart, CLI commands will return `401 Unauthorized` with the new token.
 >
-> `ag init` now supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session. Use `--force` to create a token even on localhost.
+> `ag init` supports conversational onboarding with `--model` and `--name` flags for non-interactive setup. Use `--model <provider/model>` to set the default model and `--name <name>` to set a display name for the session.
 >
 > **Project-local state:** For new configs, `ag init` stores state (keys, auth-token) in the project `.aegis/` directory alongside `config.yaml`, not in the global `~/.aegis/`. This keeps each project isolated. Override with `AEGIS_STATE_DIR`.
 >
 > **Claude Code auto-wiring:** If `claude` is on your PATH, `ag init` automatically offers to register Aegis as an MCP server in Claude Code. In `--yes` mode this happens automatically. You can verify with `claude mcp list`.
 
-```bash
-ag
-```
-
-> The primary CLI command is `ag`. The legacy name `aegis` is kept as an alias for backward compatibility — both resolve to the same binary.
-
-Aegis starts on **http://localhost:9100** by default. Verify it's running:
+Aegis starts on **http://localhost:9100** by default (or the next free port). Verify it's running:
 
 ```bash
 curl http://localhost:9100/v1/health
