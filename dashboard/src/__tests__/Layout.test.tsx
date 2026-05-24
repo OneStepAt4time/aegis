@@ -461,7 +461,7 @@ describe('Layout sidebar', () => {
     expect(overviewLink).toBeDefined();
   });
 
-  it('nav has exactly 7 items in 3 labelled groups', () => {
+  it('nav has correct items in 3 labelled groups', () => {
     mockSubscribeGlobalSSE.mockReturnValue(() => {});
     useSidebarStore.setState({ isCollapsed: false });
 
