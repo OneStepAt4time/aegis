@@ -9,6 +9,10 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { spawn, execFileSync as execSync } from 'node:child_process';
+import open from 'open';
+import { detectFreePort, isPortAvailable } from '../utils/detect-free-port.js';
+import { detectRunningInstance } from '../utils/detect-running.js';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
@@ -552,6 +556,8 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   const flagModel = getOptionValue(args, '--model');
   const flagName = getOptionValue(args, '--name');
   const configPath = resolveInitConfigPath(args);
+  const shouldStart = !args.includes('--no-start');
+  const noOpen = args.includes('--no-open');
   const displayConfigPath = formatConfigPath(configPath);
   const commandPrefix = commandPrefixForConfig(configPath);
   const existingConfigText = existsSync(configPath)
@@ -858,6 +864,87 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
 
   // #3501: Offer Claude Code MCP auto-wiring
   await offerClaudeCodeMcpWiring(args, io, configPath);
+
+  // Issue #4100: Zero-config init — start server + open browser
+  if (!shouldStart) {
+    return 0;
+  }
+
+  // 1. Detect free port
+  const preferredPort = currentConfig.port || 9100;
+  let port: number;
+  try {
+    port = await detectFreePort(preferredPort);
+  } catch {
+    writeLine(io.stderr, `  ❌ No free port found in range ${preferredPort}-9200.`);
+    return 1;
+  }
+  if (port !== preferredPort) {
+    writeLine(io.stdout, `  ℹ️  Port ${preferredPort} is in use, using ${port}.`);
+  }
+
+  // 2. Check if already running
+  const runningUrl = detectRunningInstance(port);
+  if (runningUrl) {
+    writeLine(io.stdout, `\n  ✅ Aegis is already running!`);
+    writeLine(io.stdout, `  Dashboard: ${runningUrl}`);
+    if (!noOpen) {
+      try { await open(runningUrl); } catch { /* non-fatal */ }
+    }
+    return 2;
+  }
+
+  // 3. Start server as detached child process
+  writeLine(io.stdout, `\n  🚀 Starting Aegis server on port ${port}...`);
+  const serverProcess = spawn(process.execPath, [join(__dirname, '../server.js')], {
+    detached: true,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      AEGIS_PORT: String(port),
+      AEGIS_STATE_DIR: stateDir,
+    },
+  });
+  serverProcess.unref();
+
+  // 4. Wait for health check (up to 30 seconds)
+  const dashboardUrl = `http://127.0.0.1:${port}`;
+  let healthy = false;
+  const healthStart = Date.now();
+  const maxHealthWait = 30_000;
+  let healthDelay = 500;
+
+  while (Date.now() - healthStart < maxHealthWait) {
+    const checkUrl = detectRunningInstance(port);
+    if (checkUrl) {
+      healthy = true;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, healthDelay));
+    healthDelay = Math.min(healthDelay * 1.5, 2000);
+  }
+
+  if (!healthy) {
+    writeLine(io.stderr, `  ❌ Server started but health check failed after 30s.`);
+    writeLine(io.stderr, `  Check logs: ${join(stateDir, 'aegis.log')}`);
+    return 1;
+  }
+
+  // 5. Open browser
+  writeLine(io.stdout, `\n  ✅ Aegis is running!`);
+  writeLine(io.stdout, `  Dashboard: ${dashboardUrl}`);
+  writeLine(io.stdout, `  Config:    ${displayConfigPath}`);
+  writeLine(io.stdout, `  PID:       ${serverProcess.pid}`);
+  writeLine(io.stdout, `\n  Stop with: kill ${serverProcess.pid}`);
+
+  if (!noOpen) {
+    try {
+      await open(dashboardUrl);
+      writeLine(io.stdout, `  🌐 Opened dashboard in browser.`);
+    } catch {
+      writeLine(io.stdout, `  ℹ️  Could not open browser. Open manually: ${dashboardUrl}`);
+    }
+  }
 
   return 0;
 }

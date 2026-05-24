@@ -293,7 +293,9 @@ function printHelp(io: CliIO): void {
   Usage:
     ag                     Start the server (port 9100)
     ag init                Bootstrap .aegis/config.yaml
+    ag init --no-start     Bootstrap only, don't start server
     ag init --yes          Non-interactive bootstrap for CI
+    ag init                Bootstrap + start server + open browser (default)
     ag init --force          Overwrite existing config (use with caution)
     ag run "prompt"         Zero-to-session in one command
     ag init --list-templates
@@ -307,7 +309,9 @@ function printHelp(io: CliIO): void {
 
   Init:
     ag init
-    ag init --yes
+    ag init
+    ag init --no-start
+    ag init --start
     ag init --list-templates
     ag init --from-template docs-writer
 
