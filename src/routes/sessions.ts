@@ -280,6 +280,24 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     };
   });
 
+
+  // Issue #4124: Purge killed sessions older than a threshold
+  const purgeQuerySchema = z.object({
+    olderThanHours: z.coerce.number().min(1).max(8760).optional(), // max 1 year
+  });
+
+  registerWithLegacy(app, 'delete', '/v1/sessions/purge', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireRole(auth, req, reply, 'admin', 'operator')) return;
+    const parsed = purgeQuerySchema.safeParse(req.query ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid query params', details: parsed.error.issues });
+    }
+    const olderThanHours = parsed.data.olderThanHours ?? 24;
+    const olderThanMs = olderThanHours * 60 * 60 * 1000;
+    const purged = await sessions.purgeKilled(olderThanMs);
+    return { purged, olderThanHours, olderThanMs };
+  });
+
   // Issue #754: Bulk-delete sessions
   registerWithLegacy(app, 'delete', '/v1/sessions/batch', withValidation(batchDeleteSchema, async (req: FastifyRequest, reply: FastifyReply, data) => {
     if (!requirePermission(auth, req, reply, 'kill')) return;
