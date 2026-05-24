@@ -552,6 +552,7 @@ export const it = {
     contextWarning: 'Avviso contesto',
     waitingForInput: 'In attesa di input',
     pending: 'In attesa',
+    pendingApproval: 'In attesa di approvazione',
     unknown: 'Sconosciuto',
     killed: 'Terminato',
     completed: 'Completato',
