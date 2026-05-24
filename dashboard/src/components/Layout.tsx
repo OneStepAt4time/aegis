@@ -42,6 +42,7 @@ import { useDrawerStore } from '../store/useDrawerStore';
 import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
 import ToastContainer from './ToastContainer';
 import ConnectionBanner from './ConnectionBanner';
+import { ServerHealthDot, ServerHealthBanner } from './shared/ServerHealthIndicator';
 import { ShieldWordmark } from './brand/ShieldLogo';
 import { useT } from '../i18n/context';
 
@@ -507,6 +508,9 @@ export default function Layout() {
             {!isCollapsed && <span className="truncate">Settings</span>}
           </NavLink>
 
+          {/* Server health indicator */}
+          {!isCollapsed && <ServerHealthDot />}
+
           {/* Collapse toggle — desktop only */}
           <button
             type="button"
@@ -710,6 +714,7 @@ export default function Layout() {
       <ToastContainer />
       {/* Connection banner (SSE/WS disconnect) */}
       <ConnectionBanner />
+      <ServerHealthBanner />
       {/* Command Palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ApprovalNotification />
