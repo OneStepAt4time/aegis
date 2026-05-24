@@ -101,7 +101,8 @@ After your first session, you might want to:
 Aegis works out of the box. If you want to customize:
 
 ```bash
-ag init              # Interactive setup (token, model, Telegram, etc.)
+ag init              # Zero-config: scaffold + start server + open browser
+ag init --no-open    # Scaffold + start server, skip browser
 ag init --defaults    # Non-interactive — use all defaults
 ag init --force       # Overwrite existing config
 ```
