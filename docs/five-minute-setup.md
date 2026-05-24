@@ -85,6 +85,8 @@ ag setup telegram
 
 Follow the guided setup. After that, Claude's permission prompts arrive on Telegram — approve or deny from anywhere.
 
+> 📖 For the full walkthrough (create a bot, get chat ID, configure security), see the [Phone Approvals guide](./guides/phone-approvals.md).
+
 ## Optional: Let Claude Code control Aegis (30 seconds)
 
 Register Aegis as an MCP server in Claude Code:
