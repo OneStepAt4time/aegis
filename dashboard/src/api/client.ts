@@ -515,6 +515,20 @@ export function reject(id: string): Promise<OkResponse> {
   });
 }
 
+/** Session-level approval (Telegram one-tap flow) */
+export function sessionApprove(id: string): Promise<OkResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/session-approve`, {
+    method: "POST",
+  });
+}
+
+/** Session-level rejection (Telegram one-tap flow) */
+export function sessionReject(id: string): Promise<OkResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/session-reject`, {
+    method: "POST",
+  });
+}
+
 export function interrupt(id: string): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/interrupt`, {
     method: 'POST',
