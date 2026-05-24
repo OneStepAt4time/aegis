@@ -1012,8 +1012,10 @@ async function main(): Promise<void> {
   container.register('sessionManager', sessions, {
     start: async () => {
       await sessions.load();
+      sessions.startCleanupTimer(); // Issue #4124
     },
     stop: async () => {
+      sessions.stopCleanupTimer(); // Issue #4124
       await sessions.save();
     },
     health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),

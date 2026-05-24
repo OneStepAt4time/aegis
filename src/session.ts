@@ -357,6 +357,8 @@ export class SessionManager {
   onSessionApprovalRecovery: ((session: SessionInfo) => void) | null = null;
   /** Issue #4114: Active approval timeouts — session ID → timeout handle. */
   private readonly approvalTimeouts = new Map<string, NodeJS.Timeout>();
+  /** Issue #4124: Periodic cleanup timer for killed sessions. */
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private config: Config,
@@ -1145,6 +1147,51 @@ export class SessionManager {
       clearTimeout(handle);
       this.approvalTimeouts.delete(sessionId);
     }
+  }
+
+  /** Issue #4124: Start periodic cleanup of killed sessions. */
+  startCleanupTimer(): void {
+    const interval = this.config.sessionCleanupIntervalMs ?? 3_600_000;
+    if (interval <= 0) return; // disabled
+    this.stopCleanupTimer();
+    this.cleanupTimer = setInterval(() => {
+      void this.purgeKilled(this.config.sessionCleanupAgeMs ?? 86_400_000);
+    }, interval);
+    // Unref so the timer doesn't prevent process exit
+    if (this.cleanupTimer.unref) this.cleanupTimer.unref();
+  }
+
+  /** Issue #4124: Stop the periodic cleanup timer. */
+  stopCleanupTimer(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
+  /**
+   * Issue #4124: Purge killed sessions older than the given age.
+   * Returns the number of sessions purged.
+   */
+  async purgeKilled(olderThanMs: number): Promise<number> {
+    const now = Date.now();
+    let purged = 0;
+    for (const [id, session] of Object.entries(this.state.sessions)) {
+      if (session.status !== 'killed') continue;
+      const killedAt = session.lastActivity ?? session.createdAt;
+      if (now - killedAt >= olderThanMs) {
+        delete this.state.sessions[id];
+        this.permissionRequests.cleanupPendingPermission(id);
+        this.questions.cleanupPendingQuestion(id);
+        this.approvalTimeouts.delete(id);
+        purged++;
+      }
+    }
+    if (purged > 0) {
+      this.invalidateSessionsListCache();
+      await this.save();
+    }
+    return purged;
   }
 
   /** Issue #4092: Emit awaiting_approval event for recovery after restart. */

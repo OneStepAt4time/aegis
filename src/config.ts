@@ -133,6 +133,10 @@ export interface Config {
   requireSessionApproval?: boolean;
   /** Issue #4114: Timeout in ms before auto-rejecting an awaiting_approval session. Default: 300000 (5 min). */
   sessionApprovalTimeoutMs?: number;
+  /** Issue #4124: Interval in ms for auto-cleanup of killed sessions. Default: 3600000 (1 hour). 0 = disabled. */
+  sessionCleanupIntervalMs?: number;
+  /** Issue #4124: Age in ms after which killed sessions are purged. Default: 86400000 (24 hours). */
+  sessionCleanupAgeMs?: number;
   /** Issue #1911: Milliseconds of SSE silence before emitting a heartbeat ping. Default: 60000 (1 min). */
   sseIdleMs: number;
   /** Issue #1911: Milliseconds before closing an SSE connection that hasn't consumed data. Default: 300000 (5 min). */
@@ -233,6 +237,8 @@ const defaults: Config = {
   strictRBAC: false,
   requireSessionApproval: false,
   sessionApprovalTimeoutMs: 300_000,
+  sessionCleanupIntervalMs: 3_600_000, // 1 hour (Issue #4124)
+  sessionCleanupAgeMs: 86_400_000, // 24 hours (Issue #4124)
   sseIdleMs: 60_000,
   sseClientTimeoutMs: 300_000,
   hookTimeoutMs: 10_000,
@@ -481,6 +487,8 @@ function applyEnvOverrides(config: Config): Config {
     { aegis: 'AEGIS_STRICT_RBAC', manus: '', key: 'strictRBAC' },
     { aegis: 'AEGIS_REQUIRE_SESSION_APPROVAL', manus: '', key: 'requireSessionApproval' },
     { aegis: 'AEGIS_SESSION_APPROVAL_TIMEOUT_MS', manus: '', key: 'sessionApprovalTimeoutMs' },
+    { aegis: 'AEGIS_SESSION_CLEANUP_INTERVAL_MS', manus: '', key: 'sessionCleanupIntervalMs' },
+    { aegis: 'AEGIS_SESSION_CLEANUP_AGE_MS', manus: '', key: 'sessionCleanupAgeMs' },
     { aegis: 'AEGIS_ACP_ENABLED', manus: '', key: 'acpEnabled' },
     { aegis: 'AEGIS_ACP_PROMPT_TIMEOUT_MS', manus: '', key: 'acpPromptTimeoutMs' },
     { aegis: 'AEGIS_ACP_STRICT_VALIDATION', manus: '', key: 'acpStrictValidation' },
