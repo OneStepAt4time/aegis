@@ -163,10 +163,8 @@ export default function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* First-run welcome screen — shows when no sessions exist and analytics loaded */}
-      {!analyticsLoading && totalSessions === 0 ? (
-        <WelcomeScreen />
-      ) : (<>
+      {/* First-run welcome screen when no sessions exist */}
+      {!analyticsLoading && totalSessions === 0 && <WelcomeScreen />}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
@@ -316,7 +314,6 @@ export default function OverviewPage() {
         <div aria-labelledby="recent-sessions-heading"><SessionTable maxRows={5} /></div>
       </div>
 
-      </>)}
       <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
