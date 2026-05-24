@@ -46,6 +46,12 @@ export const sessionsFailedTotal = new Counter({
   registers: [promRegistry],
 });
 
+export const sessionsKilledTotal = new Counter({
+  name: 'aegis_sessions_killed_total',
+  help: 'Total number of sessions killed by operator',
+  registers: [promRegistry],
+});
+
 // ── Message / tool counters ─────────────────────────────────────────────────
 export const messagesTotal = new Counter({
   name: 'aegis_messages_total',

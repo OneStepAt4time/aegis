@@ -49,6 +49,7 @@ const mockAnalyticsSummary: AnalyticsSummary = {
     permissionPrompts: 12,
     approvals: 10,
     autoApprovals: 8,
+    killedSessions: 0,
   },
   generatedAt: '2026-05-18T12:00:00.000Z',
 };
@@ -206,6 +207,7 @@ describe('AnalyticsPage', () => {
         permissionPrompts: 5,
         approvals: 4,
         autoApprovals: 2,
+    killedSessions: 0,
       },
     };
     mockGetAnalyticsSummary.mockResolvedValue(highErrorSummary);

@@ -126,6 +126,7 @@ function makeContext(granted: Partial<Record<PermissionName, boolean>> = {}) {
       cleanupSession: vi.fn(),
       sessionCreated: vi.fn(),
       sessionFailed: vi.fn(),
+      sessionKilled: vi.fn(),
       promptSent: vi.fn(),
       recordPermissionResponse: vi.fn(),
       getGlobalMetrics: vi.fn(() => ({

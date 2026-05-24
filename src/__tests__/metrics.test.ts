@@ -28,6 +28,7 @@ describe('Metrics and usage data (Issue #40)', () => {
         total_created: 0, currently_active: 0, completed: 0,
         failed: 0, avg_duration_sec: 0, avg_messages_per_session: 0,
         infra_failed: 0,
+        killed: 0,
       });
     });
 
@@ -47,6 +48,27 @@ describe('Metrics and usage data (Issue #40)', () => {
       const m = metrics.getGlobalMetrics(0);
       expect((m.sessions as any).completed).toBe(1);
       expect((m.sessions as any).failed).toBe(1);
+    });
+
+    it('should track killed sessions separately from failed (Issue #4147)', () => {
+      metrics.sessionCreated('s1');
+      metrics.sessionCreated('s2');
+      metrics.sessionCreated('s3');
+      metrics.sessionFailed('s1');
+      metrics.sessionKilled('s2');
+      metrics.sessionCompleted('s3');
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.sessions as any).failed).toBe(1);
+      expect((m.sessions as any).killed).toBe(1);
+      expect((m.sessions as any).completed).toBe(1);
+    });
+
+    it('should be idempotent for sessionKilled (Issue #3427)', () => {
+      metrics.sessionCreated('s1');
+      metrics.sessionKilled('s1');
+      metrics.sessionKilled('s1'); // second call should be no-op
+      const m = metrics.getGlobalMetrics(0);
+      expect((m.sessions as any).killed).toBe(1);
     });
 
     it('should calculate avg_duration_sec for completed sessions (#1414)', () => {

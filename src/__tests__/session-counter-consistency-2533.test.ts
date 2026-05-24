@@ -129,6 +129,7 @@ describe('Session counter consistency (Issue #2533)', () => {
         totalSessionsCreated: 5,
         totalSessionsFailed: 0,
         totalSessionsInfraFailed: 0,
+        totalSessionsKilled: 0,
         savedAt: Date.now(),
       };
 

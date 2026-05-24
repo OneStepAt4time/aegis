@@ -178,6 +178,7 @@ describe('GlobalMetricsSchema', () => {
       avg_duration_sec: 120,
       avg_messages_per_session: 5.5,
       infra_failed: 0,
+      killed: 0,
     },
     auto_approvals: 3,
     webhooks_sent: 20,
