@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { X, Keyboard } from 'lucide-react';
 import { SHORTCUTS } from '../../hooks/useKeyboardShortcuts';
 import { useT } from '../../i18n/context';
@@ -23,6 +24,7 @@ export function KeyboardShortcutsHelp({
 
   if (!visible) return null;
 
+  const trapRef = useFocusTrap(open);
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-200 ${
@@ -30,7 +32,8 @@ export function KeyboardShortcutsHelp({
       }`}
       onClick={onClose}
       role="dialog"
-      aria-modal="true"
+              ref={trapRef}
+        aria-modal="true"
       aria-label={t("aria.keyboardShortcuts")}
     >
       <div

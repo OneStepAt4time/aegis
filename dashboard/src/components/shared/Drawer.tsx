@@ -11,6 +11,7 @@
 import { AnimatePresence, type MotionProps } from 'framer-motion';
 import { motion } from 'framer-motion';
 import type { ReactNode, Ref } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export interface DrawerProps {
   /** Whether the drawer is open. */
@@ -46,9 +47,10 @@ export function Drawer({
   onClose,
   children,
   ariaLabel,
-  panelRef,
+
   className = '',
 }: DrawerProps) {
+  const trapRef = useFocusTrap(open);
   return (
     <AnimatePresence>
       {open && (
@@ -68,7 +70,7 @@ export function Drawer({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
-            ref={panelRef as React.Ref<HTMLElement>}
+            ref={trapRef}
             {...panelMotion}
             className={`fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] overflow-y-auto border-l border-white/5 bg-[var(--color-surface)] shadow-2xl flex flex-col ${className}`}
           >

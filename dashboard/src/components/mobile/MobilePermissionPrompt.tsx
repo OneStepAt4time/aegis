@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { PendingPermissionInfo } from '../../types';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
@@ -49,7 +50,7 @@ export function MobilePermissionPrompt({
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [rippleOrigin, setRippleOrigin] = useState<{ x: number; y: number } | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const trapRef = useFocusTrap(true);
   const haptics = useHaptics();
 
   const deadline = useMemo(() => {
@@ -93,7 +94,7 @@ export function MobilePermissionPrompt({
     },
     threshold: 80,
     enabled: !showContextMenu,
-    elementRef: containerRef,
+    elementRef: trapRef,
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -113,7 +114,7 @@ export function MobilePermissionPrompt({
 
   return (
     <div
-      ref={containerRef}
+      ref={trapRef}
       role="dialog"
       aria-modal="true"
       aria-label={t("aria.permissionPrompt")}
