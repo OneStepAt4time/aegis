@@ -22,6 +22,22 @@ vi.mock('../../src/utils/claude-installer.js', () => ({
   installClaudeCli: vi.fn(() => Promise.resolve(true)),
 }));
 
+vi.mock('../../src/utils/detect-free-port.js', () => ({
+  detectFreePort: vi.fn(async () => 9100),
+  isPortAvailable: vi.fn(async () => true),
+}));
+
+vi.mock('../../src/utils/detect-running.js', () => ({
+  detectRunningInstance: vi.fn(async () => null),
+}));
+
+vi.mock('open', () => ({ default: vi.fn(async () => {}) }));
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return { ...actual, spawn: vi.fn(() => ({ unref: vi.fn(), pid: 12345 })) };
+});
+
 import { runCli } from '../../src/cli.js';
 
 class CaptureStream extends Writable {
@@ -70,26 +86,26 @@ describe('Issue #3876: ag init duplicate key handling', () => {
   }
 
   it('should succeed on first run', async () => {
-    const { code, stderr } = await runInit(['init', '--yes']);
+    const { code, stderr } = await runInit(['init', '--yes', '--no-start']);
     expect(code).toBe(0);
     expect(stderr).not.toContain('DUPLICATE_KEY_NAME');
   });
 
   it('should not crash on repeated runs', async () => {
-    const r1 = await runInit(['init', '--yes']);
+    const r1 = await runInit(['init', '--yes', '--no-start']);
     expect(r1.code).toBe(0);
 
     // Second run — must not crash with DUPLICATE_KEY_NAME
-    const r2 = await runInit(['init', '--yes']);
+    const r2 = await runInit(['init', '--yes', '--no-start']);
     expect(r2.code).toBe(0);
     expect(r2.stderr).not.toContain('DUPLICATE_KEY_NAME');
   });
 
   it('should not crash on repeated runs with --force', async () => {
-    const r1 = await runInit(['init', '--yes']);
+    const r1 = await runInit(['init', '--yes', '--no-start']);
     expect(r1.code).toBe(0);
 
-    const r2 = await runInit(['init', '--yes', '--force']);
+    const r2 = await runInit(['init', '--yes', '--no-start', '--force']);
     expect(r2.code).toBe(0);
     expect(r2.stderr).not.toContain('DUPLICATE_KEY_NAME');
   });

@@ -9,8 +9,6 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { spawn } from 'node:child_process';
-import open from 'open';
 import { detectFreePort, isPortAvailable } from '../utils/detect-free-port.js';
 import { detectRunningInstance } from '../utils/detect-running.js';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -869,6 +867,9 @@ export async function handleInit(args: string[], io: CliIO): Promise<number> {
   if (!shouldStart) {
     return 0;
   }
+
+  const { spawn } = await import('node:child_process');
+  const { default: open } = await import('open');
 
   // 1. Detect free port
   const preferredPort = currentConfig.port || 9100;

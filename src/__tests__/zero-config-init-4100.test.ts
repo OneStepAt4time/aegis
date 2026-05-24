@@ -123,7 +123,7 @@ describe('detectRunningInstance (#4100)', () => {
   });
 
   it('returns null when server responds with non-ok status', async () => {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'error' }));
     });
@@ -133,6 +133,23 @@ describe('detectRunningInstance (#4100)', () => {
     try {
       const { detectRunningInstance } = await import('../utils/detect-running.js');
       const result = await detectRunningInstance(49225);
+      expect(result).toBeNull();
+    } finally {
+      server.close();
+    }
+  });
+
+  it('returns null when response body is invalid JSON', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('not-json');
+    });
+
+    await new Promise<void>((resolve) => server.listen(49230, '127.0.0.1', () => resolve()));
+
+    try {
+      const { detectRunningInstance } = await import('../utils/detect-running.js');
+      const result = await detectRunningInstance(49230);
       expect(result).toBeNull();
     } finally {
       server.close();
@@ -197,23 +214,69 @@ describe('ag init --start server flow (#4100)', () => {
   });
 });
 
-// ── Flag detection tests ───────────────────────────────────────────
+// ── Flag behavior tests ────────────────────────────────────────────
 
 describe('Init flag defaults (#4100)', () => {
-  it('--no-start disables server start', () => {
-    const args = ['--yes', '--no-start'];
-    const shouldStart = !args.includes('--no-start');
-    expect(shouldStart).toBe(false);
+  let projectDir: string;
+  let originalCwd: string;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    originalEnv = { ...process.env };
+    projectDir = mkdtempSync(join(tmpdir(), 'aegis-flags-'));
+    process.chdir(projectDir);
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('AEGIS_') || key.startsWith('MANUS_')) delete process.env[key];
+    }
+    process.env.AEGIS_STATE_DIR = join(projectDir, 'state');
   });
 
-  it('server start is default (no flag needed)', () => {
-    const args = ['--yes'];
-    const shouldStart = !args.includes('--no-start');
-    expect(shouldStart).toBe(true);
+  afterEach(() => {
+    process.chdir(originalCwd);
+    process.env = originalEnv;
+    rmSync(projectDir, { recursive: true, force: true });
   });
 
-  it('--no-open is detected', () => {
-    const args = ['--yes', '--no-open'];
-    expect(args.includes('--no-open')).toBe(true);
+  async function runInit(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+    const stdout = new CaptureStream();
+    const stderr = new CaptureStream();
+    const stdin = new PassThrough();
+    setImmediate(() => stdin.end());
+    const code = await runCli(args, { stdin, stdout, stderr });
+    return { code, stdout: stdout.text(), stderr: stderr.text() };
+  }
+
+  it('--no-start skips server spawn and exits 0', async () => {
+    const { spawn } = await import('node:child_process');
+    (spawn as ReturnType<typeof vi.fn>).mockClear();
+    const result = await runInit(['init', '--yes', '--no-start']);
+    expect(result.code).toBe(0);
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it('--no-open suppresses browser launch (with --no-start)', async () => {
+    const openMod = await import('open');
+    (openMod.default as ReturnType<typeof vi.fn>).mockClear();
+    const result = await runInit(['init', '--yes', '--no-start', '--no-open']);
+    expect(result.code).toBe(0);
+    expect(openMod.default).not.toHaveBeenCalled();
+  });
+
+  it('server start is enabled by default — spawn is called when --no-start is absent', async () => {
+    // Spy on detectRunningInstance so the health check passes on first poll
+    const detectMod = await import('../utils/detect-running.js');
+    const spy = vi.spyOn(detectMod, 'detectRunningInstance')
+      .mockResolvedValueOnce(null)                        // pre-flight check: not already running
+      .mockResolvedValue('http://127.0.0.1:9100');        // health-check poll: healthy
+
+    const { spawn } = await import('node:child_process');
+    (spawn as ReturnType<typeof vi.fn>).mockClear();
+
+    const result = await runInit(['init', '--yes']);
+    expect(result.code).toBe(0);
+    expect(spawn).toHaveBeenCalled();
+
+    spy.mockRestore();
   });
 });
