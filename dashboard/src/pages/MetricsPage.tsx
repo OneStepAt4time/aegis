@@ -129,7 +129,7 @@ export default function MetricsPage() {
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Aggregated usage analytics across sessions
             {sseConnected && (
-              <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-[var(--color-success)]">
+              <span className="ml-2 inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
                 Live
               </span>

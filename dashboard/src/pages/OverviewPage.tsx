@@ -294,7 +294,7 @@ export default function OverviewPage() {
       )}
 
       {/* Zone F: Keyboard Shortcuts Hint */}
-      <div className="flex items-center justify-center gap-4 border-t border-[var(--color-border-strong)] pt-3 text-xs text-[var(--color-text-muted)]">
+      <div className="hidden sm:flex items-center justify-center gap-4 border-t border-[var(--color-border-strong)] pt-3 text-xs text-[var(--color-text-muted)]">
         <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">N</kbd> new session</span>
         <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">R</kbd> refresh</span>
         <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> back</span>
@@ -305,7 +305,7 @@ export default function OverviewPage() {
 
       <div>
         <h3
-          className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+          className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
           id="recent-sessions-heading"
         >
           Recent Sessions
