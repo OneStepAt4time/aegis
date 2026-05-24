@@ -221,7 +221,7 @@ export default function TemplatesPage() {
             type="button"
             onClick={handleCreate}
             aria-label={t('templates.createFirst')}
-            className="mt-4 flex min-h-[40px] items-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
+            className="mt-4 flex min-h-[44px] items-center gap-2 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             <Plus className="h-3.5 w-3.5" />
             {t('templates.createFirst')}
@@ -241,7 +241,7 @@ export default function TemplatesPage() {
                       {template.name}
                     </span>
                     {template.permissionMode && template.permissionMode !== 'default' && (
-                      <span className="rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      <span className="rounded-full border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-2 py-0.5 font-mono text-xs text-[var(--color-text-muted)]">
                         {template.permissionMode}
                       </span>
                     )}
@@ -270,7 +270,7 @@ export default function TemplatesPage() {
                     onClick={() => void handleUseTemplate(template)}
                     aria-label={`Use template ${template.name}`}
                     disabled={usingId === template.id}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {usingId === template.id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -283,7 +283,7 @@ export default function TemplatesPage() {
                     type="button"
                     onClick={() => handleEdit(template)}
                     aria-label={`Edit template ${template.name}`}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                    className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     {t('templates.edit')}
@@ -292,7 +292,7 @@ export default function TemplatesPage() {
                     type="button"
                     onClick={() => void handleDuplicate(template)}
                     aria-label={`Duplicate template ${template.name}`}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
+                    className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)]"
                     title={t('templates.duplicate')}
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -303,7 +303,7 @@ export default function TemplatesPage() {
                     onClick={() => setDeleteTarget({ id: template.id, name: template.name })}
                     aria-label={`Delete template ${template.name}`}
                     disabled={deletingId === template.id}
-                    className="flex min-h-[40px] items-center justify-center gap-1.5 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-[var(--color-danger)] dark:text-[var(--color-danger-glow)] transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/05 px-3 py-2 text-xs font-medium text-[var(--color-danger)] dark:text-[var(--color-danger-glow)] transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     {deletingId === template.id ? t('templates.deleting') : t('templates.deleteButton')}

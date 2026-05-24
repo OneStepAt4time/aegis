@@ -898,7 +898,7 @@ export default function SessionDetailPage() {
             </div>
 
             {s.createdAt && (Date.now() - s.createdAt < 60_000) && !msgInput && (
-              <p className="mt-1.5 text-[11px] text-[var(--color-text-muted)]">
+              <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
                 <kbd className="rounded border border-[var(--color-void-lighter)] px-1 font-mono text-[10px]">⌘↵</kbd>{' '}
                 {t('sessionDetail.toSend')} · {t('sessionDetail.tryLabel')}{' '}
                 <button
@@ -936,7 +936,7 @@ export default function SessionDetailPage() {
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                   {t('sessionDetail.latestScreenshot')}
                 </h3>
-                <span className="text-[11px] text-[var(--color-text-muted)]">
+                <span className="text-xs text-[var(--color-text-muted)]">
                   {new Date(screenshot.capturedAt).toLocaleTimeString()}
                 </span>
               </div>
@@ -945,7 +945,7 @@ export default function SessionDetailPage() {
                 alt="Session screenshot preview"
                 className="max-h-[420px] w-full rounded border border-[var(--color-void-lighter)] bg-black object-contain"
               />
-              <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+              <div className="mt-2 text-xs text-[var(--color-text-muted)]">
                 {screenshot.mimeType ?? 'image/png'}
               </div>
             </div>

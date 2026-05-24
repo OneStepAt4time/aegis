@@ -68,7 +68,7 @@ function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: 
           key={range.value}
           type="button"
           onClick={() => onChange(range.value)}
-          className={`min-h-[36px] px-3 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+          className={`min-h-[44px] px-3 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
             value === range.value
               ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
@@ -298,7 +298,7 @@ export default function CostPage() {
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Usage tracking, burn rate, and budget alerts
             {sseConnected && (
-              <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-[var(--color-success)]">
+              <span className="ml-2 inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
                 Live
               </span>
@@ -334,7 +334,7 @@ export default function CostPage() {
             {formatCurrency(last7Avg)}
           </div>
           {avgDailyCost > 0 && (
-            <div className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+            <div className="mt-1 text-xs text-[var(--color-text-muted)]">
               {last7Avg > avgDailyCost ? '+' : ''}{((last7Avg / avgDailyCost - 1) * 100).toFixed(1)}% vs avg
             </div>
           )}
@@ -348,7 +348,7 @@ export default function CostPage() {
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {formatCurrency(projectedMonthCost)}
           </div>
-          <div className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+          <div className="mt-1 text-xs text-[var(--color-text-muted)]">
             {daysPassed}d past, {daysRemaining}d remaining
           </div>
         </div>
