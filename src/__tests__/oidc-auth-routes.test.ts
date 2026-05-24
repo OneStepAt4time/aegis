@@ -234,7 +234,7 @@ describe('OIDC auth routes', () => {
     expect(sessionCookie).toContain('HttpOnly');
     expect(sessionCookie).toContain('Secure');
     expect(sessionCookie).toContain('SameSite=Strict');
-    expect(sessionCookie).toContain('Max-Age=3600');
+    expect(sessionCookie).toContain('Max-Age=86400'); // Issue #4152: 24h TTL
 
     const sessionValue = callback.cookies.find((cookie) => cookie.name === DASHBOARD_SESSION_COOKIE)?.value;
     const session = await app.inject({ method: 'GET', url: '/auth/session', headers: { cookie: `${DASHBOARD_SESSION_COOKIE}=${sessionValue}` } });
