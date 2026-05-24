@@ -17,6 +17,8 @@ Aegis can alert you on session events via Telegram, Slack, Email, and generic we
 
 Telegram provides bidirectional communication — you can approve/reject permission prompts directly from Telegram.
 
+> 📖 **New to Telegram approvals?** See the **[Phone Approvals guide](../guides/phone-approvals.md)** for a step-by-step walkthrough (create a bot, get chat ID, configure Aegis).
+
 ### Setup
 
 1. Create a bot via [@BotFather](https://t.me/BotFather) → copy the bot token
