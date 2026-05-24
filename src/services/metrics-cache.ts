@@ -61,6 +61,7 @@ interface CacheFile {
   totalSessionsCreated: number;
   totalSessionsFailed: number;
   totalSessionsInfraFailed: number;
+  totalSessionsKilled: number;
   savedAt: number;
 }
 
@@ -125,6 +126,7 @@ export class MetricsCache {
   private totalSessionsCreated = 0;
   private totalSessionsFailed = 0;
   private totalSessionsInfraFailed = 0;
+  private totalSessionsKilled = 0;
 
   private dirty = false;
   private unsub: (() => void) | null = null;
@@ -218,11 +220,12 @@ export class MetricsCache {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    const realFailures = this.totalSessionsFailed - this.totalSessionsInfraFailed;
-    const realTotal = this.totalSessionsCreated - this.totalSessionsInfraFailed;
+    const realFailures = this.totalSessionsFailed - this.totalSessionsKilled;
+    const realTotal = this.totalSessionsCreated - this.totalSessionsKilled;
     const errorRates: AnalyticsErrorRates = {
       totalSessions: this.totalSessionsCreated,
-      failedSessions: this.totalSessionsFailed,
+      failedSessions: this.totalSessionsFailed - this.totalSessionsKilled,
+      killedSessions: this.totalSessionsKilled,
       failureRate: this.totalSessionsCreated > 0
         ? this.totalSessionsFailed / this.totalSessionsCreated : 0,
       infraFailures: this.totalSessionsInfraFailed,
@@ -275,6 +278,7 @@ export class MetricsCache {
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
     this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
+    this.totalSessionsKilled = global.sessions.killed ?? 0;
   }
 
   /** Full recomputation from live MetricsCollector + SessionManager. */
@@ -291,6 +295,7 @@ export class MetricsCache {
     this.totalSessionsCreated = global.sessions.total_created;
     this.totalSessionsFailed = global.sessions.failed;
     this.totalSessionsInfraFailed = global.sessions.infra_failed ?? 0;
+    this.totalSessionsKilled = global.sessions.killed ?? 0;
 
     for (const session of allSessions) {
       this.accumulateSession(session);
@@ -380,6 +385,7 @@ export class MetricsCache {
       totalSessionsCreated: this.totalSessionsCreated,
       totalSessionsFailed: this.totalSessionsFailed,
       totalSessionsInfraFailed: this.totalSessionsInfraFailed,
+      totalSessionsKilled: this.totalSessionsKilled,
       savedAt: Date.now(),
     };
     await this.backend.save(data);

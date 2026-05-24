@@ -12,6 +12,7 @@ const mockHealthyRates: AnalyticsErrorRates = {
   permissionPrompts: 10,
   approvals: 10,
   autoApprovals: 8,
+    killedSessions: 0,
 };
 
 const mockWarningRates: AnalyticsErrorRates = {
@@ -23,6 +24,7 @@ const mockWarningRates: AnalyticsErrorRates = {
   permissionPrompts: 20,
   approvals: 18,
   autoApprovals: 15,
+    killedSessions: 0,
 };
 
 const mockCriticalRates: AnalyticsErrorRates = {
@@ -34,6 +36,7 @@ const mockCriticalRates: AnalyticsErrorRates = {
   permissionPrompts: 5,
   approvals: 5,
   autoApprovals: 0,
+    killedSessions: 0,
 };
 
 describe('SessionHealthBanner', () => {

@@ -405,6 +405,7 @@ export const metricsFileSchema = z.object({
     sessionsCreated: z.number().optional(),
     sessionsCompleted: z.number().optional(),
     sessionsFailed: z.number().optional(),
+    sessionsKilled: z.number().optional(),
     totalMessages: z.number().optional(),
     totalToolCalls: z.number().optional(),
     autoApprovals: z.number().optional(),

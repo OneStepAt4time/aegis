@@ -91,6 +91,7 @@ function buildApp(session: SessionInfo | null) {
     metrics: {
       sessionCreated: vi.fn(),
       sessionFailed: vi.fn(),
+      sessionKilled: vi.fn(),
       cleanupSession: vi.fn(),
       promptSent: vi.fn(),
       recordPermissionResponse: vi.fn(),

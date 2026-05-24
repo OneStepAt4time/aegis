@@ -26,6 +26,7 @@ const mockMetrics: GlobalMetrics = {
     avg_duration_sec: 42,
     avg_messages_per_session: 3,
     infra_failed: 0,
+      killed: 0,
   },
   auto_approvals: 0,
   webhooks_sent: 0,

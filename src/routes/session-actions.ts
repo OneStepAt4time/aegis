@@ -258,8 +258,8 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         }).catch(() => {}); // Best-effort: session may not have ACP runtime
       }
       await sessions.killSession(session.id);
-      // Issue #2067: record session as failed before cleanup
-      metrics.sessionFailed(session.id);
+      // Issue #4147: record killed session separately from failures
+      metrics.sessionKilled(session.id);
       eventBus.emitEnded(session.id, 'killed');
       const auditLogger = getAuditLogger();
       if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.kill', `Session killed: ${session.id} (permission=${req.matchedPermission ?? 'kill'})`, session.id, req.tenantId);

@@ -59,7 +59,7 @@ function buildApp(options: { acpEnabled?: boolean; shutdownRejects?: boolean } =
     auth: { authEnabled: false },
     quotas: {},
     config: { acpEnabled: options.acpEnabled !== false, enforceSessionOwnership: true },
-    metrics: { sessionFailed: vi.fn(), cleanupSession: vi.fn() },
+    metrics: { sessionFailed: vi.fn(), sessionKilled: vi.fn(), cleanupSession: vi.fn() },
     monitor: { removeSession: vi.fn() },
     eventBus: { emitEnded: vi.fn() },
     channels: { sessionEnded: vi.fn(async () => undefined) },

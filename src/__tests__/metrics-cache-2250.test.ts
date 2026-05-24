@@ -264,6 +264,7 @@ describe('MetricsCache (Issue #2250)', () => {
           totalSessionsCreated: 5,
           totalSessionsFailed: 1,
           totalSessionsInfraFailed: 0,
+          totalSessionsKilled: 0,
           savedAt: Date.now(),
         }),
         save: async () => {},
@@ -521,6 +522,7 @@ describe('MetricsCache (Issue #2250)', () => {
         totalSessionsCreated: 1,
         totalSessionsFailed: 0,
         totalSessionsInfraFailed: 0,
+          totalSessionsKilled: 0,
         savedAt: Date.now(),
       };
       await b.save(data);
