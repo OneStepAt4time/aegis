@@ -30,6 +30,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const RoutinesPage = lazy(() => import('./pages/RoutinesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
 
 function LoadingFallback() {
   return (
@@ -242,6 +243,7 @@ export default function App() {
               }
             />
             <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><SettingsPage /></Suspense>} />
+            <Route path="/settings/notifications" element={<Suspense fallback={<LoadingFallback />}><NotificationSettingsPage /></Suspense>} />
 
             <Route
               path="*"

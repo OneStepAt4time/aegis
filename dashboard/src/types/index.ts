@@ -253,3 +253,24 @@ export interface SessionCostEntry {
   durationMinutes: number | null;
   recordCount: number;
 }
+
+// ── Telegram Notification Integration ─────────────────────
+export type TelegramConnectionStatus = 'connected' | 'disconnected' | 'error' | 'testing';
+
+export interface TelegramConnectionConfig {
+  botToken: string;
+  chatId: string;
+}
+
+export interface TelegramConnectionState {
+  status: TelegramConnectionStatus;
+  botUsername?: string;
+  chatTitle?: string;
+  connectedAt?: string;
+  error?: string;
+}
+
+export interface TelegramTestNotificationResponse {
+  ok: boolean;
+  message: string;
+}
