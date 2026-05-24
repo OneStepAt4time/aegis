@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { PendingPermissionInfo } from '../../types';
 import { useT } from '../../i18n/context';
 
@@ -57,10 +58,12 @@ export function PermissionPromptSheet({
     return () => window.clearInterval(timer);
   }, [deadline]);
 
+  const trapRef = useFocusTrap(true);
   return (
     <div
       role="dialog"
-      aria-modal="true"
+              ref={trapRef}
+        aria-modal="true"
       aria-label={t("aria.permissionPrompt")}
       className="rounded-t-2xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
     >

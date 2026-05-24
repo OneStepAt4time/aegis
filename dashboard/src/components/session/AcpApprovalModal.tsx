@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   ShieldCheck,
   ShieldX,
@@ -99,10 +100,12 @@ export function AcpApprovalModal({
     setShowRejectReason(false);
   };
 
+  const trapRef = useFocusTrap(true);
   return (
     <div
       role="dialog"
-      aria-modal="true"
+              ref={trapRef}
+        aria-modal="true"
       aria-label={t("aria.toolApprovalRequired")}
       className="flex flex-col gap-3 rounded-xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
     >
