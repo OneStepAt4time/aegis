@@ -785,6 +785,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                           isFocused={row.isFocused}
                           onToggleSelect={handleToggleSelect}
                           onApprove={handleApprove}
+                          onReject={handleReject}
                           onInterrupt={handleInterrupt}
                           onKill={handleKill}
                         />
@@ -804,6 +805,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     isFocused={row.isFocused}
                     onToggleSelect={handleToggleSelect}
                     onApprove={handleApprove}
+                    onReject={handleReject}
                     onInterrupt={handleInterrupt}
                     onKill={handleKill}
                   />
