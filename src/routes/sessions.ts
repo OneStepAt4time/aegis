@@ -653,6 +653,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       lastActivityAgo: number;
       sessionAge: number;
       details: string;
+      /** Issue #4204: Estimated session cost in USD. */
+      estimatedCostUsd?: number;
     }> = {};
     await Promise.all(allSessions.map(async (s) => {
       try {
@@ -667,13 +669,26 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         };
       }
     }));
+    // Issue #4204: Enrich health with per-session estimated cost.
+    for (const [id, health] of Object.entries(results)) {
+      const m = metrics.getSessionMetrics(id);
+      if (m?.tokenUsage) {
+        (health as Record<string, unknown>).estimatedCostUsd = m.tokenUsage.estimatedCostUsd;
+      }
+    }
     return results;
   });
 
   // Session health check (Issue #2)
   registerWithLegacy(app, 'get', '/v1/sessions/:id/health', withOwnership(sessions, async (_req, reply, session) => {
     try {
-      return await sessions.getHealth(session.id);
+      const health = await sessions.getHealth(session.id);
+      // Issue #4204: Include estimated cost in session health.
+      const m = metrics.getSessionMetrics(session.id);
+      if (m?.tokenUsage) {
+        (health as Record<string, unknown>).estimatedCostUsd = m.tokenUsage.estimatedCostUsd;
+      }
+      return health;
     } catch (e: unknown) {
       return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
     }

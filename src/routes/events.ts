@@ -43,7 +43,7 @@ function visibleActiveSessionCount(
 }
 
 export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  const { sessions, eventBus, sseLimiter, config } = ctx;
+  const { sessions, eventBus, sseLimiter, config, metrics } = ctx;
 
   // Global SSE event stream — aggregates events from ALL active sessions
   registerWithLegacy(app, 'get', '/v1/events', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -123,9 +123,18 @@ export function registerEventRoutes(app: FastifyInstance, ctx: RouteContext): vo
 
     sseLimiter.registerWriter(writer);
 
-    writer.startHeartbeat(30_000, config.sseIdleMs, config.sseClientTimeoutMs, () =>
-      `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString() })}\n\n`
-    );
+    // Issue #4204: Heartbeat includes per-session cost snapshot for dashboard alerts.
+    writer.startHeartbeat(30_000, config.sseIdleMs, config.sseClientTimeoutMs, () => {
+      const sessionCosts: Record<string, { estimatedCostUsd: number }> = {};
+      for (const s of sessions.listSessions()) {
+        if (!eventIsVisible({ sessionId: s.id } as GlobalSSEEvent)) continue;
+        const m = metrics.getSessionMetrics(s.id);
+        if (m?.tokenUsage) {
+          sessionCosts[s.id] = { estimatedCostUsd: m.tokenUsage.estimatedCostUsd };
+        }
+      }
+      return `data: ${JSON.stringify({ event: 'heartbeat', timestamp: new Date().toISOString(), data: { sessionCosts } })}\n\n`;
+    });
 
     await reply;
   });
