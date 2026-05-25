@@ -8,6 +8,9 @@
  * the server doesn't know which channels are active.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
@@ -54,7 +57,6 @@ import { registerHookRoutes } from './hooks.js';
 import { registerDashboardStatic } from './plugins/dashboard-static.js';
 
 import { registerMemoryRoutes } from './memory-routes.js';
-
 
 import { killAllSessions } from './signal-cleanup-helper.js';
 
@@ -108,9 +110,6 @@ import {
   type DashboardOIDCManager,
 } from './services/auth/OIDCManager.js';
 import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
-
-
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -374,7 +373,6 @@ function pruneIpRateLimits(): void {
 /** #583: Track keyId per request for batch rate limiting. */
 const requestKeyMap = new Map<string, string>();
 
-
 // #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
 app.addHook('onResponse', (req, _reply, done) => {
   requestKeyMap.delete(req.id);
@@ -618,7 +616,6 @@ app.addHook('onRequest', async (req, reply) => {
 });
 
 // Route handlers are registered in main() via route modules (src/routes/*).
-
 
 // ── Session Reaper ──────────────────────────────────────────────────
 
@@ -1036,9 +1033,11 @@ async function main(): Promise<void> {
           if (!fileToken || !auth.checkClientToken(fileToken).matched) {
             persistAuthTokenFile(currentMaster);
             if (fileToken) {
-              console.warn(
-                `[auth] ${clientTokenFile} desynced from config — auto-repaired with current master token.`,
-              );
+              log.warn({
+              component: 'server',
+              operation: 'authTokenDesyncRepaired',
+              attributes: { file: clientTokenFile },
+              });
             }
           }
         } catch {
@@ -1470,7 +1469,6 @@ async function main(): Promise<void> {
         });
       }
 
-
       // 6b. Issue #2250: Flush analytics cache
       try {
         await metricsCache.stop();
@@ -1567,7 +1565,6 @@ async function main(): Promise<void> {
       intervalSeconds: ZOMBIE_REAP_INTERVAL_MS / 1000,
     },
   });
-
 
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
   // #3227: Capture prune interval handle for cleanup on shutdown

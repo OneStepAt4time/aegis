@@ -6,6 +6,9 @@
  * Backward compatible with single authToken from config.
  */
 
+import { StructuredLogger } from '../../logger.js';
+const log = new StructuredLogger();
+
 import { createHash, randomBytes } from 'node:crypto';
 import { timingSafeStringEqual } from '../../crypto-utils.js';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
@@ -18,6 +21,7 @@ import { isLocalhost } from '../../utils/localhost.js';
 import type { AuditLogger } from '../../audit.js';
 import type { ApiKey, ApiKeyRole, ApiKeyStore, GraceKeyEntry, AuthRejectReason } from './types.js';
 import {
+
   API_KEY_PERMISSION_VALUES,
   isApiKeyPermission,
   normalizePermissions,
@@ -91,7 +95,6 @@ export class AuthManager {
   private lastKeysMtime: number | null = null;
   /** #3367: Guard against concurrent reloads. */
   private reloading = false;
-
 
   constructor(
     private keysFile: string,
@@ -553,7 +556,7 @@ export class AuthManager {
       // #3367: Trigger async reload on invalid — recovers from state dir wipe
       setImmediate(async () => {
         const reloaded = await this.reload();
-        if (reloaded) console.warn('[AuthManager] Keys reloaded after failed validation');
+        if (reloaded) log.warn({ component: 'auth', operation: 'keysReloadedAfterFailedValidation' });
       });
       return { valid: false, keyId: null, rateLimited: false, reason: 'invalid' };
     }
@@ -639,12 +642,12 @@ export class AuthManager {
     this.reloading = true;
     try {
       if (!existsSync(this.keysFile)) {
-        console.warn('[AuthManager] keys.json disappeared — keeping in-memory keys');
+        log.warn({ component: 'auth', operation: 'keysFileDisappeared' });
         this.lastKeysMtime = null;
         return false;
       }
       if (!this._keysFileChanged()) return false;
-      console.warn('[AuthManager] keys.json changed on disk — reloading');
+      log.warn({ component: 'auth', operation: 'keysFileChangedReloading' });
       await this.load();
       return true;
     } finally {

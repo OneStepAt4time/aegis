@@ -15,11 +15,15 @@
  * - Auto-capture: hooks into session completion to extract patterns
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import {
+
   LearningType,
   LearningSource,
   isValidLearningKey,
@@ -158,11 +162,11 @@ export class ProjectLearningsStore {
    */
   add(entry: StructuredLearning): StructuredLearning | null {
     if (!isStructuredLearning(entry)) {
-      console.warn(`ProjectLearningsStore: rejected invalid entry: ${JSON.stringify(entry)}`);
+      log.warn({ component: 'learnings', operation: 'rejectedInvalidEntry', attributes: { entry: JSON.stringify(entry) } });
       return null;
     }
     if (entry.project !== this.project) {
-      console.warn(`ProjectLearningsStore: rejected entry for wrong project: ${entry.project} != ${this.project}`);
+      log.warn({ component: 'learnings', operation: 'rejectedWrongProject', attributes: { entryProject: entry.project, expectedProject: this.project } });
       return null;
     }
     this.entries.push(entry);

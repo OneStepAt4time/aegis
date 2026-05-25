@@ -15,9 +15,13 @@
  * const channel = EmailChannel.fromEnv();
  */
 
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
 import type {
+
   Channel,
   SessionEvent,
   SessionEventPayload,
@@ -83,7 +87,6 @@ export class EmailChannel implements Channel {
 
     if (!host || !user || !pass || !to) return null;
 
-
     const port = parseInt(process.env.AEGIS_EMAIL_PORT ?? '587', 10);
     const secure = process.env.AEGIS_EMAIL_SECURE === 'true' || port === 465;
 
@@ -135,11 +138,11 @@ export class EmailChannel implements Channel {
       });
       this.lastSuccess = Date.now();
       this.lastError = null;
-      console.log(`[email] Sent ${payload.event} email to ${this.to}, messageId: ${result.messageId}`);
+      log.info({ component: 'email', operation: 'sent', attributes: { event: payload.event, to: this.to, messageId: result.messageId } });
     } catch (e: unknown) {
       const error = e instanceof Error ? e.message : String(e);
       this.lastError = error;
-      console.error(`[email] Failed to send ${payload.event} email: ${error}`);
+      log.error({ component: 'email', operation: 'sendFailed', attributes: { event: payload.event, error: String(error) } });
       this.pushDLQ(payload.event, error);
     }
   }

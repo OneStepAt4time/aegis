@@ -9,6 +9,9 @@
  * Issue #1420: Auto-restart watcher on fs.watch errors with exponential backoff.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { watch, type FSWatcher } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { readNewEntries, extractTokenDelta, type ParsedEntry, type TokenUsageDelta } from './transcript.js';
@@ -116,7 +119,7 @@ export class JsonlWatcher {
     });
 
     fsWatcher.on('error', (err) => {
-      console.error(`JsonlWatcher: error watching ${jsonlPath}:`, err.message);
+      log.error({ component: 'jsonl-watcher', operation: 'watchError', attributes: { path: jsonlPath, error: err.message } });
       // Issue #1420: Attempt restart with exponential backoff instead of giving up.
       this.scheduleRestart(sessionId);
     });
@@ -194,9 +197,11 @@ export class JsonlWatcher {
     if (!entry) return;
 
     if (entry.restartAttempts >= this.config.maxRestartAttempts) {
-      console.error(
-        `JsonlWatcher: max restart attempts (${this.config.maxRestartAttempts}) reached for ${entry.jsonlPath}, giving up`,
-      );
+      log.error({
+        component: 'jsonl-watcher',
+        operation: 'maxRestartAttemptsReached',
+        attributes: { maxAttempts: this.config.maxRestartAttempts, path: entry.jsonlPath },
+      });
       this.unwatch(sessionId);
       return;
     }
@@ -204,9 +209,11 @@ export class JsonlWatcher {
     const delay = this.config.restartBaseDelayMs * Math.pow(2, entry.restartAttempts);
     entry.restartAttempts++;
 
-    console.error(
-      `JsonlWatcher: scheduling restart attempt ${entry.restartAttempts}/${this.config.maxRestartAttempts} for ${entry.jsonlPath} in ${delay}ms`,
-    );
+    log.error({
+        component: 'jsonl-watcher',
+        operation: 'schedulingRestart',
+        attributes: { attempt: entry.restartAttempts, maxAttempts: this.config.maxRestartAttempts, path: entry.jsonlPath, delayMs: delay },
+      });
 
     entry.restartTimer = setTimeout(() => {
       entry.restartTimer = null;
@@ -249,7 +256,7 @@ export class JsonlWatcher {
 
     try {
       const previousOffset = entry.offset;
-      if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[WATCHER-DEBUG] readAndEmit: sessionId=${entry.sessionId} path=${entry.jsonlPath} offset=${previousOffset}`);
+      if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'jsonl-watcher', operation: 'debugReadAndEmit', attributes: { sessionId: entry.sessionId, path: entry.jsonlPath, offset: previousOffset } });
       const result = await readNewEntries(entry.jsonlPath, previousOffset);
       entry.offset = result.newOffset;
 
@@ -266,13 +273,13 @@ export class JsonlWatcher {
           tokenUsageDelta: extractTokenDelta(result.raw),
         };
 
-        if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[WATCHER-DEBUG] emitting ${result.entries.length} entries for session ${entry.sessionId}. newOffset=${result.newOffset} truncated=${truncated}`);
+        if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'jsonl-watcher', operation: 'debugEmittingEntries', attributes: { count: result.entries.length, sessionId: entry.sessionId, newOffset: result.newOffset, truncated } });
         for (const listener of this.listeners) {
           listener(event);
         }
       }
     } catch (err) {
-      console.error(`[WATCHER-ERROR] readAndEmit FAILED for session ${entry.sessionId}:`, err);
+      log.error({ component: 'jsonl-watcher', operation: 'readAndEmitFailed', attributes: { sessionId: entry.sessionId, error: String(err) } });
     }
   }
 }

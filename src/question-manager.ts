@@ -1,4 +1,8 @@
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 /**
+
  * Question Manager: Manages pending user questions and their lifecycle.
  * Issue #336: Store a pending AskUserQuestion and return a promise that
  * resolves when the external client provides an answer via POST /answer.
@@ -37,7 +41,7 @@ export class QuestionManager {
     return new Promise<string | null>((resolve) => {
       const timer = setTimeout(() => {
         this.pendingQuestions.delete(sessionId);
-        console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
+        log.info({ component: 'question-manager', operation: 'timeoutAllowWithoutAnswer', attributes: { sessionId } })
         resolve(null);
       }, timeoutMs);
 

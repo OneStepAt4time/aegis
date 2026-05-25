@@ -1,4 +1,8 @@
 import type { PendingPermissionInfo } from './api-contracts.js';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
+
 
 export type PermissionDecision = 'allow' | 'deny';
 
@@ -24,7 +28,7 @@ export class PermissionRequestManager {
       const createdAt = Date.now();
       const timer = setTimeout(() => {
         this.pendingPermissions.delete(sessionId);
-        console.log(`Hooks: PermissionRequest timeout for session ${sessionId} - auto-rejecting`);
+        log.info({ component: 'permission-request', operation: 'timeoutAutoReject', attributes: { sessionId } });
         resolve('deny');
       }, timeoutMs);
 

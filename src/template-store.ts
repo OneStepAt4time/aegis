@@ -4,6 +4,8 @@
  * Manages saving, loading, and listing session templates.
  * Templates are stored in ~/.config/aegis/templates.json
  */
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -72,7 +74,7 @@ async function loadTemplates(): Promise<Record<string, SessionTemplate>> {
       const content = await readFile(TEMPLATES_FILE, 'utf-8');
       const parsed = safeJsonParse(content, 'templates.json');
       if (!parsed.ok || !isTemplateStore(parsed.data)) {
-        console.warn(`Failed to parse templates store: ${parsed.ok ? 'invalid structure' : parsed.error}`);
+        log.warn({ component: 'template-store', operation: 'parseFailed', attributes: { reason: parsed.ok ? 'invalid structure' : parsed.error } });
         cachedTemplates = {};
       } else {
         cachedTemplates = parsed.data.templates || {};
@@ -81,7 +83,7 @@ async function loadTemplates(): Promise<Record<string, SessionTemplate>> {
       cachedTemplates = {};
     }
   } catch (err) {
-    console.error(`Failed to load templates from ${TEMPLATES_FILE}:`, err);
+    log.error({ component: 'template-store', operation: 'loadFailed', attributes: { file: TEMPLATES_FILE, error: String(err) } });
     cachedTemplates = {};
   }
 
@@ -100,7 +102,7 @@ async function saveTemplates(): Promise<void> {
     const store: TemplateStore = { templates: cachedTemplates };
     await writeFile(TEMPLATES_FILE, JSON.stringify(store, null, 2));
   } catch (err) {
-    console.error(`Failed to save templates to ${TEMPLATES_FILE}:`, err);
+    log.error({ component: 'template-store', operation: 'saveFailed', attributes: { file: TEMPLATES_FILE, error: String(err) } });
     throw err;
   }
 }

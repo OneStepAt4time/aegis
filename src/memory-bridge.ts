@@ -1,5 +1,9 @@
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import { safeJsonParse } from './safe-json.js';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
+
 
 interface MemoryEntry {
   value: string;
@@ -96,7 +100,7 @@ export class MemoryBridge {
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       if (err.code === 'ENOENT') return;
-      console.error(`Memory bridge: failed to read persisted store at ${this.persistPath}: ${err.message}`);
+      log.error({ component: 'memory-bridge', operation: 'readPersistFailed', attributes: { path: this.persistPath, error: err.message } });
       return;
     }
 
@@ -118,7 +122,7 @@ export class MemoryBridge {
       await rename(tmp, this.persistPath);
     } catch (error) {
       const err = error as Error;
-      console.error(`Memory bridge: failed to persist store at ${this.persistPath}: ${err.message}`);
+      log.error({ component: 'memory-bridge', operation: 'persistFailed', attributes: { path: this.persistPath, error: err.message } });
       throw error;
     }
   }

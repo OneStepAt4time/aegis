@@ -6,6 +6,9 @@
  * The monitor pushes events; the SSE route consumes them.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { EventEmitter } from 'node:events';
 import { CircularBuffer } from './utils/circular-buffer.js';
 
@@ -88,7 +91,7 @@ export class SessionEventBus {
   /** #589: Allocate next event ID with overflow guard. */
   private allocateEventId(): number {
     if (this.nextEventId >= Number.MAX_SAFE_INTEGER) {
-      console.warn('[SessionEventBus] Event ID counter approaching MAX_SAFE_INTEGER, resetting to 1');
+      log.warn({ component: 'events', operation: 'eventIdCounterReset' });
       this.nextEventId = 1;
     }
     return this.nextEventId++;

@@ -4,6 +4,8 @@
  * Port of CCBot's transcript_parser.py.
  * Reads CC session JSONL files and extracts structured messages.
  */
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { readFile, open, access } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
@@ -77,7 +79,7 @@ function parseLine(line: string): JsonlEntry | null {
   const parsed = safeJsonParse(trimmed, 'JSONL line');
   if (!parsed.ok) {
     // Issue #823: Log malformed JSON lines so data loss is visible
-    console.error(`parseLine: dropping malformed JSONL line (${parsed.error}): ${trimmed.slice(0, 200)}`);
+    log.error({ component: 'transcript', operation: 'droppedMalformedLine', attributes: { error: parsed.error, preview: trimmed.slice(0, 200) } });
     return null;
   }
   return parsed.data as JsonlEntry;
@@ -255,7 +257,7 @@ export async function readNewEntries(
     }
 
     if (fromOffset >= fileStat.size) {
-      if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[TRANSCRIPT-DEBUG] readNewEntries: no new data. path=${filePath} offset=${fromOffset} size=${fileStat.size}`);
+      if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'transcript', operation: 'debugNoNewData', attributes: { offset: fromOffset, size: fileStat.size } });
       return { entries: [], newOffset: fromOffset, raw: [] };
     }
 
@@ -309,7 +311,7 @@ export async function readNewEntries(
     }
 
     const parsed = parseEntries(rawEntries, preserveFullText);
-    if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[TRANSCRIPT-DEBUG] readNewEntries: read ${rawEntries.length} raw entries, ${parsed.length} parsed. path=${filePath} fromOffset=${fromOffset} effectiveOffset=${effectiveOffset} readEnd=${readEnd} fileSize=${fileStat.size}`);
+    if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'transcript', operation: 'debugReadEntries', attributes: { rawCount: rawEntries.length, parsedCount: parsed.length, path: filePath, fromOffset, effectiveOffset, readEnd, fileSize: fileStat.size } });
     return { entries: parsed, newOffset: readEnd, raw: rawEntries };
   } finally {
     await fd.close();

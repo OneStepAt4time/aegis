@@ -5,6 +5,9 @@
  * concerns from session lifecycle management.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -25,7 +28,6 @@ function detectUIState(currentStatus: UIState): UIState {
   return currentStatus;
 }
 
-
 /** Stub: parse status line from terminal pane text. */
 function parseStatusLine(_paneText: string): string | null {
   return null;
@@ -35,7 +37,6 @@ function parseStatusLine(_paneText: string): string | null {
 function extractInteractiveContent(_paneText: string): { content: string } | null {
   return null;
 }
-
 
 /**
  * Handles all JSONL transcript reading, caching, and pagination for sessions.
@@ -558,7 +559,6 @@ export class SessionTranscripts {
     }
   }
 
-
   /**
    * Issue #3863: Read full (untruncated) entries from JSONL for API transcript endpoints.
    * Unlike getCachedEntries(), this reads directly from disk and does not truncate text,
@@ -630,7 +630,7 @@ export class SessionTranscripts {
         // causing /read to return empty messages despite the JSONL having content.
         session.byteOffset = 0;
         session.monitorOffset = 0;
-        console.log(`Transcripts (#1768 fallback): session ${session.displayName} mapped to ${sessionId.slice(0, 8)}...`);
+        log.info({ component: 'session-transcripts', operation: 'fallbackMapping', attributes: { displayName: session.displayName, sessionId: sessionId.slice(0, 8) } });
         return;
       }
     } catch {

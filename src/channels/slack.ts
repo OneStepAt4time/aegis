@@ -9,7 +9,11 @@
  * const channel = SlackChannel.fromEnv();
  */
 
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 import type {
+
   Channel,
   SessionEvent,
   SessionEventPayload,
@@ -64,7 +68,7 @@ export class SlackChannel implements Channel {
       try {
         events = JSON.parse(rawEvents) as SessionEvent[];
       } catch {
-        console.error('Failed to parse AEGIS_SLACK_EVENTS, ignoring');
+        log.error({ component: 'slack', operation: 'parseEventsFailed' });
       }
     }
 
@@ -115,7 +119,7 @@ export class SlackChannel implements Channel {
       }
     } catch (e: unknown) {
       const error = e instanceof Error ? e.message : String(e);
-      console.error(`[slack] Delivery failed for event ${payload.event}: ${error}`);
+      log.error({ component: 'slack', operation: 'deliveryFailed', attributes: { event: payload.event, error: String(error) } });
       this.pushDLQ(payload.event, error);
     }
   }

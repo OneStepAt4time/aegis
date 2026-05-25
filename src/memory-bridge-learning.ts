@@ -9,6 +9,9 @@
  * - Security: relative paths only, cross-project disabled by default
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { existsSync } from 'node:fs';
 
 export type LearningType = 'pattern' | 'pitfall' | 'preference' | 'architecture' | 'tool';
@@ -89,7 +92,7 @@ export class LearningStore {
    */
   add(entry: LearningEntry): LearningEntry | null {
     if (!isLearningEntry(entry)) {
-      console.warn(`LearningStore: rejected invalid entry: ${JSON.stringify(entry)}`);
+      log.warn({ component: 'learning-store', operation: 'rejectedInvalidEntry', attributes: { entry: JSON.stringify(entry) } });
       return null;
     }
     const list = this.entries.get(entry.key) || [];

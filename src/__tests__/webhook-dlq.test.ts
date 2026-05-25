@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setJsonLogsEnabled } from '../logger.js';
 import { WebhookChannel } from '../channels/webhook.js';
 import type { SessionEventPayload } from '../channels/types.js';
 
@@ -27,6 +28,7 @@ function makePayload(event: string = 'session.created'): SessionEventPayload {
 
 describe('Webhook dead letter queue (L14)', () => {
   beforeEach(() => {
+    setJsonLogsEnabled(true);
     vi.useFakeTimers();
     mockFetch.mockReset();
     vi.spyOn(WebhookChannel, 'backoff').mockReturnValue(0);
@@ -35,6 +37,7 @@ describe('Webhook dead letter queue (L14)', () => {
   });
 
   afterEach(() => {
+    setJsonLogsEnabled(false);
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -181,7 +184,7 @@ describe('Webhook dead letter queue (L14)', () => {
     await deliveryPromise;
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Webhook DLQ'),
+      expect.stringContaining('dlqAdded'),
     );
   });
 });

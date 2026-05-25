@@ -8,12 +8,16 @@
  * Issue #1937: Pluggable SessionStore interface.
  */
 
+import { StructuredLogger } from '../../logger.js';
+const log = new StructuredLogger();
+
 import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { Mutex } from 'async-mutex';
 import type { LifecycleService, ServiceHealth } from '../../container.js';
 import type {
+
   StateStore,
   SerializedSessionInfo,
   SerializedSessionState,
@@ -98,7 +102,7 @@ export class JsonFileStore implements StateStore {
           const backupRaw = await readFile(backupFile, 'utf-8');
           const backupParsed = JSON.parse(backupRaw);
           if (this.isValidState(backupParsed)) {
-            console.log('JsonFileStore: restored state from backup');
+            log.info({ component: 'json-store', operation: 'restoredFromBackup' });
             return backupParsed as SerializedSessionState;
           }
         } catch { /* backup corrupted — start empty */ }
@@ -265,7 +269,7 @@ export class JsonFileStore implements StateStore {
         if (entry.endsWith('.tmp') || entry.includes('.tmp.')) {
           const fullPath = join(this.stateDir, entry);
           try { unlinkSync(fullPath); } catch { /* best effort */ }
-          console.log(`Cleaned stale tmp file: ${entry}`);
+          log.info({ component: 'json-store', operation: 'cleanedStaleTmpFile', attributes: { file: entry } });
         }
       }
     } catch { /* dir may not exist yet */ }

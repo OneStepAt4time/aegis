@@ -5,6 +5,9 @@
  * Configure via AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var or config file.
  */
 
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 import type {
   Channel,
   SessionEvent,
@@ -90,19 +93,19 @@ export class WebhookChannel implements Channel {
       for (let i = 0; i < parsed.length; i++) {
         const result = webhookEndpointSchema.safeParse(parsed[i]);
         if (!result.success) {
-          console.error(`Webhook URL validation failed for endpoint ${i}: schema error`, result.error.message);
+          log.error({ component: 'webhook', operation: 'urlValidationSchemaError', attributes: { endpointIndex: i, error: result.error.message } });
           return null;
         }
         const urlError = validateWebhookUrl(result.data.url);
         if (urlError) {
-          console.error(`Webhook URL validation failed for endpoint ${i}: ${urlError}`, result.data.url);
+          log.error({ component: 'webhook', operation: 'urlValidationFailed', attributes: { endpointIndex: i, error: urlError, url: result.data.url } });
           return null;
         }
         endpoints.push(result.data as WebhookEndpoint);
       }
       return new WebhookChannel({ endpoints });
     } catch (e) {
-      console.error('Failed to parse AEGIS_WEBHOOKS:', e);
+      log.error({ component: 'webhook', operation: 'parseWebhooksFailed', attributes: { error: String(e) } });
       return null;
     }
   }
@@ -194,9 +197,9 @@ export class WebhookChannel implements Channel {
       const reasons = failed.map(r => String(r.reason)).join('; ');
       const allFailed = failed.length === results.length;
       if (allFailed) {
-        console.error(`Webhook: ${failed.length}/${results.length} endpoint(s) failed (total): ${reasons}`);
+        log.error({ component: 'webhook', operation: 'batchDeliveryFailed', attributes: { failedCount: failed.length, totalCount: results.length, reasons } });
       } else {
-        console.warn(`Webhook: ${failed.length}/${results.length} endpoint(s) failed: ${reasons}`);
+        log.warn({ component: 'webhook', operation: 'batchDeliveryPartialFailure', attributes: { failedCount: failed.length, totalCount: results.length, reasons } });
       }
     }
   }
@@ -239,11 +242,11 @@ export class WebhookChannel implements Channel {
             });
             if (attempt < maxRetries) {
               const delay = WebhookChannel.backoff(attempt);
-              console.warn(`Webhook ${ep.url} DNS check failed for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
+              log.warn({ component: 'webhook', operation: 'dnsCheckRetry', attributes: { url: ep.url, event, attempt, maxRetries, error: lastError, retryDelayMs: Math.round(delay) } });
               await new Promise(r => setTimeout(r, delay));
               continue;
             }
-            console.error(`Webhook ${ep.url} DNS check failed after ${maxRetries} attempts for ${event}: ${lastError}`);
+            log.error({ component: 'webhook', operation: 'dnsCheckFailed', attributes: { url: ep.url, event, attempts: maxRetries, error: lastError } });
             this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
             throw new RetriableError(lastError);
           }
@@ -283,12 +286,12 @@ export class WebhookChannel implements Channel {
         const isRetryable = res.status === 429 || res.status >= 500;
         if (isRetryable && attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
-          console.warn(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries}), retrying in ${Math.round(delay)}ms`);
+          log.warn({ component: 'webhook', operation: 'httpRetry', attributes: { url: ep.url, event, status: res.status, attempt, maxRetries, retryDelayMs: Math.round(delay) } });
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
 
-        console.error(`Webhook ${ep.url} returned ${res.status} for ${event} (attempt ${attempt}/${maxRetries})`);
+        log.error({ component: 'webhook', operation: 'httpFailed', attributes: { url: ep.url, event, status: res.status, attempt, maxRetries } });
         // Issue #89 L14: Only add to DLQ for 5xx (server) errors, not 4xx client errors
         if (res.status >= 500) {
           this.addToDeadLetterQueue(ep.url, event, lastError, attempt);
@@ -303,11 +306,11 @@ export class WebhookChannel implements Channel {
         });
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);
-          console.warn(`Webhook ${ep.url} error for ${event} (attempt ${attempt}/${maxRetries}): ${lastError}, retrying in ${Math.round(delay)}ms`);
+          log.warn({ component: 'webhook', operation: 'deliveryRetry', attributes: { url: ep.url, event, attempt, maxRetries, error: lastError, retryDelayMs: Math.round(delay) } });
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
-        console.error(`Webhook ${ep.url} failed after ${maxRetries} attempts for ${event}: ${lastError}`);
+        log.error({ component: 'webhook', operation: 'deliveryFailed', attributes: { url: ep.url, event, attempts: maxRetries, error: lastError } });
         this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
       }
       // Final failure — throw so fire() can aggregate.
@@ -334,7 +337,7 @@ export class WebhookChannel implements Channel {
     if (this.deadLetterQueue.length > WebhookChannel.DLQ_MAX_SIZE) {
       this.deadLetterQueue = this.deadLetterQueue.slice(-WebhookChannel.DLQ_MAX_SIZE);
     }
-    console.warn(`Webhook DLQ: added failed delivery for ${event} to ${endpoint} after ${attempts} attempts`);
+    log.warn({ component: 'webhook', operation: 'dlqAdded', attributes: { event, endpoint, attempts } });
   }
 
   /** Issue #89 L14: Get all entries in the dead letter queue. */

@@ -2,6 +2,7 @@
  * webhook-ssrf.test.ts — Tests for SSRF protection in webhook channel.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setJsonLogsEnabled } from '../logger.js';
 import { WebhookChannel } from '../channels/webhook.js';
 import { webhookEndpointSchema } from '../validation.js';
 
@@ -51,12 +52,14 @@ describe('WebhookChannel.fromEnv() SSRF validation', () => {
   const origEnv = process.env;
 
   beforeEach(() => {
+    setJsonLogsEnabled(true);
     process.env = { ...origEnv };
     delete process.env.AEGIS_WEBHOOKS;
     delete process.env.MANUS_WEBHOOKS;
   });
 
   afterEach(() => {
+    setJsonLogsEnabled(false);
     process.env = origEnv;
   });
 
@@ -79,10 +82,7 @@ describe('WebhookChannel.fromEnv() SSRF validation', () => {
       { url: 'http://evil.com/hook' },
     ]);
     expect(WebhookChannel.fromEnv()).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Webhook URL validation failed'),
-      expect.anything(),
-    );
+    expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
@@ -92,10 +92,7 @@ describe('WebhookChannel.fromEnv() SSRF validation', () => {
       { url: 'https://10.0.0.1/hook' },
     ]);
     expect(WebhookChannel.fromEnv()).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Webhook URL validation failed'),
-      expect.anything(),
-    );
+    expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 

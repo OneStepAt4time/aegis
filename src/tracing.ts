@@ -10,6 +10,9 @@
  * Issue #1417: Research spike — OpenTelemetry tracing.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import os from 'node:os';
 import type { Tracer, Span, SpanOptions, Context } from '@opentelemetry/api';
 import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
@@ -96,7 +99,7 @@ export async function initTracing(config: TracingConfig): Promise<Tracer> {
   if (_initialized) return _tracer;
 
   if (!config.enabled) {
-    console.log('Tracing: disabled (set AEGIS_OTEL_ENABLED=true to enable)');
+    log.info({ component: 'tracing', operation: 'disabled' });
     _initialized = true;
     return _tracer;
   }
@@ -173,11 +176,11 @@ export async function initTracing(config: TracingConfig): Promise<Tracer> {
     _tracer = api.trace.getTracer('aegis', serviceVersion);
 
     _initialized = true;
-    console.log(`Tracing: enabled (OTLP → ${config.otlpEndpoint}, sampler=${config.sampleRate})`);
+    log.info({ component: 'tracing', operation: 'enabled', attributes: { otlpEndpoint: config.otlpEndpoint, sampleRate: config.sampleRate } })
 
     return _tracer;
   } catch (e) {
-    console.error('Tracing: failed to initialize — falling back to no-op:', e);
+    log.error({ component: 'tracing', operation: 'initFailed', attributes: { error: String(e) } })
     _tracer = new NoopTracerImpl();
     _initialized = true;
     return _tracer;
