@@ -47,8 +47,11 @@ describe('MetricsPage', () => {
     mockGetMetricsAggregate.mockReturnValue(new Promise(() => {}));
     render(<I18nProvider><MetricsPage /></I18nProvider>);
     // Summary cards show — while data is null
+    // totalSessions shows 0 instead of — (null-coalesced)
     const dashes = screen.getAllByText('—');
-    expect(dashes.length).toBeGreaterThanOrEqual(4);
+    expect(dashes.length).toBeGreaterThanOrEqual(3);
+    // totalSessions renders 0 when summary is null
+    expect(screen.getByText('0')).toBeTruthy();
   });
 
   it('renders summary stat cards when data loads', async () => {
