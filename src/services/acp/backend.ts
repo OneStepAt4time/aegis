@@ -34,6 +34,10 @@ import type {
   PromptValidationWarning,
 } from './types.js';
 
+import { StructuredLogger } from '../../logger.js';
+
+const log = new StructuredLogger();
+
 const DEFAULT_PROTOCOL_VERSION = 1;
 const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
 const ACP_PROMPT_ACK_TIMEOUT_MS = 5_000;
@@ -454,7 +458,7 @@ export class AcpBackend {
         if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
           // Timeout is acceptable — CC likely received the prompt but hasn't
           // responded yet. Log and continue as delivered.
-          console.warn(`[ACP prompt ack timeout] session=${sessionId} — treating as delivered`);
+          log.warn({ component: 'acp-backend', operation: 'promptAckTimeout', attributes: { sessionId } });
         } else {
           // Actual error (e.g. -32601 Method not found) — surface it
           throw err;
@@ -466,7 +470,7 @@ export class AcpBackend {
         // Handled above — should not reach here, but defensive
         return { delivered: true, attempts: 1 };
       }
-      console.warn(`[ACP prompt error] session=${sessionId} method=session/prompt error=${(err as Error).message}`);
+      log.warn({ component: 'acp-backend', operation: 'promptError', attributes: { sessionId, error: (err as Error).message } });
       return { delivered: false, attempts: 1, error: (err as Error).message };
     } finally {
       this.inFlightPrompts.delete(sessionId);
@@ -853,7 +857,7 @@ export class AcpBackend {
       // Issue #3900: Structured warnings + strict validation enforcement
       const warnings = validatePromptOutput(response.result, text);
       if (warnings.length > 0) {
-        console.warn(`[ACP content validation] session=${sessionId} action=${action.actionId} warnings=${JSON.stringify(warnings)}`);
+        log.warn({ component: 'acp-backend', operation: 'contentValidationWarning', attributes: { sessionId, actionId: action.actionId, warnings: JSON.stringify(warnings) } });
 
         // Issue #3897: Emit validation_warning event for monitoring/alerting (opt-in)
         if (this.emitValidationWarnings) {
@@ -863,7 +867,7 @@ export class AcpBackend {
               warnings,
             });
           } catch (err) {
-            console.warn(`[ACP validation_warning] failed to emit: ${err}`);
+            log.warn({ component: 'acp-backend', operation: 'validationWarningEmitFailed', attributes: { error: String(err) } });
           }
         }
 
@@ -882,16 +886,14 @@ export class AcpBackend {
       return { resultMetadata: metadata };
     } catch (error) {
       if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {
-        console.warn(`[ACP prompt timeout] session=${sessionId} action=${action.actionId} method=session/prompt timeout=${ACP_PROMPT_REQUEST_TIMEOUT_MS}ms`);
+        log.warn({ component: 'acp-backend', operation: 'promptTimeout', attributes: { sessionId, actionId: action.actionId, timeout: ACP_PROMPT_REQUEST_TIMEOUT_MS } });
       }
       try {
         await this.sessionService.transition(sessionId, runtime.scope, {
           type: 'runtime_failed',
         });
       } catch (transitionError) {
-        console.error(
-          `[ACP] failed to transition session=${sessionId} to runtime_failed: ${transitionError}`
-        );
+        log.error({ component: 'acp-backend', operation: 'transitionToFailedError', attributes: { sessionId, error: String(transitionError) } });
       }
       throw error;
     } finally {
@@ -984,9 +986,7 @@ export class AcpBackend {
       try {
         await this.sessionService.transition(sessionId, scope, { type: 'runtime_failed' });
       } catch (transitionError) {
-        console.error(
-          `[ACP] failed to transition session=${sessionId} to runtime_failed during startup: ${transitionError}`
-        );
+        log.error({ component: 'acp-backend', operation: 'startupTransitionFailed', attributes: { sessionId, error: String(transitionError) } });
       }
     } finally {
       if (started) {
@@ -1046,9 +1046,7 @@ export class AcpBackend {
           type: 'runtime_failed',
         });
       } catch (transitionError) {
-        console.error(
-          `[ACP] failed to transition session=${runtime.sessionId} to runtime_failed on exit: ${transitionError}`
-        );
+        log.error({ component: 'acp-backend', operation: 'exitTransitionFailed', attributes: { sessionId: runtime.sessionId, error: String(transitionError) } });
       }
     } finally {
       this.disposeRuntime(runtime);
@@ -1113,7 +1111,7 @@ export function createDefaultAcpBackendClient(
   child.on('stderr', (event) => {
     const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
     if (text) {
-      console.error(`[ACP stderr:${context.durableSessionId.slice(0, 8)}] ${text}`);
+      log.error({ component: 'acp-backend', operation: 'childStderr', attributes: { sessionId: context.durableSessionId.slice(0, 8), text } });
     }
   });
   return new AcpJsonRpcClient({

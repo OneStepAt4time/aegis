@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setStructuredLogSink } from '../logger.js';
 import { getConfig } from '../config.js';
 import { testPath } from './helpers/platform.js';
 
@@ -234,10 +235,10 @@ describe('config', () => {
 
     it('falls back and warns when AEGIS_PORT is out of range', () => {
       process.env.AEGIS_PORT = '70000';
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnRecords: any[] = []; setStructuredLogSink({ info: () => {}, warn: (r) => { warnRecords.push(r); }, error: () => {} });
 
       const config = getConfig();
-      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+      const warnings = warnRecords.map(r => r.attributes?.message || Object.values(r.attributes || {}).join(' ')).join('\n');
 
       expect(config.port).toBe(9100);
       expect(warnings).toContain("AEGIS_PORT='70000'");
@@ -246,10 +247,10 @@ describe('config', () => {
 
     it('falls back and warns when numeric env value is not a strict integer', () => {
       process.env.AEGIS_MAX_SESSION_AGE_MS = '3600000ms';
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnRecords: any[] = []; setStructuredLogSink({ info: () => {}, warn: (r) => { warnRecords.push(r); }, error: () => {} });
 
       const config = getConfig();
-      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+      const warnings = warnRecords.map(r => r.attributes?.message || Object.values(r.attributes || {}).join(' ')).join('\n');
 
       expect(config.maxSessionAgeMs).toBe(2 * 60 * 60 * 1000);
       expect(warnings).toContain("AEGIS_MAX_SESSION_AGE_MS='3600000ms'");
@@ -262,9 +263,9 @@ describe('config', () => {
       expect(zeroConfig.pipelineStageTimeoutMs).toBe(0);
 
       process.env.AEGIS_PIPELINE_STAGE_TIMEOUT_MS = '-1';
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnRecords: any[] = []; setStructuredLogSink({ info: () => {}, warn: (r) => { warnRecords.push(r); }, error: () => {} });
       const negativeConfig = getConfig();
-      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+      const warnings = warnRecords.map(r => r.attributes?.message || Object.values(r.attributes || {}).join(' ')).join('\n');
 
       expect(negativeConfig.pipelineStageTimeoutMs).toBe(0);
       expect(warnings).toContain("AEGIS_PIPELINE_STAGE_TIMEOUT_MS='-1'");
@@ -275,22 +276,24 @@ describe('config', () => {
   describe('invalid env warnings', () => {
     it('warns and keeps default when AEGIS_HOOK_SECRET_HEADER_ONLY is invalid', () => {
       process.env.AEGIS_HOOK_SECRET_HEADER_ONLY = 'yes';
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnRecords: any[] = []; setStructuredLogSink({ info: () => {}, warn: (r) => { warnRecords.push(r); }, error: () => {} });
 
       const config = getConfig();
-      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+      const warnings = warnRecords.map(r => r.attributes?.message || Object.values(r.attributes || {}).join(' ')).join('\n');
 
       expect(config.hookSecretHeaderOnly).toBe(false);
-      expect(warnings).toContain("AEGIS_HOOK_SECRET_HEADER_ONLY='yes'");
-      expect(warnings).toContain('expected "true" or "false"');
+      const boolWarn = warnRecords.find(r => r.operation === 'invalidBoolEnv');
+      expect(boolWarn).toBeDefined();
+      expect(boolWarn.attributes.envName).toBe('AEGIS_HOOK_SECRET_HEADER_ONLY');
+      expect(boolWarn.attributes.value).toBe('yes');
     });
 
     it('warns for invalid Telegram allowlist entries while keeping valid IDs', () => {
       process.env.AEGIS_TG_ALLOWED_USERS = '111,abc,-5,222';
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnRecords: any[] = []; setStructuredLogSink({ info: () => {}, warn: (r) => { warnRecords.push(r); }, error: () => {} });
 
       const config = getConfig();
-      const warnings = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+      const warnings = warnRecords.map(r => r.attributes?.message || Object.values(r.attributes || {}).join(' ')).join('\n');
 
       expect(config.tgAllowedUsers).toEqual([111, 222]);
       expect(warnings).toContain('AEGIS_TG_ALLOWED_USERS');

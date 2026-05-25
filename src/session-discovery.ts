@@ -14,6 +14,9 @@ import { loadContinuationPointers, type ContinuationPointerEntry } from './conti
 import { computeProjectHash } from './path-utils.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 
 /**
  * Callback interface for discovery to interact with SessionManager state
@@ -122,7 +125,7 @@ export class SessionDiscovery {
       const session = this.deps.getSession(id);
       this.stopDiscoveryPolling(id);
       if (session && !session.claudeSessionId) {
-        console.log(`Discovery: session ${session.displayName} — timed out after 5min, no session_id found`);
+        log.info({ component: 'session-discovery', operation: 'discoveryTimeout', attributes: { session: session.displayName } });
       }
     }, 5 * 60 * 1000);
     this.discoveryTimeouts.set(id, discoveryTimeout);
@@ -189,7 +192,7 @@ export class SessionDiscovery {
         const windowNameActive = activeNamesLower.has(windowName);
 
         if (!windowIdActive && !windowNameActive) {
-          console.log(`Reconcile: purging stale session_map entry: ${key}`);
+          log.info({ component: 'session-discovery', operation: 'purgeStaleEntry', attributes: { key } });
           delete mapData[key];
           changed = true;
         }
@@ -226,8 +229,7 @@ export class SessionDiscovery {
             // GUARD 1: Timestamp — reject session_map entries written before this session was created.
             const writtenAt = info.written_at || 0;
             if (writtenAt > 0 && writtenAt < session.createdAt) {
-              console.log(`Discovery: session ${session.displayName} — rejecting stale entry ` +
-                `(written_at ${new Date(writtenAt).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
+              log.info({ component: 'session-discovery', operation: 'rejectStaleEntry', attributes: { session: session.displayName, writtenAt: new Date(writtenAt).toISOString(), createdAt: new Date(session.createdAt).toISOString() } });
               continue;
             }
 
@@ -241,7 +243,7 @@ export class SessionDiscovery {
 
             // GUARD 2: Reject paths in _archived/ directory — these are stale sessions
             if (jsonlPath && (jsonlPath.includes('/_archived/') || jsonlPath.includes('\\_archived\\'))) {
-              console.log(`Discovery: session ${session.displayName} — rejecting archived path: ${jsonlPath}`);
+              log.info({ component: 'session-discovery', operation: 'rejectArchivedPath', attributes: { session: session.displayName, path: jsonlPath } });
               continue;
             }
 
@@ -253,8 +255,7 @@ export class SessionDiscovery {
             try {
               const fileStat = await stat(jsonlPath);
               if (fileStat.mtimeMs < session.createdAt) {
-                console.log(`Discovery: session ${session.displayName} — rejecting stale JSONL ` +
-                  `(mtime ${new Date(fileStat.mtimeMs).toISOString()} < createdAt ${new Date(session.createdAt).toISOString()})`);
+                log.info({ component: 'session-discovery', operation: 'rejectStaleJsonl', attributes: { session: session.displayName, mtime: new Date(fileStat.mtimeMs).toISOString(), createdAt: new Date(session.createdAt).toISOString() } });
                 continue;
               }
             } catch {
@@ -265,16 +266,14 @@ export class SessionDiscovery {
             const existingSession = (this.deps.getAllSessions() as SessionInfo[])
               .find(s => s.claudeSessionId === info.session_id && s.id !== session.id);
             if (existingSession) {
-              console.log(`Discovery: session ${session.displayName} — rejecting claudeSessionId ${info.session_id.slice(0, 8)}... ` +
-                `already mapped to session ${existingSession.displayName} (${existingSession.id.slice(0, 8)})`);
+              log.info({ component: 'session-discovery', operation: 'rejectDuplicateClaudeSessionId', attributes: { session: session.displayName, claudeSessionId: info.session_id.slice(0, 8), existingSession: existingSession.displayName, existingId: existingSession.id.slice(0, 8) } });
               continue;
             }
 
             session.claudeSessionId = info.session_id;
             session.jsonlPath = jsonlPath;
             session.byteOffset = 0;
-            console.log(`Discovery: session ${session.displayName} mapped to ` +
-              `${info.session_id.slice(0, 8)}... (verified: timestamp + mtime)`);
+            log.info({ component: 'session-discovery', operation: 'sessionMapped', attributes: { session: session.displayName, claudeSessionId: info.session_id.slice(0, 8) } });
             break;
           }
         }
@@ -309,15 +308,14 @@ export class SessionDiscovery {
       const existingSession = (this.deps.getAllSessions() as SessionInfo[])
         .find(s => s.claudeSessionId === sessionId && s.id !== session.id);
       if (existingSession) {
-        console.log(`Discovery (filesystem): session ${session.displayName} — rejecting sessionId ${sessionId.slice(0, 8)}... ` +
-          `already mapped to session ${existingSession.displayName} (${existingSession.id.slice(0, 8)})`);
+        log.info({ component: 'session-discovery', operation: 'rejectDuplicateFsSessionId', attributes: { session: session.displayName, sessionId: sessionId.slice(0, 8), existingSession: existingSession.displayName, existingId: existingSession.id.slice(0, 8) } });
         continue;
       }
 
       session.claudeSessionId = sessionId;
       session.jsonlPath = filePath;
       session.byteOffset = 0;
-      console.log(`Discovery (filesystem): session ${session.displayName} mapped to ${sessionId.slice(0, 8)}...`);
+      log.info({ component: 'session-discovery', operation: 'sessionMappedFromFs', attributes: { session: session.displayName, sessionId: sessionId.slice(0, 8) } });
       await this.deps.save();
       return true;
     }
