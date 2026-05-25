@@ -1,0 +1,30 @@
+{
+  "date": "2026-05-25",
+  "tasks": [
+    {
+      "id": "P0-1",
+      "title": "ag init --yes still prompts on localhost",
+      "issue": "audit #4148",
+      "file": "src/commands/init.ts",
+      "fix": "Verify --yes fully suppresses all prompts. If not, trace which prompt leaks through and add guard.",
+      "status": "scoped"
+    },
+    {
+      "id": "P0-2",
+      "title": "No API token created on localhost zero-config",
+      "issue": "audit #4148",
+      "file": "src/commands/init.ts, src/server.ts",
+      "fix": "Option A: Server already has zero-config localhost mode (no-auth when localhost + no token). Ensure init --yes generates a config that triggers this path. Option B: init always generates a token and stores it. Boss prefers option A or B — decide Monday.",
+      "status": "scoped"
+    },
+    {
+      "id": "P0-3",
+      "title": "ag init doesn't add CWD to allowedWorkDirs",
+      "issue": "audit #4148, #4126",
+      "file": "src/commands/init.ts",
+      "fix": "During init, add process.cwd() to allowedWorkDirs in the generated config. This lets ag run work from the init directory without manual config editing.",
+      "status": "scoped"
+    }
+  ],
+  "context": "Boss assigned these Monday morning before any dashboard work. Also open: #4159 (cookie fix), #4149 (metrics pipeline), #4150 (riskLevel crash deployed)."
+}

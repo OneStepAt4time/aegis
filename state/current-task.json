@@ -1,11 +1,6 @@
 {
-  "task": "none",
+  "task": null,
   "status": "idle",
-  "branch": null,
-  "worktree": null,
-  "issue": null,
-  "pr": null,
-  "blocker": null,
-  "timestamp": "2026-05-21T09:34:00Z",
-  "next": "awaiting review on #3925 (fix pushed) and #3927 (new PR)"
+  "timestamp": "2026-05-25T21:51:00Z",
+  "next": "No actionable backend issues — all remaining are deferred/phase-4/needs-human"
 }
