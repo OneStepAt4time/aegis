@@ -31,9 +31,16 @@ export default [
   },
   {
     files: ['src/**/*.ts'],
-    ignores: ['src/__tests__/**', 'src/cli.ts', 'src/logger.ts'],
+    ignores: [
+      'src/__tests__/**',
+      'src/cli.ts',
+      'src/logger.ts',
+      'src/suppress.ts',
+      'src/hook.ts',
+      'src/mcp/server.ts',
+    ],
     rules: {
-      'no-console': 'warn',
+      'no-console': 'error',
     },
   },
   {
