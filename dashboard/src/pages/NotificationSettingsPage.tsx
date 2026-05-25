@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useToastStore } from '../store/useToastStore';
+import { useT } from '../i18n/context';
 import { ConfirmDestructive } from '../components/shared/ConfirmDestructive';
 import type {
   TelegramConnectionState,
@@ -46,6 +47,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, { color: string; icon: typeof Chec
 
 export default function NotificationSettingsPage() {
   const addToast = useToastStore((s) => s.addToast);
+  const t = useT();
 
   // ── State ────────────────────────────────────────────
   const [connection, setConnection] = useState<TelegramConnectionState>({ status: 'disconnected' });
@@ -369,7 +371,7 @@ export default function NotificationSettingsPage() {
 
                     <ConfirmDestructive
                       mode="hold"
-                      label="Disconnect"
+                      label={t("notifications.disconnect")}
                       onConfirm={handleDisconnect}
                     />
                   </>

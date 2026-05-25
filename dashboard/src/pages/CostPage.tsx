@@ -150,13 +150,13 @@ function BudgetOverview({ dailyData, budgetSettings, navigateToSettings }: Budge
         <BudgetProgressBar
           currentSpend={todaySpend}
           cap={budgetSettings.budgetDailyCapUsd}
-          label="Daily"
+          label={t("cost.daily")}
           period="today"
         />
         <BudgetProgressBar
           currentSpend={monthSpend}
           cap={budgetSettings.budgetMonthlyCapUsd}
-          label="Monthly"
+          label={t("cost.monthly")}
           period={`${today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
         />
       </div>
@@ -282,7 +282,7 @@ export default function CostPage() {
         </div>
         <EmptyState
           icon={<DollarSign className="h-8 w-8" />}
-          title="No cost data yet"
+          title={t("cost.noCostData")}
           description={hasSessions
             ? 'Sessions are running but cost data is not yet available. Cost metrics populate once the metrics pipeline processes session data.'
             : 'Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data.'

@@ -79,6 +79,12 @@ export const en = {
     metricFailed: 'Failed',
     loading: 'Loading pipelines…',
     loadErrorTitle: 'Unable to load pipelines',
+    noPipelinesYet: 'No pipelines yet',
+    createPipeline: 'Create a pipeline to automate session workflows.',
+    total: 'Total',
+    running: 'Running',
+    completed: 'Completed',
+    failed: 'Failed',
     loadErrorDefault: 'Try adjusting your filters',
     emptyTitle: 'No pipelines yet',
     emptyDescription: 'Create a pipeline to automate session workflows.',
@@ -108,6 +114,9 @@ export const en = {
   },
   
   cost: {
+    daily: 'Daily',
+    monthly: 'Monthly',
+    noCostData: 'No cost data yet',
     title: 'Cost & Billing',
     subtitle: 'Track API usage and spending',
     todaySpent: 'Today',
@@ -159,6 +168,8 @@ export const en = {
   },
 
   metrics: {
+    chartSessions: 'Sessions',
+    chartTokenCost: 'Token Cost',
     title: 'Metrics',
     subtitle: 'Aggregate session metrics and export',
     loading: 'Loading metrics...',

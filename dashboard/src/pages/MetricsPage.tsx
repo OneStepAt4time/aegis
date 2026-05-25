@@ -309,7 +309,7 @@ export default function MetricsPage() {
                 <Bar
                   yAxisId="sessions"
                   dataKey="sessions"
-                  name="Sessions"
+                  name={t("metrics.chartSessions")}
                   fill={CHART_COLORS.cyan}
                   radius={[4, 4, 0, 0]}
                 />
@@ -344,7 +344,7 @@ export default function MetricsPage() {
                 <Line
                   type="monotone"
                   dataKey="tokenCostUsd"
-                  name="Token Cost"
+                  name={t("metrics.chartTokenCost")}
                   stroke={CHART_COLORS.purple}
                   strokeWidth={2}
                   dot={false}
