@@ -108,9 +108,9 @@ export default function OverviewPage() {
 
   // Derived analytics values
   const totalCost = (analytics?.tokenUsageByModel ?? []).reduce((sum, m) => sum + m.estimatedCostUsd, 0);
-  const totalTokens = analytics?.tokenUsageByModel.reduce(
+  const totalTokens = (analytics?.tokenUsageByModel ?? []).reduce(
     (sum, m) => sum + m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens, 0,
-  ) ?? 0;
+  );
   const totalSessions = analytics?.errorRates?.totalSessions ?? 0;
   const activeDays = (analytics?.sessionVolume ?? []).length ?? 0;
   const avgCostPerDay = activeDays > 0 ? totalCost / activeDays : 0;
