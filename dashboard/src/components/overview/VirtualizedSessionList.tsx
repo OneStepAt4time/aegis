@@ -199,7 +199,7 @@ function VirtualizedRow(props: {
         isFocused
           ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
           : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'
-      }`}
+      }${needsApproval(session) ? ' approval-pending-row' : ''}`}
       data-session-id={session.id}
       {...ariaAttributes}
     >

@@ -33,7 +33,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
   onKill,
 }: SessionRowProps) {
   return (
-    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-cyan-500/30' : ''}`}>
+    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-cyan-500/30' : ''}${needsApproval(session) ? ' approval-pending-row' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
