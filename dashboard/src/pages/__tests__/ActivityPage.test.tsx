@@ -52,7 +52,10 @@ describe('ActivityPage', () => {
   });
 
   it('shows empty state when no heatmap data', async () => {
-    mockFetchSessionHistory.mockResolvedValue({ records: [], total: 0 });
+    mockFetchSessionHistory.mockResolvedValue({
+      records: [],
+      pagination: { page: 1, limit: 25, total: 0, totalPages: 0 },
+    });
     render(<ActivityPage />);
     await waitFor(() => {
       expect(screen.getByText('No session activity recorded yet')).not.toBeNull();
@@ -77,7 +80,10 @@ describe('ActivityPage', () => {
     });
 
     // Now make the next call succeed
-    mockFetchSessionHistory.mockResolvedValue({ records: [], total: 0 });
+    mockFetchSessionHistory.mockResolvedValue({
+      records: [],
+      pagination: { page: 1, limit: 25, total: 0, totalPages: 0 },
+    });
     fireEvent.click(screen.getByText('Retry'));
 
     await waitFor(() => {
@@ -87,8 +93,14 @@ describe('ActivityPage', () => {
 
   it('shows heatmap grid when data loads successfully', async () => {
     mockFetchSessionHistory.mockResolvedValue({
-      records: [{ createdAt: Math.floor(Date.now() / 1000), lastSeenAt: 0 }],
-      total: 1,
+      records: [{
+        id: 'test-record-1',
+        createdAt: Math.floor(Date.now() / 1000),
+        lastSeenAt: 0,
+        finalStatus: 'active',
+        source: 'live',
+      }],
+      pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
     });
     render(<ActivityPage />);
     await waitFor(() => {
