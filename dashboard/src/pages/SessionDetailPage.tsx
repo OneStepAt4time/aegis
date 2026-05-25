@@ -14,8 +14,8 @@ import {
   fetchAuditLogs,
   sendMessage,
   sendCommand,
-  approve,
-  reject,
+  quickApprove,
+  quickReject,
   interrupt,
   escape,
   killSession,
@@ -314,12 +314,12 @@ export default function SessionDetailPage() {
   );
 
   function handleApprove() {
-    approve(s.id).catch((e: unknown) =>
+    quickApprove(s.id).catch((e: unknown) =>
       addToast('error', t('sessionDetail.approveFailed'), e instanceof Error ? e.message : undefined),
     );
   }
   function handleReject() {
-    reject(s.id).catch((e: unknown) =>
+    quickReject(s.id).catch((e: unknown) =>
       addToast('error', t('sessionDetail.rejectFailed'), e instanceof Error ? e.message : undefined),
     );
   }

@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, PlayCircle, CheckCircle2, Shield, Trash2, Lightbulb } from 'lucide-react';
-import { createSessionWithFallback, approve, killSession, getSession } from '../../api/client';
+import { createSessionWithFallback, quickApprove, killSession, getSession } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
 import { useT } from '../../i18n/context';
 
@@ -106,7 +106,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     if (!sessionId) return;
     
     try {
-      await approve(sessionId);
+      await quickApprove(sessionId);
       addToast('success', 'Permission approved', 'The session can now execute commands');
       
       // Wait a bit then move to kill step
