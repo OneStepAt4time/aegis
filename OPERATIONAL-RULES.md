@@ -59,3 +59,28 @@ When you find a bug while building Aegis:
 - Opening a PR that targets `main` instead of `develop` (unless declared hotfix).
 - Shipping docs / marketing copy for features that are not merged.
 - Duplicating another agent's work — if unsure, ask in Discord before starting.
+
+## Architectural & Operational Gates
+
+To keep the codebase healthy and to reflect our 24/7 agent operating model, the following rules apply to all agents and contributors:
+
+- No file in src/ may exceed 500 lines without explicit approval from Argus and Hephaestus (file-size exceptions must be documented in the PR and include a concrete split/migration plan).
+- No PR may be merged without `npm run gate` passing on the branch (this includes typecheck, build, and tests as defined by the project's gate).
+- Refactoring PRs must be treated with the same priority as feature PRs; reviewers must not shelve refactors in favor of features when they address code health.
+- Any agent may flag a "codebase health" issue. When such an issue is filed and labeled `codebase-health`, feature work can be paused on the affected area until Boss or Ema triages and provides direction.
+
+### Process details
+- File-size exceptions: PR author must include a short justification and a follow-up plan to split the file within 2 PRs. Argus + Hephaestus must approve the exception before merge.
+- Gate enforcement: `npm run gate` is mandatory for all PRs. CI must include additional checks for file-size and circular dependencies (madge) before merge.
+- Prioritization: PR reviewers must treat refactor PRs addressing `codebase-health` items as high-priority. Label such PRs `high-priority-refactor` and request Argus review immediately.
+- Pausing work: when an agent flags a `codebase-health` issue, they should set the issue status to `triage-needed` and tag Boss and Ema. Teams should pause feature development touching the affected modules until triage completes.
+
+### Who applies what
+- Orpheus: HEARTBEAT.md rewritten and new rules live (status: done).
+- Athena: owns the shared rules — draft the OPERATIONAL-RULES update for review and post it to the team for comment.
+- Hephaestus: implement the architectural gate in CI (expand `npm run gate` to include file-size and circular-dep checks).
+- Argus: enforce the gate during code review — reject PRs that add codebase debt or lack required tests.
+- Hermes: update the release checklist to require a codebase health check before any release.
+- Daedalus, Themis, Scribe: apply the same heartbeat rewrite in your respective workspaces and conform to these rules.
+
+> One more thing: Ema's directive stands — we operate 24/7. The rules reflect continuous action and immediate response to owner tags: no human-sleep deferrals.
