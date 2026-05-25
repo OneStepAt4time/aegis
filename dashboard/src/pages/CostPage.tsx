@@ -414,7 +414,7 @@ export default function CostPage() {
         {/* Token breakdown + Cost by model — side by side */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <TokenBreakdownChart />
-          <CostByModelChart data={costByModel?.models.map(m => ({ model: m.model, cost: m.estimatedCostUsd }))} />
+          <CostByModelChart data={(costByModel?.models ?? []).map(m => ({ model: m.model, cost: m.estimatedCostUsd }))} />
         </div>
       </section>
 
