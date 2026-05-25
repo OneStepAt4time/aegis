@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI arg filtering for ACP spawn** — sanitize command-line arguments passed to ACP child processes ([#4019](https://github.com/OneStepAt4time/aegis/pull/4019), closes [#3997](https://github.com/OneStepAt4time/aegis/issues/3997))
 - **AEGIS_AUTH_TOKEN added to ENV_DENYLIST** — prevent auth token from leaking into sessions ([#3866](https://github.com/OneStepAt4time/aegis/pull/3866), closes [#3852](https://github.com/OneStepAt4time/aegis/issues/3852))
 - **ACP content validation** — detect and reject hallucinated outputs in ACP responses ([#3871](https://github.com/OneStepAt4time/aegis/pull/3871), closes [#3853](https://github.com/OneStepAt4time/aegis/issues/3853))
+- **MCP secrets moved to env vars** — remove hardcoded secrets, add CI gate ([#4040](https://github.com/OneStepAt4time/aegis/pull/4040))
+- **OTEL PII redaction** — redact hostname and PID from resource attributes ([#4039](https://github.com/OneStepAt4time/aegis/pull/4039))
+- **Multi-agent security requirements** — documented review protocol and security requirements ([#3980](https://github.com/OneStepAt4time/aegis/pull/3980))
 
 ### Bug Fixes
 
@@ -67,6 +70,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stream timeout tuning** — less aggressive timeout for `ag run` streaming ([#3733](https://github.com/OneStepAt4time/aegis/pull/3733))
 - **INVALID_WORKDIR error** — include allowed directories in error message for guidance ([#3734](https://github.com/OneStepAt4time/aegis/pull/3734), [#3799](https://github.com/OneStepAt4time/aegis/pull/3799))
 - **EADDRINUSE prevention** — skip server start if already running ([#3770](https://github.com/OneStepAt4time/aegis/pull/3770))
+- **Metrics preservation across session lifecycle** — cost/token data no longer lost on session restart ([#4149](https://github.com/OneStepAt4time/aegis/pull/4149))
+- **Killed sessions separated from failed in stats** — accurate failure rates in dashboard and API ([#4147](https://github.com/OneStepAt4time/aegis/pull/4147))
+- **Rate-limit counts exclude killed sessions** — active session counts no longer inflate with terminated sessions ([#4151](https://github.com/OneStepAt4time/aegis/pull/4151))
+- **Session filter 'All (0)'** — add total field to stats for correct filter counter ([#4153](https://github.com/OneStepAt4time/aegis/pull/4153))
+- **Awaiting_approval status + riskLevel crash** — dashboard handles approval status without crashing ([#4155](https://github.com/OneStepAt4time/aegis/pull/4155), [#4156](https://github.com/OneStepAt4time/aegis/pull/4156), [#4150](https://github.com/OneStepAt4time/aegis/issues/4150))
+- **Auth: remove __Host- cookie prefix** — dashboard auth works over HTTP without TLS ([#4146](https://github.com/OneStepAt4time/aegis/pull/4146))
+- **ag status shows cumulative total** — totalCreated persists across restarts instead of in-memory counter ([#4171](https://github.com/OneStepAt4time/aegis/pull/4171))
+- **ACP OOM prevention** — event compaction and debounced persist prevent memory crash loops ([#4032](https://github.com/OneStepAt4time/aegis/pull/4032))
+- **Transcript API returns full messages** — no more truncated responses from `/read` ([#3863](https://github.com/OneStepAt4time/aegis/pull/3863))
+- **Cross-session rate-limit coordination** — prevent concurrent retry storms across sessions ([#3931](https://github.com/OneStepAt4time/aegis/pull/3931))
+- **Dashboard null guards for analytics** — resilient against empty/undefined API data ([#4189](https://github.com/OneStepAt4time/aegis/pull/4189))
+- **workDir validation error links** — add docs link to workDir validation error messages ([#4126](https://github.com/OneStepAt4time/aegis/pull/4126))
+- **Dashboard: remove dead exports** — clean up 27 unused hooks, utils, types, schemas ([#3649](https://github.com/OneStepAt4time/aegis/pull/3649))
+- **Dashboard: focus traps on modals** — keyboard accessibility for 5 dialog windows ([#4095](https://github.com/OneStepAt4time/aegis/pull/4095))
+- **Dashboard: responsive layout** — mobile-friendly SessionHistoryPage and NewSessionPage ([#3645](https://github.com/OneStepAt4time/aegis/pull/3645), [#3646](https://github.com/OneStepAt4time/aegis/pull/3646))
+- **Dashboard: SessionBoard mobile a11y** — responsive columns, keyboard focus rings, label associations ([#4041](https://github.com/OneStepAt4time/aegis/pull/4041), [#4042](https://github.com/OneStepAt4time/aegis/pull/4042), [#4043](https://github.com/OneStepAt4time/aegis/pull/4043))
+- **Dashboard: lazy tabs ErrorBoundary** — graceful fallback for failed tab loads ([#4044](https://github.com/OneStepAt4time/aegis/pull/4044))
+- **Dashboard: WCAG AA contrast** — placeholder text meets accessibility standards ([#4097](https://github.com/OneStepAt4time/aegis/pull/4097))
+- **Dashboard: global approval notifications** — badge, toast, and store for pending approvals ([#3686](https://github.com/OneStepAt4time/aegis/pull/3686))
+- **Dashboard: unified StatusDot component** — eliminate duplicate component ([#3899](https://github.com/OneStepAt4time/aegis/pull/3899))
+- **Dashboard: resilient session creation** — fallback refetch on optimistic create failures ([#3738](https://github.com/OneStepAt4time/aegis/pull/3738))
 - **Idle status after completed work** — `ag run` handles idle status correctly ([#3774](https://github.com/OneStepAt4time/aegis/pull/3774))
 - **ag run --help** — shows run-specific flags instead of generic help ([#3796](https://github.com/OneStepAt4time/aegis/pull/3796))
 - **ag init non-TTY/Ctrl+D** — improve prompt rendering for non-TTY environments ([#3736](https://github.com/OneStepAt4time/aegis/pull/3736))
@@ -110,6 +134,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard: i18n extraction** — StatusDot, CostPage Budget Alerts, AnalyticsPage ([#3883](https://github.com/OneStepAt4time/aegis/pull/3883))
 - **Dashboard: safe component-based syntax highlighting** — refactor CodeBlock for resilience ([#3958](https://github.com/OneStepAt4time/aegis/pull/3958))
 - **Dashboard: loading state + error surface** — SettingsPage silent catch errors fixed ([#3960](https://github.com/OneStepAt4time/aegis/pull/3960))
+- **Session-level approval gate** — require explicit approval before sessions start Claude Code, with Telegram inline buttons ([#4092](https://github.com/OneStepAt4time/aegis/pull/4092), [#4088](https://github.com/OneStepAt4time/aegis/pull/4088))
+- **Dashboard: Telegram notification settings page** — configure notification preferences from dashboard ([#4091](https://github.com/OneStepAt4time/aegis/pull/4091))
+- **Dashboard: approval UI — phase 2** — one-tap Telegram approval/rejection with inline buttons ([#4096](https://github.com/OneStepAt4time/aegis/pull/4096))
+- **Dashboard: server connection health indicator** — real-time connection status in sidebar ([#4112](https://github.com/OneStepAt4time/aegis/pull/4112))
+- **Dashboard: session expiry guard with re-auth modal** — prompt re-login when session expires ([#4170](https://github.com/OneStepAt4time/aegis/pull/4170))
+- **Dashboard: health sweep** — heatmap data, cost empty-state handling, general resilience ([#4179](https://github.com/OneStepAt4time/aegis/pull/4179))
+- **Dashboard: E2E smoke tests** — automated tests for analytics and session detail pages ([#4178](https://github.com/OneStepAt4time/aegis/pull/4178))
+- **Dashboard: lazy-import heavy components** — tour, onboarding, and command palette ([#4177](https://github.com/OneStepAt4time/aegis/pull/4177))
+- **Auto-cleanup killed sessions + purge endpoint** — configurable reaper and manual purge ([#4124](https://github.com/OneStepAt4time/aegis/pull/4124))
+- **OTEL agent identity tracing** — agent_id and parent_agent_id on all spans ([#3946](https://github.com/OneStepAt4time/aegis/pull/3946))
+- **Agent identity model** — types, manager, and ADR for multi-agent identity ([#3999](https://github.com/OneStepAt4time/aegis/pull/3999))
+- **CC agents discovery** — list available Claude Code agents via `claude agents --json` ([#4028](https://github.com/OneStepAt4time/aegis/pull/4028))
+- **Pinned session reaper** — automatically clean up stale pinned sessions ([#4027](https://github.com/OneStepAt4time/aegis/pull/4027))
 
 ### Documentation
 
@@ -147,6 +184,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Action sweeper env vars docs** — AEGIS_ACTION_SWEEPER_ENABLED/INTERVAL_MS ([#4008](https://github.com/OneStepAt4time/aegis/pull/4008))
 - **Resume model carry-over docs** — note model/effort inheritance in resumeSessionId description ([#4020](https://github.com/OneStepAt4time/aegis/pull/4020))
 - **Dogfooding dashboard fixes** — 24 UI issues from sprint testing ([#3827](https://github.com/OneStepAt4time/aegis/pull/3827)–[#3834](https://github.com/OneStepAt4time/aegis/pull/3834))
+- **Phone approvals setup guide** — step-by-step Telegram bot configuration for one-tap approvals ([#4090](https://github.com/OneStepAt4time/aegis/pull/4090))
+- **Session approval timeout docs** — auto-reject timeout configuration ([#4118](https://github.com/OneStepAt4time/aegis/pull/4118))
+- **Zero-config init docs** — ag init auto-starts server and opens browser ([#4100](https://github.com/OneStepAt4time/aegis/pull/4100))
+- **README one-liner** — clearer value proposition above the fold ([#4101](https://github.com/OneStepAt4time/aegis/pull/4101))
+- **Missing env vars from audit** — rate-limiting, env security, session store env vars added to enterprise reference ([#4176](https://github.com/OneStepAt4time/aegis/pull/4176))
+- **OTEL PII data classification** — agent_id/parent_agent_id classification docs ([#4036](https://github.com/OneStepAt4time/aegis/pull/4036))
+- **Security: workDir scope wording** — clarified workDir scoping per Themis review ([#4025](https://github.com/OneStepAt4time/aegis/pull/4025))
+- **Claude Code minimum version pin** — document ≥ 2.1.145 requirement ([#4026](https://github.com/OneStepAt4time/aegis/pull/4026))
+- **Session purge docs** — auto-cleanup env vars and purge endpoint ([#4141](https://github.com/OneStepAt4time/aegis/pull/4141))
+- **Stats response docs** — total and totalKilled fields in /v1/sessions/stats ([#4164](https://github.com/OneStepAt4time/aegis/pull/4164), [#4167](https://github.com/OneStepAt4time/aegis/pull/4167))
+- **v0.7.0 DevRel deliverables** — draft release notes and positioning ([#4113](https://github.com/OneStepAt4time/aegis/pull/4113))
+
+### Changed
+
+- **StructuredLogger migration** — 168 console.* calls replaced with structured logger across backend, CLI, Telegram, and ACP ([#4172](https://github.com/OneStepAt4time/aegis/pull/4172), [#4174](https://github.com/OneStepAt4time/aegis/pull/4174), [#4175](https://github.com/OneStepAt4time/aegis/pull/4175), [#4182](https://github.com/OneStepAt4time/aegis/pull/4182), [#4181](https://github.com/OneStepAt4time/aegis/pull/4181))
+- **ACP SDK bump** — @agentclientprotocol/claude-agent-acp 0.35.0 → 0.37.0 ([#4173](https://github.com/OneStepAt4time/aegis/pull/4173))
+- **Post-merge auto-rebuild hook** — dist/ auto-rebuilds and server restarts on develop merge ([#4125](https://github.com/OneStepAt4time/aegis/pull/4125))
 
 ---
 
