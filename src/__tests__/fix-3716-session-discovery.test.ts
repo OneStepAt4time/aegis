@@ -11,6 +11,7 @@
  * 7. purgeStaleSessionMapEntries with missing map file (no-op)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setStructuredLogSink } from '../logger.js';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -44,11 +45,11 @@ function createConfig() {
 
 describe('Issue #3716 — SessionDiscovery error and edge cases', () => {
   let tmpDir: string;
-  let consoleLogSpy: any;
+  let _noop: any;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'aegis-disc-test-'));
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    setStructuredLogSink({ info: () => {}, warn: () => {}, error: () => {} });
   });
 
   afterEach(() => {

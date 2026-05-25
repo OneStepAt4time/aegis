@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { secureFilePermissions } from './file-utils.js';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 import { findPidOnPort, readParentPid } from './process-utils.js';
 
 export async function writePidFile(stateDir: string): Promise<string> {
@@ -106,19 +109,19 @@ async function killStalePortHolder(port: number, stateDir: string): Promise<bool
       if (pid === process.pid) continue;
 
       if (await isAncestorPid(pid)) {
-        console.warn(`EADDRINUSE recovery: skipping ancestor PID ${pid} on port ${port}`);
+        log.warn({ component: 'startup', operation: 'skipAncestorPid', attributes: { pid, port } });
         continue;
       }
 
       const pidFilePid = await readPidFile(stateDir);
       if (pidFilePid !== null && pid === pidFilePid && pid !== process.pid) {
-        console.warn(`EADDRINUSE recovery: skipping peer Aegis PID ${pid} (PID file match) on port ${port}`);
+        log.warn({ component: 'startup', operation: 'skipPeerPid', attributes: { pid, port } });
         continue;
       }
 
       if (!pidExists(pid)) continue;
 
-      console.warn(`EADDRINUSE recovery: killing stale process PID ${pid} on port ${port}`);
+      log.warn({ component: 'startup', operation: 'killingStalePid', attributes: { pid, port } });
 
       try {
         process.kill(pid, 'SIGTERM');
@@ -165,13 +168,13 @@ export async function listenWithRetry(
       if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') || attempt >= maxRetries) {
         throw err;
       }
-      console.error(`EADDRINUSE on port ${port} - attempting recovery (attempt ${attempt + 1}/${maxRetries})`);
+      log.error({ component: 'startup', operation: 'addrInUseRecovery', attributes: { port, attempt: attempt + 1, maxRetries } });
       const killed = await killStalePortHolder(port, stateDir);
       if (!killed) {
         // #3346: Better error message when a peer Aegis is already running
-        console.error(`EADDRINUSE: another Aegis server is already running on port ${port}`);
-        console.error(`  If you want to use the running server, no action needed — just connect to it.`);
-        console.error(`  If you want to restart it, stop the existing server first: ag stop`);
+        log.error({ component: 'startup', operation: 'addrInUsePeerRunning', attributes: { port } });
+        log.error({ component: 'startup', operation: 'addrInUseHintConnect', attributes: { port } });
+        log.error({ component: 'startup', operation: 'addrInUseHintStop', attributes: { port } });
         process.exit(1);
       }
     }

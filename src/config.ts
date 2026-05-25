@@ -23,6 +23,9 @@ import { parseIntSafe } from './validation.js';
 import { configFileSchema } from './validation.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { secureFilePermissions } from './file-utils.js';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 
 /** Issue #2267: System tenant ID for admin/master keys and cross-tenant operations. */
 export const SYSTEM_TENANT = '_system';
@@ -293,7 +296,7 @@ function isLegacyManusConfigPath(filePath: string): boolean {
 
 function normalizeConfigFileObject(raw: unknown, filePath: string): Partial<Config> | null {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    console.warn(`Config file ${filePath} is not an object, ignoring`);
+    log.warn({ component: 'config', operation: 'invalidConfigFile', attributes: { path: filePath } });
     return null;
   }
 
@@ -303,7 +306,7 @@ function normalizeConfigFileObject(raw: unknown, filePath: string): Partial<Conf
 
   const parsed = configFileSchema.safeParse(candidate);
   if (!parsed.success) {
-    console.warn(`Config file ${filePath} has invalid fields, ignoring:`, parsed.error.format());
+    log.warn({ component: 'config', operation: 'invalidConfigFields', attributes: { path: filePath, errors: String(parsed.error.format()) } });
     return null;
   }
 
@@ -320,7 +323,7 @@ export async function readConfigFile(filePath: string): Promise<Partial<Config> 
     const data = await readFile(filePath, 'utf-8');
     return normalizeConfigFileObject(parseConfigText(filePath, data), filePath);
   } catch (e) {
-    console.warn(`Failed to parse config file ${filePath}:`, e);
+    log.warn({ component: 'config', operation: 'parseFailed', attributes: { path: filePath, error: String(e) } });
     return null;
   }
 }
@@ -361,7 +364,7 @@ async function loadConfigFile(): Promise<Partial<Config>> {
     const parsed = await readConfigFile(path);
     if (!parsed) continue;
     if (isLegacyManusConfigPath(path)) {
-      console.log(`Config: loaded from legacy path ${path} — consider migrating to aegis paths`);
+      log.info({ component: 'config', operation: 'legacyPathUsed', attributes: { path } });
     }
     return parsed;
   }
@@ -425,7 +428,7 @@ function parseNumericEnvOverride(
     strict: true,
     min: bounds.min,
     max: bounds.max,
-    onError: (message) => console.warn(`Config: ${message}`),
+    onError: (message) => log.warn({ component: 'config', operation: 'envParseError', attributes: { message } }),
   });
 }
 
@@ -443,7 +446,7 @@ function parseTgAllowedUsers(envName: string, value: string): number[] {
     parsedUsers.push(parsed);
   }
   if (invalidEntries.length > 0) {
-    console.warn(`Config: invalid ${envName} entries ignored: ${invalidEntries.join(', ')}`);
+    log.warn({ component: 'config', operation: 'invalidTgUsers', attributes: { envName, invalidEntries: invalidEntries.join(', ') } });
   }
   return parsedUsers;
 }
@@ -528,9 +531,7 @@ function applyEnvOverrides(config: Config): Config {
         if (value === 'true' || value === 'false') {
           config[key] = value === 'true';
         } else {
-          console.warn(
-            `Config: Invalid ${envName}='${value}' (expected "true" or "false"); using ${config[key]}`,
-          );
+          log.warn({ component: 'config', operation: 'invalidBoolEnv', attributes: { envName, value: String(value), current: String(config[key]) } });
         }
         break;
       case 'enforceSessionOwnership':
@@ -562,7 +563,7 @@ function applyEnvOverrides(config: Config): Config {
         if (value === 'respect-cc' || value === 'enforce-worktree' || value === 'enforce-direct') {
           config.isolationPolicy = value as Config['isolationPolicy'];
         } else {
-          console.warn(`Invalid AEGIS_ISOLATION_POLICY: "${value}". Must be respect-cc, enforce-worktree, or enforce-direct.`);
+          log.warn({ component: 'config', operation: 'invalidIsolationPolicy', attributes: { value } });
         }
         break;
       default:
@@ -666,7 +667,7 @@ function resolveStateDir(config: Config): Config {
 
   // If stateDir is the default aegis path but doesn't exist, check for legacy manus path
   if (config.stateDir === aegisDir && !existsSync(aegisDir) && existsSync(manusDir)) {
-    console.log(`Config: using legacy state dir ${manusDir} — consider migrating to ${aegisDir}`);
+    log.info({ component: 'config', operation: 'legacyStateDir', attributes: { manusDir, aegisDir } });
     config.stateDir = manusDir;
   }
 
@@ -777,7 +778,7 @@ export function watchConfigFile(
       debounceTimer = null;
       void reloadAllowedWorkDirs(configPath).then((dirs) => {
         if (dirs === null) return; // Config file gone/invalid — skip callback
-        console.log(`Config: hot-reloaded allowedWorkDirs (${dirs.length} entries)`);
+        log.info({ component: 'config', operation: 'hotReload', attributes: { count: dirs.length } });
         onChange(dirs);
       });
     }, 500);

@@ -7,6 +7,9 @@
 
 import type { SessionManager } from './session.js';
 import { cleanupTerminatedSessionState, type SessionCleanupDeps } from './session-cleanup.js';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 
 /** Result of killAllSessions operation. */
 export interface KillAllResult {
@@ -45,13 +48,11 @@ export async function killAllSessions(
       killed++;
     } catch (e) {
       errors++;
-      console.error(
-        `Signal cleanup: failed to kill session ${session.displayName} (${session.id.slice(0, 8)}): ${(e as Error).message}`,
-      );
+      log.error({ component: 'signal-cleanup', operation: 'killSessionFailed', attributes: { session: session.displayName, sessionId: session.id.slice(0, 8), error: (e as Error).message } });
     }
   }
 
-  console.log(`Signal cleanup: killed ${killed} sessions (${errors} errors)`);
+  log.info({ component: 'signal-cleanup', operation: 'killAllComplete', attributes: { killed, errors } });
   return { killed, errors };
 }
 
@@ -85,17 +86,15 @@ export async function killAllSessionsWithTimeout(
     } catch (e) {
       if (e instanceof TimeoutError) {
         timedOut = true;
-        console.error(`Signal cleanup: TIMED OUT killing session ${session.displayName}`);
+        log.error({ component: 'signal-cleanup', operation: 'killSessionTimeout', attributes: { session: session.displayName } });
       } else {
-        console.error(
-          `Signal cleanup: failed to kill session ${session.displayName}: ${(e as Error).message}`,
-        );
+        log.error({ component: 'signal-cleanup', operation: 'killSessionFailed', attributes: { session: session.displayName, error: (e as Error).message } });
       }
       errors++;
     }
   }
 
-  console.log(`Signal cleanup: killed ${killed}/${allSessions.length} sessions (${errors} errors, ${timedOut ? 'some timed out' : 'no timeouts'})`);
+  log.info({ component: 'signal-cleanup', operation: 'killAllWithTimeoutComplete', attributes: { killed, total: allSessions.length, errors, timedOut } });
   return { killed, errors, timedOut };
 }
 
@@ -134,15 +133,15 @@ export function createSignalHandler(
     if (shuttingDown) return;
     shuttingDown = true;
 
-    console.log(`${signal} received — cleaning up ${sessions.listSessions().length} active sessions...`);
+    log.info({ component: 'signal-cleanup', operation: 'signalReceived', attributes: { signal, sessionCount: sessions.listSessions().length } });
 
     void killAllSessions(sessions)
       .then((result) => {
-        console.log(`${signal} cleanup complete: ${result.killed} sessions killed`);
+        log.info({ component: 'signal-cleanup', operation: 'signalCleanupComplete', attributes: { signal, killed: result.killed } });
         process.exit(0);
       })
       .catch((e) => {
-        console.error(`${signal} cleanup error:`, e);
+        log.error({ component: 'signal-cleanup', operation: 'signalCleanupError', attributes: { signal, error: (e as Error).message } });
         process.exit(1);
       });
   };
