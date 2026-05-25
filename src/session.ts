@@ -125,6 +125,8 @@ export interface SessionInfo {
   /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
   isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
+  /** Issue #4203: Human-readable text of the latest activity (e.g. "Running: npm test"). */
+  latestActivityText?: string;
   ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
   children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
@@ -861,6 +863,7 @@ export class SessionManager {
       status: opts.initialStatus ?? 'pending',
       createdAt: Date.now(),
       lastActivity: Date.now(),
+      latestActivityText: 'Starting session',
       stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
       permissionStallMs: opts.permissionStallMs || SessionManager.DEFAULT_PERMISSION_STALL_MS,
       permissionMode: effectivePermissionMode,

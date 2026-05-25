@@ -31,6 +31,7 @@ import { startToolSpan, setToolResult, spanOk as tracingSpanOk, spanError as tra
 import type { Span } from '@opentelemetry/api';
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
+import { deriveActivityText } from './activity-text.js';
 
 /** CC hook events that require a decision response. */
 
@@ -374,9 +375,11 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           const waiting = await deps.sessions.detectWaitingForInput(sessionId);
           if (waiting) {
             const session = deps.sessions.getSession(sessionId);
-            if (session) session.status = 'waiting_for_input';
+            if (session) { session.status = 'waiting_for_input'; session.latestActivityText = 'Waiting for input'; }
             deps.eventBus.emitStatus(sessionId, 'waiting_for_input', 'Claude finished, waiting for input (hook: Stop)');
           } else {
+            const session = deps.sessions.getSession(sessionId);
+            if (session) session.latestActivityText = 'Idle';
             deps.eventBus.emitStatus(sessionId, 'idle', 'Claude finished (hook: Stop)');
           }
           // Issue #3427: Record session completion in metrics from hook path
@@ -393,6 +396,9 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
             const span = startToolSpan('invoke', { sessionId, toolName, toolUseId, agentId, parentAgentId });
             activeToolSpans.set(`${sessionId}:${toolUseId}`, span);
           }
+          // Issue #4203: Derive human-readable activity text
+          const activityText = deriveActivityText('PreToolUse', toolName, hookBody.tool_input as Record<string, unknown> | undefined);
+          if (session && activityText) session.latestActivityText = activityText;
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is working (hook: tool use)');
           break;
         }
@@ -423,24 +429,42 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           }
           break;
         }
-        case 'PreCompact':
+        case 'PreCompact': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = 'Compacting context';
           deps.eventBus.emitStatus(sessionId, 'compacting', 'Claude is compacting context (hook: PreCompact)');
           break;
-        case 'PostCompact':
+        }
+        case 'PostCompact': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = 'Compaction complete';
           deps.eventBus.emitStatus(sessionId, 'idle', 'Compaction complete (hook: PostCompact)');
           break;
-        case 'Elicitation':
+        }
+        case 'Elicitation': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = 'MCP elicitation';
           deps.eventBus.emitStatus(sessionId, 'working', 'Claude is performing MCP elicitation (hook: Elicitation)');
           break;
-        case 'ElicitationResult':
+        }
+        case 'ElicitationResult': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = 'Processing elicitation result';
           deps.eventBus.emitStatus(sessionId, 'working', 'Elicitation result received (hook: ElicitationResult)');
           break;
-        case 'WorktreeCreate':
+        }
+        case 'WorktreeCreate': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = `Creating worktree: ${(hookBody.worktree_path as string || 'unknown').split('/').pop()}`;
           deps.eventBus.emitStatus(sessionId, 'working', `Worktree created: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeCreate)`);
           break;
-        case 'WorktreeRemove':
+        }
+        case 'WorktreeRemove': {
+          const session = deps.sessions.getSession(sessionId);
+          if (session) session.latestActivityText = `Removing worktree: ${(hookBody.worktree_path as string || 'unknown').split('/').pop()}`;
           deps.eventBus.emitStatus(sessionId, 'idle', `Worktree removed: ${hookBody.worktree_path || 'unknown'} (hook: WorktreeRemove)`);
           break;
+        }
         case 'PermissionRequest':
           deps.eventBus.emitApproval(sessionId,
             hookBody.permission_prompt || 'Permission requested (hook)');
