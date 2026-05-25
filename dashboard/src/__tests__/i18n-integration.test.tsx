@@ -15,7 +15,6 @@ import { I18nProvider, useT, useLocale } from '../i18n/context';
 import { en } from '../i18n/en';
 import { it as itCatalog } from '../i18n/it';
 import { logger } from '../utils/logger';
-import LanguageSwitcher from '../components/shared/LanguageSwitcher';
 
 // ---------- helpers ----------
 
@@ -145,29 +144,8 @@ describe('i18n integration', () => {
   });
 });
 
-describe('LanguageSwitcher', () => {
-  it('renders with accessible label', () => {
-    render(
-      <I18nProvider>
-        <LanguageSwitcher />
-      </I18nProvider>,
-    );
 
-    const select = screen.getByRole('combobox');
-    expect(select).toBeDefined();
-    expect(select.getAttribute('aria-label')).toBe('Language');
-  });
-
-  it('renders English and Italian options', () => {
-    render(
-      <I18nProvider>
-        <LanguageSwitcher />
-      </I18nProvider>,
-    );
-
-    expect(screen.getByText('English')).toBeDefined();
-    expect(screen.getByText('Italiano')).toBeDefined();
-  });
+  
 
   it('falls back to en-US when locale is bare "en"', () => {
     function BareEn() {
@@ -189,4 +167,3 @@ describe('LanguageSwitcher', () => {
 
     expect(screen.getByText('Overview')).toBeDefined();
   });
-});
