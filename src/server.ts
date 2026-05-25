@@ -1,3 +1,6 @@
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 /**
  * server.ts — HTTP API server for Aegis.
  *
@@ -108,6 +111,7 @@ import {
   type DashboardOIDCManager,
 } from './services/auth/OIDCManager.js';
 import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
+
 
 
 
@@ -1036,9 +1040,11 @@ async function main(): Promise<void> {
           if (!fileToken || !auth.checkClientToken(fileToken).matched) {
             persistAuthTokenFile(currentMaster);
             if (fileToken) {
-              console.warn(
-                `[auth] ${clientTokenFile} desynced from config — auto-repaired with current master token.`,
-              );
+              log.warn({
+              component: 'server',
+              operation: 'authTokenDesyncRepaired',
+              attributes: { file: clientTokenFile },
+              });
             }
           }
         } catch {

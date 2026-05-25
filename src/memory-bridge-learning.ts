@@ -1,3 +1,6 @@
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 /**
  * memory-bridge-learning.ts — Learning entries for Memory Bridge.
  *
@@ -10,6 +13,7 @@
  */
 
 import { existsSync } from 'node:fs';
+
 
 export type LearningType = 'pattern' | 'pitfall' | 'preference' | 'architecture' | 'tool';
 export type LearningSource = 'auto' | 'agent-stated' | 'user-stated' | 'human-correction';
@@ -89,7 +93,7 @@ export class LearningStore {
    */
   add(entry: LearningEntry): LearningEntry | null {
     if (!isLearningEntry(entry)) {
-      console.warn(`LearningStore: rejected invalid entry: ${JSON.stringify(entry)}`);
+      log.warn({ component: 'learning-store', operation: 'rejectedInvalidEntry', attributes: { entry: JSON.stringify(entry) } });
       return null;
     }
     const list = this.entries.get(entry.key) || [];

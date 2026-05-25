@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 /**
  * cli.ts — CLI entry point for Aegis.
  *
@@ -36,6 +40,7 @@ import {
 import { getErrorMessage, parseIntSafe, validateEffort } from './validation.js';
 import { generateSessionName } from './utils/session-name.js';
 import { setJsonLogsEnabled } from './logger.js';
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string };
@@ -541,7 +546,7 @@ if (isMainModule) {
   void runCli().then((code) => {
     process.exitCode = code;
   }).catch((error) => {
-    console.error('Failed to start Aegis:', error);
+    log.error({ component: 'cli', operation: 'startFailed', attributes: { error: String(error) } });
     process.exitCode = 1;
   });
 }

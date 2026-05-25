@@ -1,3 +1,6 @@
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 /**
  * session-transcripts.ts — JSONL transcript reading, caching, and pagination.
  *
@@ -15,6 +18,7 @@ import type { AcpEventStore } from './services/acp/event-store.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 import type { UIState } from './session.js';
+
 
 /** Stub: detect UI state from terminal pane text (ACP mode).
  * Issue #3081: In ACP mode there is no tmux pane to read, so we cannot
@@ -630,7 +634,7 @@ export class SessionTranscripts {
         // causing /read to return empty messages despite the JSONL having content.
         session.byteOffset = 0;
         session.monitorOffset = 0;
-        console.log(`Transcripts (#1768 fallback): session ${session.displayName} mapped to ${sessionId.slice(0, 8)}...`);
+        log.info({ component: 'session-transcripts', operation: 'fallbackMapping', attributes: { displayName: session.displayName, sessionId: sessionId.slice(0, 8) } });
         return;
       }
     } catch {

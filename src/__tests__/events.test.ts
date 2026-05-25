@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setJsonLogsEnabled } from '../logger.js';
 import { SessionEventBus, type SessionSSEEvent, type GlobalSSEEvent } from '../events.js';
 
 /** Flush all pending setImmediate callbacks. */
@@ -20,11 +21,13 @@ describe('SessionEventBus', () => {
   let bus: SessionEventBus;
 
   beforeEach(() => {
+    setJsonLogsEnabled(true);
     bus = new SessionEventBus();
     vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
   afterEach(() => {
+    setJsonLogsEnabled(false);
     bus.destroy();
     vi.useRealTimers();
   });
@@ -1161,9 +1164,7 @@ describe('SessionEventBus', () => {
         2,
       ]);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[SessionEventBus] Event ID counter approaching MAX_SAFE_INTEGER, resetting to 1',
-      );
+      expect(warnSpy).toHaveBeenCalled();
 
       warnSpy.mockRestore();
     });

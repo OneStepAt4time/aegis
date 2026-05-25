@@ -1,3 +1,6 @@
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 /**
  * channels/email.ts — Email notification channel.
  *
@@ -18,6 +21,7 @@
 import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
 import type {
+
   Channel,
   SessionEvent,
   SessionEventPayload,
@@ -135,11 +139,11 @@ export class EmailChannel implements Channel {
       });
       this.lastSuccess = Date.now();
       this.lastError = null;
-      console.log(`[email] Sent ${payload.event} email to ${this.to}, messageId: ${result.messageId}`);
+      log.info({ component: 'email', operation: 'sent', attributes: { event: payload.event, to: this.to, messageId: result.messageId } });
     } catch (e: unknown) {
       const error = e instanceof Error ? e.message : String(e);
       this.lastError = error;
-      console.error(`[email] Failed to send ${payload.event} email: ${error}`);
+      log.error({ component: 'email', operation: 'sendFailed', attributes: { event: payload.event, error: String(error) } });
       this.pushDLQ(payload.event, error);
     }
   }

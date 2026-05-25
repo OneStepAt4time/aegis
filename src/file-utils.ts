@@ -1,6 +1,11 @@
 import { execFile } from 'node:child_process';
 import { chmod } from 'node:fs/promises';
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
+
+
 const PERMISSIONS_TIMEOUT_MS = 5_000;
 
 export function buildWindowsIcaclsArgs(filePath: string, account: string): string[] {
@@ -28,7 +33,7 @@ export async function secureFilePermissions(filePath: string, platform: NodeJS.P
 
   const username = process.env.USERNAME;
   if (!username) {
-    console.warn(`Windows permission hardening skipped for ${filePath}: USERNAME is not set`);
+    log.warn({ component: 'file-utils', operation: 'windowsPermSkipped', attributes: { path: filePath, reason: 'USERNAME not set' } });
     return;
   }
 
@@ -37,6 +42,6 @@ export async function secureFilePermissions(filePath: string, platform: NodeJS.P
     await runIcacls(filePath, account);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    console.warn(`Windows permission hardening failed for ${filePath}: ${detail}`);
+    log.warn({ component: 'file-utils', operation: 'windowsPermFailed', attributes: { path: filePath, detail } });
   }
 }

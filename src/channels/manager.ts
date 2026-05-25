@@ -1,3 +1,6 @@
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 /**
  * channels/manager.ts — Routes events to all registered channels.
  *
@@ -13,6 +16,7 @@ import type {
 } from './types.js';
 import { TelegramChannel } from './telegram.js';
 import { startChannelSpan, spanOk, spanError } from '../tracing.js';
+
 
 /**
  * Thrown for retriable failures (5xx server errors, network timeouts).
@@ -53,9 +57,9 @@ export class ChannelManager {
     for (const ch of this.channels) {
       try {
         await ch.init?.(onInbound);
-        console.log(`Channel initialized: ${ch.name}`);
+        log.info({ component: 'channel-manager', operation: 'channelInitialized', attributes: { channel: ch.name } });
       } catch (e) {
-        console.error(`Channel ${ch.name} failed to init:`, e);
+        log.error({ component: 'channel-manager', operation: 'channelInitFailed', attributes: { channel: ch.name, error: String(e) } });
       }
     }
   }
@@ -66,7 +70,7 @@ export class ChannelManager {
       try {
         await ch.destroy?.();
       } catch (e) {
-        console.error(`Channel ${ch.name} failed to destroy:`, e);
+        log.error({ component: 'channel-manager', operation: 'channelDestroyFailed', attributes: { channel: ch.name, error: String(e) } });
       }
     }
   }
@@ -152,12 +156,12 @@ export class ChannelManager {
         // Success — reset failure count (channel may have been in cooldown)
         const prevHealth = this.health.get(ch.name);
         if (prevHealth && prevHealth.failCount > 0) {
-          console.log(`Channel ${ch.name} recovered after ${prevHealth.failCount} failures`);
+          log.info({ component: 'channel-manager', operation: 'channelRecovered', attributes: { channel: ch.name, failCount: prevHealth.failCount } });
         }
         this.health.set(ch.name, { failCount: 0, disabledUntil: 0 });
         spanOk(span);
       } catch (e) {
-        console.error(`Channel ${ch.name} error on ${payload.event}:`, e);
+        log.error({ component: 'channel-manager', operation: 'channelEventError', attributes: { channel: ch.name, event: payload.event, error: String(e) } });
         spanError(span, e);
         // Only count retriable errors (5xx, network) toward circuit breaker.
         // 4xx client errors are non-retriable — the server is healthy.
@@ -166,9 +170,11 @@ export class ChannelManager {
         h.failCount++;
         if (h.failCount >= ChannelManager.FAILURE_THRESHOLD) {
           h.disabledUntil = Date.now() + ChannelManager.COOLDOWN_MS;
-          console.warn(
-            `Channel ${ch.name} disabled after ${h.failCount} consecutive failures, cooldown until ${new Date(h.disabledUntil).toISOString()}`,
-          );
+          log.warn({
+            component: 'channel-manager',
+            operation: 'channelDisabled',
+            attributes: { channel: ch.name, failCount: h.failCount, disabledUntil: new Date(h.disabledUntil).toISOString() },
+          });
         }
         this.health.set(ch.name, h);
       } finally {

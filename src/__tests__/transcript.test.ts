@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { setJsonLogsEnabled } from '../logger.js';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -665,10 +666,12 @@ describe('readNewEntries mid-offset', () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    setJsonLogsEnabled(true);
     tmpDir = mkdtempSync(join(tmpdir(), 'aegis-transcript-'));
   });
 
   afterEach(() => {
+    setJsonLogsEnabled(false);
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -795,8 +798,8 @@ describe('parseLine null logging (Issue #823)', () => {
     const result = await readNewEntries(filePath, 0);
     expect(result.entries).toHaveLength(0);
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(errorSpy.mock.calls[0][0]).toContain('parseLine');
-    expect(errorSpy.mock.calls[0][0]).toContain('malformed JSONL');
+    expect(errorSpy.mock.calls[0][0]).toContain('droppedMalformedLine');
+    expect(errorSpy.mock.calls[0][0]).toContain('droppedMalformedLine');
 
     errorSpy.mockRestore();
     rmSync(filePath, { recursive: true, force: true });
