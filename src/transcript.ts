@@ -255,6 +255,7 @@ export async function readNewEntries(
     }
 
     if (fromOffset >= fileStat.size) {
+      if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[TRANSCRIPT-DEBUG] readNewEntries: no new data. path=${filePath} offset=${fromOffset} size=${fileStat.size}`);
       return { entries: [], newOffset: fromOffset, raw: [] };
     }
 
@@ -308,6 +309,7 @@ export async function readNewEntries(
     }
 
     const parsed = parseEntries(rawEntries, preserveFullText);
+    if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[TRANSCRIPT-DEBUG] readNewEntries: read ${rawEntries.length} raw entries, ${parsed.length} parsed. path=${filePath} fromOffset=${fromOffset} effectiveOffset=${effectiveOffset} readEnd=${readEnd} fileSize=${fileStat.size}`);
     return { entries: parsed, newOffset: readEnd, raw: rawEntries };
   } finally {
     await fd.close();
