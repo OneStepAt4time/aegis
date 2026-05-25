@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setStructuredLogSink } from '../logger.js';
 import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
@@ -77,14 +78,16 @@ describe('Issue #629: Hook endpoint secret validation', () => {
   });
 
   it('should accept hook with valid session ID and correct secret in query param (backward compat)', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const capturedWarns: any[] = [];
+    setStructuredLogSink({ info: () => {}, warn: (r) => { capturedWarns.push(r); }, error: () => {} });
     const res = await app.inject({
       method: 'POST',
       url: `/v1/hooks/Stop?sessionId=${VALID_SESSION_ID}&secret=${VALID_SECRET}`,
       payload: {},
     });
     expect(res.statusCode).toBe(200);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('query-string hook secret is deprecated'));
+    expect(capturedWarns.some(r => r.operation === 'deprecatedQuerySecret')).toBe(true);
+    setStructuredLogSink({ info: () => {}, warn: () => {}, error: () => {} });
   });
 
   it('should reject query-param hook secret in header-only mode', async () => {

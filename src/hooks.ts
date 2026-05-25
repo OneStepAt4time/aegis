@@ -29,6 +29,8 @@ import { evaluatePermissionProfile } from './services/permission/index.js';
 import { timingSafeStringEqual } from './crypto-utils.js';
 import { startToolSpan, setToolResult, spanOk as tracingSpanOk, spanError as tracingSpanError } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 /** CC hook events that require a decision response. */
 
@@ -230,7 +232,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
       return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
     }
     if (!deps.hookSecretHeaderOnly && hasQueryHookSecret) {
-      console.warn(`Hooks: query-string hook secret is deprecated (session ${sessionId}, event ${eventName}); use X-Hook-Secret header`);
+      log.warn({ component: 'hooks', operation: 'deprecatedQuerySecret', sessionId, attributes: { eventName } });
     }
     const hookSecret = headerHookSecret || queryHookSecret;
     if (session.hookSecret && !timingSafeStringEqual(hookSecret, session.hookSecret)) {
@@ -280,12 +282,12 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
     // Issue #89 L26: WorktreeCreate/Remove hooks — informational tracking only
     if (eventName === 'WorktreeCreate' || eventName === 'WorktreeRemove') {
-      console.log(`Hooks: ${eventName} for session ${sessionId}`);
+      log.info({ component: 'hooks', operation: 'worktreeEvent', sessionId, attributes: { eventName } });
     }
 
     // Informational events — log and forward to SSE (already forwarded below via emitHook)
     if (INFORMATIONAL_EVENTS.has(eventName)) {
-      console.log(`Hooks: ${eventName} for session ${sessionId}`);
+      log.info({ component: 'hooks', operation: 'informationalEvent', sessionId, attributes: { eventName } });
     }
 
     // PreCompact/PostCompact — update activity timestamp
@@ -297,7 +299,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     const HOOK_PAYLOAD_WARN_BYTES = 1536;
     const payloadSize = JSON.stringify(req.body ?? {}).length;
     if (payloadSize > HOOK_PAYLOAD_WARN_BYTES) {
-      console.warn(`Hooks: ${eventName} payload for session ${sessionId.slice(0, 8)} is ${payloadSize} bytes (${(payloadSize / 1024).toFixed(1)} KB) — exceeds ${HOOK_PAYLOAD_WARN_BYTES} byte warning threshold. CC may truncate SessionStart content >2KB (upstream #55750).`);
+      log.warn({ component: 'hooks', operation: 'payloadSizeExceeded', sessionId, attributes: { eventName, payloadSize, thresholdBytes: HOOK_PAYLOAD_WARN_BYTES } });
       deps.eventBus.emit(sessionId, {
         event: 'system',
         sessionId,
@@ -315,7 +317,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     if (eventName === 'StopFailure') {
       deps.sessions.recordHookFailure(sessionId);
       if (deps.sessions.checkHookCircuitBreaker(sessionId, HOOK_CIRCUIT_BREAKER_MAX, HOOK_CIRCUIT_BREAKER_WINDOW_MS)) {
-        console.warn(`Hooks: circuit breaker tripped for session ${sessionId} — ${HOOK_CIRCUIT_BREAKER_MAX} StopFailure events in ${HOOK_CIRCUIT_BREAKER_WINDOW_MS}ms, returning ok:true to break CC retry loop`);
+        log.warn({ component: 'hooks', operation: 'circuitBreakerTripped', sessionId, attributes: { maxFailures: HOOK_CIRCUIT_BREAKER_MAX, windowMs: HOOK_CIRCUIT_BREAKER_WINDOW_MS } });
         deps.eventBus.emit(sessionId, {
           event: 'circuit_breaker',
           sessionId,
@@ -341,7 +343,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     if (eventName === 'PermissionRequest') {
       const rawMode = hookBody.permission_mode;
       if (rawMode !== undefined && !VALID_PERMISSION_MODES.has(rawMode)) {
-        console.warn(`Hooks: invalid permission_mode "${rawMode}" from PermissionRequest, using "default"`);
+        log.warn({ component: 'hooks', operation: 'invalidPermissionMode', sessionId, attributes: { rawMode } });
         hookBody.permission_mode = 'default';
       }
     }
@@ -474,12 +476,12 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
             data: { status: 'ask_question', questionId: toolUseId, question: questionText },
           });
 
-          console.log(`Hooks: AskUserQuestion for session ${sessionId} — waiting for answer (timeout: ${ANSWER_TIMEOUT_MS}ms)`);
+          log.info({ component: 'hooks', operation: 'askUserQuestionWaiting', sessionId, attributes: { timeoutMs: ANSWER_TIMEOUT_MS } });
 
           const answer = await deps.sessions.waitForAnswer(sessionId, toolUseId, questionText, ANSWER_TIMEOUT_MS);
 
           if (answer !== null) {
-            console.log(`Hooks: AskUserQuestion answered for session ${sessionId}`);
+            log.info({ component: 'hooks', operation: 'askUserQuestionAnswered', sessionId });
             return reply.status(200).send({
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
@@ -490,7 +492,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
           }
 
           // Timeout: allow without answer (CC shows question to user in terminal)
-          console.log(`Hooks: AskUserQuestion timeout for session ${sessionId} — allowing without answer`);
+          log.info({ component: 'hooks', operation: 'askUserQuestionTimeout', sessionId });
         }
 
         if (session.permissionProfile) {
@@ -538,7 +540,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         if (toolName === 'Edit' && hookBody.tool_input?.new_string) {
           const deduplicated = deduplicateConsecutiveLines(hookBody.tool_input.new_string as string);
           if (deduplicated !== null) {
-            console.log(`Hooks: deduplicated Edit new_string for session ${sessionId} (CC bug #32891 workaround)`);
+            log.info({ component: 'hooks', operation: 'deduplicatedEditNewString', sessionId });
             return reply.status(200).send({
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
@@ -566,7 +568,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         // Auto-approve modes respond immediately; others wait for client.
         const permMode = session.permissionMode || 'default';
         if (AUTO_APPROVE_MODES.has(permMode)) {
-          console.log(`Hooks: auto-approving PermissionRequest for session ${sessionId} (mode: ${permMode})`);
+          log.info({ component: 'hooks', operation: 'autoApprovePermission', sessionId, attributes: { permissionMode: permMode } });
           return reply.status(200).send({
             hookSpecificOutput: {
               hookEventName: 'PermissionRequest',
@@ -577,7 +579,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
 
         // Non-auto-approve: wait for client to approve/reject via API.
         // Store pending permission and block until resolved or timeout.
-        console.log(`Hooks: waiting for client permission decision for session ${sessionId}`);
+        log.info({ component: 'hooks', operation: 'waitingForPermissionDecision', sessionId });
         const decision: PermissionDecision = await deps.sessions.waitForPermissionDecision(
           sessionId,
           PERMISSION_TIMEOUT_MS,
@@ -586,7 +588,7 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
         );
 
         const decisionLabel = decision === 'allow' ? 'approved' : 'rejected';
-        console.log(`Hooks: PermissionRequest for session ${sessionId} — ${decisionLabel} by client`);
+        log.info({ component: 'hooks', operation: 'permissionDecisionResolved', sessionId, attributes: { decision: decisionLabel } });
 
         return reply.status(200).send({
           hookSpecificOutput: {

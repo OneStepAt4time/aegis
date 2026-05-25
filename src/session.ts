@@ -29,6 +29,8 @@ import { maybeInjectFault } from './fault-injection.js';
 import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 /** UI states for Claude Code sessions. */
 export type UIState =
@@ -400,7 +402,7 @@ export class SessionManager {
         if (entry.endsWith('.tmp')) {
           const fullPath = join(dir, entry);
           try { unlinkSync(fullPath); } catch { /* best effort */ }
-          console.log(`Cleaned stale tmp file: ${entry}`);
+          log.info({ component: 'session', operation: 'cleanStaleTmp', attributes: { entry } });
         }
       }
     } catch { /* dir may not exist yet */ }
@@ -436,7 +438,7 @@ export class SessionManager {
             this.state = { sessions: hydrateSessions(parsed.data) };
             await this.restoreSessionHookSecrets();
           } else {
-            console.warn('State file failed validation, attempting backup restore');
+            log.warn({ component: 'session', operation: 'stateValidationFailed' });
             const backupFile = `${this.stateFile}.bak`;
             if (existsSync(backupFile)) {
               try {
@@ -445,7 +447,7 @@ export class SessionManager {
                 if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
                   this.state = { sessions: hydrateSessions(backupParsed.data) };
                   await this.restoreSessionHookSecrets();
-                  console.log('Restored state from backup');
+                  log.info({ component: 'session', operation: 'stateRestoredFromBackup' });
                 } else {
                   this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
                 }
@@ -477,7 +479,7 @@ export class SessionManager {
       (s) => s.status === 'awaiting_approval'
     );
     if (stuckSessions.length > 0) {
-      console.warn(`[session] Recovering ${stuckSessions.length} session(s) stuck in awaiting_approval after restart`);
+      log.warn({ component: 'session', operation: 'recoveringStuckApprovals', attributes: { count: stuckSessions.length } });
       for (const session of stuckSessions) {
         this.emitSessionAwaitingApproval(session);
       }
@@ -487,7 +489,7 @@ export class SessionManager {
   /** Save state to disk atomically (write to temp, then rename).
    *  #218: Uses a write queue to serialize concurrent saves and prevent corruption. */
   async save(): Promise<void> {
-    this.saveQueue = this.saveQueue.then(() => this.doSave()).catch(e => console.error('State save error:', e));
+    this.saveQueue = this.saveQueue.then(() => this.doSave()).catch(e => log.error({ component: 'session', operation: 'stateSaveFailed', attributes: { error: String(e) } }));
     await this.saveQueue;
   }
 
@@ -497,7 +499,7 @@ export class SessionManager {
     if (this.saveDebounceTimer !== null) clearTimeout(this.saveDebounceTimer);
     this.saveDebounceTimer = setTimeout(() => {
       this.saveDebounceTimer = null;
-      void this.save().catch(e => console.error('Session: debounced save failed:', e));
+      void this.save().catch(e => log.error({ component: 'session', operation: 'debouncedSaveFailed', attributes: { error: String(e) } }));
     }, SessionManager.SAVE_DEBOUNCE_MS);
   }
 
@@ -778,7 +780,7 @@ export class SessionManager {
     // Issue #3613: Enforce isolation policy
     const policy = opts.isolationPolicy ?? this.config.isolationPolicy;
     if (policy === 'enforce-worktree' && isolationMode === 'none') {
-      console.warn(`Session ${id}: enforce-worktree policy rejecting session with detected bgIsolation="none"`);
+      log.warn({ component: 'session', operation: 'worktreePolicyRejected', sessionId: id, attributes: { policy, detectedIsolation: 'none' } });
       throw new SessionCreationError(
         `Session rejected: isolation policy is 'enforce-worktree' but CC settings have bgIsolation="none". ` +
         `Set worktree.bgIsolation to "worktree" in .claude/settings.json or change the server isolation policy.`
@@ -786,7 +788,7 @@ export class SessionManager {
     }
     if (policy === 'enforce-direct') {
       if (isolationMode !== 'none') {
-        console.warn(`Session ${id}: enforce-direct policy overriding detected worktree isolation to none`);
+        log.warn({ component: 'session', operation: 'directPolicyOverride', sessionId: id });
       }
       isolationMode = 'none';
     }
@@ -812,7 +814,7 @@ export class SessionManager {
               lastCleanupWorkDir = opts.workDir;
             }
           } catch (e) {
-            console.warn(`Hook cleanup: failed to clean stale hooks: ${(e as Error).message}`);
+            log.warn({ component: 'session', operation: 'hookCleanupFailed', attributes: { error: (e as Error).message } });
           }
         }
 
@@ -821,7 +823,7 @@ export class SessionManager {
       const baseUrl = getConfiguredBaseUrl(this.config);
       hookSettingsFile = await writeHookSettingsFile(baseUrl, id, hookSecret, opts.workDir);
     } catch (e) {
-      console.error(`Hook settings: failed to generate settings file: ${(e as Error).message}`);
+      log.error({ component: 'session', operation: 'hookSettingsGenerateFailed', attributes: { error: (e as Error).message } });
       // Non-fatal: hooks won't work for this session, but CC still launches
     }
 
@@ -998,9 +1000,12 @@ export class SessionManager {
       const duration = now - session.createdAt;
       if (toolCount > 0 && toolCount <= PREMATURE_MIN_TOOLS && duration >= PREMATURE_MIN_DURATION_MS) {
         session.prematureTermination = true;
-        console.warn(
-          `Session ${id.slice(0, 8)}: possible premature termination — ${toolCount} tool uses in ${Math.round(duration / 1000)}s (threshold: <=${PREMATURE_MIN_TOOLS} tools, >=${PREMATURE_MIN_DURATION_MS}ms duration)`
-        );
+        log.warn({
+          component: 'session',
+          operation: 'possiblePrematureTermination',
+          sessionId: id,
+          attributes: { toolCount, durationMs: duration, thresholdTools: PREMATURE_MIN_TOOLS, thresholdMs: PREMATURE_MIN_DURATION_MS },
+        });
       }
     }
 
@@ -1013,8 +1018,7 @@ export class SessionManager {
       // Issue #828: Clamp future timestamps to prevent clock skew corruption.
       // If the client's clock is ahead of ours, store our timestamp instead.
       if (hookTimestamp > now) {
-        console.warn(`updateStatusFromHook: clamping future hookTimestamp ` +
-          `(${hookTimestamp} > ${now}) for session ${id.slice(0, 8)}`);
+        log.warn({ component: 'session', operation: 'clampedFutureTimestamp', sessionId: id, attributes: { hookTimestamp, now } });
         session.lastHookEventAt = now;
       } else {
         session.lastHookEventAt = hookTimestamp;
@@ -1125,7 +1129,7 @@ export class SessionManager {
       this.approvalTimeouts.delete(sessionId);
       const session = this.state.sessions[sessionId];
       if (session && session.status === 'awaiting_approval') {
-        console.warn(`[session] Auto-rejecting session ${sessionId} after ${timeoutMs}ms approval timeout`);
+        log.warn({ component: 'session', operation: 'autoRejectApproval', sessionId, attributes: { timeoutMs } });
         try {
           await this.rejectSession(sessionId);
           // Notify channels about auto-rejection
@@ -1133,7 +1137,7 @@ export class SessionManager {
             this.onSessionApprovalRecovery({ ...session, status: 'killed' });
           }
         } catch (e) {
-          console.error(`[session] Failed to auto-reject session ${sessionId}:`, e);
+          log.error({ component: 'session', operation: 'autoRejectFailed', sessionId, attributes: { error: String(e) } });
         }
       }
     }, timeoutMs);
@@ -1222,7 +1226,7 @@ export class SessionManager {
     try {
       this.discovery.startDiscoveryPolling(id, session.workDir);
     } catch (e) {
-      console.error(`[session] approveSession: discovery polling failed for ${id}:`, e);
+      log.error({ component: 'session', operation: 'approveDiscoveryFailed', sessionId: id, attributes: { error: String(e) } });
     }
     return session;
   }
