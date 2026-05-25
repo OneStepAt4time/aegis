@@ -32,6 +32,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
+import { logger } from '../utils/logger';
 
 export type IconSize = 12 | 16 | 20 | 24;
 
@@ -98,7 +99,7 @@ export function Icon({
   const LucideIcon = ICON_MAP[name];
   if (!LucideIcon) {
     if (typeof console !== 'undefined') {
-      console.warn(`[Icon] Unknown icon: "${name}". Add it to Icon.tsx allowlist.`);
+      logger.warn('Icon', `Unknown icon: "${name}". Add it to Icon.tsx allowlist.`);
     }
     return null;
   }
