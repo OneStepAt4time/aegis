@@ -149,12 +149,12 @@ export default function OverviewPage() {
         id: 'errors',
         label: 'Error Rate',
         value: totalSessions > 0
-          ? `${((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)}%`
+          ? `${(((analytics.errorRates?.failedSessions ?? 0) / totalSessions) * 100).toFixed(1)}%`
           : '0%',
-        color: totalSessions > 0 && (analytics.errorRates.failedSessions / totalSessions) > 0.05
+        color: totalSessions > 0 && ((analytics.errorRates?.failedSessions ?? 0) / totalSessions) > 0.05
           ? 'cost'
           : 'efficiency',
-        trend: totalSessions > 0 && (analytics.errorRates.failedSessions / totalSessions) > 0.05
+        trend: totalSessions > 0 && ((analytics.errorRates?.failedSessions ?? 0) / totalSessions) > 0.05
           ? 'up'
           : 'flat',
       },
@@ -229,7 +229,7 @@ export default function OverviewPage() {
             <span>·</span>
             <span>
               {formatDuration(
-                analytics.durationTrends.length > 0
+                (analytics.durationTrends ?? []).length > 0
                   ? Math.round(
                       (analytics.durationTrends ?? []).reduce((s, d) => s + d.avgDurationSec * d.count, 0)
                       / (analytics.durationTrends ?? []).reduce((s, d) => s + d.count, 0),
@@ -240,8 +240,8 @@ export default function OverviewPage() {
             </span>
             <span>·</span>
             <span>
-              {analytics.sessionVolume.length > 0
-                ? `${formatDateShort(analytics.sessionVolume[0].date)} → ${formatDateShort(analytics.sessionVolume[analytics.sessionVolume.length - 1].date)}`
+              {(analytics.sessionVolume ?? []).length > 0
+                ? `${formatDateShort(analytics.sessionVolume?.[0]?.date)} → ${formatDateShort(analytics.sessionVolume?.[analytics.sessionVolume.length - 1]?.date)}`
                 : 'No date range'}
             </span>
             <span>·</span>
@@ -257,7 +257,7 @@ export default function OverviewPage() {
         {/* Cost/Day chart — 2/3 width */}
         <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.dailyCostChart")}>
           <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Cost / Day</h3>
-          {analytics && analytics.costTrends.length > 0 ? (
+          {analytics && (analytics.costTrends ?? []).length > 0 ? (
             <Suspense fallback={<div className="h-[220px] animate-pulse rounded bg-[var(--color-void-lighter)]/20" />}>
               <OverviewCostChart data={analytics.costTrends} />
             </Suspense>

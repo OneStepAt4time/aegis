@@ -72,7 +72,7 @@ function CustomTooltip({ active, payload, label }: {
 
 function generateCSV(data: AggregateMetricsResponse): string {
   const headers = ['Timestamp', 'Sessions', 'Messages', 'Tool Calls', 'Token Cost (USD)'];
-  const rows = data.timeSeries.map((tp) => [
+  const rows = (data.timeSeries ?? []).map((tp) => [
     tp.timestamp,
     String(tp.sessions),
     String(tp.messages),
@@ -320,7 +320,7 @@ export default function MetricsPage() {
       )}
 
       {/* Cost trend line chart */}
-      {data && granularity !== 'key' && data.timeSeries.length > 0 && (
+      {data && granularity !== 'key' && (data.timeSeries ?? []).length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
@@ -356,7 +356,7 @@ export default function MetricsPage() {
       )}
 
       {/* By-key breakdown table */}
-      {data && data.byKey.length > 0 && (
+      {data && (data.byKey ?? []).length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Breakdown by API Key
@@ -373,7 +373,7 @@ export default function MetricsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.byKey.map((row) => (
+                {(data.byKey ?? []).map((row) => (
                   <tr key={row.keyId} className="border-b border-[var(--color-border-strong)]/50">
                     <td className="py-2 font-mono text-[var(--color-text-primary)]">{row.keyName}</td>
                     <td className="py-2 text-right font-mono text-[var(--color-text-primary)]">{row.sessions.toLocaleString()}</td>
@@ -389,7 +389,7 @@ export default function MetricsPage() {
       )}
 
       {/* Empty state */}
-      {data && data.summary.totalSessions === 0 && (
+      {data && data.summary?.totalSessions === 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-8 text-center">
           <BarChart3 className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" />
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
