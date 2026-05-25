@@ -43,6 +43,7 @@ import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult 
 import ToastContainer from './ToastContainer';
 import ConnectionBanner from './ConnectionBanner';
 import { ServerHealthDot, ServerHealthBanner } from './shared/ServerHealthIndicator';
+import { SessionExpiredModal } from './shared/SessionExpiredModal';
 import { ShieldWordmark } from './brand/ShieldLogo';
 import { useT } from '../i18n/context';
 
@@ -715,6 +716,7 @@ export default function Layout() {
       {/* Connection banner (SSE/WS disconnect) */}
       <ConnectionBanner />
       <ServerHealthBanner />
+      <SessionExpiredModal />
       {/* Command Palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ApprovalNotification />
