@@ -33,6 +33,8 @@ export function SessionExpiredModal() {
       if (!success) {
         setError('Invalid API key. Please try again.');
       }
+      // On success, the auth store updates isAuthenticated →
+      // useSessionExpiryGuard subscription resets isExpired → modal unmounts
     } catch {
       setError('Authentication failed. Please try again.');
     } finally {

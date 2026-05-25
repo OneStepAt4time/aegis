@@ -16,17 +16,22 @@ const CHECK_INTERVAL_MS = 5 * 60_000; // Check every 5 minutes
 export interface SessionExpiryState {
   /** True when the session has expired and user needs to re-authenticate. */
   isExpired: boolean;
-  /** Dismissible until the next check. */
-  isWarning: boolean;
-  /** Dismiss the warning (user will be prompted again on next check). */
-  dismiss: () => void;
+  /** Reset the expired state (called after successful re-auth). */
+  reset: () => void;
 }
 
 export function useSessionExpiryGuard(): SessionExpiryState {
-  const [dismissed, setDismissed] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
-  const [isWarning, setIsWarning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Subscribe to auth state — reset expiry when user successfully re-authenticates
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    if (isExpired && isAuthenticated) {
+      setIsExpired(false);
+    }
+  }, [isExpired, isAuthenticated]);
 
   const check = useCallback(async () => {
     const state = useAuthStore.getState();
@@ -40,7 +45,6 @@ export function useSessionExpiryGuard(): SessionExpiryState {
       const valid = await state.revalidate(true);
       if (!valid) {
         setIsExpired(true);
-        setIsWarning(false);
       }
     } catch {
       // Network error — don't show expiry, might be transient
@@ -61,10 +65,9 @@ export function useSessionExpiryGuard(): SessionExpiryState {
     };
   }, [check]);
 
-  const dismiss = useCallback(() => {
-    setDismissed(true);
-    setIsWarning(false);
+  const reset = useCallback(() => {
+    setIsExpired(false);
   }, []);
 
-  return { isExpired, isWarning: isWarning && !dismissed, dismiss };
+  return { isExpired, reset };
 }
