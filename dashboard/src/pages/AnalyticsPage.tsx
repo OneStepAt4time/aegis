@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
       {/* Data consistency check */}
       {(() => {
         const hasSessions = data.errorRates.totalSessions > 0;
-        const hasChartData = data.sessionVolume.length > 0 || data.tokenUsageByModel.length > 0 || data.durationTrends.length > 0;
+        const hasChartData = (data.sessionVolume ?? []).length > 0 || (data.tokenUsageByModel ?? []).length > 0 || (data.durationTrends ?? []).length > 0;
         if (hasSessions && !hasChartData) {
           return (
             <div
@@ -238,11 +238,11 @@ export default function AnalyticsPage() {
       <KPIBanner items={buildKPIItems(data, totalCost, totalTokens, avgDuration)} />
 
       {/* Model Distribution Bar */}
-      {data.tokenUsageByModel.length > 0 && (
+      {(data.tokenUsageByModel ?? []).length > 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">Model Distribution</h3>
           <ModelDistributionBar
-            segments={data.tokenUsageByModel.map((m) => ({
+            segments={(data.tokenUsageByModel ?? []).map((m) => ({
               model: m.model,
               fraction: m.estimatedCostUsd / (totalCost || 1),
             }))}
@@ -302,13 +302,13 @@ export default function AnalyticsPage() {
 
         {/* Token Usage by Model */}
         <ChartCard title={t("analytics.tokenUsage")}>
-          {data.tokenUsageByModel.length > 0 ? (
+          {(data.tokenUsageByModel ?? []).length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
               <div className="h-[220px] w-full min-w-0 lg:w-1/2">
                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
-                      data={data.tokenUsageByModel.map((m) => ({
+                      data={(data.tokenUsageByModel ?? []).map((m) => ({
                         ...m,
                         totalTokens: m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens,
                       }))}
