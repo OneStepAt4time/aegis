@@ -28,6 +28,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
   isFocused,
   onToggleSelect,
   onApprove,
+  onReject,
   onInterrupt,
   onKill,
 }: SessionRowProps) {
@@ -69,6 +70,16 @@ export const SessionMobileCard = memo(function SessionMobileCard({
               title="Approve"
             >
               <Play className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => onReject(e, session.id)}
+              disabled={currentAction === 'reject'}
+              aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 p-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
+              title="Reject"
+            >
+              <XCircle className="h-4 w-4" />
             </button>
           )}
           <button type="button"

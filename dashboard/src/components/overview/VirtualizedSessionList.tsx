@@ -60,6 +60,7 @@ export interface VirtualizedSessionListProps {
   onToggleSelect: (id: string, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onApprove: (e: React.MouseEvent, id: string) => void;
+  onReject: (e: React.MouseEvent, id: string) => void;
   onInterrupt: (e: React.MouseEvent, id: string) => void;
   onKill: (e: React.MouseEvent, id: string) => void;
 }
@@ -98,6 +99,7 @@ interface SessionRowExtraProps {
   items: FlatItem[];
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: React.MouseEvent, id: string) => void;
+  onReject: (e: React.MouseEvent, id: string) => void;
   onInterrupt: (e: React.MouseEvent, id: string) => void;
   onKill: (e: React.MouseEvent, id: string) => void;
   onToggleGroup: (key: string) => void;
@@ -111,6 +113,7 @@ function ApproveButton({
   session: SessionInfo;
   currentAction: string | null;
   onApprove: (e: React.MouseEvent, id: string) => void;
+  onReject: (e: React.MouseEvent, id: string) => void;
 }) {
   if (!needsApproval(session)) return null;
   return (
@@ -123,6 +126,30 @@ function ApproveButton({
       title="Approve"
     >
       <Play className="h-3 w-3" />
+    </button>
+  );
+}
+
+function RejectButton({
+  session,
+  currentAction,
+  onReject,
+}: {
+  session: SessionInfo;
+  currentAction: string | null;
+  onReject: (e: React.MouseEvent, id: string) => void;
+}) {
+  if (!needsApproval(session)) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => onReject(e, session.id)}
+      disabled={currentAction === 'reject'}
+      aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
+      title="Reject"
+    >
+      <XCircle className="h-3 w-3" />
     </button>
   );
 }
@@ -187,7 +214,12 @@ function VirtualizedRow(props: {
         />
       </div>
       <div className="flex items-center px-2">
-        <StatusDot status={session.status} health={health} />
+        <span className={needsApproval(session) ? 'relative' : ''}>
+          <StatusDot status={session.status} health={health} />
+          {needsApproval(session) && (
+            <span className="absolute -inset-1 animate-pulse rounded-full bg-[var(--color-warning)]/20" aria-hidden="true" />
+          )}
+        </span>
         {!isAlive && <XCircle className="h-3.5 w-3.5 text-[var(--color-danger)]" />}
       </div>
       <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-[var(--color-text-muted)]">
@@ -240,6 +272,7 @@ function VirtualizedRow(props: {
           </span>
         )}
         <ApproveButton session={session} currentAction={currentAction} onApprove={onApprove} />
+                <RejectButton session={session} currentAction={currentAction} onReject={onReject} />
         <button
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
