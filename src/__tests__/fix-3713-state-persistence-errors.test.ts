@@ -11,6 +11,7 @@
  * 7. doSave() with store backend failure
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setStructuredLogSink } from '../logger.js';
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -33,19 +34,20 @@ function createSM(stateDir: string, store?: any): SessionManager {
 
 describe('Issue #3713 — session.ts state persistence error branches', () => {
   let tmpDir: string;
-  let _consoleWarnSpy: any;
-  let consoleErrorSpy: any;
-  let consoleLogSpy: any;
+  let capturedLogs: Array<{ level: string; operation: string; [k: string]: any }>;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'aegis-state-test-'));
-    _consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    capturedLogs = [];
+    setStructuredLogSink({
+      info: (r) => { capturedLogs.push({ ...r, level: 'info' }); },
+      warn: (r) => { capturedLogs.push({ ...r, level: 'warn' }); },
+      error: (r) => { capturedLogs.push({ ...r, level: 'error' }); },
+    });
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    setStructuredLogSink({ info: () => {}, warn: () => {}, error: () => {} });
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -118,7 +120,7 @@ describe('Issue #3713 — session.ts state persistence error branches', () => {
       const sessions = (sm as any).state.sessions;
       expect(Object.keys(sessions)).toHaveLength(1);
       expect(sessions['sess-1'].displayName).toBe('backup-session');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Restored state from backup');
+      expect(capturedLogs.some(r => r.level === 'info' && r.operation === 'stateRestoredFromBackup')).toBe(true);
     });
 
     it('starts empty when both primary and backup are corrupted', async () => {
@@ -237,7 +239,7 @@ describe('Issue #3713 — session.ts state persistence error branches', () => {
       await sm.load();
       await sm.save();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('State save error:', expect.any(Error));
+      expect(capturedLogs.some(r => r.level === 'error' && r.operation === 'stateSaveFailed')).toBe(true);
     });
   });
 
@@ -258,7 +260,7 @@ describe('Issue #3713 — session.ts state persistence error branches', () => {
       await vi.advanceTimersByTimeAsync(10_000);
 
       // save() catches internally and logs 'State save error:' — the debounced catch never fires
-      expect(consoleErrorSpy).toHaveBeenCalledWith('State save error:', expect.anything());
+      expect(capturedLogs.some(r => r.level === 'error' && r.operation === 'stateSaveFailed')).toBe(true);
 
       vi.useRealTimers();
     });
