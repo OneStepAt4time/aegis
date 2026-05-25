@@ -3444,3 +3444,75 @@ export type GetV1SettingsBudgetResponses = {
 };
 
 export type GetV1SettingsBudgetResponse = GetV1SettingsBudgetResponses[keyof GetV1SettingsBudgetResponses];
+
+export type PostV1SessionsIdPermissionApproveData = {
+    body: {
+        approverId?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/permission/approve';
+};
+
+export type PostV1SessionsIdPermissionApproveErrors = {
+    /**
+     * Forbidden: missing approve permission
+     */
+    403: unknown;
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type PostV1SessionsIdPermissionApproveResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+    };
+};
+
+export type PostV1SessionsIdPermissionApproveResponse = PostV1SessionsIdPermissionApproveResponses[keyof PostV1SessionsIdPermissionApproveResponses];
+
+export type PostV1SessionsIdPermissionRejectData = {
+    body: {
+        reason?: string;
+    };
+    path: {
+        /**
+         * Session UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/sessions/{id}/permission/reject';
+};
+
+export type PostV1SessionsIdPermissionRejectErrors = {
+    /**
+     * Forbidden: missing reject permission
+     */
+    403: unknown;
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type PostV1SessionsIdPermissionRejectResponses = {
+    /**
+     * Success
+     */
+    200: {
+        ok: boolean;
+    };
+};
+
+export type PostV1SessionsIdPermissionRejectResponse = PostV1SessionsIdPermissionRejectResponses[keyof PostV1SessionsIdPermissionRejectResponses];
