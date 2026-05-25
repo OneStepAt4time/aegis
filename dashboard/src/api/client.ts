@@ -503,12 +503,30 @@ export function sendMessage(id: string, text: string): Promise<SendResponse> {
   });
 }
 
+/** Issue #4193: Quick approve via dedicated permission endpoint (richer audit trail). */
+export function quickApprove(id: string, opts?: { approverId?: string }): Promise<OkResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/permission/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ approverId: opts?.approverId }),
+  });
+}
+
+/** Legacy approve — kept for backward compatibility with Telegram one-tap flow. */
 export function approve(id: string): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/approve`, {
     method: 'POST',
   });
 }
 
+/** Issue #4193: Quick reject via dedicated permission endpoint (richer audit trail with reason). */
+export function quickReject(id: string, opts?: { reason?: string }): Promise<OkResponse> {
+  return request(`/v1/sessions/${encodeURIComponent(id)}/permission/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason: opts?.reason }),
+  });
+}
+
+/** Legacy reject — kept for backward compatibility with Telegram one-tap flow. */
 export function reject(id: string): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/reject`, {
     method: 'POST',
