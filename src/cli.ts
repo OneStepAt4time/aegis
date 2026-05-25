@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 

@@ -1,6 +1,3 @@
-import { StructuredLogger } from '../logger.js';
-const log = new StructuredLogger();
-
 /**
  * channels/email.ts — Email notification channel.
  *
@@ -17,6 +14,9 @@ const log = new StructuredLogger();
  * //   AEGIS_EMAIL_FROM=aegis@example.com
  * const channel = EmailChannel.fromEnv();
  */
+
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
 
 import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
@@ -86,7 +86,6 @@ export class EmailChannel implements Channel {
     const from = process.env.AEGIS_EMAIL_FROM ?? 'aegis@localhost';
 
     if (!host || !user || !pass || !to) return null;
-
 
     const port = parseInt(process.env.AEGIS_EMAIL_PORT ?? '587', 10);
     const secure = process.env.AEGIS_EMAIL_SECURE === 'true' || port === 465;

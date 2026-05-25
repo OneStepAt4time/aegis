@@ -1,6 +1,3 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * events.ts — SSE event emitter for session monitoring.
  *
@@ -9,9 +6,11 @@ const log = new StructuredLogger();
  * The monitor pushes events; the SSE route consumes them.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { EventEmitter } from 'node:events';
 import { CircularBuffer } from './utils/circular-buffer.js';
-
 
 export interface SessionSSEEvent {
   event: 'status' | 'message' | 'system' | 'approval' | 'approval_resolved' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification' | 'permission_denied' | 'circuit_breaker';

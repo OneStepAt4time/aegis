@@ -1,6 +1,3 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * structured-learnings.ts — Per-project learnings system for Aegis.
  *
@@ -17,6 +14,9 @@ const log = new StructuredLogger();
  * - LearningStore: add, query, search by keyword/type/confidence
  * - Auto-capture: hooks into session completion to extract patterns
  */
+
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

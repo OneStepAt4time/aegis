@@ -1,11 +1,11 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
 /**
  * transcript.ts — JSONL transcript parser for Claude Code sessions.
  * 
  * Port of CCBot's transcript_parser.py.
  * Reads CC session JSONL files and extracts structured messages.
  */
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { readFile, open, access } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';

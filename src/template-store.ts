@@ -1,12 +1,11 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * template-store.ts — Session template persistence.
  *
  * Manages saving, loading, and listing session templates.
  * Templates are stored in ~/.config/aegis/templates.json
  */
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -14,7 +13,6 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { safeJsonParse } from './safe-json.js';
-
 
 export interface SessionTemplate {
   id: string;

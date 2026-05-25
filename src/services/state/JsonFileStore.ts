@@ -1,6 +1,3 @@
-import { StructuredLogger } from '../../logger.js';
-const log = new StructuredLogger();
-
 /**
  * JsonFileStore.ts — JSON file-backed session state store.
  *
@@ -10,6 +7,9 @@ const log = new StructuredLogger();
  *
  * Issue #1937: Pluggable SessionStore interface.
  */
+
+import { StructuredLogger } from '../../logger.js';
+const log = new StructuredLogger();
 
 import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';

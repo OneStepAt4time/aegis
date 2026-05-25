@@ -1,12 +1,12 @@
-import { StructuredLogger } from '../logger.js';
-const log = new StructuredLogger();
-
 /**
  * channels/webhook.ts — Generic webhook notification channel.
  *
  * Fires HTTP POST to configured URLs on session events.
  * Configure via AEGIS_WEBHOOKS (or legacy MANUS_WEBHOOKS) env var or config file.
  */
+
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
 
 import type {
   Channel,
@@ -19,7 +19,6 @@ import { redactSecretsFromText } from '../utils/redact-headers.js';
 import { RetriableError } from './manager.js';
 import { signPayload } from '../webhook-signature.js';
 import crypto from 'node:crypto';
-
 
 export interface WebhookEndpoint {
   /** URL to POST to. */

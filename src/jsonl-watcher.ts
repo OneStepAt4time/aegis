@@ -1,6 +1,3 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * jsonl-watcher.ts — fs.watch()-based JSONL file watcher.
  *
@@ -12,10 +9,12 @@ const log = new StructuredLogger();
  * Issue #1420: Auto-restart watcher on fs.watch errors with exponential backoff.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import { watch, type FSWatcher } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { readNewEntries, extractTokenDelta, type ParsedEntry, type TokenUsageDelta } from './transcript.js';
-
 
 export interface JsonlWatcherEvent {
   sessionId: string;
@@ -257,7 +256,7 @@ export class JsonlWatcher {
 
     try {
       const previousOffset = entry.offset;
-log.info({ component: 'jsonl-watcher', operation: 'debugReadAndEmit', attributes: { sessionId: entry.sessionId, path: entry.jsonlPath, offset: previousOffset } })
+      if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'jsonl-watcher', operation: 'debugReadAndEmit', attributes: { sessionId: entry.sessionId, path: entry.jsonlPath, offset: previousOffset } });
       const result = await readNewEntries(entry.jsonlPath, previousOffset);
       entry.offset = result.newOffset;
 
@@ -274,7 +273,7 @@ log.info({ component: 'jsonl-watcher', operation: 'debugReadAndEmit', attributes
           tokenUsageDelta: extractTokenDelta(result.raw),
         };
 
-log.info({ component: 'jsonl-watcher', operation: 'debugEmittingEntries', attributes: { count: result.entries.length, sessionId: entry.sessionId, newOffset: result.newOffset, truncated } })
+        if (process.env.AEGIS_DEBUG_TRANSCRIPT) log.info({ component: 'jsonl-watcher', operation: 'debugEmittingEntries', attributes: { count: result.entries.length, sessionId: entry.sessionId, newOffset: result.newOffset, truncated } });
         for (const listener of this.listeners) {
           listener(event);
         }

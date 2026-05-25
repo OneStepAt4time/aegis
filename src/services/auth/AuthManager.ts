@@ -1,6 +1,3 @@
-import { StructuredLogger } from '../../logger.js';
-const log = new StructuredLogger();
-
 /**
  * AuthManager.ts — API key management and authentication middleware.
  *
@@ -8,6 +5,9 @@ const log = new StructuredLogger();
  * Keys are hashed with SHA-256 (no bcrypt dependency needed).
  * Backward compatible with single authToken from config.
  */
+
+import { StructuredLogger } from '../../logger.js';
+const log = new StructuredLogger();
 
 import { createHash, randomBytes } from 'node:crypto';
 import { timingSafeStringEqual } from '../../crypto-utils.js';
@@ -95,7 +95,6 @@ export class AuthManager {
   private lastKeysMtime: number | null = null;
   /** #3367: Guard against concurrent reloads. */
   private reloading = false;
-
 
   constructor(
     private keysFile: string,

@@ -1,6 +1,3 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * memory-bridge-learning.ts — Learning entries for Memory Bridge.
  *
@@ -12,8 +9,10 @@ const log = new StructuredLogger();
  * - Security: relative paths only, cross-project disabled by default
  */
 
-import { existsSync } from 'node:fs';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
+import { existsSync } from 'node:fs';
 
 export type LearningType = 'pattern' | 'pitfall' | 'preference' | 'architecture' | 'tool';
 export type LearningSource = 'auto' | 'agent-stated' | 'user-stated' | 'human-correction';

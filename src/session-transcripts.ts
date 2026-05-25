@@ -1,12 +1,12 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * session-transcripts.ts — JSONL transcript reading, caching, and pagination.
  *
  * Extracted from SessionManager (ARC-3, #1696) to isolate transcript
  * concerns from session lifecycle management.
  */
+
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 import { existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
@@ -19,7 +19,6 @@ import type { Config } from './config.js';
 import type { SessionInfo } from './session.js';
 import type { UIState } from './session.js';
 
-
 /** Stub: detect UI state from terminal pane text (ACP mode).
  * Issue #3081: In ACP mode there is no tmux pane to read, so we cannot
  * detect the actual UI state. Return the session's current status instead
@@ -28,7 +27,6 @@ import type { UIState } from './session.js';
 function detectUIState(currentStatus: UIState): UIState {
   return currentStatus;
 }
-
 
 /** Stub: parse status line from terminal pane text. */
 function parseStatusLine(_paneText: string): string | null {
@@ -39,7 +37,6 @@ function parseStatusLine(_paneText: string): string | null {
 function extractInteractiveContent(_paneText: string): { content: string } | null {
   return null;
 }
-
 
 /**
  * Handles all JSONL transcript reading, caching, and pagination for sessions.
@@ -561,7 +558,6 @@ export class SessionTranscripts {
       return cached ? [...cached.entries] : [];
     }
   }
-
 
   /**
    * Issue #3863: Read full (untruncated) entries from JSONL for API transcript endpoints.

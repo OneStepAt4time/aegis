@@ -1,6 +1,3 @@
-import { StructuredLogger } from '../logger.js';
-const log = new StructuredLogger();
-
 /**
  * channels/manager.ts — Routes events to all registered channels.
  *
@@ -9,6 +6,9 @@ const log = new StructuredLogger();
  * one broken channel never kills the bridge.
  */
 
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
+
 import type {
   Channel,
   SessionEventPayload,
@@ -16,7 +16,6 @@ import type {
 } from './types.js';
 import { TelegramChannel } from './telegram.js';
 import { startChannelSpan, spanOk, spanError } from '../tracing.js';
-
 
 /**
  * Thrown for retriable failures (5xx server errors, network timeouts).

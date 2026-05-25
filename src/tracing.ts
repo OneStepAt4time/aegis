@@ -1,6 +1,3 @@
-import { StructuredLogger } from './logger.js';
-const log = new StructuredLogger();
-
 /**
  * tracing.ts — OpenTelemetry distributed tracing for Aegis.
  *
@@ -13,10 +10,12 @@ const log = new StructuredLogger();
  * Issue #1417: Research spike — OpenTelemetry tracing.
  */
 
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
+
 import os from 'node:os';
 import type { Tracer, Span, SpanOptions, Context } from '@opentelemetry/api';
 import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
-
 
 // ── No-op fallback when tracing is disabled ────────────────────────────
 

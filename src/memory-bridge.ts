@@ -1,6 +1,5 @@
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import { safeJsonParse } from './safe-json.js';
-
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 

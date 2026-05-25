@@ -1,6 +1,3 @@
-import { StructuredLogger } from '../logger.js';
-const log = new StructuredLogger();
-
 /**
  * channels/slack.ts — Slack notification channel.
  *
@@ -11,6 +8,9 @@ const log = new StructuredLogger();
  * // env: AEGIS_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx
  * const channel = SlackChannel.fromEnv();
  */
+
+import { StructuredLogger } from '../logger.js';
+const log = new StructuredLogger();
 
 import type {
 

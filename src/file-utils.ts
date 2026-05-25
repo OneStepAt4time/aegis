@@ -1,9 +1,7 @@
 import { execFile } from 'node:child_process';
 import { chmod } from 'node:fs/promises';
-
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
-
 
 
 const PERMISSIONS_TIMEOUT_MS = 5_000;

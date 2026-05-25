@@ -1,5 +1,4 @@
 import type { PendingPermissionInfo } from './api-contracts.js';
-
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 
