@@ -38,7 +38,7 @@ export async function handleStatus(args: string[], io: CliIO): Promise<number> {
     const statsRes = await fetch(`${baseUrl}/v1/sessions/stats`, { headers, signal: AbortSignal.timeout(5000) });
     if (statsRes.ok) {
       const stats = await statsRes.json() as Record<string, unknown>;
-      writeLine(io.stdout, `  Sessions:  ${stats.active ?? stats.running ?? 0} active / ${stats.total ?? 0} total`);
+      writeLine(io.stdout, `  Sessions:  ${stats.active ?? stats.running ?? 0} active / ${stats.totalCreated ?? stats.total ?? 0} total`);
     }
   } catch {
     // Stats endpoint may not exist — skip
