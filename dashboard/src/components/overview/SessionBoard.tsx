@@ -42,7 +42,7 @@ const BOARD_COLUMNS: BoardColumn[] = [
   {
     id: 'waiting',
     title: 'colWaiting',
-    statuses: ['permission_prompt', 'ask_question', 'bash_approval', 'context_warning', 'waiting_for_input'],
+    statuses: ['permission_prompt', 'ask_question', 'bash_approval', 'context_warning', 'waiting_for_input', 'awaiting_approval', 'pending'],
     color: 'text-[var(--color-warning)]',
   },
   {

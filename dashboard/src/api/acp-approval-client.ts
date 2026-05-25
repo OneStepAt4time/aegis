@@ -67,5 +67,7 @@ export async function getPendingApproval(
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to get pending approval: ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  // Backend returns { pending: AcpApprovalRequest | null }
+  return data?.pending ?? null;
 }

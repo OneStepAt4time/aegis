@@ -655,6 +655,7 @@ export default function SessionDetailPage() {
             )}
 
             {pendingApproval && (
+              <ErrorBoundary>
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -671,6 +672,7 @@ export default function SessionDetailPage() {
                   onReject={rejectAcp}
                 />
               </motion.div>
+              </ErrorBoundary>
             )}
 
             <AnimatePresence mode="wait">

@@ -68,6 +68,8 @@ export function uiStateToSessionBadgeStatus(
     case 'working': return 'working';
     case 'permission_prompt':
     case 'bash_approval': return 'permission';
+    case 'awaiting_approval':
+    case 'pending':
     case 'ask_question':
     case 'waiting_for_input': return 'waiting';
     case 'error': return 'error';
