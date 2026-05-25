@@ -25,6 +25,8 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { ccSettingsSchema } from './validation.js';
+import { StructuredLogger } from './logger.js';
+const log = new StructuredLogger();
 
 const SETTINGS_DIR = '.claude';
 const LOCAL_SETTINGS_FILE = 'settings.local.json';
@@ -113,10 +115,10 @@ async function neutralizeOneFile(filePath: string, bpPath: string, targetMode: s
     await writeFile(tmpFile, JSON.stringify(settings, null, 2) + '\n');
     await rename(tmpFile, filePath);
 
-    console.log(`Permission guard: neutralized bypassPermissions in ${filePath} (backup: ${bpPath})`);
+    log.info({ component: 'permission-guard', operation: 'neutralizedBypass', attributes: { filePath, backupPath: bpPath } });
     return true;
   } catch (e) {
-    console.error(`Permission guard: failed to neutralize ${filePath}: ${(e as Error).message}`);
+    log.error({ component: 'permission-guard', operation: 'neutralizeFailed', attributes: { filePath, error: (e as Error).message } });
     return false;
   }
 }
@@ -149,10 +151,10 @@ async function restoreOneFile(filePath: string, bpPath: string): Promise<boolean
     const raw = await readFile(bpPath, 'utf-8');
     await writeFile(filePath, raw);
     await unlink(bpPath);
-    console.log(`Permission guard: restored ${filePath} from backup`);
+    log.info({ component: 'permission-guard', operation: 'restoredFromBackup', attributes: { filePath } });
     return true;
   } catch (e) {
-    console.error(`Permission guard: failed to restore from ${bpPath}: ${(e as Error).message}`);
+    log.error({ component: 'permission-guard', operation: 'restoreFailed', attributes: { backupPath: bpPath, error: (e as Error).message } });
     return false;
   }
 }
@@ -175,9 +177,9 @@ export async function restoreSettings(workDir: string, homeDir?: string): Promis
   if (existsSync(legacy)) {
     try {
       await rename(legacy, settingsPath(workDir));
-      console.log(`Permission guard: restored ${settingsPath(workDir)} from legacy backup`);
+      log.info({ component: 'permission-guard', operation: 'restoredLegacyBackup', attributes: { filePath: settingsPath(workDir) } });
     } catch (e) {
-      console.error(`Permission guard: failed to restore from legacy ${legacy}: ${(e as Error).message}`);
+      log.error({ component: 'permission-guard', operation: 'restoreLegacyFailed', attributes: { backupPath: legacy, error: (e as Error).message } });
     }
   }
 }
@@ -223,10 +225,10 @@ export async function activateBypassPermissions(workDir: string, homeDir?: strin
     await writeFile(tmpFile, JSON.stringify(settings, null, 2) + '\n');
     await rename(tmpFile, localSettings);
 
-    console.log(`Permission guard: activated bypassPermissions in ${localSettings}`);
+    log.info({ component: 'permission-guard', operation: 'activatedBypass', attributes: { filePath: localSettings } });
     return true;
   } catch (e) {
-    console.error(`Permission guard: failed to activate bypassPermissions in ${localSettings}: ${(e as Error).message}`);
+    log.error({ component: 'permission-guard', operation: 'activateFailed', attributes: { filePath: localSettings, error: (e as Error).message } });
     return false;
   }
 }
@@ -246,9 +248,9 @@ export async function cleanOrphanedBackup(workDir: string, homeDir?: string): Pr
       const raw = await readFile(loc.backupPath, 'utf-8');
       await writeFile(loc.filePath, raw);
       await unlink(loc.backupPath);
-      console.log(`Permission guard: cleaned orphaned backup for ${loc.filePath}`);
+      log.info({ component: 'permission-guard', operation: 'cleanedOrphanedBackup', attributes: { filePath: loc.filePath } });
     } catch (e) {
-      console.error(`Permission guard: failed to clean orphaned backup: ${(e as Error).message}`);
+      log.error({ component: 'permission-guard', operation: 'cleanOrphanedFailed', attributes: { error: (e as Error).message } });
     }
   }
 
@@ -257,9 +259,9 @@ export async function cleanOrphanedBackup(workDir: string, homeDir?: string): Pr
   if (existsSync(legacy)) {
     try {
       await rename(legacy, settingsPath(workDir));
-      console.log(`Permission guard: cleaned legacy orphaned backup in ${workDir}`);
+      log.info({ component: 'permission-guard', operation: 'cleanedLegacyOrphaned', attributes: { workDir } });
     } catch (e) {
-      console.error(`Permission guard: failed to clean legacy orphaned backup: ${(e as Error).message}`);
+      log.error({ component: 'permission-guard', operation: 'cleanLegacyOrphanedFailed', attributes: { error: (e as Error).message } });
     }
   }
 }

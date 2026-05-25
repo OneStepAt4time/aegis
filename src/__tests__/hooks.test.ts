@@ -6,12 +6,29 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { setStructuredLogSink, type StructuredLogRecord } from '../logger.js';
 import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager } from '../session.js';
 import type { SessionInfo } from '../session.js';
 import type { UIState } from '../session.js';
+
+
+
+/** Capture structured log records for assertion. */
+function captureLogs(): { records: StructuredLogRecord[]; stop: () => void } {
+  const records: StructuredLogRecord[] = [];
+  const start = (): void => {
+    setStructuredLogSink({
+      info: (r) => { records.push(r); },
+      warn: (r) => { records.push(r); },
+      error: (r) => { records.push(r); },
+    });
+  };
+  start();
+  return { records, stop: () => setStructuredLogSink({ info: () => {}, warn: () => {}, error: () => {} }) };
+}
 
 /** Flush all pending setImmediate callbacks. */
 function flushAsync(): Promise<void> {
@@ -638,7 +655,7 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
 
   it('Notification hook should be logged', async () => {
     setupWithSession('working');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { records, stop } = captureLogs();
 
     await app.inject({
       method: 'POST',
@@ -646,14 +663,16 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { message: 'Build complete' },
     });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Notification'));
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(session.id));
-    logSpy.mockRestore();
+    const infoRecords = records.filter(r => r.level === 'info');
+    expect(infoRecords.length).toBeGreaterThanOrEqual(1);
+    expect(infoRecords.some(r => r.operation === 'informationalEvent' && r.attributes?.eventName === 'Notification')).toBe(true);
+    expect(infoRecords.some(r => r.sessionId === session.id)).toBe(true);
+    stop();
   });
 
   it('FileChanged hook should be logged', async () => {
     setupWithSession('working');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { records, stop } = captureLogs();
 
     await app.inject({
       method: 'POST',
@@ -661,13 +680,14 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { path: '/tmp/test/file.ts' },
     });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('FileChanged'));
-    logSpy.mockRestore();
+    const infoRecords = records.filter(r => r.level === 'info');
+    expect(infoRecords.some(r => r.operation === 'informationalEvent' && r.attributes?.eventName === 'FileChanged')).toBe(true);
+    stop();
   });
 
   it('CwdChanged hook should be logged', async () => {
     setupWithSession('working');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { records, stop } = captureLogs();
 
     await app.inject({
       method: 'POST',
@@ -675,8 +695,9 @@ describe('Hook-driven status detection (Issue #169 Phase 3)', () => {
       payload: { cwd: '/tmp/test/subdir' },
     });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('CwdChanged'));
-    logSpy.mockRestore();
+    const infoRecords = records.filter(r => r.level === 'info');
+    expect(infoRecords.some(r => r.operation === 'informationalEvent' && r.attributes?.eventName === 'CwdChanged')).toBe(true);
+    stop();
   });
 });
 
@@ -708,7 +729,7 @@ describe('Hook validation (Issue #89)', () => {
     });
 
     it('should fallback to "default" for invalid permission_mode', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { records, stop } = captureLogs();
       const res = await app.inject({
         method: 'POST',
         url: `/v1/hooks/PermissionRequest?sessionId=${session.id}`,
@@ -716,10 +737,10 @@ describe('Hook validation (Issue #89)', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('invalid permission_mode "invalid_mode"'),
-      );
-      warnSpy.mockRestore();
+      const warnRecords = records.filter(r => r.level === 'warn' && r.operation === 'invalidPermissionMode');
+      expect(warnRecords.length).toBeGreaterThanOrEqual(1);
+      expect(warnRecords[0].attributes?.rawMode).toBe('invalid_mode');
+      stop();
     });
 
     it('should not warn when permission_mode is absent', async () => {
@@ -809,7 +830,7 @@ describe('Hook validation (Issue #89)', () => {
     });
 
     it('should log worktree hook events', async () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { records, stop } = captureLogs();
 
       await app.inject({
         method: 'POST',
@@ -817,9 +838,11 @@ describe('Hook validation (Issue #89)', () => {
         payload: { worktree_path: '/tmp/test-wt' },
       });
 
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('WorktreeCreate'));
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(session.id));
-      logSpy.mockRestore();
+      const infoRecords = records.filter(r => r.level === 'info' && r.operation === 'worktreeEvent');
+      expect(infoRecords.length).toBeGreaterThanOrEqual(1);
+      expect(infoRecords[0].attributes?.eventName).toBe('WorktreeCreate');
+      expect(infoRecords[0].sessionId).toBe(session.id);
+      stop();
     });
   });
 

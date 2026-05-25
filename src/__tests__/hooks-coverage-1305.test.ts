@@ -15,12 +15,26 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { setStructuredLogSink, type StructuredLogRecord } from '../logger.js';
 import Fastify from 'fastify';
 import { registerHookRoutes } from '../hooks.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo, PermissionDecision } from '../session.js';
 import type { UIState } from '../api-contracts.js';
 import type { MetricsCollector } from '../metrics.js';
+
+
+
+/** Capture structured log records for assertion. */
+function captureLogs(): { records: StructuredLogRecord[]; stop: () => void } {
+  const records: StructuredLogRecord[] = [];
+  setStructuredLogSink({
+    info: (r) => { records.push(r); },
+    warn: (r) => { records.push(r); },
+    error: (r) => { records.push(r); },
+  });
+  return { records, stop: () => setStructuredLogSink({ info: () => {}, warn: () => {}, error: () => {} }) };
+}
 
 function flushAsync(): Promise<void> {
   return new Promise(resolve => setImmediate(resolve));
@@ -251,7 +265,7 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
     });
 
     it('should log PermissionDenied as informational event', async () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { records, stop } = captureLogs();
 
       await app.inject({
         method: 'POST',
@@ -259,8 +273,9 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
         payload: { tool_name: 'Bash' },
       });
 
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('PermissionDenied'));
-      logSpy.mockRestore();
+      const infoRecords = records.filter(r => r.level === 'info' && r.operation === 'informationalEvent');
+      expect(infoRecords.some(r => r.attributes?.eventName === 'PermissionDenied')).toBe(true);
+      stop();
     });
   });
 
@@ -612,7 +627,7 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
       const app2 = Fastify({ logger: false });
       registerHookRoutes(app2, { sessions: mgr, eventBus });
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { records, stop } = captureLogs();
 
       const res = await app2.inject({
         method: 'POST',
@@ -621,9 +636,10 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('WorktreeRemove'));
+      const infoRecords = records.filter(r => r.level === 'info' && r.operation === 'worktreeEvent');
+      expect(infoRecords.some(r => r.attributes?.eventName === 'WorktreeRemove')).toBe(true);
 
-      logSpy.mockRestore();
+      stop();
       await app2.close();
     });
 
@@ -995,7 +1011,7 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
       const app2 = Fastify({ logger: false });
       registerHookRoutes(app2, { sessions: mgr, eventBus });
 
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { records, stop } = captureLogs();
 
       const res = await app2.inject({
         method: 'POST',
@@ -1004,11 +1020,10 @@ describe('Issue #1305: hooks.ts additional coverage', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('invalid permission_mode "totally_invalid"'),
-      );
+      const warnRecords = records.filter(r => r.level === 'warn' && r.operation === 'invalidPermissionMode');
+      expect(warnRecords.some(r => r.attributes?.rawMode === 'totally_invalid')).toBe(true);
 
-      warnSpy.mockRestore();
+      stop();
       await app2.close();
     });
   });
