@@ -270,6 +270,7 @@ export default function CostPage() {
 
   // Empty state — no cost data recorded
   const hasData = dailyData.length > 0 && dailyData.some((d) => d.estimatedCostUsd > 0);
+  const hasSessions = (costData?.totalSessions ?? 0) > 0;
   if (!hasData) {
     return (
       <div className="flex flex-col gap-6">
@@ -282,7 +283,10 @@ export default function CostPage() {
         <EmptyState
           icon={<DollarSign className="h-8 w-8" />}
           title="No cost data yet"
-          description="Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data."
+          description={hasSessions
+            ? 'Sessions are running but cost data is not yet available. Cost metrics populate once the metrics pipeline processes session data.'
+            : 'Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data.'
+          }
         />
       </div>
     );

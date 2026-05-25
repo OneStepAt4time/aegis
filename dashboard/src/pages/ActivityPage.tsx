@@ -1,16 +1,68 @@
 /**
- * pages/ActivityPage.tsx — Live audit stream and operational metrics.
+ * pages/ActivityPage.tsx — Live audit stream, operational metrics, and activity heatmap.
  */
 
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import MetricCards from '../components/overview/MetricCards';
 import LiveAuditStream from '../components/LiveAuditStream';
 import LiveStatusIndicator from '../components/shared/LiveStatusIndicator';
 import { ClaudeSessionsPanel } from '../components/shared/ClaudeSessionsPanel';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
+import { HeatmapGrid, type HeatmapDataPoint } from '../components/analytics/HeatmapGrid';
+import { fetchSessionHistory } from '../api/client';
 import { useT } from '../i18n/context';
 
 export default function ActivityPage() {
   const t = useT();
+  const [heatmapData, setHeatmapData] = useState<HeatmapDataPoint[]>([]);
+  const [heatmapLoading, setHeatmapLoading] = useState(true);
+
+  const fetchHeatmapData = useCallback(async () => {
+    try {
+      // Fetch last 365 days of session history to build the heatmap
+      const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000);
+      const result = await fetchSessionHistory({
+        createdAfter: oneYearAgo,
+        limit: 500,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+
+      // Group sessions by date
+      const byDate = new Map<string, number>();
+      for (const record of result.records) {
+        const ts = record.createdAt ?? record.lastSeenAt;
+        const dateStr = new Date(ts * 1000).toISOString().split('T')[0];
+        if (dateStr) {
+          byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + 1);
+        }
+      }
+
+      const points: HeatmapDataPoint[] = [];
+      for (const [date, count] of byDate) {
+        points.push({ date, value: count });
+      }
+      setHeatmapData(points);
+    } catch {
+      // Silently fail — heatmap is non-critical
+    } finally {
+      setHeatmapLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchHeatmapData();
+  }, [fetchHeatmapData]);
+
+  const totalActiveDays = useMemo(
+    () => heatmapData.filter((d) => d.value > 0).length,
+    [heatmapData],
+  );
+  const totalSessions = useMemo(
+    () => heatmapData.reduce((sum, d) => sum + d.value, 0),
+    [heatmapData],
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
@@ -23,6 +75,38 @@ export default function ActivityPage() {
           </p>
         </div>
       </div>
+
+      {/* Activity Heatmap */}
+      <section aria-label="Activity heatmap">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-[var(--color-text-muted)]">
+            Session Activity
+          </h2>
+          {!heatmapLoading && heatmapData.length > 0 && (
+            <span className="text-xs text-[var(--color-text-muted)]">
+              {totalSessions} sessions across {totalActiveDays} active days
+            </span>
+          )}
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          {heatmapLoading ? (
+            <div className="flex h-20 items-center justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+            </div>
+          ) : heatmapData.length > 0 ? (
+            <HeatmapGrid
+              data={heatmapData}
+              color="cyan"
+              metricLabel="Sessions"
+              formatValue={(v) => `${v} session${v !== 1 ? 's' : ''}`}
+            />
+          ) : (
+            <div className="flex h-20 items-center justify-center text-sm text-[var(--color-text-muted)]">
+              No session activity recorded yet
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* 3:1 split-pane — Operational Metrics + Live Audit Stream */}
       <ErrorBoundary>
