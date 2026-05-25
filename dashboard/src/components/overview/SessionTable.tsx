@@ -26,6 +26,7 @@ import {
   getSessions,
   interrupt,
   killSession,
+  reject,
 } from '../../api/client';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useToastStore } from '../../store/useToastStore';
@@ -284,6 +285,18 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         await fetchSessions();
       } catch (err: unknown) {
         addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
+      }
+    });
+  }, [addToast, fetchSessions, withLoading]);
+
+  const handleReject = useCallback(async (e: MouseEvent, id: string) => {
+    e.preventDefault();
+    await withLoading(id, 'reject', async () => {
+      try {
+        await reject(id);
+        await fetchSessions();
+      } catch (err: unknown) {
+        addToast('error', 'Reject failed', err instanceof Error ? err.message : undefined);
       }
     });
   }, [addToast, fetchSessions, withLoading]);
@@ -772,6 +785,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                           isFocused={row.isFocused}
                           onToggleSelect={handleToggleSelect}
                           onApprove={handleApprove}
+                          onReject={handleReject}
                           onInterrupt={handleInterrupt}
                           onKill={handleKill}
                         />
@@ -791,6 +805,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     isFocused={row.isFocused}
                     onToggleSelect={handleToggleSelect}
                     onApprove={handleApprove}
+                    onReject={handleReject}
                     onInterrupt={handleInterrupt}
                     onKill={handleKill}
                   />
@@ -836,6 +851,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
               onToggleSelect={handleToggleSelect}
               onToggleSelectAll={handleToggleSelectAll}
               onApprove={handleApprove}
+              onReject={handleReject}
               onInterrupt={handleInterrupt}
               onKill={handleKill}
               showHeader={false}

@@ -17,6 +17,7 @@ export interface SessionRowProps {
   isFocused: boolean;
   onToggleSelect: (id: string, checked: boolean) => void;
   onApprove: (e: MouseEvent, id: string) => void;
+  onReject: (e: MouseEvent, id: string) => void;
   onInterrupt: (e: MouseEvent, id: string) => void;
   onKill: (e: MouseEvent, id: string) => void;
 }
@@ -87,6 +88,8 @@ export function areSessionRowPropsEqual(prev: SessionRowProps, next: SessionRowP
     prev.isFocused === next.isFocused &&
     prev.estimatedCostUsd === next.estimatedCostUsd &&
     prev.isAlive === next.isAlive &&
+    prev.onApprove === next.onApprove &&
+    prev.onReject === next.onReject &&
     isDisplayedSessionEqual(prev.session, next.session) &&
     prev.health === next.health
   );
