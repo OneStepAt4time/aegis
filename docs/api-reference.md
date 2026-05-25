@@ -2833,6 +2833,266 @@ curl http://localhost:9100/v1/analytics/costs \
 
 ---
 
+## Budget Management (Cost Alerts)
+
+Manage cost alert budgets. Each budget defines a spend limit, evaluation window, notification channels, and percentage thresholds that trigger alerts. See [Cost Alerts guide](./advanced.md#cost-alerts) for usage examples.
+
+> **ADR-0031** defines the budgets API design.
+
+### Create a Budget
+
+```
+POST /v1/budgets
+```
+
+Create a new cost alert budget.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/budgets \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Daily spend cap",
+    "keyId": null,
+    "limitUsd": 10.0,
+    "thresholds": [50, 80, 100],
+    "window": { "kind": "rolling", "hours": 24 },
+    "channels": [
+      { "type": "telegram", "chatId": 123456789 },
+      { "type": "webhook", "url": "https://example.com/hook" },
+      { "type": "log" }
+    ],
+    "enabled": true
+  }'
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Budget name (1–128 chars). |
+| `keyId` | string \| null | No | Scope to an API key. `null` = all keys. Default: `null`. |
+| `limitUsd` | number | Yes | Spend limit in USD (positive, max 1,000,000). |
+| `thresholds` | number[] | Yes | Percentage thresholds (1–200) that trigger alerts. 1–10 unique values, auto-sorted. |
+| `window` | object | Yes | Evaluation window. |
+| `window.kind` | string | Yes | `"rolling"` or `"calendar"`. |
+| `window.hours` | number | Yes | Window length in hours (1–720). |
+| `channels` | array | Yes | 1–10 notification channels. |
+| `channels[].type` | string | Yes | `"telegram"`, `"webhook"`, or `"log"`. |
+| `channels[].chatId` | number | Conditional | Required when `type` is `"telegram"`. |
+| `channels[].url` | string | Conditional | Required when `type` is `"webhook"`. Valid URL, max 2048 chars. |
+| `enabled` | boolean | No | Default: `true`. |
+
+**Response:** `201 Created`
+
+```json
+{
+  "budget": {
+    "id": "bud_abc123",
+    "name": "Daily spend cap",
+    "keyId": null,
+    "limitUsd": 10.0,
+    "thresholds": [50, 80, 100],
+    "window": { "kind": "rolling", "hours": 24 },
+    "channels": [
+      { "type": "telegram", "chatId": 123456789 },
+      { "type": "webhook", "url": "https://example.com/hook" },
+      { "type": "log" }
+    ],
+    "enabled": true,
+    "createdAt": "2026-05-25T12:00:00.000Z",
+    "updatedAt": "2026-05-25T12:00:00.000Z",
+    "lastEvaluatedAt": null
+  }
+}
+```
+
+**Errors:**
+
+| Status | Code | When |
+|--------|------|------|
+| 400 | `VALIDATION_ERROR` | Invalid body (missing/invalid fields). |
+| 401 | — | Missing or invalid Bearer token. |
+| 403 | — | Non-admin role. |
+
+---
+
+### List Budgets
+
+```
+GET /v1/budgets
+```
+
+List all budgets with optional filters.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `keyId` | string | Filter by API key ID. Use `"null"` for global budgets. |
+| `enabled` | string | Filter by enabled state (`"true"` / `"false"`). |
+
+```bash
+curl http://localhost:9100/v1/budgets?enabled=true \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "budgets": [ ... ],
+  "total": 3
+}
+```
+
+---
+
+### Get a Budget
+
+```
+GET /v1/budgets/:budgetId
+```
+
+Get a single budget by ID.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/budgets/bud_abc123 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** Single budget object (same shape as create response).
+
+**Errors:**
+
+| Status | Code | When |
+|--------|------|------|
+| 404 | `NOT_FOUND` | Budget does not exist. |
+
+---
+
+### Update a Budget
+
+```
+PATCH /v1/budgets/:budgetId
+```
+
+Partially update a budget. Only included fields are modified.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X PATCH http://localhost:9100/v1/budgets/bud_abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "limitUsd": 25.0, "thresholds": [50, 75, 90, 100] }'
+```
+
+**Request body:** All fields from create are optional. Only sent fields are updated.
+
+**Response:** Updated budget object.
+
+**Errors:**
+
+| Status | Code | When |
+|--------|------|------|
+| 400 | `VALIDATION_ERROR` | Invalid field values. |
+| 404 | `NOT_FOUND` | Budget does not exist. |
+
+---
+
+### Delete a Budget
+
+```
+DELETE /v1/budgets/:budgetId
+```
+
+Delete a budget and its evaluation state.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X DELETE http://localhost:9100/v1/budgets/bud_abc123 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** `204 No Content`
+
+**Errors:**
+
+| Status | Code | When |
+|--------|------|------|
+| 404 | `NOT_FOUND` | Budget does not exist. |
+
+---
+
+### Evaluate a Budget (Manual)
+
+```
+POST /v1/budgets/:budgetId/evaluate
+```
+
+Trigger an immediate evaluation of a budget, regardless of the automatic timer. Returns the evaluation result with current spend and any triggered alerts.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/budgets/bud_abc123/evaluate \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "budgetId": "bud_abc123",
+  "windowStart": "2026-05-25T00:00:00.000Z",
+  "windowEnd": "2026-05-25T12:33:00.000Z",
+  "currentSpendUsd": 4.52,
+  "limitUsd": 10.0,
+  "percentUsed": 45.2,
+  "triggeredThresholds": [50],
+  "alertsSent": 1
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `budgetId` | string | Evaluated budget ID. |
+| `windowStart` | string | ISO timestamp of evaluation window start. |
+| `windowEnd` | string | ISO timestamp of evaluation window end. |
+| `currentSpendUsd` | number | Total spend within the window. |
+| `limitUsd` | number | Budget limit. |
+| `percentUsed` | number | Percentage of limit used. |
+| `triggeredThresholds` | number[] | Thresholds that were crossed (may be empty). |
+| `alertsSent` | number | Number of alert notifications sent. |
+
+**Errors:**
+
+| Status | Code | When |
+|--------|------|------|
+| 404 | `NOT_FOUND` | Budget does not exist. |
+
+---
+
 ### Get Budget Enforcement Status
 
 ```

@@ -190,6 +190,12 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `GET` | `/v1/cost/summary` | Bearer | Aggregate cost summary with burn rate |
 | `GET` | `/v1/cost/by-model` | Bearer | Cost grouped by model |
 | `GET` | `/v1/settings/budget` | Bearer | Server-side budget enforcement status |
+| `POST` | `/v1/budgets` | Bearer (admin) | Create a cost alert budget |
+| `GET` | `/v1/budgets` | Bearer | List budgets (filter by keyId, enabled) |
+| `GET` | `/v1/budgets/:id` | Bearer | Get a single budget |
+| `PATCH` | `/v1/budgets/:id` | Bearer (admin) | Update a budget |
+| `DELETE` | `/v1/budgets/:id` | Bearer (admin) | Delete a budget |
+| `POST` | `/v1/budgets/:id/evaluate` | Bearer (admin) | Trigger manual budget evaluation |
 
 ## Metrics
 
