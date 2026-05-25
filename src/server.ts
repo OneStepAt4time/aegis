@@ -80,6 +80,11 @@ import { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
 import { createFileAcpLocalStorageProfile, type AcpLocalStorageProfile } from './services/acp/local-storage.js';
 import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweeper.js';
 import { mapAcpJsonRpcNotificationToEvent } from './services/acp/event-mapper.js';
+import { BudgetStore } from './budgets/store.js';
+import { BudgetEvaluator } from './budgets/evaluator.js';
+import { BudgetNotifier } from './budgets/notifications.js';
+import { BudgetTimer } from './budgets/timer.js';
+import { registerBudgetRoutes } from './budgets/routes.js';
 import {
   registerHealthRoutes,
   registerAuthRoutes,
@@ -1123,6 +1128,12 @@ async function main(): Promise<void> {
   } catch (e) {
     logger.error({ component: 'server', operation: 'metering_load_failed', attributes: { error: e instanceof Error ? e.message : String(e) } });
   }
+
+  // Issue #4195: Cost Alerts — budget store, evaluator, notifier, timer.
+  const budgetStore = new BudgetStore(config.stateDir);
+  const budgetNotifier = new BudgetNotifier({ telegramBotToken: config.tgBotToken || undefined });
+  const budgetEvaluator = new BudgetEvaluator(budgetStore, metering, budgetNotifier);
+  const budgetTimer = new BudgetTimer(budgetEvaluator, budgetStore);
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
   jsonlWatcher.onEntries((event) => {
@@ -1271,6 +1282,8 @@ async function main(): Promise<void> {
   registerAnalyticsRoutes(app, routeCtx);
   registerUsageRoutes(app, routeCtx);
   registerCostRoutes(app, routeCtx);
+  // Issue #4195: Cost Alerts — /v1/budgets endpoints
+  registerBudgetRoutes(app, { auth, budgetStore, budgetEvaluator });
   registerControlActionRoutes(app, routeCtx);
   registerDriverRoutes(app, routeCtx);
   registerTerminalRoutes(app, routeCtx);
@@ -1295,6 +1308,8 @@ async function main(): Promise<void> {
   const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   // Issue #4004: Start orphan action sweeper
   actionSweeper?.start();
+  // Issue #4195: Start budget evaluation timer
+  budgetTimer.start();
   // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
   let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
   let pidFilePath = '';
@@ -1372,6 +1387,8 @@ async function main(): Promise<void> {
       clearInterval(quotaSweepInterval);
       // Issue #4004: Stop orphan action sweeper
       actionSweeper?.stop();
+      // Issue #4195: Stop budget evaluation timer
+      budgetTimer.stop();
       if (staticPruneInterval) clearInterval(staticPruneInterval);
       rateLimiter.dispose();
 
