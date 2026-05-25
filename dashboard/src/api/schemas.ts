@@ -209,6 +209,7 @@ export const SessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   })).optional(),
   model: z.string().optional(),
   runnerName: z.string().optional(),
+  latestActivityText: z.string().optional(),
 });
 
 // ── SessionsListResponse ────────────────────────────────────────
