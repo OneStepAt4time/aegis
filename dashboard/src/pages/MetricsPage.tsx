@@ -213,7 +213,7 @@ export default function MetricsPage() {
             Total Sessions
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
-            {summary?.totalSessions.toLocaleString() ?? '—'}
+            {(summary?.totalSessions ?? 0).toLocaleString()}
           </div>
         </div>
 
