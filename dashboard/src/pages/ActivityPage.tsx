@@ -16,8 +16,10 @@ export default function ActivityPage() {
   const t = useT();
   const [heatmapData, setHeatmapData] = useState<HeatmapDataPoint[]>([]);
   const [heatmapLoading, setHeatmapLoading] = useState(true);
+  const [heatmapError, setHeatmapError] = useState<string | null>(null);
 
   const fetchHeatmapData = useCallback(async () => {
+    setHeatmapError(null);
     try {
       // Fetch last 365 days of session history to build the heatmap
       const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000);
@@ -43,8 +45,9 @@ export default function ActivityPage() {
         points.push({ date, value: count });
       }
       setHeatmapData(points);
-    } catch {
-      // Silently fail — heatmap is non-critical
+    } catch (err) {
+      // Heatmap is non-critical but surface the error for transparency
+      setHeatmapError(err instanceof Error ? err.message : 'Failed to load heatmap data');
     } finally {
       setHeatmapLoading(false);
     }
@@ -92,6 +95,18 @@ export default function ActivityPage() {
           {heatmapLoading ? (
             <div className="flex h-20 items-center justify-center">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+            </div>
+          ) : heatmapError ? (
+            <div className="flex h-20 flex-col items-center justify-center gap-2">
+              <p className="text-sm text-[var(--color-text-muted)]">{heatmapError}</p>
+              <button
+                type="button"
+                onClick={() => { setHeatmapLoading(true); void fetchHeatmapData(); }}
+                className="rounded-md border border-[var(--color-void-lighter)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]"
+                aria-label="Retry loading heatmap"
+              >
+                Retry
+              </button>
             </div>
           ) : heatmapData.length > 0 ? (
             <HeatmapGrid
