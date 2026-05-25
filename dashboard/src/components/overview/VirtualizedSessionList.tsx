@@ -72,7 +72,7 @@ const GROUP_ROW_HEIGHT = 44;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
 
-const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 80px 60px 80px';
+const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 1fr 80px 60px 80px';
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -248,6 +248,11 @@ function VirtualizedRow(props: {
       <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.lastActivity)}
       </div>
+      <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)] truncate" title={session.latestActivityText ?? ''}>
+        {session.latestActivityText
+          ? <span className="truncate max-w-[120px] inline-block align-bottom">{session.latestActivityText}</span>
+          : <span className="text-[var(--color-text-muted)]/40">—</span>}
+      </div>
       <div className="flex items-center px-3">
         {session.permissionMode && session.permissionMode !== 'default' ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)]/15 px-2 py-0.5 text-xs text-[var(--color-success)]">
@@ -370,6 +375,7 @@ export function VirtualizedSessionList({
           <div className="flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Age</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Last Activity</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">Activity</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Permission</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Cost</div>
           <div className="px-3 py-3 font-medium" role="columnheader">Actions</div>

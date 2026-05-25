@@ -74,6 +74,7 @@ export interface SessionInfo {
   model?: string;
   effort?: string;
   runnerName?: string;          // Issue #3681: Agent runner name
+  latestActivityText?: string;  // Issue #4203: Human-readable latest activity
 }
 
 export interface SessionHealth {

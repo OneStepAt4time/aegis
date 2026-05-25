@@ -123,6 +123,11 @@ function SessionCard({ session, t }: { session: SessionInfo; t: (key: string, pa
         )}
         <span title={`Started ${age} ago`}>⏱ {age}</span>
         <span title={`Last active ${lastActive}`}>💬 {lastActive}</span>
+        {session.latestActivityText && (
+          <span className="truncate max-w-[160px] text-[var(--color-accent-cyan)]" title={session.latestActivityText}>
+            ⚡ {session.latestActivityText}
+          </span>
+        )}
       </div>
 
       {/* Status indicator for waiting sessions */}
