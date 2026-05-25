@@ -4,11 +4,11 @@ import { logger } from '../utils/logger';
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import Breadcrumb from './shared/Breadcrumb';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { useTheme } from '../hooks/useTheme';
-import CommandPalette from './shared/CommandPalette';
+const CommandPalette = lazy(() => import('./shared/CommandPalette'));
 import LiveAuditStream from './shared/LiveAuditStream';
 import { ApprovalNotification, ApprovalBadge } from './approvals/ApprovalNotification';
 import { NewSessionDrawer } from './NewSessionDrawer';
@@ -718,7 +718,7 @@ export default function Layout() {
       <ServerHealthBanner />
       <SessionExpiredModal />
       {/* Command Palette */}
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <Suspense fallback={null}><CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} /></Suspense>
       <ApprovalNotification />
       {/* New Session Drawer */}
       <NewSessionDrawer />

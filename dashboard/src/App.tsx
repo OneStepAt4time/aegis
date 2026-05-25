@@ -10,8 +10,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
-import { FirstRunTour, isTourCompleted } from './components/tour/FirstRunTour';
-import { OnboardingWizard } from './components/brand/OnboardingWizard';
+import { isTourCompleted } from './utils/tourState';
+
 import { useAuthStore } from './store/useAuthStore';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
@@ -19,6 +19,8 @@ const MetricsPage = lazy(() => import('./pages/MetricsPage'));
 const AuthKeysPage = lazy(() => import('./pages/AuthKeysPage'));
 const CostPage = lazy(() => import('./pages/CostPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const FirstRunTour = lazy(() => import('./components/tour/FirstRunTour').then(m => ({ default: m.FirstRunTour })));
+const OnboardingWizard = lazy(() => import('./components/brand/OnboardingWizard').then(m => ({ default: m.OnboardingWizard })));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OverviewPage = lazy(() => import('./pages/OverviewPage'));
 const ActivityPage = lazy(() => import('./pages/ActivityPage'));
@@ -107,10 +109,10 @@ export default function App() {
   });
 
   if (isAuthenticated && showOnboarding) {
-    return <OnboardingWizard onComplete={() => {
+    return <Suspense fallback={<LoadingFallback />}><OnboardingWizard onComplete={() => {
       setShowOnboarding(false);
       if (!isTourCompleted()) setShowTour(true);
-    }} />;
+    }} /></Suspense>;
   }
 
   return (
@@ -259,7 +261,7 @@ export default function App() {
 
       <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
       
-      {showTour && <FirstRunTour onComplete={() => { tourDismissed.current = true; setShowTour(false); }} />}
+      {showTour && <Suspense fallback={null}><FirstRunTour onComplete={() => { tourDismissed.current = true; setShowTour(false); }} /></Suspense>}
     </ErrorBoundary>
   );
 }
