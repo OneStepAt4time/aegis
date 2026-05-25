@@ -11,7 +11,6 @@ import { useToastStore } from '../../store/useToastStore';
 import { useT } from '../../i18n/context';
 
 import { markTourCompleted } from '../../utils/tourState';
-const TOUR_COMPLETED_KEY = 'aegis:tour:completed'; // kept for reference
 const SANDBOX_DIR = '/tmp/aegis-tour';
 
 type TourStep = 'welcome' | 'creating' | 'waiting-permission' | 'approved' | 'killing' | 'complete';
@@ -304,11 +303,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
 
 /**
  * Check if the tour has been completed
- */
-export function isTourCompleted(): boolean {
-  try {
-    return localStorage.getItem(TOUR_COMPLETED_KEY) === '1';
-  } catch {
+ */ catch {
     return false;
   }
 }

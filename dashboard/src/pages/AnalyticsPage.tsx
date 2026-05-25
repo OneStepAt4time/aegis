@@ -139,15 +139,15 @@ export default function AnalyticsPage() {
 
   if (!data) return null;
 
-  const totalCost = data.tokenUsageByModel.reduce((sum, m) => sum + m.estimatedCostUsd, 0);
-  const totalTokens = data.tokenUsageByModel.reduce(
+  const totalCost = (data.tokenUsageByModel ?? []).reduce((sum, m) => sum + m.estimatedCostUsd, 0);
+  const totalTokens = (data.tokenUsageByModel ?? []).reduce(
     (sum, m) => sum + m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens,
     0,
   );
-  const avgDuration = data.durationTrends.length > 0
+  const avgDuration = (data.durationTrends ?? []).length > 0
     ? Math.round(
-        data.durationTrends.reduce((sum, d) => sum + d.avgDurationSec * d.count, 0)
-        / data.durationTrends.reduce((sum, d) => sum + d.count, 0),
+        (data.durationTrends ?? []).reduce((sum, d) => sum + d.avgDurationSec * d.count, 0)
+        / (data.durationTrends ?? []).reduce((sum, d) => sum + d.count, 0),
       )
     : 0;
 
