@@ -62,6 +62,8 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/cancel` | Bearer | Cancel running session |
 | `POST` | `/v1/sessions/{id}/approval/approve` | Bearer | Approve pending permission |
 | `POST` | `/v1/sessions/{id}/approval/reject` | Bearer | Reject pending permission |
+| `POST` | `/v1/sessions/{id}/permission/approve` | Bearer | Quick approve (dashboard) |
+| `POST` | `/v1/sessions/{id}/permission/reject` | Bearer | Quick reject (dashboard) |
 | `GET` | `/v1/sessions/{id}/approval/pending` | Bearer | Get pending approvals |
 
 ## ACP Driver Controls
