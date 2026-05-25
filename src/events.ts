@@ -273,12 +273,12 @@ export class SessionEventBus {
   }
 
   /** Emit a status change event. */
-  emitStatus(sessionId: string, status: string, detail: string): void {
+  emitStatus(sessionId: string, status: string, detail: string, extra?: Record<string, unknown>): void {
     this.emit(sessionId, {
       event: 'status',
       sessionId,
       timestamp: new Date().toISOString(),
-      data: { status, detail },
+      data: { status, detail, ...extra },
     });
   }
 
