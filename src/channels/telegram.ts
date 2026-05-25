@@ -27,6 +27,9 @@ import {
   alert as styleAlert,
   type StyledMessage,
 } from './telegram-style.js';
+import { StructuredLogger } from '../logger.js';
+
+const log = new StructuredLogger();
 
 export interface TelegramChannelConfig {
   botToken: string;
@@ -675,7 +678,7 @@ class TopicPersistence {
       // Atomic rename
       renameSync(tmp, this.filePath);
     } catch (e) {
-      console.error('Telegram: failed to persist topic map:', e);
+      log.error({ component: 'telegram', operation: 'persistTopicMap', attributes: { error: String(e) } });
     }
   }
 
@@ -698,7 +701,7 @@ class TopicPersistence {
         });
       }
     } catch (e) {
-      console.error('Telegram: failed to load topic map:', e);
+      log.error({ component: 'telegram', operation: 'loadTopicMap', attributes: { error: String(e) } });
     }
     return result;
   }
@@ -772,7 +775,7 @@ export class TelegramChannel implements Channel {
     // Restore persisted topics on construction
     this.topics = this.topicPersistence.load();
     if (this.topics.size > 0) {
-      console.log(`Telegram: restored ${this.topics.size} topic mappings from disk`);
+      log.info({ component: 'telegram', operation: 'restoreTopics', attributes: { count: this.topics.size } });
     }
   }
 
@@ -786,7 +789,7 @@ export class TelegramChannel implements Channel {
       const now = Date.now();
       if (this.rateLimitUntil > now) {
         const waitMs = this.rateLimitUntil - now;
-        console.log(`Telegram rate limit: waiting ${Math.ceil(waitMs / 1000)}s before ${method}`);
+        log.info({ component: 'telegram', operation: 'rateLimitWait', attributes: { waitSeconds: Math.ceil(waitMs / 1000), method } });
         await sleep(waitMs);
       }
 
@@ -808,9 +811,7 @@ export class TelegramChannel implements Channel {
       if (res.status === 429 && data.parameters?.retry_after) {
         const retryAfter = data.parameters.retry_after;
         this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
-        console.log(
-          `Telegram 429: retry_after=${retryAfter}s, attempt ${attempt + 1}/${retries + 1}`,
-        );
+        log.info({ component: 'telegram', operation: 'rateLimit429', attributes: { retryAfter, attempt: attempt + 1, maxAttempts: retries + 1 } });
         if (attempt < retries) {
           await sleep(retryAfter * 1000 + 500);
           continue;
@@ -840,13 +841,13 @@ export class TelegramChannel implements Channel {
       })) as Array<{ update_id: number }>;
       if (Array.isArray(stale) && stale.length > 0) {
         this.pollOffset = stale[stale.length - 1].update_id + 1;
-        console.log(`Telegram pre-flight: cleared ${stale.length} stale update(s), offset now ${this.pollOffset}`);
+        log.info({ component: 'telegram', operation: 'preflightClear', attributes: { count: stale.length, offset: this.pollOffset } });
       }
     } catch {
       // Pre-flight failure is non-fatal — the poll loop will retry
     }
     this.pollLoopPromise = this.pollLoop(); // store promise for graceful shutdown
-    console.log(`Telegram channel: polling started, group ${this.config.groupChatId}`);
+    log.info({ component: 'telegram', operation: 'pollingStarted', attributes: { groupChatId: this.config.groupChatId } });
   }
 
   async destroy(): Promise<void> {
@@ -915,7 +916,7 @@ export class TelegramChannel implements Channel {
     // Issue #46: Replay any messages that arrived before topic was created
     const buffered = this.preTopicBuffer.get(payload.session.id);
     if (buffered && buffered.length > 0) {
-      console.log(`Telegram: replaying ${buffered.length} buffered messages for ${payload.session.name}`);
+      log.info({ component: 'telegram', operation: 'replayBuffered', sessionId: payload.session.id, attributes: { count: buffered.length, sessionName: payload.session.name } });
       for (const item of buffered) {
         if (item.method === 'message') {
           await this.onMessage(item.payload);
@@ -1388,7 +1389,7 @@ export class TelegramChannel implements Channel {
         this.trackSuccess();
         return result.message_id;
       } catch (e) {
-        console.error(`Telegram: failed to send styled to topic ${topic.topicId}:`, this.redactError(e));
+        log.error({ component: 'telegram', operation: 'sendStyledFailed', attributes: { topicId: topic.topicId, error: String(this.redactError(e)) } });
         this.trackFailure(e);
         return null;
       }
@@ -1498,7 +1499,7 @@ export class TelegramChannel implements Channel {
         this.trackSuccess();
         return result.message_id;
       } catch (e) {
-        console.error(`Telegram: failed to send to topic ${topic.topicId}:`, this.redactError(e));
+        log.error({ component: 'telegram', operation: 'sendFailed', attributes: { topicId: topic.topicId, error: String(this.redactError(e)) } });
         this.decrementInFlight(sessionId);
         this.trackFailure(e);
         return null;
@@ -1530,7 +1531,7 @@ export class TelegramChannel implements Channel {
     const inFlight = this.inFlightCount.get(sessionId) || 0;
     if (inFlight + queue.length >= TelegramChannel.MAX_IN_FLIGHT) {
       const dropped = queue.shift();
-      console.warn(`Telegram backpressure: dropped oldest pending message for session ${sessionId} (in-flight: ${inFlight}, queued: ${queue.length})`);
+      log.warn({ component: 'telegram', operation: 'backpressureDrop', sessionId, attributes: { inFlight, queued: queue.length } });
       void dropped; // consumed
     }
 
@@ -1690,10 +1691,10 @@ export class TelegramChannel implements Channel {
         this.topics.delete(sessionId);
         this.topicPersistence.save(this.topics);
       } else {
-        console.error(`Telegram: failed to cleanup topic for session ${sessionId}:`, this.redactError(e));
+        log.error({ component: 'telegram', operation: 'topicCleanupFailed', sessionId, attributes: { error: String(this.redactError(e)) } });
         topic.cleanupRetries++;
         if (topic.cleanupRetries > TelegramChannel.TOPIC_CLEANUP_MAX_RETRIES) {
-          console.warn(`Telegram: max retries (${TelegramChannel.TOPIC_CLEANUP_MAX_RETRIES}) reached for topic cleanup session ${sessionId} - removing stale entry`);
+          log.warn({ component: 'telegram', operation: 'topicCleanupMaxRetries', sessionId, attributes: { maxRetries: TelegramChannel.TOPIC_CLEANUP_MAX_RETRIES } });
           this.topics.delete(sessionId);
           this.topicPersistence.save(this.topics);
           return;
@@ -1776,10 +1777,10 @@ export class TelegramChannel implements Channel {
           }
         }
       } catch (e) {
-        console.error('Telegram poll error:', this.redactError(e));
+        log.error({ component: 'telegram', operation: 'pollError', attributes: { error: String(this.redactError(e)) } });
         // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
         const backoffMs = Math.min(this.pollBackoffMs, 30_000);
-        console.log(`Telegram poll: backing off ${backoffMs}ms before retry`);
+        log.info({ component: 'telegram', operation: 'pollBackoff', attributes: { backoffMs } });
         await sleep(backoffMs);
         this.pollBackoffMs = Math.min(backoffMs * 2, 30_000);
       }
@@ -1818,7 +1819,7 @@ export class TelegramChannel implements Channel {
       const userId = msg.from?.id;
       if (!userId || !this.config.allowedUserIds.includes(userId)) {
         const name = msg.from?.first_name ?? 'Unknown';
-        console.warn(`Telegram: rejected unauthorized user ${name} (${userId ?? 'no id'})`);
+        log.warn({ component: 'telegram', operation: 'rejectUnauthorizedUser', attributes: { userName: name, userId: userId ?? 'no id' } });
         // Send warning in the topic
         for (const [, topic] of this.topics) {
           if (topic.topicId === msg.message_thread_id) {
@@ -1833,7 +1834,7 @@ export class TelegramChannel implements Channel {
       // Empty allowlist without explicit opt-in is a security risk
       const name = msg.from?.first_name ?? 'Unknown';
       const userId = msg.from?.id ?? 'no id';
-      console.error(`[CRITICAL] Telegram: tgAllowedUsers is empty — ALL users blocked from session control. User "${name}" (${userId}) rejected. Set tgAllowedUsers to explicitly allow specific Telegram user IDs.`);
+      log.error({ component: 'telegram', operation: 'emptyAllowlist', attributes: { userName: name, userId } });
       for (const [, topic] of this.topics) {
         if (topic.topicId === msg.message_thread_id) {
           await this.sendImmediate(topic.sessionId, `⛔ Telegram access disabled: tgAllowedUsers is empty. Contact the Aegis administrator to add your Telegram user ID to tgAllowedUsers.`);
@@ -1881,7 +1882,7 @@ export class TelegramChannel implements Channel {
       const userId = cb.from?.id;
       if (!userId || !this.config.allowedUserIds.includes(userId)) {
         const name = cb.from?.first_name ?? 'Unknown';
-        console.warn(`Telegram: rejected unauthorized callback from ${name} (${userId ?? 'no id'})`);
+        log.warn({ component: 'telegram', operation: 'rejectUnauthorizedCallback', attributes: { userName: name, userId: userId ?? 'no id' } });
         try {
           await this.tgApi('answerCallbackQuery', {
             callback_query_id: cb.id,
@@ -1930,7 +1931,7 @@ export class TelegramChannel implements Channel {
           const optValue = optParts.slice(2).join(':');
           // Issue #348: Validate option value is numeric (matches parseOptions numbered output)
           if (!/^\d+$/.test(optValue)) {
-            console.warn(`Telegram: rejected non-numeric cb_option value "${optValue}"`);
+            log.warn({ component: 'telegram', operation: 'rejectNonNumericOption', attributes: { value: optValue } });
             break;
           }
           await this.onInbound?.({ sessionId, action: 'message', text: optValue });
