@@ -113,7 +113,6 @@ function ApproveButton({
   session: SessionInfo;
   currentAction: string | null;
   onApprove: (e: React.MouseEvent, id: string) => void;
-  onReject: (e: React.MouseEvent, id: string) => void;
 }) {
   if (!needsApproval(session)) return null;
   return (
@@ -161,7 +160,7 @@ function VirtualizedRow(props: {
   index: number;
   style: CSSProperties;
 } & SessionRowExtraProps): ReactElement {
-  const { ariaAttributes, index, style, items, onToggleSelect, onApprove, onInterrupt, onKill, onToggleGroup } = props;
+  const { ariaAttributes, index, style, items, onToggleSelect, onApprove, onReject, onInterrupt, onKill, onToggleGroup } = props;
   const item = items[index];
 
   if (item.type === 'group') {
@@ -309,6 +308,7 @@ export function VirtualizedSessionList({
   onToggleSelect,
   onToggleSelectAll,
   onApprove,
+  onReject,
   onInterrupt,
   onKill,
 }: VirtualizedSessionListProps) {
@@ -342,6 +342,7 @@ export function VirtualizedSessionList({
     items,
     onToggleSelect,
     onApprove,
+    onReject,
     onInterrupt,
     onKill,
     onToggleGroup,
