@@ -39,9 +39,7 @@ vi.mock('../components/session/SessionHeader', () => ({
   SessionHeader: () => <div data-testid="session-header">header</div>,
 }));
 
-vi.mock('../components/session/TerminalPassthrough', () => ({
-  TerminalPassthrough: () => <div data-testid="terminal-passthrough">terminal passthrough</div>,
-}));
+// TerminalPassthrough mock removed — component deleted in dead code cleanup
 
 vi.mock('../components/session/SessionMetricsPanel', () => ({
   SessionMetricsPanel: () => <div data-testid="session-metrics">metrics</div>,
