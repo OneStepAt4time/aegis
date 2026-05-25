@@ -92,6 +92,7 @@ import {
   registerSessionRoutes,
   registerSessionActionRoutes,
   registerSessionApprovalRoutes,
+  registerQuickApproveRejectRoutes,
   registerSessionDataRoutes,
   registerEventRoutes,
   registerTemplateRoutes,
@@ -1275,6 +1276,7 @@ async function main(): Promise<void> {
   registerSessionRoutes(app, routeCtx);
   registerSessionActionRoutes(app, routeCtx);
   registerSessionApprovalRoutes(app, routeCtx);
+  registerQuickApproveRejectRoutes(app, routeCtx);
   registerSessionDataRoutes(app, routeCtx);
   registerEventRoutes(app, routeCtx);
   registerTemplateRoutes(app, routeCtx);
