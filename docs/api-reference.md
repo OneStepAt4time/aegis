@@ -744,7 +744,7 @@ curl "http://localhost:9100/v1/sessions?page=1&limit=20&status=working" \
 ```json
 {
   "sessions": [
-    { "id": "abc123", "name": "feature-auth", "status": "working", "workDir": "/project", "createdAt": 1712650800000 }
+    { "id": "abc123", "name": "feature-auth", "status": "working", "workDir": "/project", "createdAt": 1712650800000, "latestActivityText": "Running: npm test" }
   ],
   "pagination": { "page": 1, "limit": 20, "total": 42, "totalPages": 3 }
 }
@@ -865,7 +865,11 @@ curl http://localhost:9100/v1/sessions/abc123 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Session object with `actionHints` for current interactive state. When a Telegram topic is linked, the response includes `telegramTopicId`.
+**Response:** Session object with `actionHints` for current interactive state, `latestActivityText` for live agent activity, and `telegramTopicId` when a Telegram topic is linked.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `latestActivityText` | string | Human-readable description of current agent activity (e.g. `"Running: npm test"`, `"Editing: server.ts"`, `"Idle"`, `"Waiting for input"`, `"Compacting context"`). Updated in real-time from CC hook events. |
 
 **Errors:**
 
@@ -2184,6 +2188,74 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/approval/reject \
 |--------|------------|
 | 500 | No pending permission request for the given approval ID |
 | 501 | ACP backend not configured |
+
+#### Quick Approve Permission
+
+```
+POST /v1/sessions/:id/permission/approve
+```
+
+Dashboard-optimized endpoint for quickly approving a pending permission prompt. Creates a rich audit entry tagged with `source=dashboard`.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/permission/approve \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"approverId": "user@example.com"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `approverId` | string | no | Identifier of the approver for audit context |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 403 | Insufficient permissions |
+| 404 | Session not found |
+
+#### Quick Reject Permission
+
+```
+POST /v1/sessions/:id/permission/reject
+```
+
+Dashboard-optimized endpoint for quickly rejecting a pending permission prompt. Creates a rich audit entry with optional reason.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/permission/reject \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Unsafe command"}'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `reason` | string | no | Reason for rejection (audit trail) |
+
+**Response:** `{ "ok": true }`
+
+**Errors:**
+
+| Status | Condition |
+|--------|------------|
+| 403 | Insufficient permissions |
+| 404 | Session not found |
 
 #### Get Pending Approvals
 
