@@ -1385,6 +1385,7 @@ curl http://localhost:9100/v1/sessions/abc123/health \
   "lastActivity": 1712650800000,
   "lastActivityAgo": 2340,
   "sessionAge": 45230000,
+  "estimatedCostUsd": 3.42,
   "details": "Session healthy"
 }
 ```
@@ -1408,7 +1409,7 @@ curl http://localhost:9100/v1/sessions/health \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Object keyed by session ID, each value is a health object (same shape as per-session health).
+**Response:** Object keyed by session ID, each value is a health object (same shape as per-session health, including `estimatedCostUsd` when token usage data is available).
 
 ---
 
@@ -3835,6 +3836,8 @@ curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 **Authentication:** SSE token via query parameter (`?token=<sse-token>`) or Bearer header (`Authorization: Bearer sse_...`). Regular API keys are rejected.
 
 **Event types:** `connected`, `heartbeat`, `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`, `permission.granted`, `permission.denied`, `approval_resolved`, `message.user`, `status.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`.
+
+**Heartbeat payload:** The `heartbeat` event includes a `sessionCosts` map with `estimatedCostUsd` per session, enabling real-time cost tracking on the dashboard.
 
 **Rate limited:** Per-IP and global connection limits apply.
 
