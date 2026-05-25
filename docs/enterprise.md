@@ -276,6 +276,8 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_ACTION_SWEEPER_INTERVAL_MS` | `60000` | Sweep interval in milliseconds for orphan action recovery |
 | `AEGIS_SESSION_CLEANUP_INTERVAL_MS` | `3600000` | Auto-cleanup interval for killed sessions. Set to `0` to disable |
 | `AEGIS_SESSION_CLEANUP_AGE_MS` | `86400000` | Minimum age (ms) before a killed session is eligible for auto-cleanup |
+| `AEGIS_SESSION_STORE` | `file` | Session state backend: `file`, `redis`, or `postgres`. `file` is the default for solo-dev/local setups |
+| `AEGIS_POSTGRES_URL` | _(empty)_ | PostgreSQL connection URL (required when `AEGIS_SESSION_STORE=postgres`). E.g. `postgres://user:pass@localhost:5432/aegis` |
 | `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings, default), `enforce-worktree` (reject sessions without worktree — prevents file conflicts with concurrent sessions), `enforce-direct` (force direct edits, no worktree) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
@@ -297,10 +299,21 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 |---|---|---|
 | `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
+| `AEGIS_ENV_DENYLIST` | _(none)_ | Comma-separated list of environment variable names to strip from session environments (case-insensitive). E.g. `AWS_SECRET_ACCESS_KEY,DATABASE_URL` |
+| `AEGIS_ENV_ADMIN_ALLOWLIST` | _(none)_ | Comma-separated list of environment variable names that admin-level users may pass through despite denylist (case-insensitive) |
 | `AEGIS_ENFORCE_SESSION_OWNERSHIP` | `true` | Enforce session ownership — tenants can only access their own sessions |
 | `AEGIS_REQUIRE_SESSION_APPROVAL` | `false` | Require explicit approval before new sessions start Claude Code. Sessions enter `awaiting_approval` status until approved or rejected via `POST /v1/sessions/:id/session-approve` or `/session-reject` |
 | `AEGIS_SESSION_APPROVAL_TIMEOUT_MS` | `300000` (5 min) | Auto-reject `awaiting_approval` sessions after this many milliseconds of inactivity. Set to `0` to disable auto-reject timeout |
 | `AEGIS_DEFAULT_TENANT_ID` | `default` | Default tenant ID for single-tenant deployments |
+
+#### Rate Limiting
+
+| Variable | Default | Description |
+|---|---|---|
+| `AEGIS_RATE_LIMIT_ENABLED` | `true` | Enable/disable rate limiting. Set to `false` to disable all rate limiting |
+| `AEGIS_RATE_LIMIT_SESSIONS_MAX` | `100` | Max requests per time window for `/v1/sessions` endpoints |
+| `AEGIS_RATE_LIMIT_GENERAL_MAX` | `30` | Max requests per time window for all other endpoints |
+| `AEGIS_RATE_LIMIT_TIME_WINDOW_SEC` | `60` | Sliding time window in seconds for rate limit counters |
 
 #### Hooks
 
