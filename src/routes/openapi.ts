@@ -485,6 +485,27 @@ export function registerOpenApiSpec(): void {
     responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '404': notFoundResponse },
   });
 
+  // Issue #4193: Quick approve/reject dedicated endpoints
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/permission/approve',
+    summary: 'Quick approve permission request (dashboard inline button)',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: z.object({ approverId: z.string().optional() }) } } },
+    responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '403': { description: 'Forbidden: missing approve permission' }, '404': notFoundResponse },
+  });
+
+  registerOpenApiPath({
+    method: 'post',
+    path: '/v1/sessions/{id}/permission/reject',
+    summary: 'Quick reject permission request (dashboard inline button)',
+    tags: ['Session Actions'],
+    parameters: [{ name: 'id', in: 'path', required: true, description: 'Session UUID', schema: z.string().uuid() }],
+    requestBody: { content: { 'application/json': { schema: z.object({ reason: z.string().optional() }) } } },
+    responses: { '200': okJsonResponse(z.object({ ok: z.boolean() })), '403': { description: 'Forbidden: missing reject permission' }, '404': notFoundResponse },
+  });
+
   registerOpenApiPath({
     method: 'post',
     path: '/v1/sessions/{id}/answer',
