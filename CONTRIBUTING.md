@@ -257,6 +257,34 @@ npm run hooks:install
 
 This sets `core.hooksPath` to `.githooks/` and runs the gate automatically on every push.
 
+### File Size Limits
+
+Aegis enforces strict file size limits to maintain codebase health:
+
+| Limit | Rule | Enforcement |
+|---|---|---|
+| **500 lines** | No source file should exceed 500 lines without explicit approval | Argus enforces on review |
+| **800 lines** | Hard maximum — PRs adding files >800 lines are rejected | CI gate |
+| **Refactor first** | If a file is growing past 400 lines, refactor before adding features | Self-enforced |
+
+Files currently exceeding these limits (as of v0.7.0): `telegram.ts` (1997), `server.ts` (1611), `session.ts` (1594), `acp-lifecycle-probe.ts` (1521), `openapi.ts` (1275), `services/acp/backend.ts` (1243). These are tracked tech debt and should be split before adding new functionality.
+
+### Config Centralization
+
+All configuration MUST go through `src/config.ts`:
+
+- **Env vars** — only read via `process.env` inside `config.ts` with proper typing and defaults
+- **No raw `process.env`** — never read environment variables directly in route handlers, services, or components
+- **Zod validation** — all config values must have Zod schemas with type-safe defaults
+- **Single source of truth** — if a setting exists in `config.ts`, don't add it as a standalone `process.env` read elsewhere
+
+### Type Safety Rules
+
+- **No `as any`** — use proper types or Zod parsing. If `as any` is unavoidable, add a `// TODO: type this` comment with the issue number
+- **No non-null assertions (`!.`)** — use proper null guards, optional chaining, or fallback values. 48 `!.` assertions in dashboard code are tracked for removal
+- **API contracts** — all request/response types must be defined in `src/api-contracts.ts` using Zod schemas
+- **No `console.log`** — use `src/logger.ts` (StructuredLogger) for all logging. No raw `console.*` in production code
+
 ### PR Size
 
 - Target **<500 lines** per PR — split larger changes into multiple PRs

@@ -33,11 +33,23 @@ src/
 ├── acp-event-stream.ts       # Real-time ACP event streaming
 ├── channels/                  # Notification channels (event fan-out)
 │   ├── manager.ts            # Event fan-out to all active channels
-│   ├── telegram.ts           # Telegram bot — bidirectional (approve/reject from chat)
+│   ├── telegram.ts           # Telegram bot — bidirectional (approve/reject from chat) ⚠️ 1997 lines — needs splitting
 │   ├── slack.ts              # Slack incoming webhooks — session alerts
 │   ├── email.ts             # SMTP email alerts — stall/dead/error to ops
 │   ├── webhook.ts           # Generic HTTP webhooks — configurable per-endpoint
 │   └── types.ts             # Channel interface, SessionEvent types
+├── commands/                  # CLI subcommands
+│   ├── init.ts              # `ag init` — bootstrap config, detect CC, start server
+│   ├── run.ts               # `ag run` — one-shot session creation with streaming
+│   └── doctor.ts            # `ag doctor` — health checks and diagnostics
+├── runners/                   # Pluggable agent runner abstraction
+│   └── (runner implementations for Claude Code, Codex, etc.)
+├── budgets/                   # Cost alerts and budget enforcement
+│   ├── routes.ts            # REST API: CRUD + evaluate budgets
+│   ├── store.ts             # Budget persistence
+│   ├── evaluator.ts         # Threshold evaluation against session costs
+│   ├── notifications.ts      # Alert delivery to channels
+│   └── types.ts             # Budget, Threshold, Window schemas
 ├── transcript.ts             # JSONL transcript parsing — entries, token usage
 ├── jsonl-watcher.ts          # File watcher for Claude Code JSONL output
 │
@@ -62,6 +74,25 @@ src/
 ├── events.ts                 # SSE event types (session + global)
 ├── sse-writer.ts             # SSE response streaming
 ├── sse-limiter.ts            # SSE rate limiting per client
+├── metering.ts               # Per-session token/cost metering (separate from metrics)
+├── metrics.ts                # Aggregate metrics — token usage, cost estimation, stats
+├── prometheus.ts             # Prometheus metric exposition (prom-client)
+├── rate-limit.ts             # Per-IP and per-key sliding-window rate limiter
+├── rate-limit-coordinator.ts  # Cross-session rate-limit retry coordination
+├── alerting.ts               # Alert rules engine — threshold-based notifications
+├── audit.ts                  # Structured audit logging
+├── activity-text.ts          # Derives human-readable activity text from CC hooks
+├── session-discovery.ts      # Discovers sessions from Claude Code state files
+├── session-transcripts.ts    # Transcript API — read/export session conversations
+├── dashboard-session-auth.ts # Dashboard session cookie management
+├── platform/                 # Platform-specific code (Docker detection, etc.)
+├── plugins/                  # Fastify plugins (structured logging, etc.)
+├── webhook/                  # Outbound webhook delivery
+│   ├── sender.ts            # HTTP webhook sender with retry and signing
+│   └── webhook-signature.ts  # HMAC-SHA256 webhook signature verification
+├── crypto-utils.ts           # Cryptographic helpers (token generation, hashing)
+├── base-url.ts               # Server base URL resolution
+├── openapi.ts                # OpenAPI spec generation for auto-documentation
 ├── ws-terminal.ts            # WebSocket terminal relay (PTY streaming + catchup)
 │
 ├── permission-guard.ts       # Permission request interception and routing
@@ -141,7 +172,49 @@ dashboard/                     # React dashboard (served by Fastify static)
 │   │   └── client.ts         # Typed fetch wrapper for Aegis REST API
 │   └── components/           # Shared UI components
 
-## Dashboard Architecture
+## Known Structural Issues
+
+> This section documents the current state, not aspirations.
+
+### Large Files Needing Refactor
+
+| File | Lines | Problem | Proposed Split |
+|---|---|---|---|
+| `src/channels/telegram.ts` | 1997 | Monolithic — client, formatting, keyboards, media all in one | TelegramClient, TelegramFormatter, TelegramKeyboards, TelegramMediaHandler |
+| `src/server.ts` | 1611 | Route registration + middleware + startup all mixed | Fastify plugins per concern |
+| `src/session.ts` | 1594 | Core session logic acceptable but growing | Extract sub-modules for lifecycle stages |
+| `src/acp-lifecycle-probe.ts` | 1521 | Probe logic tightly coupled | Extract as service |
+| `src/routes/openapi.ts` | 1275 | Auto-generated, acceptable | No action needed |
+| `src/services/acp/backend.ts` | 1243 | Growing fast | Extract action handling |
+
+### Routes Directory (22 files)
+
+The architecture.md module overview previously showed zero route files. Current routes:
+
+| File | Purpose |
+|---|---|
+| `sessions.ts` | Session CRUD, create, send, kill |
+| `session-data.ts` | Session detail, transcript, export |
+| `session-actions.ts` | Session interrupt, escape, capture |
+| `session-approval.ts` | Session-level approval gate (awaiting_approval) |
+| `auth.ts` | API key CRUD, bearer token verification, SSE tokens |
+| `oidc-auth.ts` | OIDC/SSO authentication (Phase 4) |
+| `device-auth.ts` | Device flow authentication |
+| `quick-approve-reject.ts` | Dashboard quick approve/reject with audit trail |
+| `control-actions.ts` | Session control actions (CC-specific) |
+| `driver-controls.ts` | Runner driver controls |
+| `analytics.ts` | Analytics and cost breakdown endpoints |
+| `cost.ts` | Per-key and per-session cost records |
+| `usage.ts` | Usage metering, per-key breakdowns |
+| `audit.ts` | Audit log query endpoints |
+| `templates.ts` | Session template CRUD |
+| `pipelines.ts` | Pipeline creation and management |
+| `health.ts` | Health check endpoints |
+| `events.ts` | SSE event streaming |
+| `terminal.ts` | Terminal relay (WebSocket + PTY) |
+| `context.ts` | Route context — auth, ownership, RBAC helpers |
+| `openapi.ts` | OpenAPI spec generation |
+| `index.ts` | Route registration |
 
 ### Technology Stack
 
@@ -418,6 +491,12 @@ For the full hook event reference (29 lifecycle events), permission policy evalu
 | `signal-cleanup-helper.ts` | Signal handler cleanup on process exit |
 | `verification.ts` | External verification integration |
 | `worktree-lookup.ts` | Git worktree discovery for session workDir |
+
+### Non-Null Assertions in Dashboard
+
+48 `!.` non-null assertions found in dashboard code. These mask potential runtime crashes when the assumed non-null value is undefined. Should be replaced with proper null guards or fallback values.
+
+---
 
 ## Request Flow
 
