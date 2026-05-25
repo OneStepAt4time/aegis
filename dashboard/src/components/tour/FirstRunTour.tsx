@@ -300,10 +300,3 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     </AnimatePresence>
   );
 }
-
-/**
- * Check if the tour has been completed
- */ catch {
-    return false;
-  }
-}

@@ -80,7 +80,7 @@ function BannerCell({ label, numericValue, value, valueColor, title, animate }: 
           ? animate
             ? <AnimatedNumber value={numericValue} flash />
             : numericValue.toLocaleString()
-          : value ?? 'N/a'}
+          : value ?? '—'}
       </span>
     </div>
   );
