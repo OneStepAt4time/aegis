@@ -249,6 +249,7 @@ export class JsonlWatcher {
 
     try {
       const previousOffset = entry.offset;
+      if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[WATCHER-DEBUG] readAndEmit: sessionId=${entry.sessionId} path=${entry.jsonlPath} offset=${previousOffset}`);
       const result = await readNewEntries(entry.jsonlPath, previousOffset);
       entry.offset = result.newOffset;
 
@@ -265,12 +266,13 @@ export class JsonlWatcher {
           tokenUsageDelta: extractTokenDelta(result.raw),
         };
 
+        if (process.env.AEGIS_DEBUG_TRANSCRIPT) console.error(`[WATCHER-DEBUG] emitting ${result.entries.length} entries for session ${entry.sessionId}. newOffset=${result.newOffset} truncated=${truncated}`);
         for (const listener of this.listeners) {
           listener(event);
         }
       }
-    } catch {
-      // File may be temporarily unavailable — ignore
+    } catch (err) {
+      console.error(`[WATCHER-ERROR] readAndEmit FAILED for session ${entry.sessionId}:`, err);
     }
   }
 }
