@@ -1040,7 +1040,7 @@ curl "http://localhost:9100/v1/sessions/history?page=1&limit=20&status=active" \
 GET /v1/sessions/stats
 ```
 
-Returns aggregated session statistics. Non-admin keys see only their own. The `active` count **excludes terminal sessions** (`killed`, `completed`, `crashed`); use `byStatus` for a full breakdown. The `totalFailed` count **excludes killed sessions** — killed sessions are tracked separately in `totalKilled`.
+Returns aggregated session statistics. Non-admin keys see only their own. The `active` count **excludes terminal sessions** (`killed`, `completed`, `crashed`); use `total` for all sessions or `byStatus` for a breakdown. The `totalFailed` count **excludes killed sessions** — killed sessions are tracked separately in `totalKilled`.
 
 ```bash
 curl http://localhost:9100/v1/sessions/stats \
@@ -1052,6 +1052,7 @@ curl http://localhost:9100/v1/sessions/stats \
 ```json
 {
   "active": 3,
+  "total": 150,
   "byStatus": { "working": 2, "idle": 1 },
   "totalCreated": 142,
   "totalCompleted": 87,
