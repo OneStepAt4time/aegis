@@ -278,6 +278,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       totalCompleted: global.sessions.completed,
       totalFailed: global.sessions.failed,
       totalKilled: global.sessions.killed ?? 0,
+      total: all.length,
     };
   });
 
