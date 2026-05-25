@@ -10,7 +10,8 @@ import { createSessionWithFallback, approve, killSession, getSession } from '../
 import { useToastStore } from '../../store/useToastStore';
 import { useT } from '../../i18n/context';
 
-const TOUR_COMPLETED_KEY = 'aegis:tour:completed';
+import { markTourCompleted } from '../../utils/tourState';
+const TOUR_COMPLETED_KEY = 'aegis:tour:completed'; // kept for reference
 const SANDBOX_DIR = '/tmp/aegis-tour';
 
 type TourStep = 'welcome' | 'creating' | 'waiting-permission' | 'approved' | 'killing' | 'complete';
@@ -130,8 +131,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       
       // Mark tour as completed
       try {
-        localStorage.setItem(TOUR_COMPLETED_KEY, '1');
-        sessionStorage.setItem(TOUR_COMPLETED_KEY, '1');
+        markTourCompleted();
       } catch {
         // Ignore storage errors
       }
@@ -156,8 +156,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
       killSession(sessionId).catch(() => {});
     }
     try {
-      localStorage.setItem(TOUR_COMPLETED_KEY, '1');
-      sessionStorage.setItem(TOUR_COMPLETED_KEY, '1');
+      markTourCompleted();
     } catch {
       // Ignore storage errors
     }
