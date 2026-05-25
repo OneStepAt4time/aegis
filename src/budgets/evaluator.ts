@@ -102,7 +102,7 @@ export class BudgetEvaluator {
       lastAlertAt: alertsSent > 0 ? now.toISOString() : (evalState?.lastAlertAt ?? null),
     };
     await this.store.setEvalState(budget.id, updatedState);
-    await this.store.touchLastEvaluated(budget.id);
+    await this.store.touchLastEvaluated(budget.id); // TODO(#4195): batch touch writes — N full file read-writes per tick is heavy for many budgets
 
     return {
       budgetId: budget.id,
