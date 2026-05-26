@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
+/**
+ * hooks/usePrefersReducedMotion.ts — Detect prefers-reduced-motion media query.
+ *
+ * Returns true if the user has enabled "reduce motion" in their OS settings.
+ * Components should respect this by disabling or simplifying animations.
+ */
 
-const QUERY = '(prefers-reduced-motion: reduce)';
+import { useEffect, useState } from 'react';
 
 export function usePrefersReducedMotion(): boolean {
   const [prefersReduced, setPrefersReduced] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return window.matchMedia(QUERY).matches;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   });
 
   useEffect(() => {
-    const mql = window.matchMedia(QUERY);
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   return prefersReduced;
