@@ -75,6 +75,7 @@ import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-i
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
+import { TimerRegistry } from './utils/timer-registry.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { AcpSessionService } from './services/acp/session-service.js';
 import { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
@@ -145,6 +146,8 @@ declare module 'fastify' {
 // Module-level const values are still initialized here.
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
+// Issue #4248: Centralized timer registry for clean shutdown
+const timers = new TimerRegistry();
 // Issue #4116: Debounce Set for session approval callbacks (prevents duplicate notifications from rapid Telegram clicks).
 const recentApprovalActions = new Set<string>();
 
@@ -771,8 +774,8 @@ function setupConfigWatcher(ctx: AppContext): void {
     ctx.configWatcher = watch(configPath, (_eventType) => {
       // Accept all event types — editors emit rename (atomic save), change, or undefined.
       // Debounce: FS events can fire multiple times for one save
-        if (ctx.configReloadTimer) clearTimeout(ctx.configReloadTimer);
-        ctx.configReloadTimer = setTimeout(() => {
+        if (ctx.configReloadTimer) timers.clearTimeout(ctx.configReloadTimer);
+        ctx.configReloadTimer = timers.setTimeout(() => {
           void handleConfigReload('file-change', ctx);
         }, 300);
     });
@@ -1277,17 +1280,17 @@ registerBudgetRoutes(app, { auth: ctx.auth, budgetStore, budgetEvaluator });
   registerOpenApiRoute(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
-  const reaperInterval = setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
-  const zombieReaperInterval = setInterval(() => reapZombieSessions(ctx), ZOMBIE_REAP_INTERVAL_MS);
-const metricsSaveInterval = setInterval(() => { void ctx.metrics.save(); }, 5 * 60 * 1000);
+  timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
+  timers.setInterval(() => reapZombieSessions(ctx), ZOMBIE_REAP_INTERVAL_MS);
+timers.setInterval(() => { void ctx.metrics.save(); }, 5 * 60 * 1000);
   // Issue #3310: Periodically persist metering data.
-  const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
+  timers.setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
-  const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  timers.setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
-  const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
+  timers.setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
-const authSweepInterval = setInterval(() => ctx.auth.sweepStaleRateLimits(), 5 * 60_000);
+timers.setInterval(() => ctx.auth.sweepStaleRateLimits(), 5 * 60_000);
   // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
   const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   // Issue #4004: Start orphan action sweeper
@@ -1295,6 +1298,7 @@ ctx.actionSweeper?.start();
   // Issue #4195: Start budget evaluation timer
   budgetTimer.start();
   // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
+  // Issue #4248: staticPruneInterval tracked via timers.track() after registration
   let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
   let pidFilePath = '';
 
@@ -1360,20 +1364,13 @@ ctx.actionSweeper?.start();
       // #1753: Close config file watcher
 ctx.configWatcher?.close();
       ctx.configWatcher = null;
-if (ctx.configReloadTimer) { clearTimeout(ctx.configReloadTimer); ctx.configReloadTimer = null; }
-      clearInterval(reaperInterval);
-      clearInterval(zombieReaperInterval);
-      clearInterval(metricsSaveInterval);
-      clearInterval(meteringSaveInterval);
-      clearInterval(ipPruneInterval);
-      clearInterval(authFailPruneInterval);
-      clearInterval(authSweepInterval);
-      clearInterval(quotaSweepInterval);
+if (ctx.configReloadTimer) { timers.clearTimeout(ctx.configReloadTimer); ctx.configReloadTimer = null; }
+      // Issue #4248: Clear all tracked timers via TimerRegistry
+      timers.clearAll();
       // Issue #4004: Stop orphan action sweeper
 ctx.actionSweeper?.stop();
       // Issue #4195: Stop budget evaluation timer
       budgetTimer.stop();
-      if (staticPruneInterval) clearInterval(staticPruneInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
@@ -1570,6 +1567,7 @@ ctx.auditLogger?.flush() ?? Promise.resolve(),
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
   // #3227: Capture prune interval handle for cleanup on shutdown
 staticPruneInterval = await registerDashboardStatic(app, { enabled: ctx.config.dashboardEnabled !== false });
+  if (staticPruneInterval) timers.track(staticPruneInterval);
   await container.assertHealthy();
 await listenWithRetry(app, ctx.config.port, ctx.config.host, ctx.config.stateDir);
 pidFilePath = await writePidFile(ctx.config.stateDir);
