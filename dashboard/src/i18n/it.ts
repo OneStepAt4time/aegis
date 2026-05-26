@@ -582,6 +582,10 @@ export const it = {
     goHome: 'Torna alla Dashboard',
   },
 
+  notifications: {
+    disconnect: 'Disconnetti',
+  },
+
   aria: {
     primarySidebar: 'Barra laterale principale',
     closeMenu: 'Chiudi menu',

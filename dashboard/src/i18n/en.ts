@@ -580,6 +580,10 @@ export const en = {
     goHome: 'Back to Dashboard',
   },
 
+  notifications: {
+    disconnect: 'Disconnect',
+  },
+
   aria: {
     // Layout & Navigation
     primarySidebar: 'Primary sidebar',
