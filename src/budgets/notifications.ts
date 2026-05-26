@@ -83,8 +83,7 @@ export class BudgetNotifier {
       `${percentUsed}% used ($${currentSpendUsd.toFixed(2)} / $${budget.limitUsd.toFixed(2)})`,
       `Window: ${windowDesc} (ends ${windowEndFormatted})`,
       `Threshold: ${threshold}%`,
-    ].join('
-');
+    ].join('\n');
 
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
