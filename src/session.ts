@@ -39,8 +39,9 @@ const log = new StructuredLogger();
 import type { UIState, SessionInfo, SessionState, PersistedStateData } from './session-types.js';
 export type { UIState, SessionInfo, SessionState, PersistedStateData };
 
+import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 // Re-export UI parser functions from session-ui-parser.ts
-export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
+export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
