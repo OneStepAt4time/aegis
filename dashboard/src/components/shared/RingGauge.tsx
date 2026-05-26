@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { tokens } from '../../design/tokens';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 interface RingGaugeProps {
   value: number; // 0 to 100
@@ -29,14 +30,19 @@ export function RingGauge({
   trackColor = 'rgba(255,255,255,0.05)',
   label
 }: RingGaugeProps) {
-  const [animatedValue, setAnimatedValue] = useState(0);
+  const prefersReduced = usePrefersReducedMotion();
+  const [animatedValue, setAnimatedValue] = useState(prefersReduced ? value : 0);
 
   useEffect(() => {
+    if (prefersReduced) {
+      setAnimatedValue(Math.max(0, Math.min(100, value)));
+      return;
+    }
     const timeout = setTimeout(() => {
       setAnimatedValue(Math.max(0, Math.min(100, value)));
     }, 100);
     return () => clearTimeout(timeout);
-  }, [value]);
+  }, [value, prefersReduced]);
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -98,12 +104,16 @@ export function RingGauge({
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset }}
-          transition={{
-            type: 'spring',
-            stiffness: springConfig.stiffness,
-            damping: springConfig.damping,
-            mass: springConfig.mass,
-          }}
+          transition={
+            prefersReduced
+              ? { duration: 0 }
+              : {
+                  type: 'spring',
+                  stiffness: springConfig.stiffness,
+                  damping: springConfig.damping,
+                  mass: springConfig.mass,
+                }
+          }
           strokeLinecap="round"
           filter={`url(#${glowId})`}
         />
@@ -114,7 +124,11 @@ export function RingGauge({
           style={{ color: primaryColor }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
+          transition={
+            prefersReduced
+              ? { duration: 0 }
+              : { type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }
+          }
         >
           {value}%
         </motion.span>

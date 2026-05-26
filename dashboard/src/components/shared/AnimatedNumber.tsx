@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useSpring, useTransform, motion, type SpringOptions } from 'framer-motion';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 export interface AnimatedNumberProps {
   value: number;
@@ -40,7 +41,8 @@ export function AnimatedNumber({
   className,
   decimals = 0,
 }: AnimatedNumberProps) {
-  const spring = useSpring(value, springConfig);
+  const prefersReduced = usePrefersReducedMotion();
+  const spring = useSpring(prefersReduced ? value : value, springConfig);
   const display = useTransform(spring, (latest) =>
     latest.toFixed(decimals)
   );
@@ -53,6 +55,15 @@ export function AnimatedNumber({
       prevValueRef.current = value;
     }
   }, [value, spring]);
+
+  if (prefersReduced) {
+    return (
+      <span className={className}>
+        {value.toFixed(decimals)}
+        {suffix}
+      </span>
+    );
+  }
 
   return (
     <motion.span
