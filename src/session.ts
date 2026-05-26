@@ -38,11 +38,8 @@ export { resolveApprovalInput };
 const log = new StructuredLogger();
 
 import { randomBytes } from 'node:crypto';
-
-/** Stub: detect UI state from terminal pane text (ACP mode). */
-function detectUIState(_paneText: string): UIState {
-  return 'idle';
-}
+import { detectUIState, hasBlankPromptNearBottom, resolveApprovalInput, getUiApprovalInput } from './session-ui-parser.js';
+export { detectApprovalMethod, resolveApprovalInput } from './session-ui-parser.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -55,18 +52,6 @@ const CLEANUP_TTL_MS = 30_000;
 const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
 /** Issue #1798: Poll interval (ms) when waiting for CC idle state. */
 const SEND_MESSAGE_IDLE_POLL_MS = 500;
-
-function hasBlankPromptNearBottom(paneText: string): boolean {
-  if (!paneText) return false;
-  const lines = paneText.trimEnd().split('\n');
-  for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
-    const stripped = lines[i]?.trim() ?? '';
-    if (stripped === '❯' || stripped === '❯\u00a0') {
-      return true;
-    }
-  }
-  return false;
-}
 
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
@@ -90,91 +75,6 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 // SessionInfo re-exported from session-types.ts above
 
 // SessionState re-exported from session-types.ts above
-
-/**
- * Detect whether CC is showing numbered permission options (e.g. "1. Yes, 2. No")
- * vs a simple y/N prompt. Returns the approval method to use.
- *
- * CC's permission UI uses indented numbered lines with "Esc to cancel" nearby.
- * We look for the pattern "  <N>. <option>" where N is 1-3, which distinguishes
- * permission options from regular numbered lists in output.
- */
-export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
-  // Match CC's permission option format: indented "  1. Yes" lines.
-  // Issue #843: Tightened to require "Esc to cancel" nearby (within 300 chars)
-  // to avoid false positives on regular indented numbered lists in output.
-  const numberedOptionPattern = /^\s{2}[1-3]\.\s/m;
-  if (numberedOptionPattern.test(paneText) && /Esc to cancel/i.test(paneText)) {
-    return 'numbered';
-  }
-  return 'yes';
-}
-
-
-
-
-/** Issue #3740: Detect the model name from Claude Code settings files.
- * Reads ANTHROPIC_MODEL from env in settings.local.json or settings.json. */
-async function detectModelFromSettings(workDir: string): Promise<string | undefined> {
-  const candidates = [
-    join(workDir, '.claude', 'settings.local.json'),
-    join(workDir, '.claude', 'settings.json'),
-    join(homedir(), '.claude', 'settings.local.json'),
-    join(homedir(), '.claude', 'settings.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      if (!existsSync(p)) continue;
-      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
-      if (!raw) continue;
-      let obj: any;
-      try { obj = JSON.parse(raw); } catch { continue; }
-      const model = obj?.env?.ANTHROPIC_MODEL;
-      if (typeof model === 'string' && model.length > 0) return model;
-    } catch { continue; }
-  }
-  return undefined;
-}
-
-/** Detect session isolation mode from project or global Claude Code settings. */
-async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none' | undefined> {
-  const candidates = [
-    join(workDir, '.claude', 'settings.local.json'),
-    join(workDir, '.claude', 'settings.json'),
-    join(homedir(), '.claude', 'settings.local.json'),
-    join(homedir(), '.claude', 'settings.json'),
-  ];
-
-  for (const p of candidates) {
-    try {
-      if (!existsSync(p)) continue;
-      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
-      if (!raw) continue;
-      let obj: any;
-      try { obj = JSON.parse(raw); } catch { continue; }
-      const val = obj?.worktree?.bgIsolation;
-      if (typeof val === 'string') {
-        if (val === 'none') return 'none';
-        if (val === 'worktree') return 'worktree';
-      }
-    } catch (_) {
-      // ignore and continue
-    }
-  }
-  return undefined;
-}
-
-function getUiApprovalInput(
-  paneText: string,
-  action: 'approve' | 'reject',
-  permissionMode: string,
-): string | null {
-  const state = detectUIState(paneText);
-  if (state !== 'permission_prompt' && state !== 'plan_mode' && state !== 'bash_approval') {
-    return null;
-  }
-  return resolveApprovalInput(paneText, action, permissionMode);
-}
 
 /** Resolves a pending PermissionRequest hook with a decision. */
 export type { PermissionDecision };
