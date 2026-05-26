@@ -1,0 +1,10 @@
+{
+  "updated": "2026-05-26T15:15Z",
+  "task": "#4235",
+  "status": "SUBAGENT_RUNNING",
+  "issue": 4235,
+  "stepDesc": "Extract types/constants from acp-lifecycle-probe.ts (step 1)",
+  "pr": null,
+  "sessionId": "subagent:12b412d8",
+  "notes": "#4224 PR #4286 verified. Now working #4235 (acp-lifecycle split step 1). 5 approved PRs pending."
+}
