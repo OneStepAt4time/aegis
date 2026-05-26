@@ -697,13 +697,15 @@ describe('SessionManager', () => {
       const { manager } = createManagerWithSession(makeSession({ status: 'idle' }));
       const saveSpy = vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
 
-      // Simulate a debounced save in flight
-      (manager as any).saveDebounceTimer = setTimeout(() => {}, 9999);
+      // Simulate a debounced save in flight via persistence service
+      const persistence = (manager as any).persistence;
+      persistence.debouncedSave({ sessions: {} });
+      expect(persistence['saveDebounceTimer']).not.toBeNull();
 
       await manager.killSession('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
 
       expect(saveSpy).toHaveBeenCalled();
-      expect((manager as any).saveDebounceTimer).toBeNull();
+      expect(persistence['saveDebounceTimer']).toBeNull();
     });
   });
 
