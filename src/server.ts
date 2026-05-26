@@ -74,6 +74,7 @@ import { AlertManager } from './alerting.js';
 import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
+import type { AppContext } from './app-context.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { AcpSessionService } from './services/acp/session-service.js';
 import { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
@@ -140,55 +141,33 @@ declare module 'fastify' {
 // 'unsafe-inline' remains on style-src because Tailwind / xterm inject inline styles;
 // script-src deliberately excludes 'unsafe-inline' and 'unsafe-eval'.
 
-// Config loaded at startup; env vars override file values
-let config: Config;
-
-// These will be initialized after config is loaded
-let sessions: SessionManager;
-let sessionStore: StateStore;
-let monitor: SessionMonitor;
-let jsonlWatcher: JsonlWatcher;
+// Issue #4241: All mutable state is now in AppContext, created in main().
+// Module-level const values are still initialized here.
 const channels = new ChannelManager();
 const eventBus = new SessionEventBus();
-let memoryBridge: MemoryBridge | null = null;
-let sseLimiter: SSEConnectionLimiter;let pipelines: PipelineManager;
-let toolRegistry: ToolRegistry;
-let auth: AuthManager;
-let metrics: MetricsCollector;
-let auditLogger: AuditLogger | undefined;
-let alertManager: AlertManager;
-let dashboardOidc: DashboardOIDCManager | null = null;
-let dashboardTokenSessions = new DashboardSessionStore();
-let configWatcher: FSWatcher | null = null;
 // Issue #4116: Debounce Set for session approval callbacks (prevents duplicate notifications from rapid Telegram clicks).
 const recentApprovalActions = new Set<string>();
-let acpLocalProfile: AcpLocalStorageProfile | null = null;
-let acpSessionService: AcpSessionService | null = null;
-let acpBackend: AcpBackend | null = null;
-let acpTerminalBridge: AcpTerminalBridge | null = null;
-let acpPauseStore: import('./services/acp/pause-intervention.js').AcpPauseInterventionStore | null = null;
-let actionSweeper: ActionSweeper | null = null;
 
 // ── Inbound command handler ─────────────────────────────────────────
 
-async function handleInbound(cmd: InboundCommand): Promise<void> {
+async function handleInbound(cmd: InboundCommand, ctx: AppContext): Promise<void> {
   try {
     switch (cmd.action) {
       case 'approve':
-        await sessions.approve(cmd.sessionId);
+        await ctx.sessions.approve(cmd.sessionId);
         break;
       case 'reject':
-        await sessions.reject(cmd.sessionId);
+        await ctx.sessions.reject(cmd.sessionId);
         break;
       case 'escape':
-        await sessions.escape(cmd.sessionId);
+        await ctx.sessions.escape(cmd.sessionId);
         break;
       case 'kill':
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
-        await sessions.killSession(cmd.sessionId);
-        channels.sessionEnded(makePayloadFromCtx(sessions, 'session.ended', cmd.sessionId, 'killed'));
-        cleanupTerminatedSessionState(cmd.sessionId, { monitor, metrics, toolRegistry });
+        await ctx.sessions.killSession(cmd.sessionId);
+        channels.sessionEnded(makePayloadFromCtx(ctx.sessions, 'session.ended', cmd.sessionId, 'killed'));
+        cleanupTerminatedSessionState(cmd.sessionId, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
         break;
       case 'session_approve': {
         // Issue #4116: Debounce — skip if this session was already processed recently.
@@ -202,7 +181,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         // Issue #4092: Wrap in try/catch — stale Telegram callbacks (e.g. user taps
         // Approve after session was already approved via API) should not crash callback processing.
         try {
-          await sessions.approveSession(cmd.sessionId, approveActor);
+          await ctx.sessions.approveSession(cmd.sessionId, approveActor);
           channels.statusChange({
             event: 'session.approved',
             timestamp: new Date().toISOString(),
@@ -224,7 +203,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
           ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
           : 'telegram';
         try {
-          await sessions.rejectSession(cmd.sessionId);
+          await ctx.sessions.rejectSession(cmd.sessionId);
           channels.statusChange({
             event: 'session.rejected',
             timestamp: new Date().toISOString(),
@@ -238,7 +217,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
       }
       case 'message':
       case 'command':
-        if (cmd.text) await sessions.sendMessage(cmd.sessionId, cmd.text);
+        if (cmd.text) await ctx.sessions.sendMessage(cmd.sessionId, cmd.text);
         break;
     }
   } catch (e) {
@@ -386,7 +365,7 @@ app.addHook('onResponse', (req, _reply, done) => {
   done();
 });
 
-function setupAuth(authManager: AuthManager): void {
+function setupAuth(ctx: AppContext): void {
   app.addHook('onRequest', async (req, reply) => {
     // #2809: CORS preflight — browsers send OPTIONS without auth headers.
     if (req.method === 'OPTIONS') return;
@@ -406,7 +385,7 @@ function setupAuth(authManager: AuthManager): void {
     // Issue #3092: manifest.json must be public for PWA install.
     if (urlPath === '/manifest.json') return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
-    // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
+    // Issue #394: Require valid X-Session-Id for known ctx.sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
     // Issue #629: Validate per-session hook secret to prevent replay with known session ID.
     // CC hooks run from localhost and always include the session ID they were started with.
@@ -418,10 +397,10 @@ function setupAuth(authManager: AuthManager): void {
         return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
       }
       if (hookSessionId) {
-        const session = sessions.getSession(hookSessionId);
+        const session = ctx.sessions.getSession(hookSessionId);
         if (session) {
           const queryHookSecret = (req.query as Record<string, string>)?.secret;
-          if (config.hookSecretHeaderOnly && queryHookSecret !== undefined) {
+          if (ctx.config.hookSecretHeaderOnly && queryHookSecret !== undefined) {
             return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
           }
           const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
@@ -435,21 +414,21 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — hook endpoint requires valid session ID' });
     }
     // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
-    // Exact match: /v1/sessions/{id}/terminal
-    if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
+    // Exact match: /v1/ctx.sessions/{id}/terminal
+    if (/^\/v1\/ctx.sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
     // Issue #1557: /metrics requires authentication. When a dedicated metrics token
     // is configured (AEGIS_METRICS_TOKEN), accept either that or the primary auth token.
     // This runs before the general no-auth-localhost bypass so that /metrics is always
     // protected when a metrics token is set, even in dev mode.
     if (urlPath === '/metrics') {
-      const metricsToken = config.metricsToken;
+      const metricsToken = ctx.config.metricsToken;
       const bearer = req.headers.authorization?.startsWith('Bearer ')
         ? req.headers.authorization.slice(7)
         : undefined;
       if (metricsToken) {
         // Dedicated metrics token configured — require it or the primary token
-        if (bearer && (timingSafeStringEqual(bearer, metricsToken) || authManager.validate(bearer).valid)) {
+        if (bearer && (timingSafeStringEqual(bearer, metricsToken) || ctx.auth.validate(bearer).valid)) {
           return; // authenticated
         }
         return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
@@ -460,8 +439,8 @@ function setupAuth(authManager: AuthManager): void {
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
-    // SSE routes: /v1/events, /v1/sessions/:id/events, /v1/sessions/:id/stream (#2461)
-    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
+    // SSE routes: /v1/events, /v1/ctx.sessions/:id/events, /v1/ctx.sessions/:id/stream (#2461)
+    const isSSERoute = /^\/v1\/events$|^\/v1\/ctx.sessions\/[^/]+\/(events|stream)$/.test(urlPath);
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
@@ -479,12 +458,12 @@ function setupAuth(authManager: AuthManager): void {
     if (!token && urlPath.startsWith('/v1/')) {
       const dashboardAuthContext = authenticateDashboardSessionCookie(req, {
         getSession: (sessionId: string | undefined) =>
-          dashboardTokenSessions.get(sessionId) ?? dashboardOidc?.getSession(sessionId) ?? null,
+          ctx.dashboardTokenSessions.get(sessionId) ?? ctx.dashboardOidc?.getSession(sessionId) ?? null,
       });
       if (dashboardAuthContext) {
         requestKeyMap.set(req.id, dashboardAuthContext.keyId);
-        if (auditLogger) {
-          void auditLogger.log(
+        if (ctx.auditLogger) {
+          void ctx.auditLogger.log(
             dashboardAuthContext.actor,
             'api.authenticated',
             `${req.method} ${req.url?.split('?')[0] ?? req.url}`,
@@ -505,7 +484,7 @@ function setupAuth(authManager: AuthManager): void {
     // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
     // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
     // #2532: Even in localhost no-auth mode, apply per-IP rate limiting to prevent flooding.
-    const isNoAuthLocalhost = !authManager.authEnabled && authManager.isLocalhostBinding;
+    const isNoAuthLocalhost = !ctx.auth.authEnabled && ctx.auth.isLocalhostBinding;
     if (isNoAuthLocalhost) {
       if (checkIpRateLimit(clientIp, false)) {
         addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false));
@@ -529,7 +508,7 @@ function setupAuth(authManager: AuthManager): void {
     // #408: SSE endpoints require short-lived single-use SSE tokens.
     // Do not fall back to validating long-lived bearer/master tokens on /events.
     if (tokenMode === 'sse') {
-      if (await authManager.validateSSEToken(token)) {
+      if (await ctx.auth.validateSSEToken(token)) {
         return; // authenticated via short-lived SSE token
       }
       // #2456: Check auth-fail rate limit only after confirming the token is bad,
@@ -553,7 +532,7 @@ function setupAuth(authManager: AuthManager): void {
       return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
     }
 
-    const result = authManager.validate(token);
+    const result = ctx.auth.validate(token);
 
     if (!result.valid) {
       // #2456: Check auth-fail rate limit only for invalid tokens so valid tokens
@@ -580,20 +559,20 @@ function setupAuth(authManager: AuthManager): void {
     // #634: Store validated keyId for SSE token endpoint to reuse
     requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
     req.authKeyId = result.keyId;
-    req.authRole = authManager.getRole(result.keyId);
-    req.authPermissions = authManager.getPermissions(result.keyId);
-    req.authActor = authManager.getAuditActor(result.keyId, result.keyId ?? 'anonymous');
+    req.authRole = ctx.auth.getRole(result.keyId);
+    req.authPermissions = ctx.auth.getPermissions(result.keyId);
+    req.authActor = ctx.auth.getAuditActor(result.keyId, result.keyId ?? 'anonymous');
     // Issue #2267: Propagate tenant ID from the validated key.
     // Admin/master keys get SYSTEM_TENANT — they see all resources.
     req.tenantId = result.tenantId;
 
     // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
-    // #1640: Guard with simple truthiness check — auditLogger can be undefined
+    // #1640: Guard with simple truthiness check — ctx.auditLogger can be undefined
     // #3072: Reset auth-fail counter on successful auth so prior typos are forgiven
     rateLimiter.resetAuthFailures(clientIp);
 
-    if (auditLogger) {
-      void auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
+    if (ctx.auditLogger) {
+      void ctx.auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
     }
 
     // #228: Per-IP rate limiting (applies to all authenticated requests)
@@ -628,18 +607,18 @@ function setupAuth(authManager: AuthManager): void {
 
 // ── Session Reaper ──────────────────────────────────────────────────
 
-async function reapStaleSessions(maxAgeMs: number): Promise<void> {
+async function reapStaleSessions(maxAgeMs: number, ctx: AppContext): Promise<void> {
   const now = Date.now();
   // Snapshot list before iterating — killSession() modifies the sessions map
-  const snapshot = [...sessions.listSessions()];
+  const snapshot = [...ctx.sessions.listSessions()];
   for (const session of snapshot) {
     // Guard: session may have been deleted by DELETE handler between snapshot and here
-    if (!sessions.getSession(session.id)) continue;
+    if (!ctx.sessions.getSession(session.id)) continue;
     // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
     if (session.isPinned) continue;
     const age = now - session.createdAt;
     if (age > maxAgeMs) {
-    const ageMin = Math.round(age / 60000);
+      const ageMin = Math.round(age / 60000);
       logger.info({
         component: 'server',
         operation: 'reap_stale_sessions',
@@ -652,7 +631,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
       try {
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
-        await sessions.killSession(session.id);
+        await ctx.sessions.killSession(session.id);
         eventBus.cleanupSession(session.id);
         channels.sessionEnded({
           event: 'session.ended',
@@ -660,7 +639,7 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
           session: { id: session.id, name: session.displayName, workDir: session.workDir },
           detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
         });
-        cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
+        cleanupTerminatedSessionState(session.id, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
       } catch (e) {
         logger.error({
           component: 'server',
@@ -681,13 +660,13 @@ async function reapStaleSessions(maxAgeMs: number): Promise<void> {
 const ZOMBIE_REAP_DELAY_MS = parseIntSafe(process.env.ZOMBIE_REAP_DELAY_MS, 60000);
 const ZOMBIE_REAP_INTERVAL_MS = parseIntSafe(process.env.ZOMBIE_REAP_INTERVAL_MS, 60000);
 
-async function reapZombieSessions(): Promise<void> {
+async function reapZombieSessions(ctx: AppContext): Promise<void> {
   const now = Date.now();
   // Snapshot list before iterating — killSession() modifies the sessions map
-  const snapshot = [...sessions.listSessions()];
+  const snapshot = [...ctx.sessions.listSessions()];
   for (const session of snapshot) {
     // Guard: session may have been deleted between snapshot and here
-    if (!sessions.getSession(session.id)) continue;
+    if (!ctx.sessions.getSession(session.id)) continue;
     // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
     if (session.isPinned) continue;
     if (!session.lastDeadAt) continue;
@@ -704,10 +683,10 @@ async function reapZombieSessions(): Promise<void> {
     });
     try {
       eventBus.cleanupSession(session.id);
-      await sessions.killSession(session.id);
+      await ctx.sessions.killSession(session.id);
       // Issue #2947: mark zombie-reaped sessions as infra failures
-      metrics.sessionInfraFailed(session.id);
-      cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
+      ctx.metrics.sessionInfraFailed(session.id);
+      cleanupTerminatedSessionState(session.id, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
       channels.sessionEnded({
         event: 'session.ended',
         timestamp: new Date().toISOString(),
@@ -771,37 +750,36 @@ export { readParentPid as readPpid } from './process-utils.js';
 
 // ── Config hot-reload (Issue #1753) ───────────────────────────────────
 
-/** Debounce timer for config file change events. */
-let configReloadTimer: ReturnType<typeof setTimeout> | null = null;
+/** Debounce timer for config file change events. Moved to AppContext. */
 
 /** Set up fs.watch on the active config file and a SIGHUP handler for manual reload.
  *  Only allowedWorkDirs is hot-reloaded — other config changes still require a restart. */
-let watchedConfigPath: string | null = null;
+// watchedConfigPath moved to AppContext
 
-function setupConfigWatcher(): void {
+function setupConfigWatcher(ctx: AppContext): void {
   const configPath = findConfigFilePath();
   if (!configPath) return; // No config file to watch
-  watchedConfigPath = configPath;
+  ctx.watchedConfigPath = configPath;
 
   // SIGHUP handler for manual reload
   process.on('SIGHUP', () => {
-    void handleConfigReload('SIGHUP');
+    void handleConfigReload('SIGHUP', ctx);
   });
 
   // fs.watch for automatic detection
   try {
-    configWatcher = watch(configPath, (_eventType) => {
+    ctx.configWatcher = watch(configPath, (_eventType) => {
       // Accept all event types — editors emit rename (atomic save), change, or undefined.
       // Debounce: FS events can fire multiple times for one save
-        if (configReloadTimer) clearTimeout(configReloadTimer);
-        configReloadTimer = setTimeout(() => {
-          void handleConfigReload('file-change');
+        if (ctx.configReloadTimer) clearTimeout(ctx.configReloadTimer);
+        ctx.configReloadTimer = setTimeout(() => {
+          void handleConfigReload('file-change', ctx);
         }, 300);
     });
-    configWatcher.on('error', () => {
+    ctx.configWatcher.on('error', () => {
       // Watcher failed (file deleted, permissions) — disable gracefully
-      configWatcher?.close();
-      configWatcher = null;
+      ctx.configWatcher?.close();
+      ctx.configWatcher = null;
     });
     logger.info({
       component: 'server',
@@ -814,15 +792,15 @@ function setupConfigWatcher(): void {
 }
 
 /** Reload allowedWorkDirs from config file and update the live config object. */
-async function handleConfigReload(source: string): Promise<void> {
+async function handleConfigReload(source: string, ctx: AppContext): Promise<void> {
   try {
-    const newDirs = await reloadAllowedWorkDirs(watchedConfigPath ?? undefined);
+    const newDirs = await reloadAllowedWorkDirs(ctx.watchedConfigPath ?? undefined);
     if (newDirs === null) return; // Config file gone/invalid
-    const oldDirs = config.allowedWorkDirs;
+    const oldDirs = ctx.config.allowedWorkDirs;
     const changed = newDirs.length !== oldDirs.length
       || newDirs.some((d, i) => d !== oldDirs[i]);
     if (changed) {
-      config.allowedWorkDirs = newDirs;
+      ctx.config.allowedWorkDirs = newDirs;
       logger.info({
         component: 'server',
         operation: 'config_hot_reload',
@@ -843,28 +821,30 @@ async function handleConfigReload(source: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // Issue #4241: Single context object replaces all module-level mutable globals
+  const ctx = {} as AppContext;
   // Load configuration
-  config = await loadConfig();
-  dashboardTokenSessions = new DashboardSessionStore();
-  dashboardOidc = await createDashboardOidcManagerFromEnv(config);
+  ctx.config = await loadConfig();
+  ctx.dashboardTokenSessions = new DashboardSessionStore();
+  ctx.dashboardOidc = await createDashboardOidcManagerFromEnv(ctx.config);
 
   // Initialize OpenTelemetry tracing before any instrumented modules load.
   // Must be called before Fastify starts so auto-instrumentation can patch HTTP.
   await initTracing(loadTracingConfig());
 
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
-  setupConfigWatcher();
+  setupConfigWatcher(ctx);
 
   // Initialize core components with config
 
   // Issue #1937: Create pluggable session store based on config.
   const { createStateStore } = await import('./services/state/store-factory.js');
-  sessionStore = await createStateStore(config);
-  await sessionStore.start();
+  ctx.sessionStore = await createStateStore(ctx.config);
+  await ctx.sessionStore.start();
 
-  sessions = new SessionManager(config, sessionStore);
+  ctx.sessions = new SessionManager(ctx.config, ctx.sessionStore);
   // Issue #4092: Wire recovery callback for stuck awaiting_approval sessions.
-  sessions.onSessionApprovalRecovery = (session) => {
+ctx.sessions.onSessionApprovalRecovery = (session) => {
     channels.statusChange({
       event: 'session.awaiting_approval',
       timestamp: new Date().toISOString(),
@@ -878,21 +858,21 @@ async function main(): Promise<void> {
   const persistDebounceMs = process.env.AEGIS_PERSIST_DEBOUNCE_MS
     ? parseInt(process.env.AEGIS_PERSIST_DEBOUNCE_MS, 10)
     : undefined;
-  acpLocalProfile = createFileAcpLocalStorageProfile({
-    filePath: path.join(config.stateDir, 'acp-local-storage.json'),
+  ctx.acpLocalProfile = createFileAcpLocalStorageProfile({
+    filePath: path.join(ctx.config.stateDir, 'acp-local-storage.json'),
     ...(persistDebounceMs !== undefined ? { persistDebounceMs } : {}),
   });
-  await acpLocalProfile.start();
-  acpPauseStore = acpLocalProfile.pauseInterventionStore ?? null;
-  acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
-    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
+  await ctx.acpLocalProfile.start();
+  ctx.acpPauseStore = ctx.acpLocalProfile!.pauseInterventionStore ?? null;
+  ctx.acpSessionService = new AcpSessionService(ctx.acpLocalProfile!.sessionStore, {
+    pauseInterventionStore: ctx.acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
   // Issue #3422: Wire ACP notifications to event store so /read and /transcript
   // return data for ACP sessions. Without this, CC notifications are received but never persisted.
-  const acpEventStore = acpLocalProfile.eventStore;
-  acpBackend = new AcpBackend({
-    sessionService: acpSessionService,
-    jsonRpcClientOptions: { requestTimeoutMs: config.acpPromptTimeoutMs },
+  const acpEventStore = ctx.acpLocalProfile!.eventStore;
+  ctx.acpBackend = new AcpBackend({
+    sessionService: ctx.acpSessionService!,
+    jsonRpcClientOptions: { requestTimeoutMs: ctx.config.acpPromptTimeoutMs },
     onRawNotification: (notification, context) => {
       try {
         const event = mapAcpJsonRpcNotificationToEvent(notification, {
@@ -916,13 +896,13 @@ async function main(): Promise<void> {
       }
     },
   });
-  acpTerminalBridge = new AcpTerminalBridge({
+  ctx.acpTerminalBridge = new AcpTerminalBridge({
     sessionResolver: {
-      getSession: (sessionId, scope) => acpSessionService!.getSession(sessionId, scope),
+      getSession: (sessionId, scope) => ctx.acpSessionService!.getSession(sessionId, scope),
     },
     runtimeResolver: {
       getRuntime: (sessionId) => {
-        const runtime = acpBackend!.getRuntime(sessionId);
+        const runtime = ctx.acpBackend!.getRuntime(sessionId);
         if (!runtime) return null;
         return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
       },
@@ -932,18 +912,18 @@ async function main(): Promise<void> {
   const container = new ServiceContainer();
   // #1644: Derive hook-secret encryption key from master auth token (non-empty only)
   // #3340: Also check clientAuthToken
-  const encryptionKey = config.authToken || config.clientAuthToken;
+const encryptionKey = ctx.config.authToken || ctx.config.clientAuthToken;
   if (encryptionKey) {
-    sessions.setEncryptionKey(encryptionKey);
+    ctx.sessions.setEncryptionKey(encryptionKey);
   }
 
   // Issue #3143: Wire ACP event store into session transcript reader
-  sessions.setAcpEventStore(acpLocalProfile.eventStore);
+  ctx.sessions.setAcpEventStore(ctx.acpLocalProfile!.eventStore);
 
   // Issue #4004: Orphan action sweeper — recovers stale leased actions
   const sweeperConfig = resolveSweeperConfig();
   if (sweeperConfig.enabled) {
-    actionSweeper = new ActionSweeper(acpLocalProfile.actionQueue, sweeperConfig, {
+  ctx.actionSweeper = new ActionSweeper(ctx.acpLocalProfile!.actionQueue, sweeperConfig, {
       onRecovered: (actions) => {
         logger.info({
           component: 'server',
@@ -963,12 +943,12 @@ async function main(): Promise<void> {
   }
 
   // Memory bridge (Issue #783)
-  if (config.memoryBridge?.enabled) {
-    const persistPath = config.memoryBridge.persistPath ?? path.join(config.stateDir, 'memory.json');
-    memoryBridge = new MemoryBridge(persistPath, config.memoryBridge.reaperIntervalMs);
-    await memoryBridge.load();
-    memoryBridge.startReaper();
-    registerMemoryRoutes(app, memoryBridge);
+if (ctx.config.memoryBridge?.enabled) {
+const persistPath = ctx.config.memoryBridge.persistPath ?? path.join(ctx.config.stateDir, 'memory.json');
+ctx.memoryBridge = new MemoryBridge(persistPath, ctx.config.memoryBridge.reaperIntervalMs);
+await ctx.memoryBridge!.load();
+ctx.memoryBridge!.startReaper();
+registerMemoryRoutes(app, ctx.memoryBridge!);
     logger.info({
       component: 'server',
       operation: 'memory_bridge_enabled',
@@ -976,69 +956,69 @@ async function main(): Promise<void> {
     });
   }
 
-  sseLimiter = new SSEConnectionLimiter({ maxConnections: config.sseMaxConnections, maxPerIp: config.sseMaxPerIp });
-  monitor = new SessionMonitor(sessions, channels, { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 5000 });
+  ctx.sseLimiter = new SSEConnectionLimiter({ maxConnections: ctx.config.sseMaxConnections, maxPerIp: ctx.config.sseMaxPerIp });
+  ctx.monitor = new SessionMonitor(ctx.sessions, channels, { ...DEFAULT_MONITOR_CONFIG, pollIntervalMs: 5000 });
 
   // Register channels
-  registerChannels(config);
+registerChannels(ctx.config);
 
   // Setup auth (Issue #39: multi-key + backward compat)
   // #3340: Fall back to clientAuthToken when authToken is not set
-  const masterToken = config.authToken || config.clientAuthToken || undefined;
-  auth = new AuthManager(path.join(config.stateDir, 'keys.json'), masterToken, config.defaultTenantId);
-  auth.setHost(config.host);  // #1080: needed for auth bypass security check
+  const masterToken = ctx.config.authToken || ctx.config.clientAuthToken || undefined;
+  ctx.auth = new AuthManager(path.join(ctx.config.stateDir, 'keys.json'), masterToken, ctx.config.defaultTenantId);
+ctx.auth.setHost(ctx.config.host);  // #1080: needed for auth bypass security check
 
   // #1419: Initialize audit logger and wire into auth
-  auditLogger = new AuditLogger(path.join(config.stateDir, 'audit'));
-  await auditLogger.init();
-  auth.setAuditLogger(auditLogger);
+  ctx.auditLogger = new AuditLogger(path.join(ctx.config.stateDir, 'audit'));
+await ctx.auditLogger!.init();
+ctx.auth.setAuditLogger(ctx.auditLogger!);
 
   // Issue #1418: Initialize production alerting
-  alertManager = new AlertManager({ ...config.alerting, hookTimeoutMs: config.hookTimeoutMs });
-  if (config.alerting.webhooks.length > 0) {
+  ctx.alertManager = new AlertManager({ ...ctx.config.alerting, hookTimeoutMs: ctx.config.hookTimeoutMs });
+  if (ctx.config.alerting.webhooks.length > 0) {
     logger.info({
       component: 'server',
       operation: 'alerting_enabled',
       attributes: {
-        webhooks: config.alerting.webhooks.length,
-        failureThreshold: config.alerting.failureThreshold,
+        webhooks: ctx.config.alerting.webhooks.length,
+        failureThreshold: ctx.config.alerting.failureThreshold,
       },
     });
   }
 
   // Wire monitor dependencies before lifecycle startup.
-  monitor.setEventBus(eventBus);
-  monitor.setAlertManager(alertManager);
-  jsonlWatcher = new JsonlWatcher();
-  monitor.setMetrics(metrics);
+  ctx.monitor.setEventBus(eventBus);
+  ctx.monitor.setAlertManager(ctx.alertManager);
+  ctx.jsonlWatcher = new JsonlWatcher();
+  ctx.monitor.setMetrics(ctx.metrics);
   // Issue #3754: Wire ACP backend for rate-limit retry support
-  if (acpBackend) monitor.setAcpBackend(acpBackend);
-  monitor.setJsonlWatcher(jsonlWatcher);
-  container.register('sessionManager', sessions, {
+if (ctx.acpBackend) ctx.monitor.setAcpBackend(ctx.acpBackend);
+  ctx.monitor.setJsonlWatcher(ctx.jsonlWatcher);
+container.register('sessionManager', ctx.sessions, {
     start: async () => {
-      await sessions.load();
-      sessions.startCleanupTimer(); // Issue #4124
+      await ctx.sessions.load();
+      ctx.sessions.startCleanupTimer(); // Issue #4124
     },
     stop: async () => {
-      sessions.stopCleanupTimer(); // Issue #4124
-      await sessions.save();
+      ctx.sessions.stopCleanupTimer(); // Issue #4124
+      await ctx.sessions.save();
     },
-    health: async () => ({ healthy: true, details: `sessions=${sessions.listSessions().length}` }),
+health: async () => ({ healthy: true, details: `sessions=${ctx.sessions.listSessions().length}` }),
   }, []);
-  container.register('authManager', auth, {
+container.register('authManager', ctx.auth, {
     start: async () => {
-      await auth.load();
+      await ctx.auth.load();
       // #3356/#3484/#3567: Detect and auto-repair an orphaned ~/.aegis/auth-token
       // whose content no longer matches any registered key. Auto-repair by
       // persisting the current master token so the CLI keeps working after restarts.
       const clientTokenFile = getAuthTokenFilePath();
-      const currentMaster = auth.getMasterToken();
+      const currentMaster = ctx.auth.getMasterToken();
       if (currentMaster) {
         try {
           const fileToken = existsSync(clientTokenFile)
             ? readFileSync(clientTokenFile, 'utf-8').trim()
             : '';
-          if (!fileToken || !auth.checkClientToken(fileToken).matched) {
+          if (!fileToken || !ctx.auth.checkClientToken(fileToken).matched) {
             persistAuthTokenFile(currentMaster);
             if (fileToken) {
               log.warn({
@@ -1055,47 +1035,47 @@ async function main(): Promise<void> {
       }
     },
     stop: async () => {},
-    health: async () => ({ healthy: auth.isHealthy(), details: auth.isHealthy() ? undefined : "keys.json missing — state dir may have been wiped" }),
+health: async () => ({ healthy: ctx.auth.isHealthy(), details: ctx.auth.isHealthy() ? undefined : "keys.json missing — state dir may have been wiped" }),
   });
   container.register('channelManager', channels, {
     start: async () => {
-      await channels.init(handleInbound);
+      await channels.init((cmd) => handleInbound(cmd, ctx));
     },
     stop: async () => {
       await channels.destroy();
     },
     health: async () => ({ healthy: true, details: `channels=${channels.count}` }),
   }, ['sessionManager']);
-  container.register('sessionMonitor', monitor, {
+  container.register('sessionMonitor', ctx.monitor, {
     start: async () => {
-      monitor.start();
+      ctx.monitor.start();
     },
     stop: async () => {
-      monitor.stop();
+  ctx.monitor.stop();
     },
     health: async () => ({
-      healthy: monitor.isRunning,
-      details: monitor.isRunning ? 'running' : 'not running',
+      healthy: ctx.monitor.isRunning,
+      details: ctx.monitor.isRunning ? 'running' : 'not running',
     }),
   }, ['sessionManager', 'channelManager']);
-  container.register('acpLocalProfile', acpLocalProfile, {
+container.register('acpLocalProfile', ctx.acpLocalProfile!, {
     start: async () => {
-      await acpLocalProfile!.start();
+await ctx.acpLocalProfile!.start();
     },
     stop: async (signal) => {
-      await acpLocalProfile!.stop(signal);
+await ctx.acpLocalProfile!.stop(signal);
     },
-    health: async () => acpLocalProfile!.health(),
+    health: async () => ctx.acpLocalProfile!.health(),
   });
-  container.register('acpBackend', acpBackend, {
+container.register('acpBackend', ctx.acpBackend!, {
     start: async () => {},
     stop: async () => {
       // Gracefully shutdown all active ACP runtimes
-      if (acpBackend) {
+  if (ctx.acpBackend) {
         const promises: Promise<unknown>[] = [];
-        for (const session of sessions.listSessions()) {
-          promises.push(
-            acpBackend.shutdownSession({ sessionId: session.id, tenantId: session.tenantId ?? SYSTEM_TENANT, ownerKeyId: session.ownerKeyId ?? 'master' })
+      for (const session of ctx.sessions.listSessions()) {
+promises.push(
+            ctx.acpBackend!.shutdownSession({ sessionId: session.id, tenantId: session.tenantId ?? SYSTEM_TENANT, ownerKeyId: session.ownerKeyId ?? 'master' })
               .catch(() => {})
           );
         }
@@ -1105,7 +1085,7 @@ async function main(): Promise<void> {
     health: async () => ({ healthy: true }),
   }, ['acpLocalProfile']);
 
-  setupAuth(auth);
+setupAuth(ctx);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
@@ -1119,10 +1099,10 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, {
     origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
   });
-  await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
+await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
   // Issue #3264: Initialize MeteringService for persistent cost tracking.
-  const metering = new MeteringService(eventBus, (sid) => sessions.getSession(sid)?.ownerKeyId, path.join(config.stateDir, 'metering.jsonl'));
+const metering = new MeteringService(eventBus, (sid) => ctx.sessions.getSession(sid)?.ownerKeyId, path.join(ctx.config.stateDir, 'metering.jsonl'));
 
   // Issue #3310: Load persisted metering records from previous runs.
   try {
@@ -1133,18 +1113,18 @@ async function main(): Promise<void> {
   }
 
   // Issue #4195: Cost Alerts — budget store, evaluator, notifier, timer.
-  const budgetStore = new BudgetStore(config.stateDir);
-  const budgetNotifier = new BudgetNotifier({ telegramBotToken: config.tgBotToken || undefined });
+const budgetStore = new BudgetStore(ctx.config.stateDir);
+const budgetNotifier = new BudgetNotifier({ telegramBotToken: ctx.config.tgBotToken || undefined });
   const budgetEvaluator = new BudgetEvaluator(budgetStore, metering, budgetNotifier);
   const budgetTimer = new BudgetTimer(budgetEvaluator, budgetStore);
   // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
   // Issue #2536: Also count messages and tool calls from JSONL events.
-  jsonlWatcher.onEntries((event) => {
-    if (metrics) {
+  ctx.jsonlWatcher.onEntries((event) => {
+if (ctx.metrics) {
       const { tokenUsageDelta } = event;
       if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
-        const model = sessions.getSession(event.sessionId)?.model;
-        metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
+        const model = ctx.sessions.getSession(event.sessionId)?.model;
+ctx.metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
         // Issue #3264: Persist token usage to MeteringService for cost API queries.
         if (metering) {
           metering.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
@@ -1152,31 +1132,31 @@ async function main(): Promise<void> {
       }
       // Issue #2536: Count messages and tool calls from parsed entries.
       for (const msg of event.messages) {
-        metrics.messageReceived(event.sessionId);
+ctx.metrics.messageReceived(event.sessionId);
         if (msg.contentType === 'tool_use') {
-          metrics.toolCallReceived(event.sessionId);
+  ctx.metrics.toolCallReceived(event.sessionId);
         }
       }
     }
   });
 
   // Start watching JSONL files for already-discovered sessions
-  for (const session of sessions.listSessions()) {
+for (const session of ctx.sessions.listSessions()) {
     if (session.jsonlPath) {
-      jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
+      ctx.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
     }
   }
 
   // Issue #3310: Initial replay of existing JSONL data for metering backfill.
   // The JSONL watcher only fires on file changes, so historical token data
   // from sessions that were already completed would never be metered.
-  for (const session of sessions.listSessions()) {
+for (const session of ctx.sessions.listSessions()) {
     if (session.jsonlPath && session.monitorOffset > 0) {
       try {
         const result = await readNewEntries(session.jsonlPath, 0);
         const delta = extractTokenDelta(result.raw);
         if (delta.inputTokens > 0 || delta.outputTokens > 0) {
-          const model = sessions.getSession(session.id)?.model;
+  const model = ctx.sessions.getSession(session.id)?.model;
           metering.recordTokenUsage(session.id, delta, model);
         }
       } catch {
@@ -1191,7 +1171,7 @@ async function main(): Promise<void> {
     // Non-critical.
   }
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
-  registerHookRoutes(app, { sessions, eventBus, metrics, hookSecretHeaderOnly: config.hookSecretHeaderOnly });
+registerHookRoutes(app, { sessions: ctx.sessions, eventBus, metrics: ctx.metrics, hookSecretHeaderOnly: ctx.config.hookSecretHeaderOnly });
 
   // Issue #2144: GET /v1/hooks/:id/deliveries — webhook delivery history
   app.get<{ Params: { id: string } }>('/v1/hooks/:id/deliveries', async (req, reply) => {
@@ -1212,55 +1192,55 @@ async function main(): Promise<void> {
   });
 
   // Initialize pipeline manager (Issue #36, #1424, #1938)
-  pipelines = new PipelineManager(sessions, eventBus, sessionStore, config.pipelineStageTimeoutMs);
-  await pipelines.hydrate();
+ctx.pipelines = new PipelineManager(ctx.sessions, eventBus, ctx.sessionStore, ctx.config.pipelineStageTimeoutMs);
+await ctx.pipelines.hydrate();
 
   // Initialize batch rate limiter (Issue #583)
 
   // Initialize metrics (Issue #40)
-  metrics = new MetricsCollector(path.join(config.stateDir, 'metrics.json'));
-  await metrics.load();
+ctx.metrics = new MetricsCollector(path.join(ctx.config.stateDir, 'metrics.json'));
+await ctx.metrics.load();
 
   // Issue #2250: Initialize analytics cache with JSON file persistence
-  const metricsCache = new MetricsCache(
-    sessions,
-    metrics,
-    auth,
-    new JsonFileBackend(path.join(config.stateDir, 'analytics-cache.json')),
+const metricsCache = new MetricsCache(
+    ctx.sessions,
+    ctx.metrics,
+    ctx.auth,
+new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
     eventBus,
   );
   await metricsCache.start();
 
   // ── Register extracted route modules (ARC-2) ──────────────────────
   /** Validate workDir — delegates to validation.ts (Issue #435). */
-  const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, config.allowedWorkDirs);
+const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, ctx.config.allowedWorkDirs);
 
   // Initialize early — route modules reference these
-  toolRegistry = new ToolRegistry();
+ctx.toolRegistry = new ToolRegistry();
 
   const serverState = { draining: false };
 
-  const routeCtx: RouteContext = {
-    sessions, auth, config, metrics, monitor, eventBus, channels,
-    jsonlWatcher, pipelines, toolRegistry, getAuditLogger: () => auditLogger,
-    alertManager, sseLimiter, memoryBridge, requestKeyMap,
+const routeCtx: RouteContext = {
+    sessions: ctx.sessions, auth: ctx.auth, config: ctx.config, metrics: ctx.metrics, monitor: ctx.monitor, eventBus, channels,
+    jsonlWatcher: ctx.jsonlWatcher, pipelines: ctx.pipelines, toolRegistry: ctx.toolRegistry, getAuditLogger: () => ctx.auditLogger,
+    alertManager: ctx.alertManager, sseLimiter: ctx.sseLimiter, memoryBridge: ctx.memoryBridge, requestKeyMap,
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
     quotas: new QuotaManager(),
     metering,
     metricsCache,
-    dashboardOidc,
-    dashboardTokenSessions,
-    pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
-    acpBackend: acpBackend ?? undefined,
-    eventStore: acpLocalProfile?.eventStore ?? undefined,
-    terminalBridge: acpTerminalBridge ?? undefined,
+    dashboardOidc: ctx.dashboardOidc,
+    dashboardTokenSessions: ctx.dashboardTokenSessions,
+    pauseInterventionStore: ctx.acpPauseStore ?? new InMemoryPauseInterventionStore(),
+    acpBackend: ctx.acpBackend ?? undefined,
+    eventStore: ctx.acpLocalProfile?.eventStore ?? undefined,
+    terminalBridge: ctx.acpTerminalBridge ?? undefined,
   };
   // Issue #3208: Set config ref for strictRBAC enforcement in route guards
-  setRouteConfig(config);
+  setRouteConfig(ctx.config);
 
   // Issue #3208: Warn when auth is disabled and RBAC-guarded routes are active
-  if (!auth.authEnabled && !config.strictRBAC) {
+  if (!ctx.auth.authEnabled && !ctx.config.strictRBAC) {
     logger.warn({
       component: 'server',
       operation: 'rbac_warning',
@@ -1273,7 +1253,7 @@ async function main(): Promise<void> {
   registerAuthRoutes(app, routeCtx);
   registerOidcAuthRoutes(app, routeCtx);
   // Issue #1943: OAuth2 device authorization grant endpoints (RFC 8628)
-  registerDeviceAuthRoutes(app);
+registerDeviceAuthRoutes(app);
   registerAuditRoutes(app, routeCtx);
   registerSessionRoutes(app, routeCtx);
   registerSessionActionRoutes(app, routeCtx);
@@ -1287,7 +1267,7 @@ async function main(): Promise<void> {
   registerUsageRoutes(app, routeCtx);
   registerCostRoutes(app, routeCtx);
   // Issue #4195: Cost Alerts — /v1/budgets endpoints
-  registerBudgetRoutes(app, { auth, budgetStore, budgetEvaluator });
+registerBudgetRoutes(app, { auth: ctx.auth, budgetStore, budgetEvaluator });
   registerControlActionRoutes(app, routeCtx);
   registerDriverRoutes(app, routeCtx);
   registerTerminalRoutes(app, routeCtx);
@@ -1297,9 +1277,9 @@ async function main(): Promise<void> {
   registerOpenApiRoute(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
-  const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
-  const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
-  const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+  const reaperInterval = setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
+  const zombieReaperInterval = setInterval(() => reapZombieSessions(ctx), ZOMBIE_REAP_INTERVAL_MS);
+const metricsSaveInterval = setInterval(() => { void ctx.metrics.save(); }, 5 * 60 * 1000);
   // Issue #3310: Periodically persist metering data.
   const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
@@ -1307,11 +1287,11 @@ async function main(): Promise<void> {
   // #632: Prune stale auth failure rate-limit buckets every minute
   const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
-  const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+const authSweepInterval = setInterval(() => ctx.auth.sweepStaleRateLimits(), 5 * 60_000);
   // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
   const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   // Issue #4004: Start orphan action sweeper
-  actionSweeper?.start();
+ctx.actionSweeper?.start();
   // Issue #4195: Start budget evaluation timer
   budgetTimer.start();
   // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
@@ -1322,8 +1302,8 @@ async function main(): Promise<void> {
   // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
   let shuttingDown = false;
   // Issue #1911: use config values for shutdown timeouts; fall back to legacy env var for compat.
-  const shutdownTimeoutMs = config.shutdownHardMs > 0
-    ? config.shutdownHardMs
+  const shutdownTimeoutMs = ctx.config.shutdownHardMs > 0
+    ? ctx.config.shutdownHardMs
     : parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
   async function gracefulShutdown(signal: string): Promise<void> {
     logger.info({
@@ -1353,7 +1333,7 @@ async function main(): Promise<void> {
       try {
         await Promise.race([
           app.close(),
-          new Promise<void>(resolve => setTimeout(resolve, config.shutdownGraceMs)),
+          new Promise<void>(resolve => setTimeout(resolve, ctx.config.shutdownGraceMs)),
         ]);
       } catch (e) {
         logger.error({
@@ -1365,10 +1345,10 @@ async function main(): Promise<void> {
       }
 
       // 2. Stop background monitors and intervals
-      monitor.stop();
+  ctx.monitor.stop();
       // Issue #1937: Stop session store
       try {
-        await sessionStore.stop(AbortSignal.timeout(5000));
+  await ctx.sessionStore.stop(AbortSignal.timeout(5000));
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1378,9 +1358,9 @@ async function main(): Promise<void> {
         });
       }
       // #1753: Close config file watcher
-      configWatcher?.close();
-      configWatcher = null;
-      if (configReloadTimer) { clearTimeout(configReloadTimer); configReloadTimer = null; }
+ctx.configWatcher?.close();
+      ctx.configWatcher = null;
+if (ctx.configReloadTimer) { clearTimeout(ctx.configReloadTimer); ctx.configReloadTimer = null; }
       clearInterval(reaperInterval);
       clearInterval(zombieReaperInterval);
       clearInterval(metricsSaveInterval);
@@ -1390,7 +1370,7 @@ async function main(): Promise<void> {
       clearInterval(authSweepInterval);
       clearInterval(quotaSweepInterval);
       // Issue #4004: Stop orphan action sweeper
-      actionSweeper?.stop();
+ctx.actionSweeper?.stop();
       // Issue #4195: Stop budget evaluation timer
       budgetTimer.stop();
       if (staticPruneInterval) clearInterval(staticPruneInterval);
@@ -1398,7 +1378,7 @@ async function main(): Promise<void> {
 
       // 3. Close file watchers, pipelines, and reaper
       try {
-        jsonlWatcher.destroy();
+ctx.jsonlWatcher.destroy();
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1408,7 +1388,7 @@ async function main(): Promise<void> {
         });
       }
       try {
-        await pipelines.destroy();
+await ctx.pipelines.destroy();
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1417,9 +1397,9 @@ async function main(): Promise<void> {
           attributes: { error: e instanceof Error ? e.message : String(e) },
         });
       }
-      if (memoryBridge) {
+if (ctx.memoryBridge) {
         try {
-          memoryBridge.stopReaper();
+          ctx.memoryBridge.stopReaper();
         } catch (e) {
           logger.error({
             component: 'server',
@@ -1432,7 +1412,7 @@ async function main(): Promise<void> {
 
       // Issue #569: Kill all CC sessions before exit
       try {
-        await killAllSessions(sessions, { monitor, metrics, toolRegistry });
+await killAllSessions(ctx.sessions, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1468,7 +1448,7 @@ async function main(): Promise<void> {
 
       // 6. Save metrics
       try {
-        await metrics.save();
+await ctx.metrics.save();
       } catch (e) {
         logger.error({
           component: 'server',
@@ -1509,7 +1489,7 @@ async function main(): Promise<void> {
       try {
         const auditFlushMs = Math.max(0, shutdownTimeoutMs - 1_000);
         await Promise.race([
-          auditLogger?.flush() ?? Promise.resolve(),
+ctx.auditLogger?.flush() ?? Promise.resolve(),
           new Promise<void>(resolve => setTimeout(resolve, auditFlushMs)),
         ]);
       } catch (e) {
@@ -1572,8 +1552,8 @@ async function main(): Promise<void> {
     component: 'server',
     operation: 'session_reaper_active',
     attributes: {
-      maxAgeHours: config.maxSessionAgeMs / 3600000,
-      intervalMinutes: config.reaperIntervalMs / 60000,
+      maxAgeHours: ctx.config.maxSessionAgeMs / 3600000,
+      intervalMinutes: ctx.config.reaperIntervalMs / 60000,
     },
   });
 
@@ -1589,22 +1569,22 @@ async function main(): Promise<void> {
 
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
   // #3227: Capture prune interval handle for cleanup on shutdown
-  staticPruneInterval = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
+staticPruneInterval = await registerDashboardStatic(app, { enabled: ctx.config.dashboardEnabled !== false });
   await container.assertHealthy();
-  await listenWithRetry(app, config.port, config.host, config.stateDir);
-  pidFilePath = await writePidFile(config.stateDir);
+await listenWithRetry(app, ctx.config.port, ctx.config.host, ctx.config.stateDir);
+pidFilePath = await writePidFile(ctx.config.stateDir);
   logger.info({
     component: 'server',
     operation: 'startup_listening',
     attributes: {
-      host: config.host,
-      port: config.port,
+host: ctx.config.host,
+      port: ctx.config.port,
       channels: channels.count,
-      stateDir: config.stateDir,
-      claudeProjectsDir: config.claudeProjectsDir,
+      stateDir: ctx.config.stateDir,
+      claudeProjectsDir: ctx.config.claudeProjectsDir,
     },
   });
-  if (auth.authEnabled) {
+if (ctx.auth.authEnabled) {
     logger.info({
       component: 'server',
       operation: 'auth_enabled',
