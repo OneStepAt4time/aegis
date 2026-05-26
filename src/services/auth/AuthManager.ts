@@ -275,8 +275,8 @@ export class AuthManager {
     const duplicate = this.store.keys.find(k => k.name === name && k.tenantId === resolvedTenantId);
     if (duplicate) {
       const err = new Error(`An API key with the name "${name}" already exists for this tenant`);
-      (err as any).code = 'DUPLICATE_KEY_NAME';
-      (err as any).statusCode = 409;
+      (err as Error & { code: string; statusCode: number }).code = 'DUPLICATE_KEY_NAME';
+      (err as Error & { code: string; statusCode: number }).statusCode = 409;
       throw err;
     }
 

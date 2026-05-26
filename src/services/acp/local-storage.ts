@@ -46,6 +46,8 @@ export interface AcpLocalStorageProfile {
   sessionStore: AcpSessionStore;
   eventStore: AcpEventStore;
   actionQueue: AcpActionQueue;
+  /** Issue #4247: Pause intervention store for ACP sessions. */
+  readonly pauseInterventionStore: AcpPauseInterventionStore;
   start(): Promise<void>;
   stop(signal?: AbortSignal): Promise<void>;
   health(): Promise<ServiceHealth>;

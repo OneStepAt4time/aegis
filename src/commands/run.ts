@@ -643,7 +643,7 @@ export async function handleRun(args: string[], io: CliIO): Promise<number> {
       const { execFile } = await import('node:child_process');
       const authCheck = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve) => {
         execFile('claude', ['-p', '/version'], { timeout: 5000 }, (err, stdout, stderr) => {
-          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code: err ? (err as any).code ?? 1 : 0 });
+          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code: err ? (('code' in err ? Number((err as NodeJS.ErrnoException).code) : undefined) ?? 1) : 0 });
         });
       });
       if (authCheck.stderr.includes('Not logged in') || authCheck.stderr.includes('Please run /login') || authCheck.code === 1) {
