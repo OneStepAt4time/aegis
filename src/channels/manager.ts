@@ -14,7 +14,7 @@ import type {
   SessionEventPayload,
   InboundHandler,
 } from './types.js';
-import { TelegramChannel } from './telegram.js';
+import { TelegramChannel } from './telegram/index.js';
 import { startChannelSpan, spanOk, spanError } from '../tracing.js';
 
 /**
