@@ -1,4 +1,5 @@
-import { SessionPersistenceService } from '../../services/session/persistence';
+import { describe, it, expect } from 'vitest';
+import { SessionPersistenceService } from '../services/session/persistence.js';
 
 describe('SessionPersistenceService scaffold', () => {
   it('is constructible and exposes save/load', async () => {
