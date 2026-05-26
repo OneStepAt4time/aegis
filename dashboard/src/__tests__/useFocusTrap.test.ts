@@ -1,20 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-
-// jsdom doesn't implement offsetParent — mock it
-Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
-  get() { return document.body; },
-  configurable: true,
-});
-
-// Mock requestAnimationFrame (jsdom doesn't implement it properly)
-const originalRaf = window.requestAnimationFrame;
-beforeAll(() => {
-  window.requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0; };
-});
-afterAll(() => {
-  window.requestAnimationFrame = originalRaf;
-});
 
 describe('useFocusTrap', () => {
   let container: HTMLDivElement;

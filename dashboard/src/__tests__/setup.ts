@@ -18,6 +18,30 @@ if (typeof EventSource === 'undefined') {
   };
 }
 
+
+// Mock window.matchMedia (not available in jsdom / Node 20)
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
+// Mock HTMLElement.offsetParent — jsdom throws on detached elements.
+// Override to always return body for focus-trap tests.
+Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
+  get() { return document.body; },
+  configurable: true,
+});
 // Mock ResizeObserver (not available in jsdom)
 if (typeof ResizeObserver === 'undefined') {
   (global as any).ResizeObserver = class ResizeObserver {
