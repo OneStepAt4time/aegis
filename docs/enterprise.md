@@ -281,13 +281,11 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 | `AEGIS_ISOLATION_POLICY` | `respect-cc` | Session isolation policy: `respect-cc` (follow CC settings, default), `enforce-worktree` (reject sessions without worktree — prevents file conflicts with concurrent sessions), `enforce-direct` (force direct edits, no worktree) |
 | `AEGIS_CONFIG` | _(auto)_ | Path to `aegis.config.json` |
 | `AEGIS_LOG_LEVEL` | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error` |
-| `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Maximum concurrent sessions |
+| `AEGIS_MAX_SESSIONS` | — | _(Not an env var — use `maxConcurrentSessions` per API key)_ |
 | `AEGIS_MAX_SESSION_AGE_MS` | `7200000` | Maximum session age before reaping (2 hours default) |
 | `AEGIS_REAPER_INTERVAL_MS` | `300000` | Reaper check interval (5 minutes default) |
-| `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Session idle timeout (10 min default) |
-| `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall detection threshold (2 min default) |
-| `AEGIS_STALL_RECOVERY_ENABLED` | `true` | Auto-recover stalled sessions via restart |
-| `AEGIS_STALL_RECOVERY_MAX_RETRIES` | `1` | Max restart attempts per stall event |
+| `CLAUDE_STREAM_IDLE_TIMEOUT_MS` | _(unset)_ | When set, `stallThresholdMs` = `max(120000, val * 1.5)`. Affects the global stall detection threshold |
+| _(per-session)_ | `120000` | Stall detection threshold: set per session via `stallThresholdMs` param (POST /v1/sessions) |
 | `AEGIS_CONTINUATION_POINTER_TTL_MS` | `86400000` | Continuation pointer TTL (24 hours default) |
 | `AEGIS_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Path to Claude Code projects directory |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Enable the web dashboard |
@@ -475,7 +473,7 @@ Returns aggregated metrics across all sessions:
 | `sessions.failed` | > 5% of total | Session health issue |
 | `webhooks.failed` | > 1% of total | Channel delivery problem |
 | `prompt_delivery.success_rate` | < 95% | CC not receiving prompts |
-| `sessions.currently_active` | > `AEGIS_MAX_SESSIONS` | Capacity limit approaching |
+| `sessions.currently_active` | > `maxConcurrentSessions` (per key) | Capacity limit approaching |
 | `latency.permission_response_ms.avg` | > 60s | Users not responding to prompts |
 
 **Prometheus integration** (coming: issue #1412):
@@ -648,7 +646,7 @@ curl -sf http://localhost:9100/v1/metrics | \
 - **API keys:** Use separate API keys per team/service for access control
 - **Working directories:** Each tenant should use isolated working directories
 - **State directory:** Use separate `AEGIS_STATE_DIR` per tenant if running multiple instances
-- **Resource limits:** Set `AEGIS_MAX_SESSIONS` to prevent resource exhaustion
+- **Resource limits:** Set `maxConcurrentSessions` per API key to prevent resource exhaustion
 - **Network isolation:** Bind to `127.0.0.1` and use a reverse proxy for external access
 
 ---
@@ -660,7 +658,7 @@ curl -sf http://localhost:9100/v1/metrics | \
 | `EADDRINUSE` on startup | Port 9100 is in use. Set `AEGIS_PORT=9200` or kill the existing process |
 | 401 on all endpoints | Check `AEGIS_AUTH_TOKEN` matches the `Authorization` header |
 | Sessions stuck on `stalled` | Send interrupt: `POST /v1/sessions/:id/interrupt` |
-| High memory usage | Reduce `AEGIS_MAX_SESSIONS` or increase `AEGIS_IDLE_TIMEOUT_MS` |
+| High memory usage | Reduce `maxConcurrentSessions` per API key or tune `CLAUDE_STREAM_IDLE_TIMEOUT_MS` |
 | Claude Code not found | `claude --version` — verify installation and auth |
 | Rate limited (429) | Wait for the rate limit window to reset or increase limits |
 
