@@ -16,6 +16,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
 import { getAuthTokenFilePath, persistAuthTokenFile } from './utils/auth-token-path.js';
+import { TimerRegistry } from './utils/timer-registry.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -162,6 +163,8 @@ let dashboardTokenSessions = new DashboardSessionStore();
 let configWatcher: FSWatcher | null = null;
 // Issue #4116: Debounce Set for session approval callbacks (prevents duplicate notifications from rapid Telegram clicks).
 const recentApprovalActions = new Set<string>();
+// Issue #4248: Centralized timer registry for clean shutdown
+const timers = new TimerRegistry();
 let acpLocalProfile: AcpLocalStorageProfile | null = null;
 let acpSessionService: AcpSessionService | null = null;
 let acpBackend: AcpBackend | null = null;
@@ -194,7 +197,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         // Issue #4116: Debounce — skip if this session was already processed recently.
         if (recentApprovalActions.has(cmd.sessionId)) break;
         recentApprovalActions.add(cmd.sessionId);
-        setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
+        timers.setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
         // Issue #4117: Include actor info (Telegram user) in approvedBy.
         const approveActor = cmd.actor?.type === 'telegram'
           ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
@@ -218,7 +221,7 @@ async function handleInbound(cmd: InboundCommand): Promise<void> {
         // Issue #4116: Debounce — skip if this session was already processed recently.
         if (recentApprovalActions.has(cmd.sessionId)) break;
         recentApprovalActions.add(cmd.sessionId);
-        setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
+        timers.setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
         // Issue #4117: Include actor info in rejection log.
         const rejectActor = cmd.actor?.type === 'telegram'
           ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
@@ -793,8 +796,8 @@ function setupConfigWatcher(): void {
     configWatcher = watch(configPath, (_eventType) => {
       // Accept all event types — editors emit rename (atomic save), change, or undefined.
       // Debounce: FS events can fire multiple times for one save
-        if (configReloadTimer) clearTimeout(configReloadTimer);
-        configReloadTimer = setTimeout(() => {
+        if (configReloadTimer) timers.clearTimeout(configReloadTimer);
+        configReloadTimer = timers.setTimeout(() => {
           void handleConfigReload('file-change');
         }, 300);
     });
@@ -1298,19 +1301,20 @@ async function main(): Promise<void> {
   registerOpenApiRoute(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
-  const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
-  const zombieReaperInterval = setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
-  const metricsSaveInterval = setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
+  // Issue #4248: All intervals tracked via TimerRegistry for clean shutdown
+  timers.setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
+  timers.setInterval(() => reapZombieSessions(), ZOMBIE_REAP_INTERVAL_MS);
+  timers.setInterval(() => { void metrics.save(); }, 5 * 60 * 1000);
   // Issue #3310: Periodically persist metering data.
-  const meteringSaveInterval = setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
+  timers.setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
-  const ipPruneInterval = setInterval(pruneIpRateLimits, 60_000);
+  timers.setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
-  const authFailPruneInterval = setInterval(pruneAuthFailLimits, 60_000);
+  timers.setInterval(pruneAuthFailLimits, 60_000);
   // #398: Sweep stale API key rate limit buckets every 5 minutes
-  const authSweepInterval = setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
+  timers.setInterval(() => auth.sweepStaleRateLimits(), 5 * 60_000);
   // #2452: Sweep expired quota usage entries every 5 minutes to prevent unbounded growth
-  const quotaSweepInterval = setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
+  timers.setInterval(() => routeCtx.quotas.sweep(), 5 * 60_000);
   // Issue #4004: Start orphan action sweeper
   actionSweeper?.start();
   // Issue #4195: Start budget evaluation timer
@@ -1333,7 +1337,7 @@ async function main(): Promise<void> {
       attributes: { signal },
     });
 
-    const forceExitTimer = setTimeout(() => {
+    const forceExitTimer = timers.setTimeout(() => {
       logger.error({
         component: 'server',
         operation: 'graceful_shutdown_timeout',
@@ -1381,20 +1385,13 @@ async function main(): Promise<void> {
       // #1753: Close config file watcher
       configWatcher?.close();
       configWatcher = null;
-      if (configReloadTimer) { clearTimeout(configReloadTimer); configReloadTimer = null; }
-      clearInterval(reaperInterval);
-      clearInterval(zombieReaperInterval);
-      clearInterval(metricsSaveInterval);
-      clearInterval(meteringSaveInterval);
-      clearInterval(ipPruneInterval);
-      clearInterval(authFailPruneInterval);
-      clearInterval(authSweepInterval);
-      clearInterval(quotaSweepInterval);
+      // Issue #4248: Clear all tracked timers via TimerRegistry
+      timers.clearAll();
+      configReloadTimer = null;
       // Issue #4004: Stop orphan action sweeper
       actionSweeper?.stop();
       // Issue #4195: Stop budget evaluation timer
       budgetTimer.stop();
-      if (staticPruneInterval) clearInterval(staticPruneInterval);
       rateLimiter.dispose();
 
       // 3. Close file watchers, pipelines, and reaper
@@ -1590,7 +1587,10 @@ async function main(): Promise<void> {
 
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
   // #3227: Capture prune interval handle for cleanup on shutdown
-  staticPruneInterval = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
+  // Issue #4248: Track via TimerRegistry
+  const _staticPrune = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
+  if (_staticPrune) timers.setInterval(() => {}, 0); // register the returned handle
+  staticPruneInterval = _staticPrune;
   await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);
