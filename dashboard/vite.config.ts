@@ -31,6 +31,10 @@ export default defineConfig({
           // Vite naturally code-splits them into the lazy-loaded page chunks that
           // use them (AnalyticsPage, CostPage, MetricsPage, SessionDetailPage),
           // saving ~181 KB gzip from the initial bundle (issue #2646).
+          // chart.js — shared across all chart components
+          if (id.includes('node_modules/chart.js/') || id.includes('node_modules/react-chartjs-2/')) {
+            return 'chartjs-vendor';
+          }
           // framer-motion — explicit chunk for parallel loading
           if (id.includes('node_modules/framer-motion/')) {
             return 'motion-vendor';

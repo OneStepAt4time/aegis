@@ -1,38 +1,28 @@
 /**
  * OverviewCostChart — lazy-loaded cost chart for OverviewPage.
- * Separated so recharts loads on demand.
- * @ticket #2934 // token-ok // token-ok
- * @ticket #3399 — chart polish with design tokens // token-ok
+ * Migrated from recharts to chart.js for ~300KB bundle savings.
+ * @ticket #4310
  */
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
-} from 'recharts';
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { formatDateShort } from '../../utils/formatDate';
-import {
-  CHART_GRID, CHART_TICK, CHART_AXIS, CHART_COLORS,
-  CHART_ANIMATION, CHART_BAR_RADIUS, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB } from '../../utils/chartTheme';
+
+// Register only the components we use
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip);
 
 interface CostTrend {
   date: string;
   cost: number;
-}
-
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ value: number; name: string }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-        ${payload[0].value.toFixed(2)}
-      </p>
-    </div>
-  );
 }
 
 interface OverviewCostChartProps {
@@ -40,24 +30,80 @@ interface OverviewCostChartProps {
 }
 
 export function OverviewCostChart({ data }: OverviewCostChartProps) {
+  const chartData = {
+    labels: data.map((d) => d.date),
+    datasets: [
+      {
+        label: 'Daily Cost',
+        data: data.map((d) => d.cost),
+        backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+        borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        borderWidth: 1,
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 20, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        titleColor: 'rgba(255, 255, 255, 0.6)',
+        bodyColor: 'rgba(255, 255, 255, 0.9)',
+        bodyFont: { weight: "bold" as const },
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          title: (items) => formatDateShort(items[0].label),
+          label: (item) => `$${Number(item.raw).toFixed(2)}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: true,
+          drawOnChartArea: true,
+          drawTicks: false,
+          color: 'rgba(255, 255, 255, 0.06)',
+        },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: function (value) {
+            const label = this.getLabelForValue(value as number);
+            return formatDateShort(label);
+          },
+          maxRotation: 0,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: {
+          drawOnChartArea: true,
+          drawTicks: false,
+          color: 'rgba(255, 255, 255, 0.06)',
+        },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: (value) => `$${Number(value).toFixed(2)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
+
   return (
-    <ResponsiveContainer width="100%" height={220} minWidth={1} minHeight={1}>
-      <BarChart data={data}>
-        <CartesianGrid {...CHART_GRID} />
-        <XAxis
-          dataKey="date"
-          tickFormatter={formatDateShort}
-          tick={CHART_TICK}
-          {...CHART_AXIS}
-        />
-        <YAxis
-          tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-          tick={CHART_TICK}
-          {...CHART_AXIS}
-        />
-        <Tooltip content={<ChartTooltip />} />
-        <Bar dataKey="cost" name="Daily Cost" fill={CHART_COLORS.cyan} radius={CHART_BAR_RADIUS} animationDuration={CHART_ANIMATION.duration} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div style={{ width: '100%', height: 220 }}>
+      <Bar data={chartData} options={options} />
+    </div>
   );
 }

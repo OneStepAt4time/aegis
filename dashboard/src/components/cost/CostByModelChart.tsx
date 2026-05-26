@@ -1,26 +1,22 @@
 /**
  * CostByModelChart.tsx — Horizontal bar chart showing cost per model.
- *
- * Displays total USD grouped by model with color coding.
- * Part of issue #3273: Cost Analytics Panels. // token-ok
+ * Migrated from recharts to chart.js for bundle savings.
+ * @ticket #4310
  */
 
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   Tooltip,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
-import { ChartFrame } from '../shared/ChartFrame';
-import {
-  MODEL_COLORS as THEME_MODEL_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { MODEL_COLORS, CHART_RGB } from '../../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 export interface CostByModelDataPoint {
   model: string;
@@ -33,8 +29,6 @@ export interface CostByModelChartProps {
   className?: string;
 }
 
-const MODEL_COLORS = THEME_MODEL_COLORS;
-
 const MOCK_DATA: CostByModelDataPoint[] = [
   { model: 'claude-opus-4.7', cost: 47.82 },
   { model: 'claude-sonnet-4.6', cost: 28.15 },
@@ -43,22 +37,19 @@ const MOCK_DATA: CostByModelDataPoint[] = [
   { model: 'gpt-4.1', cost: 5.91 },
 ];
 
-function CustomTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: Array<{ payload: CostByModelDataPoint }>;
-}) {
-  if (!active || !payload?.length) return null;
-  const point = payload[0].payload;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className="mb-1 text-xs font-mono text-[var(--color-text-muted)]">
-        {point.model}
-      </p>
-      <p className="text-sm font-mono font-medium text-[var(--color-text-primary)]">
-        {formatCurrency(point.cost)}
-      </p>
-    </div>
-  );
+function getColorForModel(model: string): string {
+  const cssVar = MODEL_COLORS[model] ?? MODEL_COLORS.other;
+  // Map CSS var to rgba
+  const rgbMap: Record<string, string> = {
+    'var(--color-accent-cyan)': CHART_RGB.cyan,
+    'var(--color-accent-purple)': CHART_RGB.purple,
+    'var(--color-success)': CHART_RGB.success,
+    'var(--color-warning)': CHART_RGB.warning,
+    'var(--color-info)': CHART_RGB.info,
+    'var(--color-text-muted)': CHART_RGB.cyan,
+  };
+  const rgb = rgbMap[cssVar] ?? CHART_RGB.cyan;
+  return `rgba(${rgb}, 0.7)`;
 }
 
 export function CostByModelChart({ data, loading = false, className = '' }: CostByModelChartProps) {
@@ -96,6 +87,57 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
     );
   }
 
+  const chartJsData = {
+    labels: chartData.map((d) => d.model),
+    datasets: [
+      {
+        data: chartData.map((d) => d.cost),
+        backgroundColor: chartData.map((d) => getColorForModel(d.model)),
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'bar'> = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 20, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        bodyColor: 'rgba(255, 255, 255, 0.9)',
+        bodyFont: { weight: 'bold' as const },
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: (item) => formatCurrency(Number(item.raw)),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { drawOnChartArea: true, color: 'rgba(255, 255, 255, 0.06)' },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: (value) => `$${Number(value).toFixed(0)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: { display: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 } },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
+
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
@@ -123,35 +165,9 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
         ))}
       </div>
 
-      <ChartFrame className="h-64 min-w-0" label="Cost by model chart loading">
-        {({ width, height }) => (
-          <BarChart width={width} height={height} data={chartData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid {...CHART_GRID} horizontal={false} />
-            <XAxis
-              type="number"
-              tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              type="category"
-              dataKey="model"
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-              width={120}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="cost" radius={[0, 4, 4, 0]} animationDuration={CHART_ANIMATION.duration}>
-              {chartData.map((entry) => (
-                <Cell
-                  key={entry.model}
-                  fill={MODEL_COLORS[entry.model] ?? MODEL_COLORS.other}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        )}
-      </ChartFrame>
+      <div style={{ height: 256 }}>
+        <Bar data={chartJsData} options={options} />
+      </div>
     </section>
   );
 }
