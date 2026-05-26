@@ -5,7 +5,7 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -344,8 +344,7 @@ export class SessionManager {
   private sessionMapFile: string;
   /** Issue #4251: Delegated persistence service. */
   private readonly persistence: SessionPersistenceService;
-  /** #1644: AES-256-GCM key derived from master token for encrypting hook secrets at rest. */
-  private encKey: Buffer | null = null;
+  /** #4228: Encryption delegated to persistence.encryption. */
   private permissionRequests = new PermissionRequestManager();
   private questions = new QuestionManager();
   // Issue #657: Cached session list to avoid allocating a new array per call
@@ -439,41 +438,25 @@ export class SessionManager {
 
   setEncryptionKey(masterToken: string): void {
     if (!masterToken) return;
-    // scryptSync is synchronous — called once at startup, acceptable cost.
-    this.encKey = scryptSync(masterToken, 'aegis-hook-key-v1', 32);
-    // Issue #4251: Delegate encryption key to persistence service
+    // Issue #4228: Delegate to persistence service's encryption
     this.persistence.setEncryptionKey(masterToken);
   }
 
-  /** Encrypt a hook secret with AES-256-GCM. Returns '<iv>:<tag>:<ciphertext>' hex. */
+  /** Encrypt a hook secret. Delegates to persistence encryption service. */
   private encryptSecret(secret: string): string {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', this.encKey!, iv);
-    const enc = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return `${iv.toString('hex')}:${tag.toString('hex')}:${enc.toString('hex')}`;
+    return this.persistence.encryptSecret(secret);
   }
 
-  /** Decrypt a hook secret from AES-256-GCM '<iv>:<tag>:<ciphertext>' hex. */
+  /** Decrypt a hook secret. Delegates to persistence encryption service. */
   private decryptSecret(encrypted: string): string | undefined {
-    if (!this.encKey) return undefined;
-    try {
-      const parts = encrypted.split(':');
-      if (parts.length !== 3) return undefined;
-      const [ivHex, tagHex, encHex] = parts as [string, string, string];
-      const decipher = createDecipheriv('aes-256-gcm', this.encKey, Buffer.from(ivHex, 'hex'));
-      decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-      return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
-    } catch {
-      return undefined;
-    }
+    return this.persistence.decryptSecret(encrypted);
   }
 
   private async restoreSessionHookSecrets(): Promise<void> {
     for (const session of Object.values(this.state.sessions)) {
       // #1644: Decrypt if the stored value is an AES-GCM ciphertext (iv:tag:enc format).
       // Plaintext hookSecrets are 64-char hex strings with no colons.
-      if (session.hookSecret?.includes(':') && this.encKey) {
+      if (session.hookSecret?.includes(':') && this.persistence.hasEncryptionKey()) {
         const decrypted = this.persistence.decryptSecret(session.hookSecret);
         if (decrypted) { session.hookSecret = decrypted; continue; }
         session.hookSecret = undefined; // Decryption failed — force re-read below

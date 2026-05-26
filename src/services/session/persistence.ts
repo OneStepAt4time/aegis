@@ -8,7 +8,7 @@
  * Zero behavior changes — pure refactoring.
  */
 
-import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
+// Encryption delegated to SessionEncryptionService (Issue #4228 step 2)
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -17,6 +17,7 @@ import { StructuredLogger } from '../../logger.js';
 import type { z } from 'zod';
 import { persistedStateSchema } from '../../validation.js';
 import type { SessionInfo, SessionState } from '../../session.js';
+import { SessionEncryptionService } from './encryption.js';
 
 const log = new StructuredLogger();
 
@@ -80,47 +81,35 @@ export class SessionPersistenceService implements SessionPersistencePort {
   private saveQueue: Promise<void> = Promise.resolve();
   private saveDebounceTimer: NodeJS.Timeout | null = null;
   private static readonly SAVE_DEBOUNCE_MS = 5_000;
-  /** #1644: AES-256-GCM key derived from master token for encrypting hook secrets at rest. */
-  private encKey: Buffer | null = null;
+  /** #4228: Encryption delegated to SessionEncryptionService. */
+  readonly encryption: SessionEncryptionService;
 
   constructor(
     private readonly stateFile: string,
     private readonly store: StateStore | null = null,
-  ) {}
+    encryption?: SessionEncryptionService,
+  ) {
+    this.encryption = encryption ?? new SessionEncryptionService();
+  }
 
   /** Set the encryption key derived from the master token. */
   setEncryptionKey(masterToken: string): void {
-    if (!masterToken) return;
-    this.encKey = scryptSync(masterToken, 'aegis-hook-key-v1', 32);
+    this.encryption.setEncryptionKey(masterToken);
   }
 
-  /** Get the encryption key (for external decrypt operations). */
-  getEncKey(): Buffer | null {
-    return this.encKey;
+  /** Whether encryption key is available. */
+  hasEncryptionKey(): boolean {
+    return this.encryption.hasKey();
   }
 
-  /** Encrypt a hook secret with AES-256-GCM. Returns '<iv>:<tag>:<ciphertext>' hex. */
+  /** Encrypt a hook secret. Delegates to SessionEncryptionService. */
   encryptSecret(secret: string): string {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', this.encKey!, iv);
-    const enc = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return `${iv.toString('hex')}:${tag.toString('hex')}:${enc.toString('hex')}`;
+    return this.encryption.encrypt(secret);
   }
 
-  /** Decrypt a hook secret from AES-256-GCM '<iv>:<tag>:<ciphertext>' hex. */
+  /** Decrypt a hook secret. Delegates to SessionEncryptionService. */
   decryptSecret(encrypted: string): string | undefined {
-    if (!this.encKey) return undefined;
-    try {
-      const parts = encrypted.split(':');
-      if (parts.length !== 3) return undefined;
-      const [ivHex, tagHex, encHex] = parts as [string, string, string];
-      const decipher = createDecipheriv('aes-256-gcm', this.encKey, Buffer.from(ivHex, 'hex'));
-      decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-      return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
-    } catch {
-      return undefined;
-    }
+    return this.encryption.decrypt(encrypted);
   }
 
   /** Validate that parsed data looks like a valid SessionState. */
@@ -237,7 +226,7 @@ export class SessionPersistenceService implements SessionPersistencePort {
   serializeState(state: SessionState): string {
     return JSON.stringify(state, (key, value) => {
       if (key === 'hookSecret') {
-        if (typeof value !== 'string' || !this.encKey) return undefined;
+        if (typeof value !== 'string' || !this.encryption.hasKey()) return undefined;
         return this.encryptSecret(value);
       }
       if (value instanceof Set) return [...value];
@@ -253,7 +242,7 @@ export class SessionPersistenceService implements SessionPersistencePort {
       sessions[id] = {
         ...rest,
         activeSubagents: activeSubagents ? [...activeSubagents] : undefined,
-        hookSecret: (typeof hookSecret === 'string' && this.encKey)
+        hookSecret: (typeof hookSecret === 'string' && this.encryption.hasKey())
           ? this.encryptSecret(hookSecret)
           : undefined,
       } as unknown as SerializedSessionInfo;
