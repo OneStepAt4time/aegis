@@ -19,7 +19,6 @@ import { getAuthTokenFilePath, persistAuthTokenFile } from './utils/auth-token-p
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
-import { timingSafeStringEqual } from './crypto-utils.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,7 +36,7 @@ import {
 import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, SYSTEM_TENANT, type Config } from './config.js';
 import type { StateStore } from './services/state/state-store.js';
 
-import { validateWorkDir, parseIntSafe, isValidUUID } from './validation.js';
+import { validateWorkDir, parseIntSafe } from './validation.js';
 import { SessionEventBus } from './events.js';
 
 import { SSEConnectionLimiter } from './sse-limiter.js';
@@ -45,8 +44,6 @@ import { PipelineManager } from './pipeline.js';
 import { ToolRegistry } from './tool-registry.js';
 import {
   AuthManager,
-  RateLimiter,
-  classifyBearerTokenForRoute,
   type ApiKeyPermission,
   type ApiKeyRole,
 } from './services/auth/index.js';
@@ -75,6 +72,7 @@ import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-i
 import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
+import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, getRateLimiter, requestKeyMap } from './middleware/auth-setup.js';
 import { TimerRegistry } from './utils/timer-registry.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { AcpSessionService } from './services/acp/session-service.js';
@@ -117,7 +115,6 @@ import {
   DashboardSessionStore,
   type DashboardOIDCManager,
 } from './services/auth/OIDCManager.js';
-import { authenticateDashboardSessionCookie } from './dashboard-session-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -315,298 +312,6 @@ app.addHook('onSend', (req, reply, payload, done) => {
 });
 
 // Auth middleware setup (Issue #39: multi-key auth with rate limiting)
-const rateLimiter = new RateLimiter();
-
-/** Issue #2810: Add X-RateLimit-* and Retry-After headers to a 429 response. */
-function addRateLimitHeaders(
-  reply: FastifyReply,
-  info: import("./services/auth/RateLimiter.js").RateLimitBucketInfo,
-): void {
-  reply.header("X-RateLimit-Limit", info.limit);
-  reply.header("X-RateLimit-Remaining", info.remaining);
-  reply.header("X-RateLimit-Reset", info.reset);
-  reply.header("Retry-After", Math.max(1, info.reset - Math.ceil(Date.now() / 1000)));
-}
-
-function checkIpRateLimit(ip: string, isMaster: boolean, keyId?: string): boolean {
-  return rateLimiter.checkIpRateLimit(ip, isMaster, keyId);
-}
-
-function checkIpRateLimitUnauth(ip: string): boolean {
-  return rateLimiter.checkIpRateLimitUnauth(ip);
-}
-
-function checkAuthFailRateLimit(ip: string): boolean {
-  return rateLimiter.checkAuthFailRateLimit(ip);
-}
-
-function recordAuthFailure(ip: string): void {
-  rateLimiter.recordAuthFailure(ip);
-}
-
-const recordedAuthFailures = new Set<string>();
-
-function recordAuthFailureOnce(req: FastifyRequest, ip: string): void {
-  if (recordedAuthFailures.has(req.id)) return;
-  recordedAuthFailures.add(req.id);
-  recordAuthFailure(ip);
-}
-
-function pruneAuthFailLimits(): void {
-  rateLimiter.pruneAuthFailLimits();
-}
-
-function pruneIpRateLimits(): void {
-  rateLimiter.pruneIpRateLimits();
-}
-
-/** #583: Track keyId per request for batch rate limiting. */
-const requestKeyMap = new Map<string, string>();
-
-// #839: Clean up requestKeyMap entries after response to prevent unbounded memory leak.
-app.addHook('onResponse', (req, _reply, done) => {
-  requestKeyMap.delete(req.id);
-  recordedAuthFailures.delete(req.id);
-  done();
-});
-
-function setupAuth(ctx: AppContext): void {
-  app.addHook('onRequest', async (req, reply) => {
-    // #2809: CORS preflight — browsers send OPTIONS without auth headers.
-    if (req.method === 'OPTIONS') return;
-    // Skip auth for health endpoint and dashboard (Issue #349: exact path matching)
-    // #126: Dashboard is served as public static files; API endpoints are protected
-    const urlPath = req.url?.split('?')[0] ?? '';
-    if (urlPath === '/health' || urlPath === '/v1/health') return;
-    // Issue #2814: Version discovery is public (no sensitive data).
-    if (urlPath === '/v1/version') return;
-    // Auth verification is a public bootstrap endpoint for dashboard login.
-    if (urlPath === '/v1/auth/verify') return;
-    // Issue #1943: Device auth endpoints are public (they proxy to the IdP).
-    if (urlPath === '/v1/auth/device/authorize' || urlPath === '/v1/auth/device/token') return;
-    // Issue #1942: Dashboard OIDC endpoints authenticate with HttpOnly cookies.
-    if (urlPath === '/auth/login' || urlPath === '/auth/callback' || urlPath === '/auth/session' || urlPath === '/auth/logout') return;
-    if (urlPath === '/' || urlPath === '/dashboard' || urlPath.startsWith('/dashboard/')) return;
-    // Issue #3092: manifest.json must be public for PWA install.
-    if (urlPath === '/manifest.json') return;
-    // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
-    // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
-    // Issue #580: Validate UUID format before getSession lookup.
-    // Issue #629: Validate per-session hook secret to prevent replay with known session ID.
-    // CC hooks run from localhost and always include the session ID they were started with.
-    const hookMatch = /^\/v1\/hooks\/[A-Za-z]+$/.exec(urlPath);
-    if (hookMatch) {
-      const hookSessionId = (req.headers['x-session-id'] as string)
-        || (req.query as Record<string, string>)?.sessionId;
-      if (hookSessionId && !isValidUUID(hookSessionId)) {
-        return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
-      }
-      if (hookSessionId) {
-        const session = ctx.sessions.getSession(hookSessionId);
-        if (session) {
-          const queryHookSecret = (req.query as Record<string, string>)?.secret;
-          if (ctx.config.hookSecretHeaderOnly && queryHookSecret !== undefined) {
-            return reply.status(401).send({ error: 'Unauthorized — hook secret must be sent via X-Hook-Secret header' });
-          }
-          const hookSecret = (req.headers['x-hook-secret'] as string) || queryHookSecret;
-          if (!hookSecret || !timingSafeStringEqual(hookSecret, session.hookSecret)) {
-            return reply.status(401).send({ error: 'Unauthorized — invalid hook secret' });
-          }
-          return; // valid session + secret — allow
-        }
-      }
-      // No valid session context — reject even when auth is disabled
-      return reply.status(401).send({ error: 'Unauthorized — hook endpoint requires valid session ID' });
-    }
-    // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
-    // Exact match: /v1/sessions/{id}/terminal
-    if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
-
-    // Issue #1557: /metrics requires authentication. When a dedicated metrics token
-    // is configured (AEGIS_METRICS_TOKEN), accept either that or the primary auth token.
-    // This runs before the general no-auth-localhost bypass so that /metrics is always
-    // protected when a metrics token is set, even in dev mode.
-    if (urlPath === '/metrics') {
-      const metricsToken = ctx.config.metricsToken;
-      const bearer = req.headers.authorization?.startsWith('Bearer ')
-        ? req.headers.authorization.slice(7)
-        : undefined;
-      if (metricsToken) {
-        // Dedicated metrics token configured — require it or the primary token
-        if (bearer && (timingSafeStringEqual(bearer, metricsToken) || ctx.auth.validate(bearer).valid)) {
-          return; // authenticated
-        }
-        return reply.status(401).send({ error: 'Unauthorized — valid Bearer token or metrics token required' });
-      }
-      // No dedicated metrics token — fall through to normal auth flow below
-    }
-
-    // #124/#125: Accept token from Authorization header; ?token= query param
-    // only on SSE routes where EventSource cannot set headers.
-    // #297: SSE routes also accept short-lived SSE tokens via ?token=.
-    // SSE routes: /v1/events, /v1/sessions/:id/events, /v1/sessions/:id/stream (#2461)
-    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
-    let token: string | undefined;
-    const header = req.headers.authorization;
-    if (header?.startsWith('Bearer ')) {
-      token = header.slice(7);
-    } else if (isSSERoute) {
-      token = (req.query as Record<string, string>).token;
-    }
-
-    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    const clientIp = req.ip ?? 'unknown';
-
-    // Issue #1942: Same-origin dashboard calls use an HttpOnly opaque session
-    // cookie. This only fills request-scoped auth context; it never mints or
-    // accepts a reusable bearer API key.
-    if (!token && urlPath.startsWith('/v1/')) {
-      const dashboardAuthContext = authenticateDashboardSessionCookie(req, {
-        getSession: (sessionId: string | undefined) =>
-          ctx.dashboardTokenSessions.get(sessionId) ?? ctx.dashboardOidc?.getSession(sessionId) ?? null,
-      });
-      if (dashboardAuthContext) {
-        requestKeyMap.set(req.id, dashboardAuthContext.keyId);
-        if (ctx.auditLogger) {
-          void ctx.auditLogger.log(
-            dashboardAuthContext.actor,
-            'api.authenticated',
-            `${req.method} ${req.url?.split('?')[0] ?? req.url}`,
-            undefined,
-            dashboardAuthContext.tenantId,
-          );
-        }
-        // #2456: Pass keyId so dashboard auth uses its own bucket
-        if (checkIpRateLimit(clientIp, false, dashboardAuthContext.keyId)) {
-          addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false, dashboardAuthContext.keyId));
-          return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
-        }
-        return;
-      }
-    }
-
-    // #1080: Only bypass auth if no credentials are configured AND server is bound to localhost.
-    // When binding to a non-localhost interface (0.0.0.0, public IP) with no auth configured,
-    // do NOT bypass — let validate() reject the request (it returns valid:false in this case).
-    // #2532: Even in localhost no-auth mode, apply per-IP rate limiting to prevent flooding.
-    const isNoAuthLocalhost = !ctx.auth.authEnabled && ctx.auth.isLocalhostBinding;
-    if (isNoAuthLocalhost) {
-      if (checkIpRateLimit(clientIp, false)) {
-        addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false));
-        return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
-      }
-      return;
-    }
-
-    if (!token) {
-      // #2456: Rate-limit no-token requests via the IP-only (unauth) bucket so they
-      // cannot exhaust the per-key authenticated IP bucket for valid callers.
-      if (checkIpRateLimit(clientIp, false)) {
-        addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, false));
-        return reply.status(429).send({ error: 'Rate limit exceeded — too many unauthenticated requests' });
-      }
-      return reply.status(401).send({ error: 'Unauthorized — Bearer token required' });
-    }
-
-    const tokenMode = classifyBearerTokenForRoute(token, !!isSSERoute);
-
-    // #408: SSE endpoints require short-lived single-use SSE tokens.
-    // Do not fall back to validating long-lived bearer/master tokens on /events.
-    if (tokenMode === 'sse') {
-      if (await ctx.auth.validateSSEToken(token)) {
-        return; // authenticated via short-lived SSE token
-      }
-      // #2456: Check auth-fail rate limit only after confirming the token is bad,
-      // so a valid token from the same IP is never blocked by prior failures.
-      // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
-      if (checkAuthFailRateLimit(clientIp)) {
-        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
-        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
-      }
-      recordAuthFailureOnce(req, clientIp);
-      return reply.status(401).send({ error: 'Unauthorized — SSE token invalid or expired' });
-    }
-
-    if (tokenMode === 'reject') {
-      // #2456: Same pattern — check auth-fail rate limit inside the failure branch.
-      if (checkAuthFailRateLimit(clientIp)) {
-        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
-        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
-      }
-      recordAuthFailureOnce(req, clientIp);
-      return reply.status(401).send({ error: 'Unauthorized — SSE token required for event streams' });
-    }
-
-    const result = ctx.auth.validate(token);
-
-    if (!result.valid) {
-      // #2456: Check auth-fail rate limit only for invalid tokens so valid tokens
-      // from the same IP are never blocked by unauth-triggered rate limits.
-      // #632: Block IPs that exceeded auth failure rate limit (5 attempts/min)
-      if (checkAuthFailRateLimit(clientIp)) {
-        addRateLimitHeaders(reply, rateLimiter.getAuthFailBucketInfo(clientIp));
-        return reply.status(429).send({ error: 'Too many auth failures — try again later' });
-      }
-      recordAuthFailureOnce(req, clientIp);
-      // Issue #1403: Distinguish expired keys from invalid keys
-      if (result.reason === 'expired') {
-        return reply.status(401).send({ error: 'Unauthorized — API key has expired', code: 'KEY_EXPIRED' });
-      }
-      return reply.status(401).send({ error: 'Unauthorized — invalid API key' });
-    }
-
-    if (result.rateLimited) {
-      addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, result.keyId === 'master', result.keyId ?? undefined));
-      return reply.status(429).send({ error: 'Rate limit exceeded — 100 req/min per key' });
-    }
-
-    // #583: Store keyId for batch rate limiting
-    // #634: Store validated keyId for SSE token endpoint to reuse
-    requestKeyMap.set(req.id, result.keyId ?? 'anonymous');
-    req.authKeyId = result.keyId;
-    req.authRole = ctx.auth.getRole(result.keyId);
-    req.authPermissions = ctx.auth.getPermissions(result.keyId);
-    req.authActor = ctx.auth.getAuditActor(result.keyId, result.keyId ?? 'anonymous');
-    // Issue #2267: Propagate tenant ID from the validated key.
-    // Admin/master keys get SYSTEM_TENANT — they see all resources.
-    req.tenantId = result.tenantId;
-
-    // #1419: Audit authenticated API calls (fire-and-forget, non-blocking)
-    // #1640: Guard with simple truthiness check — ctx.auditLogger can be undefined
-    // #3072: Reset auth-fail counter on successful auth so prior typos are forgiven
-    rateLimiter.resetAuthFailures(clientIp);
-
-    if (ctx.auditLogger) {
-      void ctx.auditLogger.log(result.keyId ?? 'anonymous', 'api.authenticated', `${req.method} ${req.url?.split('?')[0] ?? req.url}`, undefined, result.tenantId);
-    }
-
-    // #228: Per-IP rate limiting (applies to all authenticated requests)
-    // #633: Only use req.ip — trustProxy controls whether X-Forwarded-For is considered
-    // #2456: Pass keyId so authenticated requests get a dedicated bucket per API key
-    const isMaster = result.keyId === 'master';
-    if (checkIpRateLimit(clientIp, isMaster, result.keyId ?? undefined)) {
-      addRateLimitHeaders(reply, rateLimiter.getIpBucketInfo(clientIp, isMaster, result.keyId ?? undefined));
-      return reply.status(429).send({ error: 'Rate limit exceeded — IP throttled' });
-    }
-  });
-
-  // #412: Reject non-UUID session IDs at the routing layer (after auth).
-  // #2788: Skip UUID check for auth key routes — key IDs are hex strings, not UUIDs.
-  // #4222: Moved inside setupAuth so UUID validation runs AFTER auth check,
-  // preventing information leak (400 for bad UUID vs 401 for valid UUID unauthenticated).
-  const AUTH_KEY_ID_PREFIXES = ['/v1/auth/keys/', '/v1/keys/'];
-  app.addHook('onRequest', async (req, reply) => {
-    const urlPath = req.url?.split('?')[0] ?? '';
-    const isAuthKeyRoute = AUTH_KEY_ID_PREFIXES.some(p => urlPath.startsWith(p));
-    const id = (req.params as Record<string, string | undefined>).id;
-    if (!isAuthKeyRoute && id !== undefined && !isValidUUID(id)) {
-      return reply.status(400).send({ error: 'Invalid session ID — must be a UUID' });
-    }
-  });
-}
-
-// ── v1 API Routes ───────────────────────────────────────────────────
-
 
 // Route handlers are registered in main() via route modules (src/routes/*).
 
@@ -1094,7 +799,7 @@ promises.push(
     health: async () => ({ healthy: true }),
   }, ['acpLocalProfile']);
 
-setupAuth(ctx);
+setupAuth(app, ctx);
 
   // Register WebSocket plugin for live terminal streaming (Issue #108)
   await app.register(fastifyWebsocket);
@@ -1394,7 +1099,7 @@ if (ctx.configReloadTimer) { timers.clearTimeout(ctx.configReloadTimer); ctx.con
 ctx.actionSweeper?.stop();
       // Issue #4195: Stop budget evaluation timer
       budgetTimer.stop();
-      rateLimiter.dispose();
+      getRateLimiter().dispose();
 
       // 3. Close file watchers, pipelines, and reaper
       try {
