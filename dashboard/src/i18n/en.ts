@@ -22,6 +22,16 @@ export const en = {
     subtitle: 'System health and session controls.',
     newSession: 'New Session',
     recentSessions: 'Recent Sessions',
+    totalCost: 'Total Cost',
+    totalTokens: 'Total Tokens',
+    sessions: 'Sessions',
+    avgDay: 'Avg/Day',
+    errorRate: 'Error Rate',
+    noDateRange: 'No date range',
+    days: '{n} days',
+    activeDays: '{n} active days',
+    processed: '{n} processed',
+    total: 'total',
   },
   
   sessions: {

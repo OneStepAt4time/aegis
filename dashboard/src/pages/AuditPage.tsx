@@ -224,7 +224,7 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
   const integrityTone = result.integrity?.valid
     ? 'border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success-glow)]'
     : 'border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 text-[var(--color-danger-glow)]';
-  const integrityLabel = result.integrity?.valid ? 'Integrity verified' : 'Integrity check failed';
+  const integrityLabel = result.integrity?.valid ? t('audit.integrityVerified') : t('audit.integrityFailed');
 
   return (
     <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
@@ -352,11 +352,11 @@ function DetailDrawer({
   }, [onClose]);
 
   const fields: Array<{ label: string; value: string; mono?: boolean }> = [
-    { label: 'Timestamp', value: formatTimestamp(record.ts) },
-    { label: 'Actor', value: record.actor, mono: true },
-    { label: 'Action', value: record.action },
-    { label: 'Session', value: record.sessionId ?? '—', mono: true },
-    { label: 'Detail', value: record.detail || '—' },
+    { label: t('audit.timestamp'), value: formatTimestamp(record.ts) },
+    { label: t('audit.actor'), value: record.actor, mono: true },
+    { label: t('audit.action'), value: record.action },
+    { label: t('audit.session'), value: record.sessionId ?? '—', mono: true },
+    { label: t('audit.detail'), value: record.detail || '—' },
   ];
 
   return (
@@ -399,7 +399,7 @@ function DetailDrawer({
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
-                  {copied === 'hash' ? 'Copied' : 'Copy'}
+                  {copied === 'hash' ? t('audit.copied') : t('audit.copy')}
                 </button>
               </div>
               <p className="mt-1 break-all font-mono text-xs text-[var(--color-text-primary)]">{record.hash}</p>
@@ -413,7 +413,7 @@ function DetailDrawer({
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
-                  {copied === 'prevHash' ? 'Copied' : 'Copy'}
+                  {copied === 'prevHash' ? t('audit.copied') : t('audit.copy')}
                 </button>
               </div>
               <p className="mt-1 break-all font-mono text-xs text-[var(--color-text-primary)]">{record.prevHash}</p>
@@ -428,7 +428,7 @@ function DetailDrawer({
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
-                  {copied === 'json' ? 'Copied' : 'Copy'}
+                  {copied === 'json' ? t('audit.copied') : t('audit.copy')}
                 </button>
               </div>
               <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-[var(--color-text-primary)]">
@@ -442,7 +442,7 @@ function DetailDrawer({
 
 // ── Main Page ─────────────────────────────────────────────────────
 
-const TABLE_HEADERS = ['Timestamp', 'Actor', 'Action', 'Session', 'Hash'] as const;
+const TABLE_HEADERS = ['Timestamp', 'Actor', 'Action', 'Session', 'Hash'] /* i18n: handled in render */ as const;
 
 export default function AuditPage() {
   const t = useT();
