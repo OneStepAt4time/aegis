@@ -210,3 +210,15 @@ export interface ApprovalHandlingOptions {
   cancelAfterApprovalRequest?: boolean;
   decision?: AcpApprovalDecision | ((request: AcpApprovalRequest) => AcpApprovalDecision);
 }
+
+// ── Error class ──────────────────────────────────────────────────────────────
+
+export class AcpProtocolError extends Error {
+  readonly details: JsonObject;
+
+  constructor(message: string, details: JsonObject = {}) {
+    super(message);
+    this.name = 'AcpProtocolError';
+    this.details = details;
+  }
+}
