@@ -148,8 +148,8 @@ export class BudgetStore {
         const raw = await readFile(this.budgetsFile, 'utf-8');
         const parsed = JSON.parse(raw) as unknown;
         if (this.isValidBudgetsFile(parsed)) return parsed;
-      } catch {
-        log.warn({ component: 'budget-store', operation: 'loadFailed', attributes: { file: this.budgetsFile } });
+      } catch (err) {
+        log.warn({ component: 'budget-store', operation: 'loadFailed', attributes: { error: String(err), file: this.budgetsFile } });
       }
     }
     return { version: 1, budgets: [] };
@@ -165,8 +165,8 @@ export class BudgetStore {
         const raw = await readFile(this.stateFile, 'utf-8');
         const parsed = JSON.parse(raw) as unknown;
         if (this.isValidStateFile(parsed)) return parsed;
-      } catch {
-        log.warn({ component: 'budget-store', operation: 'loadStateFailed', attributes: { file: this.stateFile } });
+      } catch (err) {
+        log.warn({ component: 'budget-store', operation: 'loadStateFailed', attributes: { error: String(err), file: this.stateFile } });
       }
     }
     return { version: 1, evaluations: {} };

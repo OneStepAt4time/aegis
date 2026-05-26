@@ -9,6 +9,9 @@
  */
 
 import { z } from 'zod';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 import { toJSONSchema } from 'zod/v4/core';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -180,7 +183,8 @@ function readPackageInfo(): PackageInfo {
     const data = JSON.parse(fs.readFileSync(fileURLToPath(pkgPath), 'utf-8'));
     cachedPkg = { name: data.name ?? '@onestepat4time/aegis', version: data.version ?? '0.0.0' };
     return cachedPkg;
-  } catch {
+  } catch (err) {
+    log.info({ component: 'openapi', operation: 'Failed to read package.json for version info', attributes: { error: String(err) } });
     cachedPkg = { name: '@onestepat4time/aegis', version: '0.0.0' };
     return cachedPkg;
   }

@@ -93,7 +93,7 @@ export class BudgetNotifier {
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
+      const body = await res.text().catch(err => { log.info({ component: 'budget-notifications', operation: 'Failed to read error response body', attributes: { error: String(err) } }); return ''; });
       throw new Error(`Telegram API error ${res.status}: ${body}`);
     }
   }
@@ -142,7 +142,7 @@ export class BudgetNotifier {
     });
 
     if (!res.ok) {
-      const respBody = await res.text().catch(() => '');
+      const respBody = await res.text().catch(err => { log.info({ component: 'budget-notifications', operation: 'Failed to read error response body', attributes: { error: String(err) } }); return ''; });
       throw new Error(`Webhook error ${res.status}: ${respBody}`);
     }
   }

@@ -4,6 +4,9 @@ import type {
   AcpEventStore,
 } from './event-store.js';
 import type { AcpSessionScope } from './types.js';
+import { StructuredLogger } from '../../logger.js';
+
+const log = new StructuredLogger();
 
 const DEFAULT_REPLAY_LIMIT = 1_000;
 
@@ -182,7 +185,7 @@ export class LocalAcpFanout implements AcpFanout {
     source: AcpFanoutDeliverySource = 'live'
   ): Promise<void> {
     const run = this.deliveryChain.then(() => this.deliverStoredEventNow(event, source));
-    this.deliveryChain = run.catch(() => {});
+    this.deliveryChain = run.catch(err => log.info({ component: 'acp-fanout', operation: 'Delivery chain error suppressed', attributes: { error: String(err) } }));
     await run;
   }
 
@@ -308,7 +311,7 @@ export class LocalAcpFanout implements AcpFanout {
     operation: () => Promise<void>
   ): Promise<void> {
     const run = subscriber.deliveryChain.then(operation);
-    subscriber.deliveryChain = run.catch(() => {});
+    subscriber.deliveryChain = run.catch(err => log.info({ component: 'acp-fanout', operation: 'Subscriber delivery chain error suppressed', attributes: { error: String(err) } }));
     return run;
   }
 
@@ -319,7 +322,8 @@ export class LocalAcpFanout implements AcpFanout {
   ): Promise<void> {
     try {
       await subscriber.handler({ source, event: cloneEvent(event) });
-    } catch {
+    } catch (err) {
+      log.info({ component: 'acp-fanout', operation: 'Subscriber handler threw — closing subscriber', attributes: { error: String(err) } });
       await this.closeSubscriber(subscriber);
     }
   }
@@ -365,7 +369,7 @@ export class RedisAcpFanout implements AcpFanout {
 
   async publish(input: AcpAppendEventInput): Promise<AcpEventRecord> {
     const event = await this.local.publish(input);
-    await this.redis.publish(toRedisNotification(event)).catch(() => {});
+    await this.redis.publish(toRedisNotification(event)).catch(err => log.info({ component: 'acp-fanout', operation: 'Redis notification publish failed', attributes: { error: String(err) } }));
     return event;
   }
 
