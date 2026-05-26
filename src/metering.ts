@@ -570,7 +570,8 @@ export class MeteringService {
     for (const cb of this.usageCallbacks) {
       try {
         cb(record);
-      } catch {
+      } catch (err) {
+        log.info({ component: 'metering', operation: 'Usage callback threw — skipping', attributes: { error: String(err) } });
         // Callback errors must not disrupt recording.
       }
     }
