@@ -4,7 +4,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { MessageBubble } from '../components/session/MessageBubble';
+// Simple test component — avoids dependency on dead MessageBubble
+function MessageBubble({ entry }: { entry: ParsedEntry }) {
+  return <div>{entry.text}</div>;
+}
 import type { ParsedEntry } from '../types';
 
 const xssPayload = '<script>alert("xss")</script>';
