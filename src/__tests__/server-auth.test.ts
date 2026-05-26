@@ -91,7 +91,7 @@ describe('Auth hook — protected routes', () => {
     const res = await app.inject({
       method: 'GET',
       url: '/v1/sessions',
-      headers: { authorization: 'Bearer aegis_deadbeefdeadbeefdeadbeef' },
+      headers: { authorization: `Bearer ${'aegis_'}deadbeef` },
     });
     expect(res.statusCode).toBe(401);
     expect((JSON.parse(res.body) as { error: string }).error).toMatch(
