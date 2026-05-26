@@ -123,14 +123,14 @@ export default function OverviewPage() {
         label: t('overview.totalCost'),
         value: formatCurrency(totalCost),
         color: 'cost',
-        subtitle: activeDays > 0 ? `${activeDays} days` : undefined,
+        subtitle: activeDays > 0 ? t('overview.days', { n: activeDays }) : undefined,
       },
       {
         id: 'tokens',
         label: t('overview.totalTokens'),
         value: formatTokenCount(totalTokens),
         color: 'input',
-        subtitle: totalTokens > 0 ? `${formatTokenCount(totalTokens)} processed` : undefined,
+        subtitle: totalTokens > 0 ? t('overview.processed', { n: formatTokenCount(totalTokens) }) : undefined,
       },
       {
         id: 'sessions',
@@ -143,7 +143,7 @@ export default function OverviewPage() {
         label: t('overview.avgDay'),
         value: formatCurrency(avgCostPerDay),
         color: 'time',
-        subtitle: activeDays > 0 ? `${activeDays} active days` : undefined,
+        subtitle: activeDays > 0 ? t('overview.activeDays', { n: activeDays }) : undefined,
       },
       {
         id: 'errors',

@@ -442,7 +442,7 @@ function DetailDrawer({
 
 // ── Main Page ─────────────────────────────────────────────────────
 
-const TABLE_HEADERS = ['Timestamp', 'Actor', 'Action', 'Session', 'Hash'] /* i18n: handled in render */ as const;
+const TABLE_HEADER_KEYS = ['timestamp', 'actor', 'action', 'session', 'hash'] as const;
 
 export default function AuditPage() {
   const t = useT();
@@ -831,8 +831,8 @@ export default function AuditPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[var(--color-void-lighter)]">
-                {TABLE_HEADERS.map((h) => (
-                  <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{h}</th>
+                {TABLE_HEADER_KEYS.map((key) => (
+                  <th key={key} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{t(`audit.${key}`)}</th>
                 ))}
               </tr>
             </thead>
@@ -858,8 +858,8 @@ export default function AuditPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-[var(--color-void-lighter)]">
-                  {TABLE_HEADERS.map((h) => (
-                    <th key={h} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{h}</th>
+                  {TABLE_HEADER_KEYS.map((key) => (
+                    <th key={key} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{t(`audit.${key}`)}</th>
                   ))}
                 </tr>
               </thead>
