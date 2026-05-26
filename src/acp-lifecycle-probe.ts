@@ -56,6 +56,7 @@ import {
   type AcpApprovalRequest,
   type AcpLifecycleProbeOptions,
   type AcpModelPassthroughSummary,
+  type AcpModelPassthrough,
   type AcpLifecycleProbeResult,
 } from './acp-lifecycle/acp-lifecycle-types.js';
 
@@ -95,6 +96,7 @@ export {
   type AcpApprovalRequest,
   type AcpLifecycleProbeOptions,
   type AcpModelPassthroughSummary,
+  type AcpModelPassthrough,
   type AcpLifecycleProbeResult,
 } from './acp-lifecycle/acp-lifecycle-types.js';
 export { AcpProtocolError } from './acp-lifecycle/acp-lifecycle-types.js';
