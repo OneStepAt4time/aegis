@@ -35,17 +35,12 @@ import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel,
 export { resolveApprovalInput };
 const log = new StructuredLogger();
 
-/** UI states for Claude Code sessions. */
-export type UIState =
-  | 'idle' | 'working' | 'compacting' | 'context_warning'
-  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
-  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown'
-  | 'awaiting_approval' | 'killed' | 'completed' | 'crashed';
+// Re-export types from session-types.ts for backward compatibility
+import type { UIState, SessionInfo, SessionState, PersistedStateData } from './session-types.js';
+export type { UIState, SessionInfo, SessionState, PersistedStateData };
 
-/** Stub: detect UI state from terminal pane text (ACP mode). */
-function detectUIState(_paneText: string): UIState {
-  return 'idle';
-}
+// Re-export UI parser functions from session-ui-parser.ts
+import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
 // Cache for hook cleanup to avoid running on every createSession (Issue #1134).
@@ -59,17 +54,7 @@ const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
 /** Issue #1798: Poll interval (ms) when waiting for CC idle state. */
 const SEND_MESSAGE_IDLE_POLL_MS = 500;
 
-function hasBlankPromptNearBottom(paneText: string): boolean {
-  if (!paneText) return false;
-  const lines = paneText.trimEnd().split('\n');
-  for (let i = Math.max(0, lines.length - 8); i < lines.length; i++) {
-    const stripped = lines[i]?.trim() ?? '';
-    if (stripped === '❯' || stripped === '❯\u00a0') {
-      return true;
-    }
-  }
-  return false;
-}
+// hasBlankPromptNearBottom moved to session-ui-parser.ts
 
 function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
   const sessions: Record<string, SessionInfo> = Object.create(null);
@@ -96,72 +81,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
  * This structure is persisted to disk and reused by the REST API, SSE layer,
  * monitoring loop, and session recovery logic.
  */
-export interface SessionInfo {
-  id: string;                    // Our bridge session ID (UUID)
-  windowId: string;              // session identifier (reserved, empty in ACP mode)
-  displayName: string;           // session label
-  workDir: string;               // Working directory
-  claudeSessionId?: string;      // CC's own session ID (from hook)
-  jsonlPath?: string;            // Path to the JSONL file
-  byteOffset: number;            // Last read byte offset (for API reads)
-  monitorOffset: number;         // Last read byte offset (for monitor/telegram)
-  status: UIState;               // Current UI state
-  createdAt: number;             // Unix timestamp
-  lastActivity: number;          // Unix timestamp of last activity
-  stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
-  permissionStallMs: number;     // Per-session permission stall threshold (Issue #89 L8)
-  permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
-  settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
-  hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
-  hookSecret?: string;           // Per-session secret for hook URL authentication (Issue #629)
-  lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
-  activeSubagents?: Set<string>;    // Active subagent names (Issue #88, #357: Set for O(1))
-  // Issue #87: Latency metrics
-  permissionPromptAt?: number;   // Unix timestamp when permission prompt was detected
-  permissionRespondedAt?: number; // Unix timestamp when user approved/rejected
-  lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
-  lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
-  model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
-  effort?: string;               // Issue #3545: Reasoning effort level
-    /** Issue #3613: Per-session isolation policy override. */
-  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
-  /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
-  isolationMode?: 'worktree' | 'none';
-  lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
-  /** Issue #4203: Human-readable text of the latest activity (e.g. "Running: npm test"). */
-  latestActivityText?: string;
-  ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
-  parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
-  children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
-  permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
-  permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
-  prd?: string;                // Issue #735: Optional PRD contract text attached to the session
-  ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
-  tenantId?: string;           // Issue #1944: Tenant isolation scoping
-  autoApprove?: boolean;        // API contract compat: auto-approve flag
-  // Issue #4088: Session-level approval gate
-  awaitingApproval?: boolean;       // True when session requires approval before CC starts
-  approvedBy?: string;              // Who approved the session (user ID or API key)
-  approvedAt?: number;              // Unix timestamp when session was approved
-  pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
-  pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
-  promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
-  runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
-  actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
-  // Issue #2518: Hook failure circuit breaker
-  hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
-  circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
-  // Issue #2520: Premature termination detection for background agents
-  toolUseCount?: number;               // Count of PreToolUse hook events
-  prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
-  // Issue #4027: Pinned session flag — reaper skips pinned sessions.
-  isPinned?: boolean;
-}
-
-/** Persisted session store keyed by Aegis session ID. */
-export interface SessionState {
-  sessions: Record<string, SessionInfo>;
-}
+// SessionInfo and SessionState now in session-types.ts (re-exported above)
 
 /**
  * Detect whether CC is showing numbered permission options (e.g. "1. Yes, 2. No")
@@ -171,16 +91,7 @@ export interface SessionState {
  * We look for the pattern "  <N>. <option>" where N is 1-3, which distinguishes
  * permission options from regular numbered lists in output.
  */
-export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
-  // Match CC's permission option format: indented "  1. Yes" lines.
-  // Issue #843: Tightened to require "Esc to cancel" nearby (within 300 chars)
-  // to avoid false positives on regular indented numbered lists in output.
-  const numberedOptionPattern = /^\s{2}[1-3]\.\s/m;
-  if (numberedOptionPattern.test(paneText) && /Esc to cancel/i.test(paneText)) {
-    return 'numbered';
-  }
-  return 'yes';
-}
+// detectApprovalMethod moved to session-ui-parser.ts (re-exported above)
 
 
 
