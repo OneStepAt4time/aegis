@@ -297,7 +297,7 @@ All configuration is done via environment variables (prefixed `AEGIS_`). Legacy 
 
 | Variable | Default | Description |
 |---|---|---|
-| `AEGIS_ALLOWED_WORKDIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
+| `AEGIS_ALLOWED_WORK_DIRS` | _(home, cwd)_ | JSON array of allowed session working directories. System temp dirs (`/tmp`, `/var/tmp`) are excluded by default for security — add them explicitly if needed |
 | `AEGIS_STRICT_RBAC` | `false` | Enforce RBAC checks even when auth is disabled. When `true`, unauthenticated requests to role/permission-protected endpoints return 401 instead of being allowed through |
 | `AEGIS_ENV_DENYLIST` | _(none)_ | Comma-separated list of environment variable names to strip from session environments (case-insensitive). E.g. `AWS_SECRET_ACCESS_KEY,DATABASE_URL` |
 | `AEGIS_ENV_ADMIN_ALLOWLIST` | _(none)_ | Comma-separated list of environment variable names that admin-level users may pass through despite denylist (case-insensitive) |
