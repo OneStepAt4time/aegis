@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
-import { sessionApprove, sessionReject } from '../../api/client';
+import { quickApprove, quickReject } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
 
 interface ApprovalBannerProps {
@@ -24,7 +24,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
   const handleApprove = useCallback(async () => {
     setIsApproving(true);
     try {
-      await sessionApprove(sessionId);
+      await quickApprove(sessionId);
       setResolved('approved');
       addToast('success', 'Session approved', sessionName ?? sessionId);
     } catch (err) {
@@ -37,7 +37,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
   const handleReject = useCallback(async () => {
     setIsRejecting(true);
     try {
-      await sessionReject(sessionId);
+      await quickReject(sessionId);
       setResolved('rejected');
       addToast('info', 'Session rejected', sessionName ?? sessionId);
     } catch (err) {

@@ -7,8 +7,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../../api/client', () => ({
-  sessionApprove: vi.fn(),
-  sessionReject: vi.fn(),
+  quickApprove: vi.fn(),
+  quickReject: vi.fn(),
 }));
 
 vi.mock('../../../store/useToastStore', () => ({
@@ -16,7 +16,7 @@ vi.mock('../../../store/useToastStore', () => ({
     selector({ addToast: vi.fn() }),
 }));
 
-import { sessionApprove, sessionReject } from '../../../api/client';
+import { quickApprove, quickReject } from '../../../api/client';
 import { ApprovalBanner } from '../ApprovalBanner';
 
 describe('ApprovalBanner', () => {
@@ -43,8 +43,8 @@ describe('ApprovalBanner', () => {
     expect(screen.getByRole('button', { name: /reject/i })).toBeDefined();
   });
 
-  it('calls sessionApprove on Approve click', async () => {
-    (sessionApprove as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
+  it('calls quickApprove on Approve click', async () => {
+    (quickApprove as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
     render(
       <MemoryRouter>
         <ApprovalBanner sessionId="test-123" />
@@ -52,15 +52,15 @@ describe('ApprovalBanner', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /approve session/i }));
-    expect(sessionApprove).toHaveBeenCalledWith('test-123');
+    expect(quickApprove).toHaveBeenCalledWith('test-123');
 
     await waitFor(() => {
       expect(screen.getByText('Approved')).toBeDefined();
     });
   });
 
-  it('calls sessionReject on Reject click', async () => {
-    (sessionReject as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
+  it('calls quickReject on Reject click', async () => {
+    (quickReject as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
     render(
       <MemoryRouter>
         <ApprovalBanner sessionId="test-123" />
@@ -68,7 +68,7 @@ describe('ApprovalBanner', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /reject session/i }));
-    expect(sessionReject).toHaveBeenCalledWith('test-123');
+    expect(quickReject).toHaveBeenCalledWith('test-123');
 
     await waitFor(() => {
       expect(screen.getByText('Rejected')).toBeDefined();
