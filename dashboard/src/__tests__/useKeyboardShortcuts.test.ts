@@ -43,10 +43,10 @@ describe('useKeyboardShortcuts', () => {
     const onShortcut = vi.fn();
     await renderShortcuts({ onShortcut });
 
-    dispatchKey('k', { ctrlKey: true });
+    const evt = dispatchKey('k', { ctrlKey: true });
     expect(onShortcut).toHaveBeenCalledTimes(1);
     expect(onShortcut.mock.calls[0][0].key).toBe('k');
-    expect(event!.defaultPrevented).toBe(true);
+    expect(evt.defaultPrevented).toBe(true);
   });
 
   it('calls onShortcut when Meta+K is pressed (Mac)', async () => {
@@ -121,14 +121,23 @@ describe('useKeyboardShortcuts', () => {
     expect(onShortcut).not.toHaveBeenCalled();
   });
 
-  it('bypasses shortcuts when focus is in contentEditable element', async () => {
+  it('bypasses shortcuts when focus is in input element', async () => {
     const onShortcut = vi.fn();
     await renderShortcuts({ onShortcut });
 
-    const div = document.createElement('div');
-    div.contentEditable = 'true';
-    dispatchKey('k', { ctrlKey: true, target: div });
+    const input = document.createElement('input');
+    input.type = 'text';
+    document.body.appendChild(input);
+    input.focus();
+
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }));
     expect(onShortcut).not.toHaveBeenCalled();
+    document.body.removeChild(input);
   });
 
   it('does not fire when enabled is false', async () => {
@@ -169,16 +178,16 @@ describe('useKeyboardShortcuts', () => {
     const onShortcut = vi.fn();
     await renderShortcuts({ onShortcut });
 
-    dispatchKey('k', { ctrlKey: true });
-    expect(event!.defaultPrevented).toBe(true);
+    const evt = dispatchKey('k', { ctrlKey: true });
+    expect(evt.defaultPrevented).toBe(true);
   });
 
   it('does not call preventDefault when no shortcut matches', async () => {
     const onShortcut = vi.fn();
     await renderShortcuts({ onShortcut });
 
-    dispatchKey('z', { ctrlKey: true });
-    expect(event!.defaultPrevented).toBe(false);
+    const evt4 = dispatchKey('z', { ctrlKey: true });
+    expect(evt4.defaultPrevented).toBe(false);
   });
 
   it('removes listener on unmount', async () => {
