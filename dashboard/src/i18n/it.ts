@@ -81,6 +81,12 @@ export const it = {
     metricFailed: 'Fallite',
     loading: 'Caricamento pipeline…',
     loadErrorTitle: 'Impossibile caricare le pipeline',
+    noPipelinesYet: 'Nessuna pipeline',
+    createPipeline: 'Crea una pipeline per automatizzare i flussi di lavoro.',
+    total: 'Totale',
+    running: 'In esecuzione',
+    completed: 'Completate',
+    failed: 'Fallite',
     loadErrorDefault: 'Prova a modificare i filtri',
     emptyTitle: 'Nessuna pipeline ancora',
     emptyDescription: 'Crea una pipeline per automatizzare i flussi di sessione.',
@@ -110,6 +116,9 @@ export const it = {
   },
 
   cost: {
+    daily: 'Giornaliero',
+    monthly: 'Mensile',
+    noCostData: 'Nessun dato sui costi',
     title: 'Costi e Fatturazione',
     subtitle: "Traccia l'utilizzo API e la spesa",
     todaySpent: 'Oggi',
@@ -162,6 +171,8 @@ export const it = {
   },
 
   metrics: {
+    chartSessions: 'Sessioni',
+    chartTokenCost: 'Costo Token',
     title: 'Metriche',
     subtitle: 'Metriche aggregate delle sessioni ed esportazione',
     loading: 'Caricamento metriche...',
@@ -569,6 +580,10 @@ export const it = {
     networkError: 'Errore di rete',
     networkErrorDescription: 'Impossibile connettersi al server',
     goHome: 'Torna alla Dashboard',
+  },
+
+  notifications: {
+    disconnect: 'Disconnetti',
   },
 
   aria: {

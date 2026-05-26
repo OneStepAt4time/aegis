@@ -194,10 +194,10 @@ export default function PipelinesPage() {
 
       {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard label="Total" value={counts.total} />
-        <MetricCard label="Running" value={counts.running} />
-        <MetricCard label="Completed" value={counts.completed} />
-        <MetricCard label="Failed" value={counts.failed} />
+        <MetricCard label={t("pipelines.total")} value={counts.total} />
+        <MetricCard label={t("pipelines.running")} value={counts.running} />
+        <MetricCard label={t("pipelines.completed")} value={counts.completed} />
+        <MetricCard label={t("pipelines.failed")} value={counts.failed} />
       </div>
 
       {/* Pipeline List */}
@@ -205,15 +205,15 @@ export default function PipelinesPage() {
         <EmptyState
           variant="empty-error"
           icon={<GitBranch className="h-8 w-8" />}
-          title="Unable to load pipelines"
+          title={t("pipelines.loadErrorTitle")}
           description={loadError || 'Try adjusting your filters'}
         />
       ) : isEmpty ? (
         <div className="space-y-4">
           <EmptyState
             icon={<GitBranch className="h-8 w-8" />}
-            title="No pipelines yet"
-            description="Create a pipeline to automate session workflows."
+            title={t("pipelines.noPipelinesYet")}
+            description={t("pipelines.createPipeline")}
             action={
               <button
                 type="button"
