@@ -89,7 +89,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     // Simple parameter substitution: {count} -> params.count
     if (params) {
       Object.entries(params).forEach(([paramKey, value]) => {
-        message = message!.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value));
+        message = message?.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(value));
       });
     }
     

@@ -84,3 +84,4 @@ wt/
 coverage/
 wt-last-updated
 wt-i18n-sessionboard
+node_modules
