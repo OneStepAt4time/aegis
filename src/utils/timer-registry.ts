@@ -20,7 +20,7 @@ export class TimerRegistry {
   }
 
   /** Wrap setInterval — stays tracked until clearInterval or clearAll. */
-  setInterval(fn: (...args: unknown[]) => void, ms: number, ...args: unknown[]): ReturnType<typeof setInterval> {
+  setInterval<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms: number, ...args: TArgs): ReturnType<typeof setInterval> {
     const id = setInterval(fn, ms, ...args) as ReturnType<typeof setInterval>;
     this.handles.add(id);
     return id;
@@ -38,8 +38,15 @@ export class TimerRegistry {
     this.handles.delete(id);
   }
 
+
+  /** Track an externally-created handle (e.g. from a plugin that returns its own interval). */
+  track(id: ReturnType<typeof setTimeout | typeof setInterval>): void {
+    this.handles.add(id as ReturnType<typeof setInterval>);
+  }
+
   /** Clear all tracked timers. */
   clearAll(): void {
+    // clearTimeout also clears intervals in Node.js — using it for both is safe
     for (const id of this.handles) {
       clearTimeout(id);
     }

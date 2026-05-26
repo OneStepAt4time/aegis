@@ -1588,9 +1588,8 @@ async function main(): Promise<void> {
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
   // #3227: Capture prune interval handle for cleanup on shutdown
   // Issue #4248: Track via TimerRegistry
-  const _staticPrune = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
-  if (_staticPrune) timers.setInterval(() => {}, 0); // register the returned handle
-  staticPruneInterval = _staticPrune;
+  staticPruneInterval = await registerDashboardStatic(app, { enabled: config.dashboardEnabled !== false });
+  if (staticPruneInterval) timers.track(staticPruneInterval); // track for clean shutdown
   await container.assertHealthy();
   await listenWithRetry(app, config.port, config.host, config.stateDir);
   pidFilePath = await writePidFile(config.stateDir);
