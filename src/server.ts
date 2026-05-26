@@ -385,7 +385,7 @@ function setupAuth(ctx: AppContext): void {
     // Issue #3092: manifest.json must be public for PWA install.
     if (urlPath === '/manifest.json') return;
     // Hook routes — exact match: /v1/hooks/{eventName} (alpha only, no path traversal)
-    // Issue #394: Require valid X-Session-Id for known ctx.sessions instead of blanket bypass.
+    // Issue #394: Require valid X-Session-Id for known sessions instead of blanket bypass.
     // Issue #580: Validate UUID format before getSession lookup.
     // Issue #629: Validate per-session hook secret to prevent replay with known session ID.
     // CC hooks run from localhost and always include the session ID they were started with.
@@ -414,8 +414,8 @@ function setupAuth(ctx: AppContext): void {
       return reply.status(401).send({ error: 'Unauthorized — hook endpoint requires valid session ID' });
     }
     // #303: WS terminal routes have their own preHandler for auth (supports ?token=)
-    // Exact match: /v1/ctx.sessions/{id}/terminal
-    if (/^\/v1\/ctx.sessions\/[^/]+\/terminal$/.test(urlPath)) return;
+    // Exact match: /v1/sessions/{id}/terminal
+    if (/^\/v1\/sessions\/[^/]+\/terminal$/.test(urlPath)) return;
 
     // Issue #1557: /metrics requires authentication. When a dedicated metrics token
     // is configured (AEGIS_METRICS_TOKEN), accept either that or the primary auth token.
@@ -439,8 +439,8 @@ function setupAuth(ctx: AppContext): void {
     // #124/#125: Accept token from Authorization header; ?token= query param
     // only on SSE routes where EventSource cannot set headers.
     // #297: SSE routes also accept short-lived SSE tokens via ?token=.
-    // SSE routes: /v1/events, /v1/ctx.sessions/:id/events, /v1/ctx.sessions/:id/stream (#2461)
-    const isSSERoute = /^\/v1\/events$|^\/v1\/ctx.sessions\/[^/]+\/(events|stream)$/.test(urlPath);
+    // SSE routes: /v1/events, /v1/sessions/:id/events, /v1/sessions/:id/stream (#2461)
+    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
