@@ -16,7 +16,7 @@ function readSrc(relativePath: string): string {
 
 describe('Mobile touch targets (issue #2350)', () => {
   it('New Session button has min-h-[44px] and min-w-[44px]', () => {
-    const src = readSrc('components/Layout.tsx');
+    const src = readSrc('components/layout/Header.tsx');
     // Find the className near the New Session aria-label (within 5 lines)
     const lines = src.split('\n');
     let found = false;
@@ -36,13 +36,13 @@ describe('Mobile touch targets (issue #2350)', () => {
   });
 
   it('Theme toggle button has min-h-[44px] and min-w-[44px]', () => {
-    const src = readSrc('components/Layout.tsx');
+    const src = readSrc('components/layout/Header.tsx');
     // The theme toggle className should have min-h-[44px]
     expect(src).toMatch(/min-h-\[44px\].*min-w-\[44px\].*(text-slate-500|text-\[var\(--color-text-muted\)\]).*transition-colors.*(hover:bg-slate-100|hover:bg-\[var\(--color-surface-hover\)\])/s);
   });
 
   it('Sign out button has min-h-[44px]', () => {
-    const src = readSrc('components/Layout.tsx');
+    const src = readSrc('components/layout/Sidebar.tsx');
     expect(src).toMatch(/px-3 py-3 min-h-\[44px\].*text-sm font-medium/);
   });
 
