@@ -191,8 +191,8 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
       const records = page.records;
       const total = page.total;
       const pagination = useCursorPath
-        ? { limit: page.limit, hasMore: page.hasMore, nextCursor: (page as any).nextCursor, reverse }
-        : { offset: (page as any).offset, limit: page.limit, hasMore: (page as any).hasMore };
+        ? { limit: page.limit, hasMore: page.hasMore, nextCursor: ('nextCursor' in page ? page.nextCursor : null), reverse }
+        : { offset: ('offset' in page ? page.offset : 0), limit: page.limit, hasMore: page.hasMore };
         // Chain from raw records
         const first = records[0];
         const last = records[records.length - 1];
@@ -201,8 +201,8 @@ export function registerAuditRoutes(app: FastifyInstance, ctx: RouteContext): vo
           firstHash: first.hash,
           lastHash: last.hash,
           badgeHash: '',
-          firstTs: (first as any).ts ?? (first as any).timestamp,
-          lastTs: (last as any).ts ?? (last as any).timestamp,
+          firstTs: 'ts' in first ? first.ts : first.timestamp,
+          lastTs: 'ts' in last ? last.ts : last.timestamp,
         } : { count: 0, firstHash: null, lastHash: null, badgeHash: null, firstTs: null, lastTs: null };
 
         return {

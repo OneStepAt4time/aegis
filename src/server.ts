@@ -883,8 +883,7 @@ async function main(): Promise<void> {
     ...(persistDebounceMs !== undefined ? { persistDebounceMs } : {}),
   });
   await acpLocalProfile.start();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  acpPauseStore = (acpLocalProfile as any).pauseInterventionStore ?? null;
+  acpPauseStore = acpLocalProfile.pauseInterventionStore ?? null;
   acpSessionService = new AcpSessionService(acpLocalProfile.sessionStore, {
     pauseInterventionStore: acpPauseStore ?? new InMemoryPauseInterventionStore(),
   });
