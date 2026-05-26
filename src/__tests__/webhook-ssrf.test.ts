@@ -101,7 +101,8 @@ describe('WebhookChannel.fromEnv() SSRF validation', () => {
     process.env.AEGIS_WEBHOOKS = JSON.stringify([
       { url: 'https://localhost:3000/hook' },
     ]);
-    expect(WebhookChannel.fromEnv()).not.toBeNull();
+    expect(WebhookChannel.fromEnv()).toBeNull();
+    expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
@@ -123,12 +124,14 @@ describe('WebhookChannel.fromEnv() SSRF validation', () => {
     consoleSpy.mockRestore();
   });
 
-  it('accepts HTTP to 127.0.0.1 (dev mode)', () => {
+  it('rejects HTTP to 127.0.0.1 (SSRF protection)', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     process.env.AEGIS_WEBHOOKS = JSON.stringify([
       { url: 'http://127.0.0.1:3000/hook' },
     ]);
-    const channel = WebhookChannel.fromEnv();
-    expect(channel).not.toBeNull();
+    expect(WebhookChannel.fromEnv()).toBeNull();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 
   it('rejects all endpoints if any is invalid', () => {

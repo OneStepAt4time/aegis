@@ -7,6 +7,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// Mock SSRF utilities to avoid real DNS lookups in unit tests.
+vi.mock('../ssrf.js', () => ({
+  validateWebhookUrl: (u: string) => null,
+  resolveAndCheckIp: async (h: string) => ({ error: null, resolvedIp: null }),
+  buildConnectionUrl: (u: string, ip: string) => ({ connectionUrl: u, hostHeader: new URL(u).host }),
+}));
 import { BudgetNotifier } from '../budgets/notifications.js';
 import type { AlertPayload } from '../budgets/notifications.js';
 import type { Budget } from '../budgets/types.js';

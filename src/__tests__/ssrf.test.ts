@@ -216,24 +216,24 @@ describe('validateWebhookUrl', () => {
     expect(validateWebhookUrl('https://example.com/hook')).toBeNull();
   });
 
-  it('accepts HTTP to localhost (dev mode)', () => {
-    expect(validateWebhookUrl('http://localhost:3000/hook')).toBeNull();
+  it('rejects HTTP to localhost (no dev bypass)', () => {
+    expect(validateWebhookUrl('http://localhost:3000/hook')).toBe('Only HTTPS URLs are allowed');
   });
 
-  it('accepts HTTP to 127.0.0.1 (dev mode)', () => {
-    expect(validateWebhookUrl('http://127.0.0.1:3000/hook')).toBeNull();
+  it('rejects HTTP to 127.0.0.1 (no dev bypass)', () => {
+    expect(validateWebhookUrl('http://127.0.0.1:3000/hook')).toBe('Only HTTPS URLs are allowed');
   });
 
-  it('accepts HTTPS to localhost', () => {
-    expect(validateWebhookUrl('https://localhost/hook')).toBeNull();
+  it('rejects HTTPS to localhost (SSRF protection)', () => {
+    expect(validateWebhookUrl('https://localhost/hook')).toBe('Localhost URLs are not allowed');
   });
 
   it('rejects HTTP to external host', () => {
-    expect(validateWebhookUrl('http://example.com/hook')).toBe('Only HTTPS URLs are allowed for external hosts');
+    expect(validateWebhookUrl('http://example.com/hook')).toBe('Only HTTPS URLs are allowed');
   });
 
   it('rejects non-http(s) scheme', () => {
-    expect(validateWebhookUrl('file:///etc/passwd')).toMatch(/Only HTTPS URLs/);
+    expect(validateWebhookUrl('file:///etc/passwd')).toBe('Invalid URL scheme');
   });
 
   it('rejects invalid URL', () => {
@@ -256,8 +256,8 @@ describe('validateWebhookUrl', () => {
     expect(validateWebhookUrl('https://[::ffff:10.0.0.1]/hook')).toBe('Private/internal IP addresses are not allowed');
   });
 
-  it('allows IPv6 loopback via HTTPS (local dev)', () => {
-    expect(validateWebhookUrl('https://[::1]/hook')).toBeNull();
+  it('rejects IPv6 loopback via HTTPS (SSRF protection)', () => {
+    expect(validateWebhookUrl('https://[::1]/hook')).toBe('Private/internal IP addresses are not allowed');
   });
 
   it('rejects IPv6 unique-local in URL', () => {
