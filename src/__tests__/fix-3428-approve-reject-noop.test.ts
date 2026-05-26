@@ -26,7 +26,7 @@ describe('Issue #3428 — approve/reject with no pending permission', () => {
   it('approve resolves pending permission', async () => {
     const pm = new PermissionRequestManager();
     // Inject permission request manager into session (access private field)
-    (sessions as any).permissionRequests = pm;
+    (sessions as any).permissions = { requests: pm };
     
     const promise = pm.waitForPermissionDecision('test-session', 5000);
     
@@ -38,7 +38,7 @@ describe('Issue #3428 — approve/reject with no pending permission', () => {
 
   it('reject resolves pending permission', async () => {
     const pm = new PermissionRequestManager();
-    (sessions as any).permissionRequests = pm;
+    (sessions as any).permissions = { requests: pm };
     
     const promise = pm.waitForPermissionDecision('test-session', 5000);
     
