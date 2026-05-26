@@ -230,31 +230,30 @@ export class WebhookChannel implements Channel {
           const { signatureHeader } = signPayload(body, ep.secret);
           headers['X-Aegis-Signature'] = signatureHeader;
         }
-        if (bareHost !== '127.0.0.1' && bareHost !== '::1' && bareHost !== 'localhost') {
-          const dnsResult = await resolveAndCheckIp(bareHost);
-          if (dnsResult.error) {
-            lastError = dnsResult.error;
-            // Issue #2144: Record failed attempt
-            this.recordDelivery({
-              id: deliveryId, endpointUrl: ep.url, event,
-              status: 'failed', responseCode: null, error: lastError,
-              timestamp: new Date().toISOString(), attemptNumber: attempt,
-            });
-            if (attempt < maxRetries) {
-              const delay = WebhookChannel.backoff(attempt);
-              log.warn({ component: 'webhook', operation: 'dnsCheckRetry', attributes: { url: ep.url, event, attempt, maxRetries, error: lastError, retryDelayMs: Math.round(delay) } });
-              await new Promise(r => setTimeout(r, delay));
-              continue;
-            }
-            log.error({ component: 'webhook', operation: 'dnsCheckFailed', attributes: { url: ep.url, event, attempts: maxRetries, error: lastError } });
-            this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
-            throw new RetriableError(lastError);
+        // SSRF protection: resolve and validate DNS for all hosts.
+        const dnsResult = await resolveAndCheckIp(bareHost);
+        if (dnsResult.error) {
+          lastError = dnsResult.error;
+          // Issue #2144: Record failed attempt
+          this.recordDelivery({
+            id: deliveryId, endpointUrl: ep.url, event,
+            status: 'failed', responseCode: null, error: lastError,
+            timestamp: new Date().toISOString(), attemptNumber: attempt,
+          });
+          if (attempt < maxRetries) {
+            const delay = WebhookChannel.backoff(attempt);
+            log.warn({ component: 'webhook', operation: 'dnsCheckRetry', attributes: { url: ep.url, event, attempt, maxRetries, error: lastError, retryDelayMs: Math.round(delay) } });
+            await new Promise(r => setTimeout(r, delay));
+            continue;
           }
-          if (dnsResult.resolvedIp) {
-            const { connectionUrl, hostHeader } = buildConnectionUrl(ep.url, dnsResult.resolvedIp);
-            fetchUrl = connectionUrl;
-            headers['Host'] = hostHeader;
-          }
+          log.error({ component: 'webhook', operation: 'dnsCheckFailed', attributes: { url: ep.url, event, attempts: maxRetries, error: lastError } });
+          this.addToDeadLetterQueue(ep.url, event, lastError, maxRetries);
+          throw new RetriableError(lastError);
+        }
+        if (dnsResult.resolvedIp) {
+          const { connectionUrl, hostHeader } = buildConnectionUrl(ep.url, dnsResult.resolvedIp);
+          fetchUrl = connectionUrl;
+          headers['Host'] = hostHeader;
         }
 
         const res = await fetch(fetchUrl, {

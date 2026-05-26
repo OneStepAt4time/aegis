@@ -105,8 +105,8 @@ export function isPrivateIP(ip: string): boolean {
  * Checks:
  * 1. Valid URL format
  * 2. HTTPS scheme required for external hosts
- * 3. HTTP allowed only for localhost / 127.0.0.1
- * 4. Rejects private/internal IP addresses (except 127.0.0.1 in dev mode)
+ * 3. HTTPS required — no HTTP exemptions
+ * 4. Rejects all private/internal IP addresses including localhost/loopback
  * 5. Rejects *.local hostnames
  *
  * Returns null if valid, or an error string if invalid.
@@ -124,22 +124,21 @@ export function validateWebhookUrl(rawUrl: string): string | null {
   // Strip brackets from IPv6 URLs: [::1] → ::1
   const bareHost = hostname.replace(/^\[|\]$/g, '');
 
-  // Scheme check — must be HTTPS, or HTTP only for local dev
-  const isLocalDev = bareHost === '127.0.0.1' || bareHost === '::1' || bareHost === 'localhost';
-  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLocalDev)) {
+  // Scheme check — must be HTTPS
+  if (parsed.protocol !== 'https:') {
     if (parsed.protocol === 'http:') {
-      return 'Only HTTPS URLs are allowed for external hosts';
+      return 'Only HTTPS URLs are allowed';
     }
-    return 'Only HTTPS URLs are allowed';
+    return 'Invalid URL scheme';
   }
 
-  // Reject *.local hostnames (but allow literal localhost for dev)
-  if (bareHost.endsWith('.local')) {
+  // Reject *.local hostnames and literal localhost
+  if (bareHost.endsWith('.local') || bareHost === 'localhost') {
     return 'Localhost URLs are not allowed';
   }
 
-  // Reject private/internal IPs (except 127.0.0.1/::1 which are allowed for dev over HTTP)
-  if (net.isIP(bareHost) && isPrivateIP(bareHost) && !isLocalDev) {
+  // Reject private/internal IPs — no exemptions, not even localhost.
+  if (net.isIP(bareHost) && isPrivateIP(bareHost)) {
     return 'Private/internal IP addresses are not allowed';
   }
 

@@ -105,21 +105,19 @@ export class BudgetNotifier {
       throw new Error(`Invalid webhook URL: ${urlError}`);
     }
 
-    const hostname = new URL(url).hostname.replace(/(^\[|\]$)/g, '');
     let fetchUrl = url;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-    // For non-local hosts, resolve and check IPs to prevent DNS rebinding / SSRF.
-    if (hostname !== '127.0.0.1' && hostname !== '::1' && hostname !== 'localhost') {
-      const dnsResult = await resolveAndCheckIp(hostname);
-      if (dnsResult.error) {
-        throw new Error(dnsResult.error);
-      }
-      if (dnsResult.resolvedIp) {
-        const conn = buildConnectionUrl(url, dnsResult.resolvedIp);
-        fetchUrl = conn.connectionUrl;
-        headers['Host'] = conn.hostHeader;
-      }
+    // Resolve and check IPs to prevent DNS rebinding / SSRF — no localhost bypass.
+    const hostname = new URL(url).hostname.replace(/(^\[|\]$)/g, '');
+    const dnsResult = await resolveAndCheckIp(hostname);
+    if (dnsResult.error) {
+      throw new Error(dnsResult.error);
+    }
+    if (dnsResult.resolvedIp) {
+      const conn = buildConnectionUrl(url, dnsResult.resolvedIp);
+      fetchUrl = conn.connectionUrl;
+      headers['Host'] = conn.hostHeader;
     }
 
     const { budget, threshold, currentSpendUsd, windowStart, windowEnd } = payload;
