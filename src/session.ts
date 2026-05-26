@@ -22,7 +22,7 @@ import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings
 import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
-import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
+// PermissionDecision and request management now via SessionPermissionService
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
@@ -31,6 +31,8 @@ import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
+import { SessionPermissionService, resolveApprovalInput, type PermissionDecision } from './services/session/permissions.js';
+export { resolveApprovalInput } from './services/session/permissions.js';
 const log = new StructuredLogger();
 
 /** UI states for Claude Code sessions. */
@@ -180,25 +182,7 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
   return 'yes';
 }
 
-interface NumberedApprovalOption {
-  value: string;
-  label: string;
-}
 
-function parseNumberedApprovalOptions(paneText: string): NumberedApprovalOption[] {
-  const numberedRegex = /^\s*[❯> ]?\s*(\d+)\.\s*(.+)$/gm;
-  const options: NumberedApprovalOption[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = numberedRegex.exec(paneText)) !== null) {
-    options.push({
-      value: match[1],
-      label: match[2].trim(),
-    });
-  }
-
-  return options;
-}
 
 function normalizeApprovalLabel(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -255,62 +239,6 @@ async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none'
   return undefined;
 }
 
-function pickNumberedApprovalOption(
-  options: NumberedApprovalOption[],
-  action: 'approve' | 'reject',
-  permissionMode: string,
-): string {
-  const normalized = options.map(option => ({
-    ...option,
-    normalizedLabel: normalizeApprovalLabel(option.label),
-  }));
-
-  if (action === 'approve') {
-    if (permissionMode === 'plan') {
-      const manualApproval = normalized.find(option => option.normalizedLabel.includes('manuallyapproveedits'));
-      if (manualApproval) return manualApproval.value;
-    }
-
-    const leastPrivilegeYes = normalized.find(option =>
-      (option.normalizedLabel.startsWith('yes') || option.normalizedLabel.startsWith('allow'))
-      && !option.normalizedLabel.includes('always')
-      && !option.normalizedLabel.includes('automode')
-    );
-    if (leastPrivilegeYes) return leastPrivilegeYes.value;
-
-    const anyPositive = normalized.find(option =>
-      option.normalizedLabel.includes('yes')
-      || option.normalizedLabel.includes('allow')
-      || option.normalizedLabel.includes('proceed')
-    );
-    if (anyPositive) return anyPositive.value;
-
-    return options[0]?.value ?? '1';
-  }
-
-  const negative = normalized.find(option =>
-    option.normalizedLabel.startsWith('no')
-    || option.normalizedLabel.includes('deny')
-    || option.normalizedLabel.includes('reject')
-    || option.normalizedLabel.includes('cancel')
-  );
-  if (negative) return negative.value;
-
-  return options[options.length - 1]?.value ?? 'n';
-}
-
-export function resolveApprovalInput(
-  paneText: string,
-  action: 'approve' | 'reject',
-  permissionMode: string,
-): string {
-  const options = parseNumberedApprovalOptions(paneText);
-  if (options.length >= 2) {
-    return pickNumberedApprovalOption(options, action, permissionMode);
-  }
-  return action === 'approve' ? 'y' : 'n';
-}
-
 function getUiApprovalInput(
   paneText: string,
   action: 'approve' | 'reject',
@@ -345,7 +273,7 @@ export class SessionManager {
   /** Issue #4251: Delegated persistence service. */
   private readonly persistence: SessionPersistenceService;
   /** #4228: Encryption delegated to persistence.encryption. */
-  private permissionRequests = new PermissionRequestManager();
+  private readonly permissions = new SessionPermissionService();
   private questions = new QuestionManager();
   // Issue #657: Cached session list to avoid allocating a new array per call
   private sessionsListCache: SessionInfo[] | null = null;
@@ -971,7 +899,7 @@ export class SessionManager {
 
   /** Approve permission (ACP stub — handled by hooks). */
   async approve(id: string): Promise<void> {
-    const resolved = this.permissionRequests.resolvePendingPermission(id, 'allow');
+    const resolved = this.permissions.requests.resolvePendingPermission(id, 'allow');
     if (!resolved) {
       throw new Error('No pending permission request');
     }
@@ -979,7 +907,7 @@ export class SessionManager {
 
   /** Reject permission (ACP stub — handled by hooks). */
   async reject(id: string): Promise<void> {
-    const resolved = this.permissionRequests.resolvePendingPermission(id, 'deny');
+    const resolved = this.permissions.requests.resolvePendingPermission(id, 'deny');
     if (!resolved) {
       throw new Error('No pending permission request');
     }
@@ -1053,7 +981,7 @@ export class SessionManager {
       const killedAt = session.lastActivity ?? session.createdAt;
       if (now - killedAt >= olderThanMs) {
         delete this.state.sessions[id];
-        this.permissionRequests.cleanupPendingPermission(id);
+        this.permissions.requests.cleanupPendingPermission(id);
         this.questions.cleanupPendingQuestion(id);
         this.approvalTimeouts.delete(id);
         purged++;
@@ -1315,22 +1243,22 @@ export class SessionManager {
     toolName?: string,
     prompt?: string,
   ): Promise<PermissionDecision> {
-    return this.permissionRequests.waitForPermissionDecision(sessionId, timeoutMs, toolName, prompt);
+    return this.permissions.requests.waitForPermissionDecision(sessionId, timeoutMs, toolName, prompt);
   }
 
   /** Check if a session has a pending permission request. */
   hasPendingPermission(sessionId: string): boolean {
-    return this.permissionRequests.hasPendingPermission(sessionId);
+    return this.permissions.requests.hasPendingPermission(sessionId);
   }
 
   /** Get info about a pending permission (for API responses). */
   getPendingPermissionInfo(sessionId: string): PendingPermissionInfo | null {
-    return this.permissionRequests.getPendingPermissionInfo(sessionId);
+    return this.permissions.requests.getPendingPermissionInfo(sessionId);
   }
 
   /** Clean up any pending permission for a session (e.g. on session delete). */
   cleanupPendingPermission(sessionId: string): void {
-    this.permissionRequests.cleanupPendingPermission(sessionId);
+    this.permissions.requests.cleanupPendingPermission(sessionId);
   }
 
   /**
