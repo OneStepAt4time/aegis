@@ -8,6 +8,7 @@
 
 import type { Budget, NotificationChannel } from './types.js';
 import { StructuredLogger } from '../logger.js';
+import { validateWebhookUrl, resolveAndCheckIp, buildConnectionUrl } from '../ssrf.js';
 
 const log = new StructuredLogger();
 
@@ -82,7 +83,8 @@ export class BudgetNotifier {
       `${percentUsed}% used ($${currentSpendUsd.toFixed(2)} / $${budget.limitUsd.toFixed(2)})`,
       `Window: ${windowDesc} (ends ${windowEndFormatted})`,
       `Threshold: ${threshold}%`,
-    ].join('\n');
+    ].join('
+');
 
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
@@ -98,6 +100,29 @@ export class BudgetNotifier {
   }
 
   private async sendWebhook(payload: AlertPayload, url: string): Promise<void> {
+    // SSRF protection: validate URL format and DNS resolution before performing fetch.
+    const urlError = validateWebhookUrl(url);
+    if (urlError) {
+      throw new Error(`Invalid webhook URL: ${urlError}`);
+    }
+
+    const hostname = new URL(url).hostname.replace(/(^\[|\]$)/g, '');
+    let fetchUrl = url;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    // For non-local hosts, resolve and check IPs to prevent DNS rebinding / SSRF.
+    if (hostname !== '127.0.0.1' && hostname !== '::1' && hostname !== 'localhost') {
+      const dnsResult = await resolveAndCheckIp(hostname);
+      if (dnsResult.error) {
+        throw new Error(dnsResult.error);
+      }
+      if (dnsResult.resolvedIp) {
+        const conn = buildConnectionUrl(url, dnsResult.resolvedIp);
+        fetchUrl = conn.connectionUrl;
+        headers['Host'] = conn.hostHeader;
+      }
+    }
+
     const { budget, threshold, currentSpendUsd, windowStart, windowEnd } = payload;
     const body = {
       event: 'budget.threshold',
@@ -112,9 +137,9 @@ export class BudgetNotifier {
       timestamp: new Date().toISOString(),
     };
 
-    const res = await fetch(url, {
+    const res = await fetch(fetchUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     });
