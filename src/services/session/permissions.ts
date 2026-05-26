@@ -13,7 +13,7 @@ export type { PermissionDecision };
 // ── Numbered approval option parsing ──
 
 /** Normalize an approval label for fuzzy matching. */
-function normalizeApprovalLabel(label: string): string {
+export function normalizeApprovalLabel(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 

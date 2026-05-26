@@ -31,8 +31,8 @@ import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
-import { SessionPermissionService, resolveApprovalInput, type PermissionDecision } from './services/session/permissions.js';
-export { resolveApprovalInput } from './services/session/permissions.js';
+import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel, type PermissionDecision } from './services/session/permissions.js';
+export { resolveApprovalInput };
 const log = new StructuredLogger();
 
 /** UI states for Claude Code sessions. */
@@ -184,9 +184,6 @@ export function detectApprovalMethod(paneText: string): 'numbered' | 'yes' {
 
 
 
-function normalizeApprovalLabel(label: string): string {
-  return label.toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
 
 /** Issue #3740: Detect the model name from Claude Code settings files.
  * Reads ANTHROPIC_MODEL from env in settings.local.json or settings.json. */
