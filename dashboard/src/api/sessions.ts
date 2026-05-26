@@ -202,39 +202,11 @@ export function quickApprove(id: string, opts?: { approverId?: string }): Promis
   });
 }
 
-/** Legacy approve — kept for backward compatibility with Telegram one-tap flow. */
-export function approve(id: string): Promise<OkResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/approve`, {
-    method: 'POST',
-  });
-}
-
 /** Issue #4193: Quick reject via dedicated permission endpoint (richer audit trail with reason). */
 export function quickReject(id: string, opts?: { reason?: string }): Promise<OkResponse> {
   return request(`/v1/sessions/${encodeURIComponent(id)}/permission/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason: opts?.reason }),
-  });
-}
-
-/** Legacy reject — kept for backward compatibility with Telegram one-tap flow. */
-export function reject(id: string): Promise<OkResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/reject`, {
-    method: 'POST',
-  });
-}
-
-/** Session-level approval (Telegram one-tap flow) */
-export function sessionApprove(id: string): Promise<OkResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/session-approve`, {
-    method: "POST",
-  });
-}
-
-/** Session-level rejection (Telegram one-tap flow) */
-export function sessionReject(id: string): Promise<OkResponse> {
-  return request(`/v1/sessions/${encodeURIComponent(id)}/session-reject`, {
-    method: "POST",
   });
 }
 

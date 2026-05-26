@@ -20,13 +20,13 @@ import {
   Filter,
 } from 'lucide-react';
 import {
-  approve,
+  quickApprove,
   getAllSessionsHealth,
   getSessionStatusCounts,
   getSessions,
   interrupt,
   killSession,
-  reject,
+  quickReject,
 } from '../../api/client';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useToastStore } from '../../store/useToastStore';
@@ -281,7 +281,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     e.preventDefault();
     await withLoading(id, 'approve', async () => {
       try {
-        await approve(id);
+        await quickApprove(id);
         await fetchSessions();
       } catch (err: unknown) {
         addToast('error', 'Approve failed', err instanceof Error ? err.message : undefined);
@@ -293,7 +293,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     e.preventDefault();
     await withLoading(id, 'reject', async () => {
       try {
-        await reject(id);
+        await quickReject(id);
         await fetchSessions();
       } catch (err: unknown) {
         addToast('error', 'Reject failed', err instanceof Error ? err.message : undefined);
