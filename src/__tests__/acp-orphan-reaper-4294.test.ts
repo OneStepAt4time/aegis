@@ -11,7 +11,7 @@ function createMockLogger() {
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  } as unknown as import('../../logger.js').StructuredLogger;
+  } as unknown as import('../logger.js').StructuredLogger;
 }
 
 describe('reapOrphanAcpRuntimes', () => {
