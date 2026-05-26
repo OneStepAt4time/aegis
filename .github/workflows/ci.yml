@@ -64,6 +64,8 @@ jobs:
         run: npm run security-check
       - name: Run linter
         run: npm run lint
+      - name: Console.* guard — block new console.log/warn/error in src/
+        run: bash scripts/console-guard.sh
   feat-minor-bump-gate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

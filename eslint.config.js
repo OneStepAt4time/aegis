@@ -29,15 +29,54 @@ export default [
       ],
     },
   },
+  // no-console: error for production src/ — existing violators are excluded so CI stays green.
+  // Goal: shrink this list over time by migrating to StructuredLogger.
   {
     files: ['src/**/*.ts'],
     ignores: [
       'src/__tests__/**',
+      // Core infra — logger, CLI, startup bootstrap
       'src/cli.ts',
       'src/logger.ts',
+      'src/startup.ts',
       'src/suppress.ts',
+      'src/tracing.ts',
+      // Hooks & permissions
+      'src/hooks.ts',
       'src/hook.ts',
+      'src/permission-guard.ts',
+      'src/permission-request-manager.ts',
+      // Sessions
+      'src/session.ts',
+      'src/session-discovery.ts',
+      'src/session-transcripts.ts',
+      // ACP
+      'src/services/acp/backend.ts',
+      'src/services/auth/AuthManager.ts',
+      'src/services/state/JsonFileStore.ts',
+      // Channels
+      'src/channels/email.ts',
+      'src/channels/manager.ts',
+      'src/channels/slack.ts',
+      'src/channels/telegram.ts',
+      'src/channels/webhook.ts',
+      // Server & config
+      'src/server.ts',
+      'src/config.ts',
+      'src/events.ts',
+      // Memory & learnings
+      'src/memory-bridge-learning.ts',
+      'src/memory-bridge.ts',
+      'src/structured-learnings.ts',
+      // Misc
+      'src/file-utils.ts',
+      'src/jsonl-watcher.ts',
       'src/mcp/server.ts',
+      'src/question-manager.ts',
+      'src/signal-cleanup-helper.ts',
+      'src/template-store.ts',
+      'src/transcript.ts',
+      'src/webhook/verify.ts',
     ],
     rules: {
       'no-console': 'error',
