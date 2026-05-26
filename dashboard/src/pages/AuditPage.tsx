@@ -169,6 +169,9 @@ function SkeletonRows({ count }: { count: number }) {
 function AuditRow({ record, index, onClick }: { record: AuditRecord; index: number; onClick: () => void }) {
   return (
     <motion.tr
+      role="button"
+      tabIndex={0}
+      aria-label={`Audit record: ${record.action} by ${record.actor}`}
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{
@@ -177,7 +180,13 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
         ease: [0.2, 0, 0, 1],
       }}
       onClick={onClick}
-      className="border-b border-[var(--color-void-lighter)] transition-colors hover:bg-[var(--color-void-light)]/40 cursor-pointer"
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="border-b border-[var(--color-void-lighter)] transition-colors hover:bg-[var(--color-void-light)]/40 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <td className="whitespace-nowrap px-4 py-3 text-sm text-[var(--color-text-muted)]">
         {formatTimestamp(record.ts)}

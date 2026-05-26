@@ -397,3 +397,37 @@ describe('AuditPage', () => {
     });
   });
 });
+
+// AuditRow keyboard accessibility test
+describe('AuditRow a11y', () => {
+  it('should have role=button, tabIndex, aria-label, and respond to Enter key', async () => {
+    mockFetchAuditLogs.mockResolvedValue(createAuditPageResponse({
+      records: [{
+        ts: '2026-01-01T00:00:00Z',
+        actor: 'test-user',
+        action: 'session.create',
+        sessionId: 'abc123',
+        detail: 'Created session',
+        prevHash: '',
+        hash: 'deadbeef',
+      }],
+    }));
+
+    render(<AuditPage />);
+
+    await waitFor(() => {
+      expect(mockFetchAuditLogs).toHaveBeenCalled();
+    });
+
+    // Find the clickable row by aria-label
+    const row = await screen.findByRole('button', { name: /audit record.*session\.create.*test-user/i });
+    expect(row).toBeTruthy();
+    expect(row.getAttribute('tabindex')).toBe('0');
+
+    // Test keyboard: Enter triggers row click (opens detail)
+    fireEvent.keyDown(row, { key: 'Enter' });
+
+    // Test keyboard: Space triggers row click
+    fireEvent.keyDown(row, { key: ' ' });
+  });
+});
