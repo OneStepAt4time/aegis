@@ -184,6 +184,7 @@ vi.mock('../api/client', () => ({
     updateAvailable: false,
   }),
   getHealth: vi.fn().mockResolvedValue({ version: '1.0.0' }),
+  getClaudeSessions: vi.fn().mockResolvedValue([]),
   subscribeGlobalSSE: vi.fn(() => vi.fn()),
 }));
 
