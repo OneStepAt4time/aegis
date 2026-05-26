@@ -5,7 +5,7 @@
 import { lazy, Suspense } from 'react';
 import Breadcrumb from '../shared/Breadcrumb';
 import { ApprovalBadge } from '../approvals/ApprovalNotification';
-import { Sun, Moon, Plus, Search, RefreshCw } from 'lucide-react';
+import { Sun, Moon, Plus, Search, RefreshCw, Menu } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useDrawerStore } from '../../store/useDrawerStore';
 import { useT } from '../../i18n/context';
@@ -52,7 +52,7 @@ export function Header({
               className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
               aria-label={t("aria.openMenu")}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+              <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
               <Breadcrumb />
