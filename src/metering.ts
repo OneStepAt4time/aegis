@@ -15,6 +15,9 @@ import type { TokenUsageDelta } from './transcript.js';
 
 // ── Types ───────────────────────────────────────────────────────────
 
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 /** A single usage record emitted for a session event. */
 export interface UsageRecord {
   /** Unique record ID (incrementing counter). */
@@ -198,7 +201,8 @@ export class MeteringService {
           this.records = data.records;
           this.nextId = data.nextId;
         }
-      } catch {
+      } catch (err) {
+        log.info({ component: 'metering', operation: 'Corrupt metering data file — starting fresh', attributes: { error: String(err) } });
         // Corrupt file — start fresh
       }
     }

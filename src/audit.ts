@@ -17,7 +17,10 @@ import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { secureFilePermissions } from './file-utils.js';
+import { StructuredLogger } from './logger.js';
 import { SYSTEM_TENANT } from './config.js';
+
+const log = new StructuredLogger();
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -365,12 +368,13 @@ export class AuditLogger {
             const stats = await stat(lockPath);
             const age = Date.now() - stats.mtimeMs;
             if (age > AuditLogger.FILE_LOCK_STALE_MS) {
-              await rmdir(lockPath).catch(() => {});
+              await rmdir(lockPath).catch(err => log.info({ component: 'audit', operation: 'Stale lock removal failed', attributes: { error: String(err) } }));
               // Retry immediately
               continue;
             }
-          } catch {
-            // Lock disappeared between checks — retry
+          } catch (err) {
+            log.info({ component: 'audit', operation: 'Lock directory disappeared between checks', attributes: { error: String(err) } });
+            // Retry
             continue;
           }
           // Wait before retrying
@@ -386,7 +390,7 @@ export class AuditLogger {
   /** #2781: Release the inter-process file lock. */
   private async releaseFileLock(): Promise<void> {
     const lockPath = join(this.logDir, AuditLogger.FILE_LOCK_DIR);
-    await rmdir(lockPath).catch(() => {});
+    await rmdir(lockPath).catch(err => log.info({ component: 'audit', operation: 'Lock release cleanup failed', attributes: { error: String(err) } }));
   }
 
   /** Initialize the audit logger — ensure directory exists, read last hash. */
@@ -426,20 +430,23 @@ export class AuditLogger {
       try {
         const record = JSON.parse(lastLine) as AuditRecord;
         this.lastHash = record.hash;
-      } catch {
-        // Corrupted last line — scan backwards for valid JSON
+      } catch (err) {
+        log.info({ component: 'audit', operation: 'Corrupted last line in audit log', attributes: { error: String(err) } });
+        // Scan backwards for valid JSON
         for (let i = lines.length - 1; i >= 0; i--) {
           try {
             const rec = JSON.parse(lines[i]!) as AuditRecord;
             this.lastHash = rec.hash;
             return;
-          } catch {
+          } catch { /* malformed line — intentional skip */
+            // Malformed line — skip
             continue;
           }
         }
         this.lastHash = '';
       }
-    } catch {
+    } catch (err) {
+      log.info({ component: 'audit', operation: 'Failed to recover last hash from audit log', attributes: { error: String(err) } });
       this.lastHash = '';
     }
   }
@@ -449,7 +456,7 @@ export class AuditLogger {
    * Safe to call during graceful shutdown to ensure all in-flight log() calls complete.
    */
   async flush(): Promise<void> {
-    await this.writeLock.catch(() => {});
+    await this.writeLock.catch(err => log.info({ component: 'audit', operation: 'Write lock await failed during flush', attributes: { error: String(err) } }));
   }
 
   /** Get the file path for a given date. */
@@ -474,7 +481,7 @@ export class AuditLogger {
     this.writeLock = lock;
 
     try {
-      await previous.catch(() => {});
+      await previous.catch(err => log.info({ component: 'audit', operation: 'Previous write lock failed', attributes: { error: String(err) } }));
 
       // #2781: Acquire inter-process file lock to serialize across multiple
       // AuditLogger instances that may share the same audit directory.
@@ -540,7 +547,7 @@ export class AuditLogger {
         const lastRecord = JSON.parse(lines[lines.length - 1]) as AuditRecord;
         return lastRecord.hash ?? null;
       }
-    } catch { /* archive file doesn't exist or is unreadable */ }
+    } catch (err) { log.info({ component: 'audit', operation: 'Archive file not found or unreadable', attributes: { error: String(err) } }); }
     return null;
   }
 
@@ -586,14 +593,16 @@ export class AuditLogger {
             }
 
             prevHash = record.hash;
-          } catch {
+          } catch (err) {
+            log.info({ component: 'audit', operation: 'Malformed audit record during verification', attributes: { error: String(err) } });
             return { valid: false, brokenAt: globalLineNum, file };
           }
         }
       }
 
       return { valid: true };
-    } catch {
+    } catch (err) {
+      log.info({ component: 'audit', operation: 'Audit log directory read failed during verification', attributes: { error: String(err) } });
       return { valid: false, file: this.logDir };
     }
   }
@@ -641,7 +650,8 @@ export class AuditLogger {
             if (tenantId && tenantId !== SYSTEM_TENANT && record.tenantId !== tenantId) continue;
 
             allRecords.push(record);
-          } catch {
+          } catch (err) {
+            log.info({ component: 'audit', operation: 'Skipping malformed audit line', attributes: { error: String(err) } });
             // Skip malformed lines
             continue;
           }
@@ -649,7 +659,8 @@ export class AuditLogger {
       }
 
       return allRecords;
-    } catch {
+    } catch (err) {
+      log.info({ component: 'audit', operation: 'Failed to read matching audit records', attributes: { error: String(err) } });
       return [];
     }
   }
@@ -737,7 +748,8 @@ export class AuditLogger {
             const record = JSON.parse(line) as AuditRecord;
             globalSeq++;
             allRecords.push({ ...record, sequence: globalSeq });
-          } catch {
+          } catch (err) {
+            log.info({ component: 'audit', operation: 'Skipping malformed line during sequence read', attributes: { error: String(err) } });
             // Skip malformed lines but still increment sequence
             globalSeq++;
           }
@@ -745,7 +757,8 @@ export class AuditLogger {
       }
 
       return allRecords;
-    } catch {
+    } catch (err) {
+      log.info({ component: 'audit', operation: 'Failed to read audit records with sequence', attributes: { error: String(err) } });
       return [];
     }
   }
