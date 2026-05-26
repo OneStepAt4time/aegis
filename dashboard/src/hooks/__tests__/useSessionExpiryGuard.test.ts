@@ -10,11 +10,15 @@ let storeState = {
 };
 
 vi.mock('../../store/useAuthStore', () => {
-  return {
-    useAuthStore: (sel: (s: typeof storeState) => any) => sel(storeState),
-    // Export for direct access
-    _storeState: storeState,
+  const store = {
+    getState: () => storeState,
   };
+  // Assign call signature so it works both as hook and as store object
+  const useAuthStore = Object.assign(
+    (sel: (s: typeof storeState) => any) => sel(storeState),
+    store
+  );
+  return { useAuthStore };
 });
 
 describe('useSessionExpiryGuard', () => {
