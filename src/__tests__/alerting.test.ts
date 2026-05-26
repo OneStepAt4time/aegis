@@ -4,6 +4,14 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock SSRF module — alerting tests use localhost URLs that would be blocked
+vi.mock('../ssrf.js', () => ({
+  validateWebhookUrl: (u: string) => null,
+  resolveAndCheckIp: async (h: string) => ({ error: null, resolvedIp: null }),
+  buildConnectionUrl: (u: string, ip: string) => ({ connectionUrl: u, hostHeader: new URL(u).host }),
+}));
+
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

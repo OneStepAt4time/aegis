@@ -136,18 +136,23 @@ describe('WebhookChannel DNS rebinding protection', () => {
     errorSpy.mockRestore();
   });
 
-  it('skips DNS check for localhost (dev mode)', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200 } as Response);
+  it('blocks localhost IPs via DNS resolution (SSRF protection)', async () => {
+    // resolveAndCheckIp returns error for private IPs like 127.0.0.1
+    mockResolveAndCheckIp.mockResolvedValue({
+      error: 'Private/internal IP addresses are not allowed',
+      resolvedIp: null,
+    });
 
     const channel = new WebhookChannel({
       endpoints: [{ url: 'http://127.0.0.1:3000/hook' }],
     });
 
-    await channel.onSessionCreated(makePayload());
-
-    expect(mockResolveAndCheckIp).not.toHaveBeenCalled();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe('http://127.0.0.1:3000/hook');
+    const promise = channel.onSessionCreated(makePayload());
+    // Flush retry timers — DNS error triggers retries with backoff
+    // fire() uses Promise.allSettled so it resolves (void), doesn't throw
+    await flushTimers(promise);
+    expect(mockResolveAndCheckIp).toHaveBeenCalledWith('127.0.0.1');
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('handles DNS failure gracefully', async () => {
