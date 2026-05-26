@@ -7,9 +7,11 @@
 
 import { useRef } from 'react';
 import confetti from 'canvas-confetti';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 export function useConfetti() {
   const hasTriggeredRef = useRef(false);
+  const prefersReduced = usePrefersReducedMotion();
 
   function triggerFirstSessionConfetti(originElement?: HTMLElement) {
     const hasTriggered = localStorage.getItem('aegis:first-session');
@@ -19,6 +21,8 @@ export function useConfetti() {
 
     hasTriggeredRef.current = true;
     localStorage.setItem('aegis:first-session', 'done');
+
+    if (prefersReduced) return;
 
     const origin = originElement
       ? {
