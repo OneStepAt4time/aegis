@@ -95,7 +95,7 @@ export function DriverControlBar({
           <Gamepad2 className="h-4 w-4 text-[var(--color-cta-bg)]" />
           {hasDriver ? (
             <span className="text-sm text-[var(--color-text-primary)]">
-              Driver: <span className="font-medium">{participants!.driver!.subscriberId}</span>
+              Driver: <span className="font-medium">{participants?.driver?.subscriberId ?? "unknown"}</span>
               {isDriver && (
                 <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${ROLE_COLORS.driver.bg} ${ROLE_COLORS.driver.text}`}>
                   You

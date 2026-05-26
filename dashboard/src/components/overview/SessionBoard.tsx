@@ -287,7 +287,7 @@ export function SessionBoard() {
     for (const session of sessions) {
       const groupId = getStatusGroup(session.status);
       if (!grouped.has(groupId)) grouped.set(groupId, []);
-      grouped.get(groupId)!.push(session);
+      { const g = grouped.get(groupId); if (g) g.push(session); };
     }
 
     // Sort within each column: primary by most recent activity, secondary by createdAt
