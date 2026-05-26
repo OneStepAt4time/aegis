@@ -203,7 +203,9 @@ describe('CostPage', () => {
     });
 
     // Page renders without crashing even with budget alerts disabled
-    expect(screen.getByText(/Daily Spend/)).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText(/Daily Spend/)).toBeDefined();
+    });
   });
 
   it('renders budget overview section when budgetAlertEnabled is true', async () => {
@@ -217,7 +219,9 @@ describe('CostPage', () => {
 
     // Budget overview section should be present (BudgetProgressBar renders within it)
     // The component renders daily + monthly progress bars and a forecast chart
-    expect(screen.getByText(/Daily Spend/)).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText(/Daily Spend/)).toBeDefined();
+    });
   });
 
   it('handles zero-cost edge case showing empty state', async () => {
