@@ -120,34 +120,34 @@ export default function OverviewPage() {
     return [
       {
         id: 'cost',
-        label: 'Total Cost',
+        label: t('overview.totalCost'),
         value: formatCurrency(totalCost),
         color: 'cost',
-        subtitle: activeDays > 0 ? `${activeDays} days` : undefined,
+        subtitle: activeDays > 0 ? t('overview.days', { n: activeDays }) : undefined,
       },
       {
         id: 'tokens',
-        label: 'Total Tokens',
+        label: t('overview.totalTokens'),
         value: formatTokenCount(totalTokens),
         color: 'input',
-        subtitle: totalTokens > 0 ? `${formatTokenCount(totalTokens)} processed` : undefined,
+        subtitle: totalTokens > 0 ? t('overview.processed', { n: formatTokenCount(totalTokens) }) : undefined,
       },
       {
         id: 'sessions',
-        label: 'Sessions',
+        label: t('overview.sessions'),
         value: String(totalSessions),
         color: 'neutral',
       },
       {
         id: 'avg-day',
-        label: 'Avg/Day',
+        label: t('overview.avgDay'),
         value: formatCurrency(avgCostPerDay),
         color: 'time',
-        subtitle: activeDays > 0 ? `${activeDays} active days` : undefined,
+        subtitle: activeDays > 0 ? t('overview.activeDays', { n: activeDays }) : undefined,
       },
       {
         id: 'errors',
-        label: 'Error Rate',
+        label: t('overview.errorRate'),
         value: totalSessions > 0
           ? `${(((analytics.errorRates?.failedSessions ?? 0) / totalSessions) * 100).toFixed(1)}%`
           : '0%',
@@ -242,11 +242,11 @@ export default function OverviewPage() {
             <span>
               {(analytics.sessionVolume ?? []).length > 0
                 ? `${formatDateShort(analytics.sessionVolume?.[0]?.date)} → ${formatDateShort(analytics.sessionVolume?.[analytics.sessionVolume.length - 1]?.date)}`
-                : 'No date range'}
+                : t('overview.noDateRange')}
             </span>
             <span>·</span>
             <span className="text-[var(--color-accent-cyan)]">
-              {formatCurrency(totalCost)} total
+              {formatCurrency(totalCost)} {t('overview.total')}
             </span>
           </div>
         </div>
