@@ -1,237 +1,65 @@
-import { logger } from '../utils/logger';
 /**
- * components/Layout.tsx — Main layout with sidebar, header, and content area.
+ * components/Layout.tsx — Main layout composition root.
+ *
+ * Delegates to:
+ *   layout/Sidebar.tsx    — collapsible sidebar navigation
+ *   layout/Header.tsx     — top header bar
+ *   layout/useLayoutSSE   — global SSE subscription
+ *   layout/useVersionCheck — version loading + update checking
  */
 
-import { NavLink, Outlet } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useState } from 'react';
-import Breadcrumb from './shared/Breadcrumb';
-import { ErrorBoundary } from './shared/ErrorBoundary';
-import { useTheme } from '../hooks/useTheme';
-const CommandPalette = lazy(() => import('./shared/CommandPalette'));
+import { useState, useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import LiveAuditStream from './shared/LiveAuditStream';
-import { ApprovalNotification, ApprovalBadge } from './approvals/ApprovalNotification';
+import { ErrorBoundary } from './shared/ErrorBoundary';
+import { ApprovalNotification } from './approvals/ApprovalNotification';
 import { NewSessionDrawer } from './NewSessionDrawer';
-import { Sun, Moon, Plus, Search } from 'lucide-react';
-import {
-  Activity,
-  Calendar,
-  AlertTriangle,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  FileText,
-  KeyRound,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  X,
-  RefreshCw,
-  Shield,
-  TrendingUp,
-  Cog,
-  Terminal,
-  Radio,
-  MessageCircle,
-} from 'lucide-react';
+import ToastContainer from './ToastContainer';
+import ConnectionBanner from './ConnectionBanner';
+import { ServerHealthBanner } from './shared/ServerHealthIndicator';
+import { SessionExpiredModal } from './shared/SessionExpiredModal';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useSidebarStore } from '../store/useSidebarStore.js';
 import { useDrawerStore } from '../store/useDrawerStore';
-import { checkForUpdates, getHealth, subscribeGlobalSSE, type UpdateCheckResult } from '../api/client';
-import ToastContainer from './ToastContainer';
-import ConnectionBanner from './ConnectionBanner';
-import { ServerHealthDot, ServerHealthBanner } from './shared/ServerHealthIndicator';
-import { SessionExpiredModal } from './shared/SessionExpiredModal';
-import { ShieldWordmark } from './brand/ShieldLogo';
-import { useT } from '../i18n/context';
+import { AlertTriangle } from 'lucide-react';
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: React.ElementType;
-}
-
-interface NavGroup {
-  label: string;
-  items: NavItem[];
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: 'WORKSPACE',
-    items: [
-      { to: '/', label: 'Overview', icon: LayoutDashboard },
-      { to: '/sessions', label: 'Sessions', icon: Terminal },
-      { to: '/templates', label: 'Templates', icon: FileText },
-      { to: '/pipelines', label: 'Pipelines', icon: Activity },
-      { to: '/routines', label: 'Routines', icon: Calendar },
-    ],
-  },
-  {
-    label: 'OPERATIONS',
-    items: [
-      { to: '/audit', label: 'Audit', icon: Shield },
-      { to: '/metrics', label: 'Metrics', icon: TrendingUp },
-      { to: '/cost', label: 'Cost', icon: DollarSign },
-      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { to: '/activity', label: 'Activity', icon: Radio },
-    ],
-  },
-  {
-    label: 'ADMIN',
-    items: [
-      { to: '/auth/keys', label: 'Auth Keys', icon: KeyRound },
-      { to: '/settings/notifications', label: 'Notifications', icon: MessageCircle },
-    ],
-  },
-];
-
-const MAX_SSE_RETRIES = 5;
-const SSE_RETRY_BASE_MS = 1000;
-const UPDATE_CHECK_CACHE_KEY = 'aegis:update-check:v1';
-const UPDATE_CHECK_TTL_MS = 12 * 60 * 60 * 1000;
-
-interface CachedUpdateCheckResult extends UpdateCheckResult {
-  checkedAt: number;
-  sourceVersion: string;
-}
-const SSE_RECONNECTING_MESSAGE = 'Reconnecting to real-time updates. Overview widgets are using fallback polling where available.';
-const SSE_UNAVAILABLE_MESSAGE = 'Real-time updates unavailable. Overview widgets are using fallback polling where available.';
-const SSE_SUBSCRIPTION_RETRY_MESSAGE = 'Connecting real-time updates failed. Retrying now.';
-const MOBILE_SIDEBAR_QUERY = '(max-width: 767px)';
+import { Sidebar } from './layout/Sidebar';
+import { Header } from './layout/Header';
+import { useLayoutSSE } from './layout/useLayoutSSE';
+import { useVersionCheck } from './layout/useVersionCheck';
+import { MOBILE_SIDEBAR_QUERY } from './layout/types';
 
 function isMobileSidebarViewport(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return false;
-  }
-
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
 }
 
 export default function Layout() {
-    const t = useT();
-
-  const sseConnected = useStore((s) => s.sseConnected);
-  const setSseConnected = useStore((s) => s.setSseConnected);
-  const sseError = useStore((s) => s.sseError);
-  const setSseError = useStore((s) => s.setSseError);
-  const addActivity = useStore((s) => s.addActivity);
   const token = useStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
-  const identity = useAuthStore((s) => s.identity);
-
-  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
-  const toggleSidebar = useSidebarStore((s) => s.toggle);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
   const closeMobile = useSidebarStore((s) => s.closeMobile);
   const openNewSession = useDrawerStore((s) => s.openNewSession);
 
-  const [sseRetryCount, setSseRetryCount] = useState(0);
-  const [aegisVersion, setAegisVersion] = useState<string>('...');
-  const { resolvedTheme, toggleTheme } = useTheme();
-  const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
-  const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
-  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(isMobileSidebarViewport);
-  
-  function readCachedUpdate(version: string): UpdateCheckResult | null {
-    try {
-      const raw = localStorage.getItem(UPDATE_CHECK_CACHE_KEY);
-      if (!raw) return null;
-      const cached = JSON.parse(raw) as CachedUpdateCheckResult;
-      if (cached.sourceVersion !== version) return null;
-      if (Date.now() - cached.checkedAt > UPDATE_CHECK_TTL_MS) return null;
-      return {
-        currentVersion: cached.currentVersion,
-        latestVersion: cached.latestVersion,
-        updateAvailable: cached.updateAvailable,
-        releaseUrl: cached.releaseUrl,
-      };
-    } catch {
-      return null;
-    }
-  }
 
-  function writeCachedUpdate(version: string, result: UpdateCheckResult): void {
-    try {
-      const payload: CachedUpdateCheckResult = {
-        ...result,
-        checkedAt: Date.now(),
-        sourceVersion: version,
-      };
-      localStorage.setItem(UPDATE_CHECK_CACHE_KEY, JSON.stringify(payload));
-    } catch {
-      // Ignore storage failures (private mode/quota) and keep runtime behavior.
-    }
-  }
+  const { sseConnected, sseError, sseIndicatorLabel } = useLayoutSSE(token);
+  const {
+    aegisVersion,
+    updateCheckLoading,
+    updateCheckError,
+    updateResult,
+    handleCheckUpdates,
+  } = useVersionCheck();
 
-  async function runUpdateCheck(version: string, force: boolean): Promise<void> {
-    if (!version || version === '...' || version === 'unknown') return;
-
-    if (!force) {
-      const cached = readCachedUpdate(version);
-      if (cached) {
-        setUpdateResult(cached);
-        setUpdateCheckError(null);
-        return;
-      }
-    }
-
-    setUpdateCheckLoading(true);
-    setUpdateCheckError(null);
-    try {
-      const result = await checkForUpdates(version);
-      setUpdateResult(result);
-      writeCachedUpdate(version, result);
-    } catch (err) {
-      setUpdateCheckError(err instanceof Error ? err.message : 'Failed to check updates');
-      setUpdateResult(null);
-    } finally {
-      setUpdateCheckLoading(false);
-    }
-  }
-
+  // Cmd+K global shortcut (desktop only)
   useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-
-    const loadVersion = async () => {
-      try {
-        const health = await getHealth(controller.signal);
-        if (!cancelled) {
-          setAegisVersion(health.version);
-          void runUpdateCheck(health.version, false);
-        }
-      } catch (err) {
-        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
-        logger.warn('layout', 'Failed to load Aegis version', err);
-        if (!cancelled) setAegisVersion('unknown');
-      }
-    };
-
-    void loadVersion();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, []);
-
-  const handleCheckUpdates = async () => {
-    await runUpdateCheck(aegisVersion, true);
-  };
-
-  // Cmd+K global shortcut to open command palette (desktop only)
-  useEffect(() => {
-    // Only register keyboard shortcut on non-touch devices
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice) return undefined;
-
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -242,11 +70,9 @@ export default function Layout() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Mobile viewport detection
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return undefined;
-    }
-
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
     const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
     let wasMobileViewport = mediaQuery.matches;
     let hasAutoOpened = false;
@@ -254,47 +80,24 @@ export default function Layout() {
     const handleViewportChange = () => {
       const nextIsMobileViewport = mediaQuery.matches;
       setIsMobileViewport(nextIsMobileViewport);
-
-      // Only auto-open once on the first desktop→mobile transition (fixes #3820)
       if (!hasAutoOpened && !wasMobileViewport && nextIsMobileViewport) {
         setMobileOpen(true);
         hasAutoOpened = true;
       }
-
       wasMobileViewport = nextIsMobileViewport;
     };
 
     handleViewportChange();
     mediaQuery.addEventListener('change', handleViewportChange);
-
     return () => mediaQuery.removeEventListener('change', handleViewportChange);
   }, [setMobileOpen]);
 
-  const isMobileDrawerOpen = isMobileViewport && isMobileOpen;
-  const isMobileSidebarHidden = isMobileViewport && !isMobileOpen;
-  const hiddenMobileSidebarControlTabIndex = isMobileSidebarHidden ? -1 : undefined;
-
-  useEffect(() => {
-    if (!isMobileOpen) return undefined;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeMobile();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isMobileOpen, closeMobile]);
-
-  // Cmd+N global shortcut to open new session drawer
+  // Cmd+N global shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         const target = e.target as HTMLElement;
-        const isInput =
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
-          target.isContentEditable;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
         if (!isInput) {
           e.preventDefault();
           openNewSession();
@@ -305,98 +108,23 @@ export default function Layout() {
     return () => window.removeEventListener('keydown', handler);
   }, [openNewSession]);
 
-  // #121: Wire up global SSE connection
-  // #587: Wrap in try/catch with retry to prevent app crash and auto-recover
-
+  // Escape to close mobile sidebar
   useEffect(() => {
-    let cancelled = false;
-    let unsubscribe: (() => void) | undefined;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!isMobileOpen) return undefined;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMobile(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isMobileOpen, closeMobile]);
 
-    function attemptConnect(attempt: number): void {
-      if (cancelled) return;
+  const isMobileDrawerOpen = isMobileViewport && isMobileOpen;
+  const isMobileSidebarHidden = isMobileViewport && !isMobileOpen;
+  const hiddenMobileSidebarControlTabIndex = isMobileSidebarHidden ? -1 : undefined;
 
-      try {
-        unsubscribe = subscribeGlobalSSE((event) => {
-          if (!event.sessionId) return;
-          addActivity(event);
-        }, token, {
-          onOpen: () => {
-            setSseConnected(true);
-            setSseError(null);
-            setSseRetryCount(0);
-          },
-          onReconnecting: (attempt) => {
-            setSseConnected(false);
-            setSseRetryCount(attempt);
-            setSseError(SSE_RECONNECTING_MESSAGE);
-          },
-          onClose: () => {
-            setSseConnected(false);
-            setSseError(SSE_RECONNECTING_MESSAGE);
-          },
-          onGiveUp: () => {
-            setSseRetryCount(0);
-            setSseError(SSE_UNAVAILABLE_MESSAGE);
-            setSseConnected(false);
-          },
-        });
-      } catch (err) {
-        logger.error('layout', 'Failed to subscribe to global SSE (attempt %d):', attempt + 1, err);
-        setSseConnected(false);
-
-        if (attempt < MAX_SSE_RETRIES) {
-          const delay = SSE_RETRY_BASE_MS * Math.pow(2, attempt);
-          setSseRetryCount(attempt + 1);
-          setSseError(SSE_SUBSCRIPTION_RETRY_MESSAGE);
-          retryTimer = setTimeout(() => attemptConnect(attempt + 1), delay);
-        } else {
-          setSseRetryCount(0);
-          setSseError(SSE_UNAVAILABLE_MESSAGE);
-          setSseConnected(false);
-        }
-      }
-    }
-
-    attemptConnect(0);
-
-    return () => {
-      cancelled = true;
-      if (retryTimer) {
-        clearTimeout(retryTimer);
-      }
-      unsubscribe?.();
-    };
-  }, [setSseConnected, setSseError, addActivity, token]);
-
-  const sseIndicatorLabel = sseConnected
-    ? 'SSE Live'
-    : sseError
-      ? sseRetryCount > 0
-        ? `SSE Reconnecting (retry ${sseRetryCount})`
-        : 'SSE Degraded'
-      : 'SSE Off';
-
-  function handleNavClick(): void {
-    if (isMobileDrawerOpen) {
-      closeMobile();
-    }
-  }
-
-  function handleLogout(): void {
-    void logout();
-  }
-
-  const sidebarWidth = isCollapsed
-    ? 'w-16 max-md:w-56 max-w-[calc(100vw-2rem)] md:max-w-none'
-    : 'w-56 max-w-[calc(100vw-2rem)] md:max-w-none';
-  const identityLabel = identity?.email ?? identity?.name ?? identity?.userId;
-  const identityDetailLabel = identity ? `${identity.role} - ${identity.tenantId}` : null;
-
+  function handleNavClick(): void { if (isMobileDrawerOpen) closeMobile(); }
+  function handleLogout(): void { void logout(); }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-void-dark)]">
-      {/* Skip-to-content link */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-[var(--color-accent-cyan)] focus:text-[var(--color-void-deep)] focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-medium"
@@ -404,7 +132,6 @@ export default function Layout() {
         Skip to content
       </a>
 
-      {/* ── Mobile backdrop ─────────────────────────────────── */}
       {isMobileOpen && (
         <div
           data-testid="mobile-sidebar-backdrop"
@@ -416,239 +143,27 @@ export default function Layout() {
         />
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside
-        aria-label={t("aria.primarySidebar")}
-        className={`
-          fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
-          transition-all duration-300 ease-in-out
-          ${sidebarWidth}
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isMobileSidebarHidden ? 'pointer-events-none md:pointer-events-auto' : ''}
-          md:relative md:translate-x-0 md:shrink-0
-          group/sidebar
-        `}
-        aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
-        inert={isMobileSidebarHidden ? true : undefined}
-        style={{ backgroundImage: 'var(--sidebar-glow)' }}
-        >
-          <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
-            <ShieldWordmark size="md" collapsed={isCollapsed} />
-            <button
-              type="button"
-              onClick={closeMobile}
-              tabIndex={hiddenMobileSidebarControlTabIndex}
-              disabled={isMobileSidebarHidden}
-              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]"
-              aria-label={t("aria.closeMenu")}
-              aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
-            >
-              <X className="h-5 w-5" />
-            </button>
-        </div>
+      <Sidebar
+        onNavClick={handleNavClick}
+        onLogout={handleLogout}
+        isMobileDrawerOpen={isMobileDrawerOpen}
+        isMobileSidebarHidden={isMobileSidebarHidden}
+        hiddenMobileSidebarControlTabIndex={hiddenMobileSidebarControlTabIndex}
+      />
 
-        {/* Nav links */}
-        <nav className="flex flex-col gap-4 px-3 py-6 flex-1 overflow-y-auto overflow-x-hidden" aria-label={t("aria.mainNavigation")}>
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="flex flex-col gap-1">
-              {!isCollapsed && (
-                <span className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] select-none">
-                  {group.label}
-                </span>
-              )}
-              {group.items.map(({ to, label, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  tabIndex={hiddenMobileSidebarControlTabIndex}
-                  onClick={handleNavClick}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
-                      isActive
-                        ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-[var(--color-accent-cyan)] dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-accent-cyan)] glow-nav-active'
-                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
-                    } ${isCollapsed ? 'justify-center' : ''}`
-                  }
-                  title={isCollapsed ? label : undefined}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {!isCollapsed && <span className="truncate">{label}</span>}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        {/* Bottom section: Settings + toggle + logout */}
-        <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
-          {identityLabel && identityDetailLabel && !isCollapsed && (
-            <div className="px-3 py-2" aria-label={t("aria.signedInUser")}>
-              <p className="truncate text-xs font-medium text-[var(--color-text-primary)] dark:text-[var(--color-text-primary)]">{identityLabel}</p>
-              <p className="truncate text-[11px] text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)]">
-                {identityDetailLabel}
-              </p>
-            </div>
-          )}
-
-          {/* Settings link */}
-          <NavLink
-            to="/settings"
-            tabIndex={hiddenMobileSidebarControlTabIndex}
-            onClick={handleNavClick}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
-                isActive
-                  ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-[var(--color-accent-cyan)] dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-accent-cyan)] glow-nav-active'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
-              } ${isCollapsed ? 'justify-center' : ''}`
-            }
-            title={isCollapsed ? 'Settings' : undefined}
-          >
-            <Cog className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span className="truncate">Settings</span>}
-          </NavLink>
-
-          {/* Server health indicator */}
-          {!isCollapsed && <ServerHealthDot />}
-
-          {/* Collapse toggle — desktop only */}
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="hidden min-h-[44px] md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors w-full"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-            )}
-            {!isCollapsed && <span className="truncate">Collapse</span>}
-          </button>
-
-          {/* Logout */}
-          <button
-            type="button"
-            onClick={handleLogout}
-            tabIndex={hiddenMobileSidebarControlTabIndex}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
-            aria-label={t("aria.signOut")}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span className="truncate">Sign out</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Main area ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden bg-transparent">
-        {/* Header */}
-        <header className="shrink-0 border-b border-white/5 bg-transparent backdrop-blur-md px-4 py-4 sm:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              {/* Hamburger — mobile only */}
-              <button
-                type="button"
-                onClick={toggleMobile}
-                tabIndex={isMobileDrawerOpen ? -1 : undefined}
-                aria-hidden={isMobileDrawerOpen ? 'true' : undefined}
-                className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
-                aria-label={t("aria.openMenu")}
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <div className="min-w-0 flex-1">
-                <Breadcrumb />
-              </div>
-            </div>
+        <Header
+          aegisVersion={aegisVersion}
+          updateCheckLoading={updateCheckLoading}
+          updateCheckError={updateCheckError}
+          updateResult={updateResult}
+          onCheckUpdates={handleCheckUpdates}
+          isMobileDrawerOpen={isMobileDrawerOpen}
+          onToggleMobile={toggleMobile}
+          paletteOpen={paletteOpen}
+          onPaletteOpenChange={setPaletteOpen}
+        />
 
-            <div className={`flex items-center justify-end gap-1.5 sm:gap-3 transition-opacity ${isMobileDrawerOpen ? "pointer-events-none opacity-30" : ""}`}>
-              {/* PREVIEW badge — hidden on very small screens */}
-              <span className="hidden sm:inline-flex rounded-md border border-transparent bg-[var(--color-info)]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-info)] ring-1 ring-[var(--color-info)]/30 dark:border-[var(--color-cta-bg)]/50 dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-cta-bg)] dark:ring-0">
-                PREVIEW
-              </span>
-
-              {/* Pending approvals badge */}
-              <ApprovalBadge />
-
-              {/* New Session button */}
-              <button
-                type="button"
-                onClick={openNewSession}
-                aria-label={t("aria.newSessionCmd")}
-                title="New Session (⌘N)"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-
-              {/* Cmd+K Palette trigger — hidden on mobile */}
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
-                aria-label="Open command palette"
-              >
-                <Search className="h-3 w-3" />
-                <span className="hidden sm:inline">Search…</span>
-                <kbd className="hidden sm:inline ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
-              </button>
-
-              {/* Version + theme toggle */}
-              <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-[var(--color-void-lighter)] dark:bg-[var(--color-void-dark)] dark:text-[var(--color-text-primary)]">
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]"
-                  aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                  {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
-                <span className="hidden sm:inline truncate">Version {aegisVersion}</span>
-              </div>
-
-              {/* Check updates — hidden on mobile */}
-              <button
-                type="button"
-                onClick={handleCheckUpdates}
-                disabled={updateCheckLoading || aegisVersion === '...'}
-                className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-[var(--color-void-lighter)] dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-[var(--color-text-primary)] dark:disabled:border-[var(--color-void-lighter)] dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
-              >
-                <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
-                {updateCheckLoading ? 'Checking…' : 'Check updates'}
-              </button>
-
-              {updateResult && (
-                <div className="hidden text-xs text-[var(--color-text-muted)] sm:block">
-                  {updateResult.updateAvailable ? (
-                    <a
-                      href={updateResult.releaseUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[var(--color-accent-cyan)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-cyan)]"
-                    >
-                      Update available: v{updateResult.latestVersion}
-                    </a>
-                  ) : (
-                    <span>Up to date (v{updateResult.currentVersion})</span>
-                  )}
-                </div>
-              )}
-
-              {updateCheckError && (
-                <div className="hidden sm:block text-xs text-[var(--color-warning)]" title={updateCheckError}>
-                  Update check failed
-                </div>
-              )}
-              {/* SSE status removed from header — see Status Footer below */}
-            </div>
-          </div>
-        </header>
-
-        {/* Content + LiveAuditStream side rail */}
         <div className="flex flex-1 overflow-hidden">
           <main
             id="main-content"
@@ -662,9 +177,7 @@ export default function Layout() {
           <LiveAuditStream />
         </div>
 
-        {/* ── Status Footer ────────────────────────────────────── */}
         <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-3 py-2 sm:px-6 flex items-center justify-between gap-2">
-          {/* Left: SSE connectivity */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" title={sseError ?? undefined}>
             {sseError ? (
               <>
@@ -682,14 +195,12 @@ export default function Layout() {
             )}
           </div>
 
-          {/* Center: version — hidden on very small screens */}
           <span className="hidden sm:block text-[11px] text-[var(--color-text-muted)] font-mono">aegis v{aegisVersion}</span>
 
-          {/* Right: keyboard hint — desktop only */}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-             className="hidden min-h-[44px] md:flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            className="hidden min-h-[44px] md:flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1 text-[var(--color-text-primary)]">⌘K</kbd>
             Command palette
@@ -707,20 +218,15 @@ export default function Layout() {
             Shortcuts
           </button>
 
-          {/* Mobile: compact version on the right */}
           <span className="sm:hidden text-[11px] text-[var(--color-text-muted)] font-mono truncate">v{aegisVersion}</span>
         </footer>
       </div>
-      {/* Toast notifications */}
+
       <ToastContainer />
-      {/* Connection banner (SSE/WS disconnect) */}
       <ConnectionBanner />
       <ServerHealthBanner />
       <SessionExpiredModal />
-      {/* Command Palette */}
-      <Suspense fallback={null}><CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} /></Suspense>
       <ApprovalNotification />
-      {/* New Session Drawer */}
       <NewSessionDrawer />
     </div>
   );
