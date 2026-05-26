@@ -5,9 +5,9 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { randomBytes } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { SessionEncryptionImpl, type SessionEncryption } from './session-encryption.js';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState } from './services/state/state-store.js';
@@ -19,7 +19,7 @@ import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { validateWorkdirPath } from './tenant-workdir.js';
 import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
+import { persistedStateSchema, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 // PermissionDecision and request management now via SessionPermissionService
@@ -28,6 +28,8 @@ import { Mutex } from 'async-mutex';
 import { maybeInjectFault } from './fault-injection.js';
 import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
+import type { UIState, SessionInfo, SessionState, PersistedStateData } from './session-types.js';
+export type { UIState, SessionInfo, SessionState } from './session-types.js';
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
@@ -35,12 +37,7 @@ import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel,
 export { resolveApprovalInput };
 const log = new StructuredLogger();
 
-/** UI states for Claude Code sessions. */
-export type UIState =
-  | 'idle' | 'working' | 'compacting' | 'context_warning'
-  | 'waiting_for_input' | 'permission_prompt' | 'plan_mode'
-  | 'ask_question' | 'bash_approval' | 'settings' | 'error' | 'pending' | 'unknown'
-  | 'awaiting_approval' | 'killed' | 'completed' | 'crashed';
+import { randomBytes } from 'node:crypto';
 
 /** Stub: detect UI state from terminal pane text (ACP mode). */
 function detectUIState(_paneText: string): UIState {
@@ -90,78 +87,9 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/**
- * Canonical runtime metadata for an Aegis-managed Claude Code session.
- *
- * This structure is persisted to disk and reused by the REST API, SSE layer,
- * monitoring loop, and session recovery logic.
- */
-export interface SessionInfo {
-  id: string;                    // Our bridge session ID (UUID)
-  windowId: string;              // session identifier (reserved, empty in ACP mode)
-  displayName: string;           // session label
-  workDir: string;               // Working directory
-  claudeSessionId?: string;      // CC's own session ID (from hook)
-  jsonlPath?: string;            // Path to the JSONL file
-  byteOffset: number;            // Last read byte offset (for API reads)
-  monitorOffset: number;         // Last read byte offset (for monitor/telegram)
-  status: UIState;               // Current UI state
-  createdAt: number;             // Unix timestamp
-  lastActivity: number;          // Unix timestamp of last activity
-  stallThresholdMs: number;      // Per-session stall threshold (Issue #4)
-  permissionStallMs: number;     // Per-session permission stall threshold (Issue #89 L8)
-  permissionMode: string;        // Permission mode: "default"|"plan"|"acceptEdits"|"bypassPermissions"|"dontAsk"|"auto"
-  settingsPatched?: boolean;     // Permission guard: settings.local.json was patched
-  hookSettingsFile?: string;     // Temp file with HTTP hook settings (Issue #169)
-  hookSecret?: string;           // Per-session secret for hook URL authentication (Issue #629)
-  lastHookAt?: number;           // Unix timestamp of last received hook event (Issue #169 Phase 3)
-  activeSubagents?: Set<string>;    // Active subagent names (Issue #88, #357: Set for O(1))
-  // Issue #87: Latency metrics
-  permissionPromptAt?: number;   // Unix timestamp when permission prompt was detected
-  permissionRespondedAt?: number; // Unix timestamp when user approved/rejected
-  lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
-  lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
-  model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
-  effort?: string;               // Issue #3545: Reasoning effort level
-    /** Issue #3613: Per-session isolation policy override. */
-  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
-  /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
-  isolationMode?: 'worktree' | 'none';
-  lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
-  /** Issue #4203: Human-readable text of the latest activity (e.g. "Running: npm test"). */
-  latestActivityText?: string;
-  ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
-  parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
-  children?: string[];          // Issue #702: Child session IDs for sub-agent hierarchy
-  permissionPolicy?: PermissionPolicy;  // Issue #700: Dynamic permission rules
-  permissionProfile?: PermissionProfile; // Issue #742: Per-session tool permission profile
-  prd?: string;                // Issue #735: Optional PRD contract text attached to the session
-  ownerKeyId?: string;         // Issue #1429: API key ID that created this session (ownership)
-  tenantId?: string;           // Issue #1944: Tenant isolation scoping
-  autoApprove?: boolean;        // API contract compat: auto-approve flag
-  // Issue #4088: Session-level approval gate
-  awaitingApproval?: boolean;       // True when session requires approval before CC starts
-  approvedBy?: string;              // Who approved the session (user ID or API key)
-  approvedAt?: number;              // Unix timestamp when session was approved
-  pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
-  pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
-  promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
-  runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
-  actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
-  // Issue #2518: Hook failure circuit breaker
-  hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
-  circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
-  // Issue #2520: Premature termination detection for background agents
-  toolUseCount?: number;               // Count of PreToolUse hook events
-  prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
-  // Issue #4027: Pinned session flag — reaper skips pinned sessions.
-  isPinned?: boolean;
-}
+// SessionInfo re-exported from session-types.ts above
 
-/** Persisted session store keyed by Aegis session ID. */
-export interface SessionState {
-  sessions: Record<string, SessionInfo>;
-}
+// SessionState re-exported from session-types.ts above
 
 /**
  * Detect whether CC is showing numbered permission options (e.g. "1. Yes, 2. No")
@@ -267,10 +195,12 @@ export class SessionManager {
   private state: SessionState = { sessions: Object.create(null) as Record<string, SessionInfo> };
   private stateFile: string;
   private sessionMapFile: string;
-  /** Issue #4251: Delegated persistence service. */
-  private readonly persistence: SessionPersistenceService;
-  /** #4228: Encryption delegated to persistence.encryption. */
-  private readonly permissions = new SessionPermissionService();
+  private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
+  /** #4228: Delegated encryption via session-encryption module. */
+  private readonly encryption = new SessionEncryptionImpl();
+  private saveDebounceTimer: NodeJS.Timeout | null = null;
+  private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
+  private permissionRequests = new PermissionRequestManager();
   private questions = new QuestionManager();
   // Issue #657: Cached session list to avoid allocating a new array per call
   private sessionsListCache: SessionInfo[] | null = null;
@@ -346,14 +276,34 @@ export class SessionManager {
     this.persistence.debouncedSave(this.state);
   }
 
-  /** Issue #4251: Serialization is delegated to SessionPersistenceService. */
-  private serializeState(): string {
-    return this.persistence.serializeState(this.state);
+  /** Issue #1937: Serialize state for the store (Set→array, encrypt hook secrets). */
+  private serializeStateForStore(): SerializedSessionState {
+    const sessions: Record<string, SerializedSessionInfo> = Object.create(null) as Record<string, SerializedSessionInfo>;
+    for (const [id, session] of Object.entries(this.state.sessions)) {
+      const { activeSubagents, hookSecret, ...rest } = session;
+      sessions[id] = {
+        ...rest,
+        activeSubagents: activeSubagents ? [...activeSubagents] : undefined,
+        hookSecret: (typeof hookSecret === 'string' && this.encryption.encKey)
+          ? this.encryptSecret(hookSecret)
+          : undefined,
+      } as unknown as SerializedSessionInfo;
+    }
+    return { sessions };
   }
 
-  /** Issue #4251: Store serialization is delegated to SessionPersistenceService. */
-  private serializeStateForStore(): SerializedSessionState {
-    return this.persistence.serializeStateForStore(this.state);
+  private serializeState(): string {
+    // #357: Serialize Set<string> as arrays.
+    // #1644: Encrypt hook secrets at rest using AES-256-GCM derived from master token.
+    // If no encryption key is set (e.g. no auth token), omit hook secrets entirely.
+    return JSON.stringify(this.state, (key, value) => {
+      if (key === 'hookSecret') {
+        if (typeof value !== 'string' || !this.encryption.encKey) return undefined;
+        return this.encryptSecret(value);
+      }
+      if (value instanceof Set) return [...value];
+      return value;
+    }, 2);
   }
 
   /** Issue #3143: Wire ACP event store into transcript reader. */
@@ -362,27 +312,25 @@ export class SessionManager {
   }
 
   setEncryptionKey(masterToken: string): void {
-    if (!masterToken) return;
-    // Issue #4228: Delegate to persistence service's encryption
-    this.persistence.setEncryptionKey(masterToken);
+    this.encryption.setEncryptionKey(masterToken);
   }
 
-  /** Encrypt a hook secret. Delegates to persistence encryption service. */
+  /** Encrypt a hook secret — delegates to session-encryption module. */
   private encryptSecret(secret: string): string {
-    return this.persistence.encryptSecret(secret);
+    return this.encryption.encryptSecret(secret);
   }
 
-  /** Decrypt a hook secret. Delegates to persistence encryption service. */
+  /** Decrypt a hook secret — delegates to session-encryption module. */
   private decryptSecret(encrypted: string): string | undefined {
-    return this.persistence.decryptSecret(encrypted);
+    return this.encryption.decryptSecret(encrypted);
   }
 
   private async restoreSessionHookSecrets(): Promise<void> {
     for (const session of Object.values(this.state.sessions)) {
       // #1644: Decrypt if the stored value is an AES-GCM ciphertext (iv:tag:enc format).
       // Plaintext hookSecrets are 64-char hex strings with no colons.
-      if (session.hookSecret?.includes(':') && this.persistence.hasEncryptionKey()) {
-        const decrypted = this.persistence.decryptSecret(session.hookSecret);
+      if (session.hookSecret?.includes(':') && this.encryption.encKey) {
+        const decrypted = this.decryptSecret(session.hookSecret);
         if (decrypted) { session.hookSecret = decrypted; continue; }
         session.hookSecret = undefined; // Decryption failed — force re-read below
       }
