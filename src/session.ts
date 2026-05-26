@@ -5,12 +5,12 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
-import { existsSync, unlinkSync, readdirSync } from 'node:fs';
-import { join, dirname, basename } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
-import type { StateStore, SerializedSessionState, SerializedSessionInfo } from './services/state/state-store.js';
+import type { StateStore } from './services/state/state-store.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
@@ -18,9 +18,8 @@ import type { Config } from './config.js';
 import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { validateWorkdirPath } from './tenant-workdir.js';
-import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
-import type { z } from 'zod';
+import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings } from './permission-guard.js';
+import { type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 import { PermissionRequestManager, type PermissionDecision } from './permission-request-manager.js';
 import { QuestionManager } from './question-manager.js';
@@ -30,6 +29,8 @@ import type { Span } from '@opentelemetry/api';
 import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts.js';
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
+import { SessionEncryptionService } from './services/session/encryption.js';
+import { SessionPersistenceService } from './services/session/persistence.js';
 const log = new StructuredLogger();
 
 /** UI states for Claude Code sessions. */
@@ -66,21 +67,6 @@ function hasBlankPromptNearBottom(paneText: string): boolean {
     }
   }
   return false;
-}
-
-function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
-  const sessions: Record<string, SessionInfo> = Object.create(null);
-  for (const [id, s] of Object.entries(raw)) {
-    const { activeSubagents, displayName, ...rest } = s as Record<string, unknown>;
-    sessions[id] = {
-      ...rest,
-      displayName: (typeof (rest as Record<string, unknown>).displayName === 'string'
-        ? (rest as Record<string, unknown>).displayName
-        : typeof displayName === 'string' ? displayName : id.slice(0, 8)) as string,
-      activeSubagents: activeSubagents ? new Set(activeSubagents as string[]) : undefined,
-    } as SessionInfo;
-  }
-  return sessions;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -342,9 +328,9 @@ export class SessionManager {
   private stateFile: string;
   private sessionMapFile: string;
   private saveQueue: Promise<void> = Promise.resolve(); // #218: serialize concurrent saves
-    /** #1644: AES-256-GCM key derived from master token for encrypting hook secrets at rest. */
-    private encKey: Buffer | null = null;
   private saveDebounceTimer: NodeJS.Timeout | null = null;
+  private readonly encryption: SessionEncryptionService;
+  private readonly persistence: SessionPersistenceService;
   private static readonly SAVE_DEBOUNCE_MS = 5_000; // #357: debounce offset-only saves
   private permissionRequests = new PermissionRequestManager();
   private questions = new QuestionManager();
@@ -371,6 +357,8 @@ export class SessionManager {
     this.stateFile = join(config.stateDir, 'state.json');
     this.sessionMapFile = join(config.stateDir, 'session_map.json');
     this.store = store ?? null;
+    this.encryption = new SessionEncryptionService();
+    this.persistence = new SessionPersistenceService(this.stateFile, this.store, this.encryption);
     this.transcripts = new SessionTranscripts(config);
     this.discovery = new SessionDiscovery(
       {
@@ -383,99 +371,19 @@ export class SessionManager {
     );
   }
 
-  /** Validate that parsed data looks like a valid SessionState. */
-  private isValidState(data: unknown): data is SessionState {
-    if (typeof data !== 'object' || data === null) return false;
-    const obj = data as Record<string, unknown>;
-    if (typeof obj.sessions !== 'object' || obj.sessions === null) return false;
-    const sessions = obj.sessions as Record<string, unknown>;
-    for (const val of Object.values(sessions)) {
-      if (typeof val !== 'object' || val === null) return false;
-      const s = val as Record<string, unknown>;
-      if (typeof s.id !== 'string' || typeof s.displayName !== 'string') return false;
-    }
-    return true;
-  }
-
-  /** Clean up stale .tmp files left by crashed writes. */
-  private cleanTmpFiles(dir: string): void {
-    try {
-      for (const entry of readdirSync(dir)) {
-        if (entry.endsWith('.tmp')) {
-          const fullPath = join(dir, entry);
-          try { unlinkSync(fullPath); } catch { /* best effort */ }
-          log.info({ component: 'session', operation: 'cleanStaleTmp', attributes: { entry } });
-        }
-      }
-    } catch { /* dir may not exist yet */ }
-  }
-
   /** Load state from disk or the configured store (Issue #1937). */
   async load(): Promise<void> {
-    if (this.store) {
-      // Issue #1937: Load from pluggable store backend.
-      const serialized = await this.store.load();
-      const parsed = persistedStateSchema.safeParse(serialized.sessions);
-      if (parsed.success && this.isValidState({ sessions: parsed.data })) {
-        this.state = { sessions: hydrateSessions(parsed.data) };
-        await this.restoreSessionHookSecrets();
-      } else {
-        this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-      }
-    } else {
-      // Legacy file I/O path.
-      const dir = dirname(this.stateFile);
-      if (!existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
-      }
+    this.state = await this.persistence.load();
+    await this.restoreSessionHookSecrets();
 
-      // Clean stale .tmp files from crashed writes
-      this.cleanTmpFiles(dir);
-
-      if (existsSync(this.stateFile)) {
-        try {
-          const raw = await readFile(this.stateFile, 'utf-8');
-          const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
-          if (parsed.success && this.isValidState({ sessions: parsed.data })) {
-            this.state = { sessions: hydrateSessions(parsed.data) };
-            await this.restoreSessionHookSecrets();
-          } else {
-            log.warn({ component: 'session', operation: 'stateValidationFailed' });
-            const backupFile = `${this.stateFile}.bak`;
-            if (existsSync(backupFile)) {
-              try {
-                const backupRaw = await readFile(backupFile, 'utf-8');
-                const backupParsed = persistedStateSchema.safeParse(JSON.parse(backupRaw));
-                if (backupParsed.success && this.isValidState({ sessions: backupParsed.data })) {
-                  this.state = { sessions: hydrateSessions(backupParsed.data) };
-                  await this.restoreSessionHookSecrets();
-                  log.info({ component: 'session', operation: 'stateRestoredFromBackup' });
-                } else {
-                  this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-                }
-              } catch { /* backup state file corrupted — start empty */
-                this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-              }
-            } else {
-              this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-            }
-          }
-        } catch { /* state file corrupted — start empty */
-          this.state = { sessions: Object.create(null) as Record<string, SessionInfo> };
-        }
-      }
-
-      // Create backup of successfully loaded state
-      try {
-        await writeFile(`${this.stateFile}.bak`, this.serializeState());
-      } catch { /* non-critical */ }
+    if (!this.store) {
+      await this.persistence.writeBackup(this.state);
     }
 
     // Issue #657: Invalidate sessions list cache after loading state
     this.invalidateSessionsListCache();
 
     // Issue #4092: Recover sessions stuck in awaiting_approval after server restart.
-    // setTimeout-based auto-reject is in-memory only and lost on restart.
     // Re-emit awaiting_approval events so channels (e.g. Telegram) re-notify the user.
     const stuckSessions = Object.values(this.state.sessions).filter(
       (s) => s.status === 'awaiting_approval'
@@ -486,8 +394,7 @@ export class SessionManager {
         this.emitSessionAwaitingApproval(session);
       }
     }
-
-      }
+  }
   /** Save state to disk atomically (write to temp, then rename).
    *  #218: Uses a write queue to serialize concurrent saves and prevent corruption. */
   async save(): Promise<void> {
@@ -506,50 +413,7 @@ export class SessionManager {
   }
 
   private async doSave(): Promise<void> {
-    if (this.store) {
-      // Issue #1937: Persist via the pluggable store.
-      const serialized = this.serializeStateForStore();
-      await this.store.save(serialized);
-      return;
-    }
-    // Legacy file I/O path.
-    const dir = dirname(this.stateFile);
-    if (!existsSync(dir)) {
-      await mkdir(dir, { recursive: true });
-    }
-    const tmpFile = `${this.stateFile}.tmp`;
-    await writeFile(tmpFile, this.serializeState());
-    await rename(tmpFile, this.stateFile);
-  }
-
-  /** Issue #1937: Serialize state for the store (Set→array, encrypt hook secrets). */
-  private serializeStateForStore(): SerializedSessionState {
-    const sessions: Record<string, SerializedSessionInfo> = Object.create(null) as Record<string, SerializedSessionInfo>;
-    for (const [id, session] of Object.entries(this.state.sessions)) {
-      const { activeSubagents, hookSecret, ...rest } = session;
-      sessions[id] = {
-        ...rest,
-        activeSubagents: activeSubagents ? [...activeSubagents] : undefined,
-        hookSecret: (typeof hookSecret === 'string' && this.encKey)
-          ? this.encryptSecret(hookSecret)
-          : undefined,
-      } as unknown as SerializedSessionInfo;
-    }
-    return { sessions };
-  }
-
-  private serializeState(): string {
-    // #357: Serialize Set<string> as arrays.
-    // #1644: Encrypt hook secrets at rest using AES-256-GCM derived from master token.
-    // If no encryption key is set (e.g. no auth token), omit hook secrets entirely.
-    return JSON.stringify(this.state, (key, value) => {
-      if (key === 'hookSecret') {
-        if (typeof value !== 'string' || !this.encKey) return undefined;
-        return this.encryptSecret(value);
-      }
-      if (value instanceof Set) return [...value];
-      return value;
-    }, 2);
+    await this.persistence.flush(this.state);
   }
 
   /** Issue #3143: Wire ACP event store into transcript reader. */
@@ -558,40 +422,24 @@ export class SessionManager {
   }
 
   setEncryptionKey(masterToken: string): void {
-    if (!masterToken) return;
-    // scryptSync is synchronous — called once at startup, acceptable cost.
-    this.encKey = scryptSync(masterToken, 'aegis-hook-key-v1', 32);
+    this.encryption.setKey(masterToken);
   }
 
-  /** Encrypt a hook secret with AES-256-GCM. Returns '<iv>:<tag>:<ciphertext>' hex. */
+  /** Encrypt a hook secret — delegates to SessionEncryptionService. */
   private encryptSecret(secret: string): string {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', this.encKey!, iv);
-    const enc = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return `${iv.toString('hex')}:${tag.toString('hex')}:${enc.toString('hex')}`;
+    return this.encryption.encrypt(secret);
   }
 
-  /** Decrypt a hook secret from AES-256-GCM '<iv>:<tag>:<ciphertext>' hex. */
+  /** Decrypt a hook secret — delegates to SessionEncryptionService. */
   private decryptSecret(encrypted: string): string | undefined {
-    if (!this.encKey) return undefined;
-    try {
-      const parts = encrypted.split(':');
-      if (parts.length !== 3) return undefined;
-      const [ivHex, tagHex, encHex] = parts as [string, string, string];
-      const decipher = createDecipheriv('aes-256-gcm', this.encKey, Buffer.from(ivHex, 'hex'));
-      decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-      return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
-    } catch {
-      return undefined;
-    }
+    return this.encryption.decrypt(encrypted);
   }
 
   private async restoreSessionHookSecrets(): Promise<void> {
     for (const session of Object.values(this.state.sessions)) {
       // #1644: Decrypt if the stored value is an AES-GCM ciphertext (iv:tag:enc format).
       // Plaintext hookSecrets are 64-char hex strings with no colons.
-      if (session.hookSecret?.includes(':') && this.encKey) {
+      if (session.hookSecret?.includes(':') && this.encryption.hasKey) {
         const decrypted = this.decryptSecret(session.hookSecret);
         if (decrypted) { session.hookSecret = decrypted; continue; }
         session.hookSecret = undefined; // Decryption failed — force re-read below
