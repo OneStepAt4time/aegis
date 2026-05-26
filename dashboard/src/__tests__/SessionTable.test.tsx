@@ -7,7 +7,7 @@ import type { GlobalSSEEvent, SessionInfo, SessionStatusCounts } from '../types'
 const mockGetSessions = vi.fn();
 const mockGetSessionStatusCounts = vi.fn();
 const mockGetAllSessionsHealth = vi.fn();
-const mockApprove = vi.fn();
+const mockQuickApprove = vi.fn();
 const mockInterrupt = vi.fn();
 const mockKillSession = vi.fn();
 const mockAddToast = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('../api/client', () => ({
   getSessions: (...args: unknown[]) => mockGetSessions(...args),
   getSessionStatusCounts: (...args: unknown[]) => mockGetSessionStatusCounts(...args),
   getAllSessionsHealth: (...args: unknown[]) => mockGetAllSessionsHealth(...args),
-  approve: (...args: unknown[]) => mockApprove(...args),
+  quickApprove: (...args: unknown[]) => mockQuickApprove(...args),
   interrupt: (...args: unknown[]) => mockInterrupt(...args),
   killSession: (...args: unknown[]) => mockKillSession(...args),
 }));
@@ -134,7 +134,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
       s2: { alive: true },
       s3: { alive: false },
     });
-    mockApprove.mockResolvedValue({ ok: true });
+    mockQuickApprove.mockResolvedValue({ ok: true });
     mockInterrupt.mockResolvedValue({ ok: true });
     mockKillSession.mockResolvedValue({ ok: true });
     vi.stubGlobal('confirm', vi.fn(() => true));
@@ -402,7 +402,7 @@ describe('SessionTable filtering, search, and bulk actions', () => {
     fireEvent.click(approveButtons[approveButtons.length - 1]);
 
     await waitFor(() => {
-      expect(mockApprove).toHaveBeenCalledWith('s3');
+      expect(mockQuickApprove).toHaveBeenCalledWith('s3');
     });
   });
 
