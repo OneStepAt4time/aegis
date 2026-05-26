@@ -65,6 +65,50 @@ import type {
   NormalizedApprovalRequest,
   ApprovalHandlingOptions,
 } from './acp-lifecycle/acp-lifecycle-types.js';
+// Re-export types/constants so the public surface of this module is unchanged
+export {
+  DEFAULT_TIMEOUT_MS,
+  EXIT_TIMEOUT_MS,
+  STDERR_LIMIT_BYTES,
+  APPROVAL_STRING_LIMIT_BYTES,
+  APPROVAL_ARRAY_LIMIT_ITEMS,
+  APPROVAL_OBJECT_LIMIT_KEYS,
+  APPROVAL_WRITE_EXIT_GRACE_MS,
+  REDACTED_ACP_VALUE,
+  BYO_LLM_PROVIDER_ENV_KEYS,
+} from './acp-lifecycle/acp-lifecycle-types.js';
+
+export type {
+  AcpModelProvider,
+  AcpPermissionOptionKind,
+  AcpApprovalState,
+  AcpApprovalRejectionReason,
+  Platform,
+  JsonObject,
+  JsonRpcId,
+  AcpAgentInfo,
+  AcpInitializeResult,
+  AcpNewSessionResult,
+  AcpPromptResult,
+  JsonRpcSuccess,
+  JsonRpcNotification,
+  AcpPermissionOption,
+  AcpApprovalToolCall,
+  AcpSelectedApprovalOutcome,
+  AcpCancelledApprovalOutcome,
+  AcpApprovalOutcome,
+  AcpApprovalResponse,
+  AcpApprovalDecision,
+  AcpApprovalRequest,
+  AcpLifecycleProbeOptions,
+  AcpModelPassthroughSummary,
+  AcpLifecycleProbeResult,
+  PendingRequest,
+  AcpModelPassthrough,
+  PendingApprovalRequest,
+  NormalizedApprovalRequest,
+  ApprovalHandlingOptions,
+} from './acp-lifecycle/acp-lifecycle-types.js';
 
 function parseAcpModelProvider(provider: string): AcpModelProvider {
   const normalized = provider.trim().toLowerCase();
