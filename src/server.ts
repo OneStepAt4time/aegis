@@ -63,7 +63,7 @@ import { killAllSessions } from './signal-cleanup-helper.js';
 import { logger, setStructuredLogSink, isJsonLogsEnabled } from './logger.js';
 import { initTracing, shutdownTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
-import { cleanupTerminatedSessionState } from './session-cleanup.js';
+import { cleanupTerminatedSessionState, shutdownAcpRuntime } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
 import { readNewEntries, extractTokenDelta } from './transcript.js';
@@ -168,6 +168,8 @@ async function handleInbound(cmd: InboundCommand, ctx: AppContext): Promise<void
       case 'kill':
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
+        // #4294: Shut down ACP runtime before killing session metadata.
+        await shutdownAcpRuntime(cmd.sessionId, ctx);
         await ctx.sessions.killSession(cmd.sessionId);
         channels.sessionEnded(makePayloadFromCtx(ctx.sessions, 'session.ended', cmd.sessionId, 'killed'));
         cleanupTerminatedSessionState(cmd.sessionId, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
@@ -634,6 +636,8 @@ async function reapStaleSessions(maxAgeMs: number, ctx: AppContext): Promise<voi
       try {
         // #842: killSession first, then notify — avoids race where channels
         // reference a session that is still being destroyed.
+        // #4294: Shut down ACP runtime before killing session metadata.
+        await shutdownAcpRuntime(session.id, ctx);
         await ctx.sessions.killSession(session.id);
         eventBus.cleanupSession(session.id);
         channels.sessionEnded({
@@ -686,6 +690,8 @@ async function reapZombieSessions(ctx: AppContext): Promise<void> {
     });
     try {
       eventBus.cleanupSession(session.id);
+      // #4294: Shut down ACP runtime before killing session metadata.
+      await shutdownAcpRuntime(session.id, ctx);
       await ctx.sessions.killSession(session.id);
       // Issue #2947: mark zombie-reaped sessions as infra failures
       ctx.metrics.sessionInfraFailed(session.id);
@@ -1282,6 +1288,23 @@ registerBudgetRoutes(app, { auth: ctx.auth, budgetStore, budgetEvaluator });
   // Issue #361: Store interval refs so graceful shutdown can clear them
   timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
   timers.setInterval(() => reapZombieSessions(ctx), ZOMBIE_REAP_INTERVAL_MS);
+  // Issue #4294: ACP orphan reaper — detects and shuts down ACP runtimes
+  // whose sessions no longer exist in the session manager.
+  const ACP_ORPHAN_REAP_INTERVAL_MS = parseIntSafe(process.env.ACP_ORPHAN_REAP_INTERVAL_MS, 60_000);
+  timers.setInterval(async () => {
+    if (!ctx.acpBackend) return;
+    const { reapOrphanAcpRuntimes } = await import('./services/acp/orphan-reaper.js');
+    await reapOrphanAcpRuntimes({
+      getActiveSessionIds: () => ctx.sessions.listSessions().map(s => s.id),
+      getActiveAcpRuntimeIds: () => ctx.acpBackend!.getActiveRuntimeIds(),
+      shutdownAcpRuntime: (id) => ctx.acpBackend!.shutdownSession({
+        sessionId: id,
+        tenantId: ctx.sessions.getSession(id)?.tenantId ?? SYSTEM_TENANT,
+        ownerKeyId: ctx.sessions.getSession(id)?.ownerKeyId ?? 'master',
+      }).then(() => {}),
+      log: logger,
+    });
+  }, ACP_ORPHAN_REAP_INTERVAL_MS);
 timers.setInterval(() => { void ctx.metrics.save(); }, 5 * 60 * 1000);
   // Issue #3310: Periodically persist metering data.
   timers.setInterval(() => { void metering.save(); }, 5 * 60 * 1000);

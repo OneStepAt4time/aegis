@@ -408,6 +408,11 @@ export class AcpBackend {
   }
 
 
+
+  /** Issue #4294: Return all session IDs with active ACP runtimes. */
+  getActiveRuntimeIds(): string[] {
+    return [...this.runtimes.keys()];
+  }
   /**
    * Issue #3093: Direct prompt delivery to ACP runtime.
    * Bypasses the action queue for immediate prompt delivery during session creation

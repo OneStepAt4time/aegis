@@ -5,10 +5,34 @@
  * every termination path (API kill, inbound kill, stale reaper, zombie reaper).
  */
 
+import type { AppContext } from './app-context.js';
+import { SYSTEM_TENANT } from './config.js';
+
 export interface SessionCleanupDeps {
   monitor: { removeSession(sessionId: string): void };
   metrics: { cleanupSession(sessionId: string): void };
   toolRegistry: { cleanupSession(sessionId: string): void };
+}
+
+/**
+ * Shut down the ACP backend runtime for a session (if one exists).
+ * Issue #4294: Ensures the ACP Node wrapper process is killed when a session is killed.
+ */
+export async function shutdownAcpRuntime(
+  sessionId: string,
+  ctx: AppContext,
+): Promise<void> {
+  if (!ctx.acpBackend) return;
+  try {
+    const session = ctx.sessions.getSession(sessionId);
+    await ctx.acpBackend.shutdownSession({
+      sessionId,
+      tenantId: session?.tenantId ?? SYSTEM_TENANT,
+      ownerKeyId: session?.ownerKeyId ?? 'master',
+    });
+  } catch {
+    // Best-effort — session metadata cleanup must proceed regardless.
+  }
 }
 
 export function cleanupTerminatedSessionState(
