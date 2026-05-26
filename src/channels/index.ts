@@ -11,7 +11,7 @@ export type {
 } from './types.js';
 
 export { ChannelManager } from './manager.js';
-export { TelegramChannel, type TelegramChannelConfig } from './telegram.js';
+export { TelegramChannel, type TelegramChannelConfig } from './telegram/index.js';
 export { WebhookChannel, type WebhookChannelConfig, type WebhookEndpoint, type DeadLetterEntry, type DeliveryStatus, type WebhookDeliveryAttempt } from './webhook.js';
 
 // Telegram Style Guide — 6 standard message types
