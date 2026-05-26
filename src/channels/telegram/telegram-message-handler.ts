@@ -7,14 +7,14 @@
 import type { SessionEventPayload } from '../types.js';
 import { esc, bold, code, italic, quickUpdate, alert as styleAlert } from '../telegram-style.js';
 import type { TelegramChannelInternals } from './types.js';
+import { truncate } from './formatter.js';
 import {
-  truncate,
   formatTimestamp,
   formatAssistantMessage,
   parseToolUse,
   formatToolResult,
   formatProgressCard,
-} from './formatter.js';
+} from './message-formatter.js';
 import {
   queueMessage,
   flushReads,

@@ -39,17 +39,19 @@ import {
   shortPath,
   stripXmlTags,
   parseOptions,
-  formatSubAgentTree,
   sanitizeTopicName,
   safeCallbackData,
   md2html,
+} from './formatter.js';
+import {
+  formatSubAgentTree,
   formatTimestamp,
   formatSessionCreated,
   formatAssistantMessage,
   parseToolUse,
   formatToolResult,
   formatProgressCard,
-} from './formatter.js';
+} from './message-formatter.js';
 import {
   sleep,
   sendStyled,
@@ -80,8 +82,10 @@ export {
   sanitizeHref,
   sanitizeTopicName,
   safeCallbackData,
-  formatTimestamp,
 } from './formatter.js';
+export {
+  formatTimestamp,
+} from './message-formatter.js';
 
 const log = new StructuredLogger();
 
