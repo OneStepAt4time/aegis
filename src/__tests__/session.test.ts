@@ -398,10 +398,10 @@ describe('SessionManager.killSession()', () => {
     const { manager } = createManagerWithSession(session);
     vi.spyOn(manager as any, 'save').mockResolvedValue(undefined);
     // Set a fake debounce timer
-    (manager as any).saveDebounceTimer = setTimeout(() => {}, 60_000);
+    (manager as any).persistence.saveDebounceTimer = setTimeout(() => {}, 60_000);
 
     await manager.killSession(session.id);
-    expect((manager as any).saveDebounceTimer).toBeNull();
+    expect((manager as any).persistence.saveDebounceTimer).toBeNull();
   });
 });
 
