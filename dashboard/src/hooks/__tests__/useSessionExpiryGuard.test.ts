@@ -10,8 +10,12 @@ let storeState = {
 };
 
 vi.mock('../../store/useAuthStore', () => {
+  const selector = (sel: (s: typeof storeState) => any) => sel(storeState);
+  // Must expose getState() — useSessionExpiryGuard calls useAuthStore.getState() directly
+  // (not as a selector hook). Without this, fake timer callbacks crash after teardown.
+  selector.getState = () => storeState;
   return {
-    useAuthStore: (sel: (s: typeof storeState) => any) => sel(storeState),
+    useAuthStore: selector,
     // Export for direct access
     _storeState: storeState,
   };
