@@ -48,6 +48,11 @@ export interface SessionInfo {
   lastHookReceivedAt?: number;   // Unix timestamp when last hook was received by Aegis
   lastHookEventAt?: number;      // Unix timestamp from the hook payload (CC's timestamp)
   model?: string;                // Issue #89 L25: Model name from hook payload (e.g. "claude-sonnet-4-6")
+  effort?: string;               // Issue #3545: Reasoning effort level
+    /** Issue #3613: Per-session isolation policy override. */
+  isolationPolicy?: 'respect-cc' | 'enforce-worktree' | 'enforce-direct';
+  /** Issue #3590: Session isolation mode — whether CC runs in a worktree or directly edits the project. */
+  isolationMode?: 'worktree' | 'none';
   lastDeadAt?: number;           // Unix timestamp when session was detected as dead (Issue #283)
   ccPid?: number;                // PID of the Claude Code process (Issue #353: swarm parent matching)
   parentId?: string;             // Issue #702: Parent session ID for sub-agent hierarchy
@@ -61,6 +66,7 @@ export interface SessionInfo {
   pendingPermission?: PendingPermissionInfo;  // API contract compat: active permission prompt
   pendingQuestion?: PendingQuestionInfo;       // API contract compat: active question
   promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
+  runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
   // Issue #2518: Hook failure circuit breaker
   hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
@@ -68,6 +74,8 @@ export interface SessionInfo {
   // Issue #2520: Premature termination detection for background agents
   toolUseCount?: number;               // Count of PreToolUse hook events
   prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
+  // Issue #4027: Pinned session flag — reaper skips pinned sessions.
+  isPinned?: boolean;
 }
 
 /** Persisted session store keyed by Aegis session ID. */
