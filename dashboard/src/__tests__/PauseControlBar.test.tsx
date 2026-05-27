@@ -44,24 +44,24 @@ describe('PauseControlBar', () => {
   });
 
   it('shows intervene and resume buttons when paused', () => {
-    render(<PauseControlBar sessionStatus="running" interventionStatus="paused" />);
+    render(<PauseControlBar sessionStatus="running" interventionStatus={'paused' as const} />);
     expect(screen.getByLabelText('Start intervention')).toBeDefined();
     expect(screen.getByLabelText('Resume session')).toBeDefined();
   });
 
   it('shows paused status badge when interventionStatus is paused', () => {
-    render(<PauseControlBar sessionStatus="paused" interventionStatus="paused" />);
+    render(<PauseControlBar sessionStatus="paused" interventionStatus={'paused' as const} />);
     expect(screen.getByText('Paused')).toBeDefined();
   });
 
   it('shows intervening status and complete button', () => {
-    render(<PauseControlBar sessionStatus="paused" interventionStatus="intervening" />);
+    render(<PauseControlBar sessionStatus="paused" interventionStatus={'intervening' as const} />);
     expect(screen.getByText('Intervening')).toBeDefined();
     expect(screen.getByLabelText('Complete intervention with guidance')).toBeDefined();
   });
 
   it('shows guidance form when complete button is clicked', async () => {
-    render(<PauseControlBar sessionStatus="paused" interventionStatus="intervening" />);
+    render(<PauseControlBar sessionStatus="paused" interventionStatus={'intervening' as const} />);
     await act(async () => {
       fireEvent.click(screen.getByLabelText('Complete intervention with guidance'));
     });
@@ -73,7 +73,7 @@ describe('PauseControlBar', () => {
     render(
       <PauseControlBar
         sessionStatus="paused"
-        interventionStatus="intervening"
+        interventionStatus={'intervening' as const}
         onCompleteIntervention={onCompleteIntervention}
       />
     );
@@ -96,7 +96,7 @@ describe('PauseControlBar', () => {
     render(
       <PauseControlBar
         sessionStatus="paused"
-        interventionStatus="paused"
+        interventionStatus={'paused' as const}
         onIntervene={onIntervene}
       />
     );
@@ -112,7 +112,7 @@ describe('PauseControlBar', () => {
     render(
       <PauseControlBar
         sessionStatus="paused"
-        interventionStatus="paused"
+        interventionStatus={'paused' as const}
         onResume={onResume}
       />
     );
