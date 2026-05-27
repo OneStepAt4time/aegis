@@ -158,4 +158,72 @@ describe('useSessionApproval', () => {
       expect(result.current.isExpired).toBe(true);
     });
   });
+
+  // Additional tests for branch coverage
+
+  it('handles non-Error approve rejection', async () => {
+    const mockApproval = {
+      approvalId: 'appr-1',
+      toolName: 'Bash',
+      sessionId: 'sess-1',
+      requestedAt: new Date().toISOString(),
+    };
+    mockGetPending.mockResolvedValue(mockApproval);
+    mockApprove.mockRejectedValue('string error');
+
+    const { useSessionApproval } = await import('../useSessionApproval');
+    const { result } = renderHook(() => useSessionApproval('sess-1'));
+
+    await waitFor(() => expect(result.current.pendingApproval).toBeTruthy());
+
+    await act(async () => {
+      await result.current.approve();
+    });
+
+    expect(result.current.error).toBe('Failed to approve tool');
+  });
+
+  it('handles reject error', async () => {
+    const mockApproval = {
+      approvalId: 'appr-1',
+      toolName: 'Bash',
+      sessionId: 'sess-1',
+      requestedAt: new Date().toISOString(),
+    };
+    mockGetPending.mockResolvedValue(mockApproval);
+    mockReject.mockRejectedValue(new Error('Reject failed'));
+
+    const { useSessionApproval } = await import('../useSessionApproval');
+    const { result } = renderHook(() => useSessionApproval('sess-1'));
+
+    await waitFor(() => expect(result.current.pendingApproval).toBeTruthy());
+
+    await act(async () => {
+      await result.current.reject();
+    });
+
+    expect(result.current.error).toBe('Reject failed');
+  });
+
+  it('handles non-Error reject rejection', async () => {
+    const mockApproval = {
+      approvalId: 'appr-1',
+      toolName: 'Bash',
+      sessionId: 'sess-1',
+      requestedAt: new Date().toISOString(),
+    };
+    mockGetPending.mockResolvedValue(mockApproval);
+    mockReject.mockRejectedValue('string error');
+
+    const { useSessionApproval } = await import('../useSessionApproval');
+    const { result } = renderHook(() => useSessionApproval('sess-1'));
+
+    await waitFor(() => expect(result.current.pendingApproval).toBeTruthy());
+
+    await act(async () => {
+      await result.current.reject();
+    });
+
+    expect(result.current.error).toBe('Failed to reject tool');
+  });
 });

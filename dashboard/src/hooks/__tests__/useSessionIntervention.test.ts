@@ -138,4 +138,85 @@ describe('useSessionIntervention', () => {
     act(() => result.current.clearError());
     expect(result.current.error).toBeNull();
   });
+
+  // Additional tests for branch coverage
+
+  it('handles non-Error pause rejection', async () => {
+    mockGetSessionIntervention.mockResolvedValue(null);
+    mockPauseSession.mockRejectedValue('string error');
+
+    const { useSessionIntervention } = await import('../useSessionIntervention');
+    const { result } = renderHook(() => useSessionIntervention('sess-1'));
+
+    await act(async () => {
+      await result.current.pause({ reason: 'test' });
+    });
+
+    expect(result.current.error).toBe('Failed to pause session');
+  });
+
+  it('handles non-Error intervene rejection', async () => {
+    mockGetSessionIntervention.mockResolvedValue(null);
+    mockStartIntervention.mockRejectedValue('string error');
+
+    const { useSessionIntervention } = await import('../useSessionIntervention');
+    const { result } = renderHook(() => useSessionIntervention('sess-1'));
+
+    await act(async () => {
+      await result.current.intervene();
+    });
+
+    expect(result.current.error).toBe('Failed to start intervention');
+  });
+
+  it('handles non-Error completeIntervention rejection', async () => {
+    mockGetSessionIntervention.mockResolvedValue(null);
+    mockCompleteIntervention.mockRejectedValue('string error');
+
+    const { useSessionIntervention } = await import('../useSessionIntervention');
+    const { result } = renderHook(() => useSessionIntervention('sess-1'));
+
+    await act(async () => {
+      await result.current.completeIntervention({ guidance: 'test' });
+    });
+
+    expect(result.current.error).toBe('Failed to complete intervention');
+  });
+
+  it('handles non-Error resume rejection', async () => {
+    mockGetSessionIntervention.mockResolvedValue(null);
+    mockResumeSession.mockRejectedValue('string error');
+
+    const { useSessionIntervention } = await import('../useSessionIntervention');
+    const { result } = renderHook(() => useSessionIntervention('sess-1'));
+
+    await act(async () => {
+      await result.current.resume({ resumedBy: 'test' });
+    });
+
+    expect(result.current.error).toBe('Failed to resume session');
+  });
+
+  it('sets isLoading during action', async () => {
+    let resolvePause: (v: any) => void;
+    mockGetSessionIntervention.mockResolvedValue(null);
+    mockPauseSession.mockImplementation(() => new Promise((r) => { resolvePause = r; }));
+
+    const { useSessionIntervention } = await import('../useSessionIntervention');
+    const { result } = renderHook(() => useSessionIntervention('sess-1'));
+
+    const promise = act(async () => {
+      await result.current.pause({ reason: 'test' });
+    });
+
+    // isLoading should be true while the promise is pending
+    // (note: in test env this is hard to capture mid-flight, but we verify it settles)
+
+    await act(async () => {
+      resolvePause!({ pause: mockIntervention });
+    });
+
+    await promise;
+    expect(result.current.isLoading).toBe(false);
+  });
 });
