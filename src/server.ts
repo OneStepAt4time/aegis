@@ -36,7 +36,7 @@ import {
 import { loadConfig, reloadAllowedWorkDirs, findConfigFilePath, SYSTEM_TENANT, type Config } from './config.js';
 import type { StateStore } from './services/state/state-store.js';
 
-import { validateWorkDir, parseIntSafe } from './validation.js';
+import { parseIntSafe } from './validation.js';
 import { SessionEventBus } from './events.js';
 
 import { SSEConnectionLimiter } from './sse-limiter.js';
@@ -55,18 +55,16 @@ import { registerDashboardStatic } from './plugins/dashboard-static.js';
 
 import { registerMemoryRoutes } from './memory-routes.js';
 
-
 import { logger, setStructuredLogSink, isJsonLogsEnabled } from './logger.js';
 import { initTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState, shutdownAcpRuntime } from './session-cleanup.js';
-import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
 import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
-import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
+
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
 import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, requestKeyMap } from './middleware/auth-setup.js';
@@ -76,36 +74,12 @@ import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweep
 import { bootAcp, registerAcpServices } from './boot/boot-acp.js';
 import { bootMetering } from './boot/boot-metering.js';
 import { registerShutdownHandler } from './boot/boot-shutdown.js';
+import { registerRoutes } from './boot/boot-routes.js';
+import { makePayload as makePayloadFromCtx } from './routes/context.js';
 import { BudgetStore } from './budgets/store.js';
 import { BudgetEvaluator } from './budgets/evaluator.js';
 import { BudgetNotifier } from './budgets/notifications.js';
 import { BudgetTimer } from './budgets/timer.js';
-import { registerBudgetRoutes } from './budgets/routes.js';
-import {
-  registerHealthRoutes,
-  registerAuthRoutes,
-  registerAuditRoutes,
-  registerSessionRoutes,
-  registerSessionActionRoutes,
-  registerSessionApprovalRoutes,
-  registerQuickApproveRejectRoutes,
-  registerSessionDataRoutes,
-  registerEventRoutes,
-  registerTemplateRoutes,
-  registerPipelineRoutes,
-  registerAnalyticsRoutes,
-  registerOidcAuthRoutes,
-  registerUsageRoutes,
-  registerCostRoutes,
-  registerControlActionRoutes,
-  registerDriverRoutes,
-  registerTerminalRoutes,
-  registerOpenApiSpec,
-  registerOpenApiRoute,
-  type RouteContext,
-} from './routes/index.js';
-import { makePayload as makePayloadFromCtx, setRouteConfig } from './routes/context.js';
-import { registerDeviceAuthRoutes } from './routes/device-auth.js';
 import {
   createDashboardOidcManagerFromEnv,
   DashboardSessionStore,
@@ -783,70 +757,16 @@ new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
   );
   await metricsCache.start();
 
-  // ── Register extracted route modules (ARC-2) ──────────────────────
-  /** Validate workDir — delegates to validation.ts (Issue #435). */
-const validateWorkDirWithConfig = (workDir: string) => validateWorkDir(workDir, ctx.config.allowedWorkDirs);
-
-  // Initialize early — route modules reference these
-ctx.toolRegistry = new ToolRegistry();
-
-  const serverState = { draining: false };
-
-const routeCtx: RouteContext = {
-    sessions: ctx.sessions, auth: ctx.auth, config: ctx.config, metrics: ctx.metrics, monitor: ctx.monitor, eventBus, channels,
-    jsonlWatcher: ctx.jsonlWatcher, pipelines: ctx.pipelines, toolRegistry: ctx.toolRegistry, getAuditLogger: () => ctx.auditLogger,
-    alertManager: ctx.alertManager, sseLimiter: ctx.sseLimiter, memoryBridge: ctx.memoryBridge, requestKeyMap,
-    validateWorkDir: validateWorkDirWithConfig,
-    serverState,
-    quotas: new QuotaManager(),
-    metering: ctx.metering,
+  // ── Register routes (extracted to boot/boot-routes.ts, #4243) ──────
+  ctx.toolRegistry = new ToolRegistry();
+  const { routeCtx, serverState } = registerRoutes(app, ctx, {
+    eventBus,
+    channels,
     metricsCache,
-    dashboardOidc: ctx.dashboardOidc,
-    dashboardTokenSessions: ctx.dashboardTokenSessions,
-    pauseInterventionStore: ctx.acpPauseStore ?? new InMemoryPauseInterventionStore(),
-    acpBackend: ctx.acpBackend ?? undefined,
-    eventStore: ctx.acpLocalProfile?.eventStore ?? undefined,
-    terminalBridge: ctx.acpTerminalBridge ?? undefined,
-  };
-  // Issue #3208: Set config ref for strictRBAC enforcement in route guards
-  setRouteConfig(ctx.config);
-
-  // Issue #3208: Warn when auth is disabled and RBAC-guarded routes are active
-  if (!ctx.auth.authEnabled && !ctx.config.strictRBAC) {
-    logger.warn({
-      component: 'server',
-      operation: 'rbac_warning',
-      errorCode: 'RBAC_DISABLED_NO_AUTH',
-      attributes: { message: 'Auth is disabled and strictRBAC is false — all RBAC guards are bypassed. Set AEGIS_STRICT_RBAC=true for production.' },
-    });
-  }
-
-  registerHealthRoutes(app, routeCtx);
-  registerAuthRoutes(app, routeCtx);
-  registerOidcAuthRoutes(app, routeCtx);
-  // Issue #1943: OAuth2 device authorization grant endpoints (RFC 8628)
-registerDeviceAuthRoutes(app);
-  registerAuditRoutes(app, routeCtx);
-  registerSessionRoutes(app, routeCtx);
-  registerSessionActionRoutes(app, routeCtx);
-  registerSessionApprovalRoutes(app, routeCtx);
-  registerQuickApproveRejectRoutes(app, routeCtx);
-  registerSessionDataRoutes(app, routeCtx);
-  registerEventRoutes(app, routeCtx);
-  registerTemplateRoutes(app, routeCtx);
-  registerPipelineRoutes(app, routeCtx);
-  registerAnalyticsRoutes(app, routeCtx);
-  registerUsageRoutes(app, routeCtx);
-  registerCostRoutes(app, routeCtx);
-  // Issue #4195: Cost Alerts — /v1/budgets endpoints
-registerBudgetRoutes(app, { auth: ctx.auth, budgetStore, budgetEvaluator });
-  registerControlActionRoutes(app, routeCtx);
-  registerDriverRoutes(app, routeCtx);
-  registerTerminalRoutes(app, routeCtx);
-
-  // OpenAPI spec registration and route (issue #1909)
-  registerOpenApiSpec();
-  registerOpenApiRoute(app);
+    budgetStore,
+    budgetEvaluator,
+    requestKeyMap,
+  });
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
