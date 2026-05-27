@@ -110,6 +110,7 @@ import {
 } from './routes/index.js';
 import { makePayload as makePayloadFromCtx, setRouteConfig } from './routes/context.js';
 import { registerDeviceAuthRoutes } from './routes/device-auth.js';
+import createSSEBridge from './services/sse-bridge.js';
 import {
   createDashboardOidcManagerFromEnv,
   DashboardSessionStore,
@@ -1296,6 +1297,15 @@ async function main(): Promise<void> {
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
   registerOpenApiRoute(app);
+
+  // Register SSE bridge (EventBus -> /sse) so dashboard can consume live events
+  try {
+    const sseBridge = createSSEBridge(eventBus as unknown as any, app as any);
+    sseBridge.register(app);
+  } catch (e) {
+    logger.warn({ component: 'server', operation: 'sseBridgeInitFailed', attributes: { error: String(e) } });
+  }
+
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   const reaperInterval = setInterval(() => reapStaleSessions(config.maxSessionAgeMs), config.reaperIntervalMs);
