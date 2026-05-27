@@ -2,7 +2,7 @@
  * health-auth-2458.test.ts — Issue #2458: GET /v1/health info leak for unauthenticated callers.
  *
  * Verifies:
- *   - Unauthenticated request → only { status } (no version, uptime, sessions, runtime, claude)
+ *   - Unauthenticated request → only { status } (no version, uptime, sessions, runtime, claude) [Issue #4355]
  *   - Authenticated request   → full system info (version, uptime, sessions, runtime, claude)
  */
 
@@ -227,18 +227,16 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     await app.close();
   });
 
-  it('unauthenticated request returns status and session counts', async () => {
+  it('unauthenticated request returns status only (no session counts)', async () => {
     const res = await app.inject({ method: 'GET', url: '/v1/health' });
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as Record<string, unknown>;
     expect(body.status).toBe('ok');
-    // Issue #3739: session counts are safe for unauthenticated callers
-    expect(body.sessions).toBeDefined();
-    expect(typeof (body.sessions as Record<string, unknown>).active).toBe('number');
-    expect(typeof (body.sessions as Record<string, unknown>).total).toBe('number');
-    // Must not contain sensitive fields
-    expect(Object.keys(body).sort()).toEqual(['sessions', 'status']);
+    // Issue #4355: session counts removed from unauthenticated response
+    expect(body.sessions).toBeUndefined();
+    // Must not contain any sensitive fields
+    expect(Object.keys(body).sort()).toEqual(['status']);
   });
 
   it('unauthenticated request does not leak version, uptime, or claude', async () => {
@@ -248,8 +246,8 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.version).toBeUndefined();
     expect(body.uptime).toBeUndefined();
     expect(body.platform).toBeUndefined();
-    // sessions is now included for unauthenticated callers (Issue #3739)
-    expect(body.sessions).toBeDefined();
+    // Issue #4355: session counts no longer included for unauthenticated callers
+    expect(body.sessions).toBeUndefined();
     expect(body.claude).toBeUndefined();
     expect(body.timestamp).toBeUndefined();
   });
@@ -274,13 +272,14 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     expect(body.claude).toBeDefined();
   });
 
-  it('legacy GET /health also returns status and session counts for unauthenticated callers', async () => {
+  it('legacy GET /health also returns status only for unauthenticated callers', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as Record<string, unknown>;
     expect(body.status).toBe('ok');
-    expect(body.sessions).toBeDefined();
-    expect(Object.keys(body).sort()).toEqual(['sessions', 'status']);
+    // Issue #4355: no session counts for unauthenticated
+    expect(body.sessions).toBeUndefined();
+    expect(Object.keys(body).sort()).toEqual(['status']);
   });
 });
