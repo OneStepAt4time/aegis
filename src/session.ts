@@ -32,6 +32,7 @@ import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
 import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel } from './services/session/permissions.js';
+import { SessionApprovalService } from './services/session/approval-flow.js';
 import { hydrateSessions, isObjectRecord, detectModelFromSettings, detectIsolationMode, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
 export { resolveApprovalInput };
 export type { PermissionDecision };
@@ -121,8 +122,8 @@ export class SessionManager {
   private readonly store: StateStore | null;
   /** Issue #4092: Recovery callback for sessions stuck in awaiting_approval after restart. */
   onSessionApprovalRecovery: ((session: SessionInfo) => void) | null = null;
-  /** Issue #4114: Active approval timeouts — session ID → timeout handle. */
-  private readonly approvalTimeouts = new Map<string, NodeJS.Timeout>();
+  /** Issue #4114: Approval service handling timeouts and approval flow. */
+  private readonly approvalService: SessionApprovalService;
   /** Issue #4124: Periodic cleanup timer for killed sessions. */
   private cleanupTimer: NodeJS.Timeout | null = null;
 
@@ -145,6 +146,15 @@ export class SessionManager {
       config,
       this.sessionMapFile,
     );
+    // Approval flow service (extract of approval/reject/timeout logic)
+    this.approvalService = new SessionApprovalService({
+      getSession: (id: string) => this.state.sessions[id] || null,
+      save: () => this.save(),
+      invalidateSessionsListCache: () => this.invalidateSessionsListCache(),
+      discovery: this.discovery,
+      config: this.config,
+      getOnSessionApprovalRecovery: () => this.onSessionApprovalRecovery,
+    });
   }
 
   /** Load state from disk or the configured store (Issue #1937).
@@ -643,33 +653,12 @@ export class SessionManager {
 
   /** Issue #4114: Schedule auto-reject for a session awaiting approval. */
   private scheduleApprovalTimeout(sessionId: string): void {
-    const timeoutMs = this.config.sessionApprovalTimeoutMs ?? 300_000;
-    const handle = setTimeout(async () => {
-      this.approvalTimeouts.delete(sessionId);
-      const session = this.state.sessions[sessionId];
-      if (session && session.status === 'awaiting_approval') {
-        log.warn({ component: 'session', operation: 'autoRejectApproval', sessionId, attributes: { timeoutMs } });
-        try {
-          await this.rejectSession(sessionId);
-          // Notify channels about auto-rejection
-          if (this.onSessionApprovalRecovery) {
-            this.onSessionApprovalRecovery({ ...session, status: 'killed' });
-          }
-        } catch (e) {
-          log.error({ component: 'session', operation: 'autoRejectFailed', sessionId, attributes: { error: String(e) } });
-        }
-      }
-    }, timeoutMs);
-    this.approvalTimeouts.set(sessionId, handle);
+    this.approvalService.scheduleApprovalTimeout(sessionId);
   }
 
   /** Issue #4114: Clear an active approval timeout. */
   private clearApprovalTimeout(sessionId: string): void {
-    const handle = this.approvalTimeouts.get(sessionId);
-    if (handle) {
-      clearTimeout(handle);
-      this.approvalTimeouts.delete(sessionId);
-    }
+    this.approvalService.clearApprovalTimeout(sessionId);
   }
 
   /** Issue #4124: Start periodic cleanup of killed sessions. */
@@ -706,7 +695,7 @@ export class SessionManager {
         delete this.state.sessions[id];
         this.permissions.requests.cleanupPendingPermission(id);
         this.questions.cleanupPendingQuestion(id);
-        this.approvalTimeouts.delete(id);
+        this.approvalService.clearApprovalTimeout(id);
         purged++;
       }
     }
@@ -719,50 +708,15 @@ export class SessionManager {
 
   /** Issue #4092: Emit awaiting_approval event for recovery after restart. */
   private emitSessionAwaitingApproval(session: SessionInfo): void {
-    // Re-notify channels that this session still needs approval.
-    // This is a no-op if no recovery callback is registered.
-    if (this.onSessionApprovalRecovery) {
-      this.onSessionApprovalRecovery(session);
-    }
+    this.approvalService.emitSessionAwaitingApproval(session);
   }
   async approveSession(id: string, approvedBy?: string): Promise<SessionInfo> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session not found: ${id}`);
-    if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval`);
-    }
-    session.status = 'pending';
-    session.awaitingApproval = false;
-    session.approvedBy = approvedBy;
-    session.approvedAt = Date.now();
-    this.invalidateSessionsListCache();
-    // Issue #4114: Clear approval timeout.
-    this.clearApprovalTimeout(id);
-    await this.save();
-    // Start discovery polling now that session is approved.
-    // Issue #4092: Wrap in try/catch — if discovery fails, session is still approved
-    // but we log the error instead of crashing the approval flow.
-    try {
-      this.discovery.startDiscoveryPolling(id, session.workDir);
-    } catch (e) {
-      log.error({ component: 'session', operation: 'approveDiscoveryFailed', sessionId: id, attributes: { error: String(e) } });
-    }
-    return session;
+    return this.approvalService.approveSession(id, approvedBy);
   }
 
   /** Issue #4088: Reject a session awaiting approval. Cleans up. */
   async rejectSession(id: string): Promise<void> {
-    const session = this.state.sessions[id];
-    if (!session) throw new Error(`Session not found: ${id}`);
-    if (session.status !== 'awaiting_approval') {
-      throw new Error(`Session is not awaiting approval`);
-    }
-    session.status = 'killed';
-    session.awaitingApproval = false;
-    this.invalidateSessionsListCache();
-    // Issue #4114: Clear approval timeout.
-    this.clearApprovalTimeout(id);
-    await this.save();
+    return this.approvalService.rejectSession(id);
   }
 
   /** Interrupt session (ACP stub — use JSON-RPC cancel). */
