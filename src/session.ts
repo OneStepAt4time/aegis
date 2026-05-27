@@ -44,6 +44,7 @@ export type { UIState, SessionInfo, SessionState, PersistedStateData };
 
 import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 import { recordHookFailure as _recordHookFailure, recordHookSuccess as _recordHookSuccess, checkHookCircuitBreaker as _checkHookCircuitBreaker } from './session-hook-circuit-breaker.js';
+import { applyHookEvent } from './session-status-updater.js';
 export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
@@ -576,90 +577,7 @@ export class SessionManager {
   updateStatusFromHook(id: string, hookEvent: string, hookTimestamp?: number): UIState | null {
     const session = this.state.sessions[id];
     if (!session) return null;
-
-    const prevStatus = session.status;
-    const now = Date.now();
-
-    // Map hook events to UI states
-    switch (hookEvent) {
-      case 'Stop':
-      case 'TaskCompleted':
-      case 'SessionEnd':
-        // Issue #2538: CC finished work — transition to idle immediately
-        // so the API returns the correct status instead of staying "working".
-        session.status = 'idle';
-        break;
-      case 'TeammateIdle':
-        // Informational — a teammate went idle, not this session
-        break;
-      case 'PreToolUse':
-        // Issue #2520: Track tool use count for premature termination detection
-        session.toolUseCount = (session.toolUseCount ?? 0) + 1;
-        session.status = 'working';
-        break;
-      case 'PostToolUse':
-      case 'SubagentStart':
-      case 'UserPromptSubmit':
-        session.status = 'working';
-        break;
-      case 'PermissionRequest':
-        session.status = 'permission_prompt';
-        break;
-      case 'StopFailure':
-      case 'PostToolUseFailure':
-        session.status = 'error';
-        break;
-      case 'Notification':
-      case 'PreCompact':
-      case 'PostCompact':
-      case 'SubagentStop':
-        // Informational events — no status change
-        break;
-      default:
-        // Unknown hook events: no status change
-        break;
-    }
-
-    // Issue #2520: Detect premature termination. Upstream CC kills background
-    // agents at ~20-30 tool uses with no wrap-up (upstream #55707).
-    const PREMATURE_MIN_TOOLS = parseInt(process.env.PREMATURE_TERMINATION_MIN_TOOLS ?? '30', 10);
-    const PREMATURE_MIN_DURATION_MS = parseInt(process.env.PREMATURE_TERMINATION_MIN_DURATION_MS ?? '30000', 10);
-    if ((hookEvent === 'TaskCompleted' || hookEvent === 'Stop') && session.toolUseCount !== undefined) {
-      const toolCount = session.toolUseCount;
-      const duration = now - session.createdAt;
-      if (toolCount > 0 && toolCount <= PREMATURE_MIN_TOOLS && duration >= PREMATURE_MIN_DURATION_MS) {
-        session.prematureTermination = true;
-        log.warn({
-          component: 'session',
-          operation: 'possiblePrematureTermination',
-          sessionId: id,
-          attributes: { toolCount, durationMs: duration, thresholdTools: PREMATURE_MIN_TOOLS, thresholdMs: PREMATURE_MIN_DURATION_MS },
-        });
-      }
-    }
-
-    session.lastHookAt = now;
-    session.lastActivity = now;
-
-    // Issue #87: Record hook receive timestamp for latency calculation
-    session.lastHookReceivedAt = now;
-    if (hookTimestamp) {
-      // Issue #828: Clamp future timestamps to prevent clock skew corruption.
-      // If the client's clock is ahead of ours, store our timestamp instead.
-      if (hookTimestamp > now) {
-        log.warn({ component: 'session', operation: 'clampedFutureTimestamp', sessionId: id, attributes: { hookTimestamp, now } });
-        session.lastHookEventAt = now;
-      } else {
-        session.lastHookEventAt = hookTimestamp;
-      }
-    }
-
-    // Issue #87: Track permission prompt timestamp
-    if (hookEvent === 'PermissionRequest') {
-      session.permissionPromptAt = now;
-    }
-
-    return prevStatus;
+    return applyHookEvent(session, hookEvent, hookTimestamp);
   }
 
   /** Issue #812: Detect if CC is waiting for user input by analyzing the JSONL transcript.
