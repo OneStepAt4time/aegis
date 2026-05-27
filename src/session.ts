@@ -31,8 +31,11 @@ import type { PendingPermissionInfo, PendingQuestionInfo } from './api-contracts
 import { startSessionSpan, spanError, spanOk } from './tracing.js';
 import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
-import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel, type PermissionDecision } from './services/session/permissions.js';
+import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel } from './services/session/permissions.js';
+import { hydrateSessions, isObjectRecord, detectModelFromSettings, detectIsolationMode, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
 export { resolveApprovalInput };
+export type { PermissionDecision };
+
 const log = new StructuredLogger();
 
 // Re-export types from session-types.ts for backward compatibility
@@ -57,25 +60,6 @@ const SEND_MESSAGE_IDLE_POLL_MS = 500;
 
 // hasBlankPromptNearBottom moved to session-ui-parser.ts
 
-function hydrateSessions(raw: z.infer<typeof persistedStateSchema>): Record<string, SessionInfo> {
-  const sessions: Record<string, SessionInfo> = Object.create(null);
-  for (const [id, s] of Object.entries(raw)) {
-    const { activeSubagents, displayName, ...rest } = s as Record<string, unknown>;
-    sessions[id] = {
-      ...rest,
-      displayName: (typeof (rest as Record<string, unknown>).displayName === 'string'
-        ? (rest as Record<string, unknown>).displayName
-        : typeof displayName === 'string' ? displayName : id.slice(0, 8)) as string,
-      activeSubagents: activeSubagents ? new Set(activeSubagents as string[]) : undefined,
-    } as SessionInfo;
-  }
-  return sessions;
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /**
  * Canonical runtime metadata for an Aegis-managed Claude Code session.
  *
@@ -99,69 +83,9 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 
 /** Issue #3740: Detect the model name from Claude Code settings files.
  * Reads ANTHROPIC_MODEL from env in settings.local.json or settings.json. */
-async function detectModelFromSettings(workDir: string): Promise<string | undefined> {
-  const candidates = [
-    join(workDir, '.claude', 'settings.local.json'),
-    join(workDir, '.claude', 'settings.json'),
-    join(homedir(), '.claude', 'settings.local.json'),
-    join(homedir(), '.claude', 'settings.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      if (!existsSync(p)) continue;
-      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
-      if (!raw) continue;
-      let obj: any;
-      try { obj = JSON.parse(raw); } catch { continue; }
-      const model = obj?.env?.ANTHROPIC_MODEL;
-      if (typeof model === 'string' && model.length > 0) return model;
-    } catch { continue; }
-  }
-  return undefined;
-}
-
 /** Detect session isolation mode from project or global Claude Code settings. */
-async function detectIsolationMode(workDir: string): Promise<'worktree' | 'none' | undefined> {
-  const candidates = [
-    join(workDir, '.claude', 'settings.local.json'),
-    join(workDir, '.claude', 'settings.json'),
-    join(homedir(), '.claude', 'settings.local.json'),
-    join(homedir(), '.claude', 'settings.json'),
-  ];
-
-  for (const p of candidates) {
-    try {
-      if (!existsSync(p)) continue;
-      const raw = await readFile(p, { encoding: 'utf8' }).catch(() => undefined);
-      if (!raw) continue;
-      let obj: any;
-      try { obj = JSON.parse(raw); } catch { continue; }
-      const val = obj?.worktree?.bgIsolation;
-      if (typeof val === 'string') {
-        if (val === 'none') return 'none';
-        if (val === 'worktree') return 'worktree';
-      }
-    } catch (_) {
-      // ignore and continue
-    }
-  }
-  return undefined;
-}
-
-function getUiApprovalInput(
-  paneText: string,
-  action: 'approve' | 'reject',
-  permissionMode: string,
-): string | null {
-  const state = detectUIState(paneText);
-  if (state !== 'permission_prompt' && state !== 'plan_mode' && state !== 'bash_approval') {
-    return null;
-  }
-  return resolveApprovalInput(paneText, action, permissionMode);
-}
-
 /** Resolves a pending PermissionRequest hook with a decision. */
-export type { PermissionDecision };
+
 
 /**
  * Coordinates session lifecycle, persistence, transcript discovery, and
