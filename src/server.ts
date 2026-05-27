@@ -87,6 +87,8 @@ import {
   DashboardSessionStore,
   type DashboardOIDCManager,
 } from './services/auth/OIDCManager.js';
+import { reapStaleSessions, reapZombieSessions, ZOMBIE_REAP_DELAY_MS, ZOMBIE_REAP_INTERVAL_MS } from './services/server/session-reaper.js';
+import { setupConfigWatcher } from './services/server/config-watcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -287,111 +289,9 @@ app.addHook('onSend', (req, reply, payload, done) => {
 
 // Route handlers are registered in main() via route modules (src/routes/*).
 
-// ── Session Reaper ──────────────────────────────────────────────────
 
-async function reapStaleSessions(maxAgeMs: number, ctx: AppContext): Promise<void> {
-  const now = Date.now();
-  // Snapshot list before iterating — killSession() modifies the sessions map
-  const snapshot = [...ctx.sessions.listSessions()];
-  for (const session of snapshot) {
-    // Guard: session may have been deleted by DELETE handler between snapshot and here
-    if (!ctx.sessions.getSession(session.id)) continue;
-    // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
-    if (session.isPinned) continue;
-    const age = now - session.createdAt;
-    if (age > maxAgeMs) {
-      const ageMin = Math.round(age / 60000);
-      logger.info({
-        component: 'server',
-        operation: 'reap_stale_sessions',
-        sessionId: session.id,
-        attributes: {
-          displayName: session.displayName,
-          ageMinutes: ageMin,
-        },
-      });
-      try {
-        // #842: killSession first, then notify — avoids race where channels
-        // reference a session that is still being destroyed.
-        // #4294: Shut down ACP runtime before killing session metadata.
-        await shutdownAcpRuntime(session.id, ctx);
-        await ctx.sessions.killSession(session.id);
-        eventBus.cleanupSession(session.id);
-        channels.sessionEnded({
-          event: 'session.ended',
-          timestamp: new Date().toISOString(),
-          session: { id: session.id, name: session.displayName, workDir: session.workDir },
-          detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
-        });
-        cleanupTerminatedSessionState(session.id, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'reap_stale_sessions',
-          sessionId: session.id,
-          errorCode: 'REAPER_KILL_FAILED',
-          attributes: {
-            error: e instanceof Error ? e.message : String(e),
-          },
-        });
-      }
-    }
-  }
-}
 
-// ── Zombie Reaper (Issue #283) ──────────────────────────────────────
 
-const ZOMBIE_REAP_DELAY_MS = parseIntSafe(process.env.ZOMBIE_REAP_DELAY_MS, 60000);
-const ZOMBIE_REAP_INTERVAL_MS = parseIntSafe(process.env.ZOMBIE_REAP_INTERVAL_MS, 60000);
-
-async function reapZombieSessions(ctx: AppContext): Promise<void> {
-  const now = Date.now();
-  // Snapshot list before iterating — killSession() modifies the sessions map
-  const snapshot = [...ctx.sessions.listSessions()];
-  for (const session of snapshot) {
-    // Guard: session may have been deleted between snapshot and here
-    if (!ctx.sessions.getSession(session.id)) continue;
-    // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
-    if (session.isPinned) continue;
-    if (!session.lastDeadAt) continue;
-    const deadDuration = now - session.lastDeadAt;
-    if (deadDuration < ZOMBIE_REAP_DELAY_MS) continue;
-
-    logger.info({
-      component: 'server',
-      operation: 'reap_zombie_sessions',
-      sessionId: session.id,
-      attributes: {
-        displayName: session.displayName,
-      },
-    });
-    try {
-      eventBus.cleanupSession(session.id);
-      // #4294: Shut down ACP runtime before killing session metadata.
-      await shutdownAcpRuntime(session.id, ctx);
-      await ctx.sessions.killSession(session.id);
-      // Issue #2947: mark zombie-reaped sessions as infra failures
-      ctx.metrics.sessionInfraFailed(session.id);
-      cleanupTerminatedSessionState(session.id, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
-      channels.sessionEnded({
-        event: 'session.ended',
-        timestamp: new Date().toISOString(),
-        session: { id: session.id, name: session.displayName, workDir: session.workDir },
-        detail: `Zombie reaped: dead for ${Math.round(deadDuration / 1000)}s`,
-      });
-    } catch (e) {
-      logger.error({
-        component: 'server',
-        operation: 'reap_zombie_sessions',
-        sessionId: session.id,
-        errorCode: 'ZOMBIE_REAP_FAILED',
-        attributes: {
-          error: e instanceof Error ? e.message : String(e),
-        },
-      });
-    }
-  }
-}
 
 // ── Start ────────────────────────────────────────────────────────────
 
@@ -434,77 +334,9 @@ function registerChannels(cfg: Config): void {
 // Preserve public export used by tests and external imports.
 export { readParentPid as readPpid } from './process-utils.js';
 
-// ── Config hot-reload (Issue #1753) ───────────────────────────────────
 
-/** Debounce timer for config file change events. Moved to AppContext. */
 
-/** Set up fs.watch on the active config file and a SIGHUP handler for manual reload.
- *  Only allowedWorkDirs is hot-reloaded — other config changes still require a restart. */
-// watchedConfigPath moved to AppContext
 
-function setupConfigWatcher(ctx: AppContext): void {
-  const configPath = findConfigFilePath();
-  if (!configPath) return; // No config file to watch
-  ctx.watchedConfigPath = configPath;
-
-  // SIGHUP handler for manual reload
-  process.on('SIGHUP', () => {
-    void handleConfigReload('SIGHUP', ctx);
-  });
-
-  // fs.watch for automatic detection
-  try {
-    ctx.configWatcher = watch(configPath, (_eventType) => {
-      // Accept all event types — editors emit rename (atomic save), change, or undefined.
-      // Debounce: FS events can fire multiple times for one save
-        if (ctx.configReloadTimer) timers.clearTimeout(ctx.configReloadTimer);
-        ctx.configReloadTimer = timers.setTimeout(() => {
-          void handleConfigReload('file-change', ctx);
-        }, 300);
-    });
-    ctx.configWatcher.on('error', () => {
-      // Watcher failed (file deleted, permissions) — disable gracefully
-      ctx.configWatcher?.close();
-      ctx.configWatcher = null;
-    });
-    logger.info({
-      component: 'server',
-      operation: 'config_watcher_started',
-      attributes: { configPath },
-    });
-  } catch {
-    // watch() can throw if file is inaccessible — just skip
-  }
-}
-
-/** Reload allowedWorkDirs from config file and update the live config object. */
-async function handleConfigReload(source: string, ctx: AppContext): Promise<void> {
-  try {
-    const newDirs = await reloadAllowedWorkDirs(ctx.watchedConfigPath ?? undefined);
-    if (newDirs === null) return; // Config file gone/invalid
-    const oldDirs = ctx.config.allowedWorkDirs;
-    const changed = newDirs.length !== oldDirs.length
-      || newDirs.some((d, i) => d !== oldDirs[i]);
-    if (changed) {
-      ctx.config.allowedWorkDirs = newDirs;
-      logger.info({
-        component: 'server',
-        operation: 'config_hot_reload',
-        attributes: {
-          source,
-          field: 'allowedWorkDirs',
-          count: newDirs.length,
-        },
-      });
-    }
-  } catch (e) {
-    logger.warn({
-      component: 'server',
-      operation: 'config_hot_reload_failed',
-      attributes: { source, error: e instanceof Error ? e.message : String(e) },
-    });
-  }
-}
 
 async function main(): Promise<void> {
   // Issue #4241: Single context object replaces all module-level mutable globals
@@ -519,7 +351,7 @@ async function main(): Promise<void> {
   await initTracing(loadTracingConfig());
 
   // Issue #1753: Watch config file for changes and hot-reload allowedWorkDirs
-  setupConfigWatcher(ctx);
+  setupConfigWatcher(ctx, { logger });
 
   // Initialize core components with config
 
@@ -720,8 +552,8 @@ new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
   sseBridge.register(app);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
-  timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx), ctx.config.reaperIntervalMs);
-  timers.setInterval(() => reapZombieSessions(ctx), ZOMBIE_REAP_INTERVAL_MS);
+  timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx, { logger, eventBus, channels }), ctx.config.reaperIntervalMs);
+  timers.setInterval(() => reapZombieSessions(ctx, { logger, eventBus, channels }), ZOMBIE_REAP_INTERVAL_MS);
   // Issue #4294: ACP orphan reaper — detects and shuts down ACP runtimes
   // whose sessions no longer exist in the session manager.
   const ACP_ORPHAN_REAP_INTERVAL_MS = parseIntSafe(process.env.ACP_ORPHAN_REAP_INTERVAL_MS, 60_000);
