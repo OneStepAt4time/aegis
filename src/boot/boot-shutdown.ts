@@ -279,4 +279,17 @@ export function registerShutdownHandler(deps: ShutdownDeps): void {
       }
     });
   }
+
+  // Standalone safety net — not part of shutdown, but registered alongside
+  // signal handlers for structured logging of unhandled promise rejections.
+  process.on('unhandledRejection', (reason) => {
+    logger.error({
+      component: 'server',
+      operation: 'unhandled_rejection',
+      errorCode: 'UNHANDLED_REJECTION',
+      attributes: {
+        reason: reason instanceof Error ? reason.message : String(reason),
+      },
+    });
+  });
 }
