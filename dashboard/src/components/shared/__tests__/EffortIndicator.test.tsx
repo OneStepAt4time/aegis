@@ -50,7 +50,7 @@ describe("EffortIndicator", () => {
 
   it("sets title attribute", () => {
     render(<EffortIndicator effort="high" />);
-    const el = screen.getByText("High").parentElement;
+    const el = screen.getByText("High");
     expect(el!.getAttribute("title")).toBe("Effort: high");
   });
 
