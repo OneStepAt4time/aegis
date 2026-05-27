@@ -32,7 +32,7 @@ Returns server health, version, uptime, and Claude CLI status.
 
 | Role | Required | Notes |
 |------|----------|-------|
-| None | — | Unauthenticated callers receive `{ "status": "ok", "sessions": { "active": N, "total": N } }` — version, uptime, and Claude CLI status are excluded |
+| None | — | Unauthenticated callers receive only `{ "status": "ok" }` — no session counts, version, uptime, or Claude CLI status |
 | admin | Yes | Full response with version, uptime, sessions, Claude CLI status |
 
 ```bash
@@ -63,13 +63,11 @@ curl http://localhost:9100/v1/health
 
 ```json
 {
-  "status": "ok",
-  "sessions": {
-    "active": 3,
-    "total": 42
-  }
+  "status": "ok"
 }
 ```
+
+> **Note:** Session counts were removed from unauthenticated responses to prevent info disclosure. Use authenticated requests to get full health data.
 
 **Errors:** None (always returns 200). Returns `draining` status during graceful shutdown.
 
