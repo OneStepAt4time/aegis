@@ -1,34 +1,32 @@
 /**
- * components/analytics/RateLimitChart.tsx — Per-key quota usage bars (Issue #2283). // token-ok // token-ok
- *
- * Bar chart showing sessions, tokens, and spend usage per API key
- * with color-coded thresholds: <66% cyan, 66-90% amber, >90% red.
- *
- * @ticket #3399 — chart polish with design tokens // token-ok
+ * components/analytics/RateLimitChart.tsx — Per-key quota usage bars.
+ * Migrated from recharts to chart.js for bundle savings.
+ * @ticket #4310
  */
 
 import {
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   Tooltip,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import type { RateLimitKeyUsage } from '../../types';
 import { useT } from '../../i18n/context';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB } from '../../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+
+function barColorRgb(ratio: number): string {
+  if (ratio >= 0.9) return CHART_RGB.danger;
+  if (ratio >= 0.66) return CHART_RGB.warning;
+  return CHART_RGB.cyan;
+}
 
 export function barColor(ratio: number): string {
-  if (ratio >= 0.9) return CHART_COLORS.danger;
-  if (ratio >= 0.66) return CHART_COLORS.warning;
-  return CHART_COLORS.cyan;
+  return `rgba(${barColorRgb(ratio)}, 0.8)`;
 }
 
 export interface RateLimitChartProps {
@@ -78,44 +76,8 @@ function formatUsd(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; payload?: ChartRow }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const row = payload[0]?.payload;
-  if (!row) return null;
-
-  return (
-    <div className={TOOLTIP_STYLE.container} role="tooltip">
-      <p className={TOOLTIP_STYLE.label}>{label}</p>
-      <div className="space-y-1 text-xs">
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Sessions:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {row.sessions}{row.sessionsMax != null ? ` / ${row.sessionsMax}` : ''}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Tokens:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {formatTokenCount(row.tokens)}{row.tokensMax != null ? ` / ${formatTokenCount(row.tokensMax)}` : ''}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Spend:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {formatUsd(row.spend)}{row.spendMax != null ? ` / ${formatUsd(row.spendMax)}` : ''}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function RateLimitChart({ perKey }: RateLimitChartProps) {
-    const t = useT();
+  const t = useT();
 
   if (perKey.length === 0) {
     return (
@@ -131,6 +93,84 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
 
   const data = toChartRows(perKey);
 
+  const chartJsData = {
+    labels: data.map((d) => d.name),
+    datasets: [
+      {
+        label: 'Sessions',
+        data: data.map((d) => d.sessionRatio),
+        backgroundColor: data.map((d) => barColor(d.sessionRatio)),
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.8,
+      },
+      {
+        label: 'Tokens',
+        data: data.map((d) => d.tokenRatio),
+        backgroundColor: data.map((d) => barColor(d.tokenRatio)),
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.8,
+      },
+      {
+        label: 'Spend',
+        data: data.map((d) => d.spendRatio),
+        backgroundColor: data.map((d) => barColor(d.spendRatio)),
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.8,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'bar'> = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 20, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        bodyColor: 'rgba(255, 255, 255, 0.9)',
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: (item) => {
+            const idx = item.dataIndex;
+            const row = data[idx];
+            if (!row) return '';
+            const ds = item.dataset.label;
+            if (ds === 'Sessions') return `Sessions: ${row.sessions}${row.sessionsMax != null ? ` / ${row.sessionsMax}` : ''}`;
+            if (ds === 'Tokens') return `Tokens: ${formatTokenCount(row.tokens)}${row.tokensMax != null ? ` / ${formatTokenCount(row.tokensMax)}` : ''}`;
+            if (ds === 'Spend') return `Spend: ${formatUsd(row.spend)}${row.spendMax != null ? ` / ${formatUsd(row.spendMax)}` : ''}`;
+            return '';
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        min: 0,
+        max: 1,
+        grid: { drawOnChartArea: true, color: 'rgba(255, 255, 255, 0.06)' },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: (value) => `${Math.round(Number(value) * 100)}%`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: { display: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.9)', font: { size: 11 } },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
+
   return (
     <section
       className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5"
@@ -144,77 +184,22 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
       {/* Dimension legend */}
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-[var(--color-text-muted)]">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.cyan }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `rgba(${CHART_RGB.cyan}, 0.8)` }} />
           Sessions
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.warning }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `rgba(${CHART_RGB.warning}, 0.8)` }} />
           Tokens
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLORS.danger }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `rgba(${CHART_RGB.danger}, 0.8)` }} />
           Spend
         </span>
       </div>
 
-      {/* Bar chart — shows max session ratio as the primary bar */}
-      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 60)} minWidth={1} minHeight={1}>
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ left: 0, right: 20, top: 5, bottom: 5 }}
-        >
-          <CartesianGrid {...CHART_GRID} horizontal={false} />
-          <XAxis
-            type="number"
-            domain={[0, 1]}
-            tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-            tick={CHART_TICK}
-            {...CHART_AXIS}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            tick={{ ...CHART_TICK, fill: 'var(--color-text-primary)' }}
-            {...CHART_AXIS}
-            width={100}
-          />
-          <Tooltip content={<ChartTooltip />} />
-          <Bar
-            dataKey="sessionRatio"
-            name="Sessions"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.sessionUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`s-${i}`} fill={barColor(row.sessionRatio)} />
-            ))}
-          </Bar>
-          <Bar
-            dataKey="tokenRatio"
-            name="Tokens"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.tokenUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`t-${i}`} fill={barColor(row.tokenRatio)} />
-            ))}
-          </Bar>
-          <Bar
-            dataKey="spendRatio"
-            name="Spend"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.spendUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`sp-${i}`} fill={barColor(row.spendRatio)} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div style={{ height: Math.max(200, data.length * 60) }}>
+        <Bar data={chartJsData} options={options} />
+      </div>
     </section>
   );
 }

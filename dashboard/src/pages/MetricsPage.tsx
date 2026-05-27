@@ -1,24 +1,24 @@
 /**
  * pages/MetricsPage.tsx — Aggregated metrics dashboard with charts and breakdown.
- * Issue #2087: Metrics aggregation dashboard. // token-ok
+ * Migrated from recharts to chart.js for bundle savings.
+ * @ticket #4310
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Clock, DollarSign, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from 'recharts';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-} from '../utils/chartTheme';
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Tooltip as ChartJSTooltip,
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
+import { CHART_RGB } from '../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ChartJSTooltip);
 
 import { getMetricsAggregate, type AggregateMetricsResponse } from '../api/client';
 import { useStore } from '../store/useStore';
@@ -26,7 +26,6 @@ import { useT } from '../i18n/context';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
-import { ChartFrame } from '../components/shared/ChartFrame';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 import { SkeletonStatCard } from '../components/shared/Skeleton';
 import { ErrorState } from '../components/ErrorState';
@@ -47,27 +46,6 @@ function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
-      {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
-            {entry.name.toLowerCase().includes('cost') ? formatCurrency(entry.value) : entry.value.toLocaleString()}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function generateCSV(data: AggregateMetricsResponse): string {
@@ -118,6 +96,7 @@ export default function MetricsPage() {
   };
 
   const summary = data?.summary;
+  const timeSeries = data?.timeSeries ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,7 +120,6 @@ export default function MetricsPage() {
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Range selector */}
           {(['7d', '30d', '90d'] as RangePreset[]).map((r) => (
             <button
               key={r}
@@ -159,7 +137,6 @@ export default function MetricsPage() {
 
           <span className="mx-2 hidden h-4 w-px bg-[var(--color-border-strong)] sm:block" />
 
-          {/* Granularity selector */}
           {(['day', 'hour', 'key'] as Granularity[]).map((g) => (
             <button
               key={g}
@@ -277,81 +254,111 @@ export default function MetricsPage() {
         </section>
       )}
 
-      {/* Time-series chart */}
+      {/* Time-series bar chart */}
       {data && granularity !== 'key' && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Sessions &amp; Cost Over Time
           </h3>
-          <ChartFrame className="h-64 min-w-0" label="Loading sessions and cost chart">
-            {({ width, height }) => (
-              <BarChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  yAxisId="sessions"
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  yAxisId="cost"
-                  orientation="right"
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  yAxisId="sessions"
-                  dataKey="sessions"
-                  name={t("metrics.chartSessions")}
-                  fill={CHART_COLORS.cyan}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            )}
-          </ChartFrame>
+          <div style={{ height: 256 }}>
+            <Bar
+              data={{
+                labels: timeSeries.map((tp) => tp.timestamp),
+                datasets: [{
+                  label: t("metrics.chartSessions"),
+                  data: timeSeries.map((tp) => tp.sessions),
+                  backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+                  borderWidth: 0,
+                  borderRadius: 4,
+                }],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: 'rgba(15, 15, 20, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    bodyColor: 'rgba(255, 255, 255, 0.9)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                      title: (items: { label: string }[]) => items[0] ? formatDateShort(items[0].label) : '',
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 }, maxRotation: 0 },
+                    border: { color: 'rgba(255, 255, 255, 0.06)' },
+                  },
+                  y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 } },
+                    border: { color: 'rgba(255, 255, 255, 0.06)' },
+                  },
+                },
+              }}
+            />
+          </div>
         </section>
       )}
 
       {/* Cost trend line chart */}
-      {data && granularity !== 'key' && (data.timeSeries ?? []).length > 0 && (
+      {data && granularity !== 'key' && timeSeries.length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
           </h3>
-          <ChartFrame className="h-48 min-w-0" label="Loading token cost trend chart">
-            {({ width, height }) => (
-              <LineChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="tokenCostUsd"
-                  name={t("metrics.chartTokenCost")}
-                  stroke={CHART_COLORS.purple}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            )}
-          </ChartFrame>
+          <div style={{ height: 192 }}>
+            <Line
+              data={{
+                labels: timeSeries.map((tp) => tp.timestamp),
+                datasets: [{
+                  label: t("metrics.chartTokenCost"),
+                  data: timeSeries.map((tp) => tp.tokenCostUsd),
+                  borderColor: `rgba(${CHART_RGB.purple}, 1)`,
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.4,
+                }],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: 'rgba(15, 15, 20, 0.95)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    bodyColor: 'rgba(255, 255, 255, 0.9)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                      title: (items: { label: string }[]) => items[0] ? formatDateShort(items[0].label) : '',
+                      label: (item: { raw: unknown }) => `$${Number(item.raw).toFixed(2)}`,
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 }, maxRotation: 0 },
+                    border: { color: 'rgba(255, 255, 255, 0.06)' },
+                  },
+                  y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 }, callback: (value) => `$${Number(value).toFixed(2)}` },
+                    border: { color: 'rgba(255, 255, 255, 0.06)' },
+                  },
+                },
+              }}
+            />
+          </div>
         </section>
       )}
 

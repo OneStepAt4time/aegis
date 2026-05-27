@@ -8,14 +8,21 @@
  * @ticket #3399 — chart polish with design tokens // token-ok
  */
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
-import { ChartFrame } from '../shared/ChartFrame';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip as ChartJSTooltip,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ChartJSTooltip);
 import { formatCompact } from '../../utils/formatNumber';
 import { GitBranch, GitCommit, GitPullRequest, Users } from 'lucide-react';
 import {
   AGENT_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, TOOLTIP_STYLE,
+  CHART_RGB,
 } from '../../utils/chartTheme';
 
 export interface AgentContribution {
@@ -42,35 +49,6 @@ const MOCK_DATA: AgentContribution[] = [
   { agent: 'Athena', commits: 8, additions: 920, deletions: 180, prs: 2, role: 'PM' },
 ];
 
-function CustomTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: Array<{ payload: AgentContribution }>;
-}) {
-  if (!active || !payload?.length) return null;
-  const point = payload[0].payload;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className="mb-1 text-sm font-medium text-[var(--color-text-primary)]">
-        {point.agent}
-        <span className="ml-2 text-xs text-[var(--color-text-muted)]">{point.role}</span>
-      </p>
-      <div className="mt-2 space-y-1 text-xs">
-        <div className="flex justify-between gap-6">
-          <span className={TOOLTIP_STYLE.rowLabel}>Commits</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">{point.commits}</span>
-        </div>
-        <div className="flex justify-between gap-6">
-          <span className="text-[var(--color-success)]">+{formatCompact(point.additions)}</span>
-          <span className="text-[var(--color-danger)]">-{formatCompact(point.deletions)}</span>
-        </div>
-        <div className="flex justify-between gap-6">
-          <span className={TOOLTIP_STYLE.rowLabel}>PRs</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">{point.prs}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function AgentContributionsPanel({ data, loading = false, className = '' }: AgentContributionsPanelProps) {
   const contributions = data ?? MOCK_DATA;
@@ -170,34 +148,63 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
       </div>
 
       {/* Commit chart — horizontal bar */}
-      <ChartFrame className="h-56 min-w-0" label="Agent commits chart loading">
-        {({ width, height }) => (
-          <BarChart width={width} height={height} data={contributions} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid {...CHART_GRID} horizontal={false} />
-            <XAxis
-              type="number"
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              type="category"
-              dataKey="agent"
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-              width={90}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="commits" radius={[0, 4, 4, 0]} animationDuration={CHART_ANIMATION.duration}>
-              {contributions.map((entry) => (
-                <Cell
-                  key={entry.agent}
-                  fill={AGENT_COLORS[entry.agent] ?? AGENT_COLORS.other}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        )}
-      </ChartFrame>
+      <div style={{ height: 224 }}>
+        <Bar
+          data={{
+            labels: contributions.map((d) => d.agent),
+            datasets: [{
+              data: contributions.map((d) => d.commits),
+              backgroundColor: contributions.map((d) => {
+                const cssVar = AGENT_COLORS[d.agent] ?? AGENT_COLORS.other;
+                const rgbMap: Record<string, string> = {
+                  'var(--color-accent-cyan)': CHART_RGB.cyan,
+                  'var(--color-accent-purple)': CHART_RGB.purple,
+                  'var(--color-success)': CHART_RGB.success,
+                  'var(--color-warning)': CHART_RGB.warning,
+                  'var(--color-info)': CHART_RGB.info,
+                  'var(--color-text-muted)': CHART_RGB.cyan,
+                };
+                return `rgba(${rgbMap[cssVar] ?? CHART_RGB.cyan}, 0.7)`;
+              }),
+              borderWidth: 0,
+              borderRadius: 4,
+              barPercentage: 0.7,
+            }],
+          }}
+          options={{
+            indexAxis: 'y' as const,
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(15, 15, 20, 0.95)',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                bodyColor: 'rgba(255, 255, 255, 0.9)',
+                padding: 12,
+                cornerRadius: 8,
+                callbacks: {
+                  label: (item: { raw: unknown }) => String(Number(item.raw)) + ' commits',
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { drawOnChartArea: true, color: 'rgba(255, 255, 255, 0.06)' },
+                ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 } },
+                border: { color: 'rgba(255, 255, 255, 0.06)' },
+              },
+              y: {
+                grid: { display: false },
+                ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 11 } },
+                border: { color: 'rgba(255, 255, 255, 0.06)' },
+              },
+            },
+          }}
+        />
+      </div>
 
       {/* Agent list */}
       <div className="mt-4 space-y-2">
