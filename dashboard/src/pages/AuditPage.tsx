@@ -33,6 +33,8 @@ import {
 } from '../api/client';
 import type { AuditRecord, AuditChainMetadata, AuditIntegrityMetadata } from '../types';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
+import { useStore } from '../store/useStore';
+
 
 const ACTION_SUGGESTIONS = [
   'key.create',
@@ -577,35 +579,58 @@ export default function AuditPage() {
     recordHashesRef.current = new Set(records.map((r) => r.hash));
   }, [records]);
 
-  // Live tail — poll every 10s and prepend new entries
+  // SSE-triggered live tail — fetch on new activity instead of polling
+  const activities = useStore((s) => s.activities);
+  const sseConnected = useStore((s) => s.sseConnected);
+  const lastActivityCountRef = useRef(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch latest audit records (shared helper for SSE-trigger and degraded polling)
+  const liveTailFetch = useCallback(async () => {
+    try {
+      const data = await fetchAuditLogs({
+        ...buildAuditParams(appliedFilters),
+        limit: pageSize,
+        reverse: true,
+      });
+      if (data.records.length === 0) return;
+
+      const topHash = data.records[0].hash;
+      if (topHash === latestHashRef.current) return;
+
+      const newRecords = data.records.filter((r) => !recordHashesRef.current.has(r.hash));
+      if (newRecords.length === 0) return;
+
+      latestHashRef.current = topHash;
+      setRecords((prev) => [...newRecords, ...prev]);
+      setTotal((prev) => prev + newRecords.length);
+    } catch {
+      // Silent — live tail is best-effort
+    }
+  }, [appliedFilters, pageSize]);
+
+  // SSE-triggered: fetch audit when new activities arrive, debounced
   useEffect(() => {
     if (!liveTail || page !== 1) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const data = await fetchAuditLogs({
-          ...buildAuditParams(appliedFilters),
-          limit: pageSize,
-          reverse: true,
-        });
-        if (data.records.length === 0) return;
+    if (activities.length <= lastActivityCountRef.current) return;
+    lastActivityCountRef.current = activities.length;
 
-        const topHash = data.records[0].hash;
-        if (topHash === latestHashRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { void liveTailFetch(); }, 2000);
 
-        const newRecords = data.records.filter((r) => !recordHashesRef.current.has(r.hash));
-        if (newRecords.length === 0) return;
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [liveTail, page, activities, liveTailFetch]);
 
-        latestHashRef.current = topHash;
-        setRecords((prev) => [...newRecords, ...prev]);
-        setTotal((prev) => prev + newRecords.length);
-      } catch {
-        // Silent — live tail is best-effort
-      }
-    }, LIVE_TAIL_POLL_MS);
+  // Degraded polling fallback when SSE is disconnected
+  useEffect(() => {
+    if (!liveTail || page !== 1 || sseConnected) return;
 
+    const interval = setInterval(() => { void liveTailFetch(); }, LIVE_TAIL_POLL_MS);
     return () => clearInterval(interval);
-  }, [liveTail, page, pageSize, appliedFilters]);
+  }, [liveTail, page, sseConnected, liveTailFetch]);
 
   const applyFilters = () => {
     const nextFilters = trimFilters(filters);
