@@ -19,7 +19,7 @@ import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { validateWorkdirPath } from './tenant-workdir.js';
 import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 // PermissionDecision and request management now via SessionPermissionService
@@ -44,6 +44,8 @@ export type { UIState, SessionInfo, SessionState, PersistedStateData };
 
 import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 import { recordHookFailure as _recordHookFailure, recordHookSuccess as _recordHookSuccess, checkHookCircuitBreaker as _checkHookCircuitBreaker } from './session-hook-circuit-breaker.js';
+import { applyHookEvent } from './session-status-updater.js';
+import { sanitizeSessionEnv } from './session-env.js';
 export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
@@ -345,36 +347,7 @@ export class SessionManager {
 
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
-    // Security: validate env var names to prevent injection attacks
-    const DANGEROUS_ENV_VARS = new Set(ENV_DENYLIST);
-    const DANGEROUS_ENV_PREFIXES = ENV_DANGEROUS_PREFIXES;
-    const mergedEnv: Record<string, string> = {};
-    const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
-    for (const [key, value] of Object.entries(allEnv)) {
-      // Issue #1093: Check dangerous prefixes FIRST (before name regex), since some
-      // dangerous prefixes like npm_config_ are lowercase and would fail the regex check.
-      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
-        const matchedPrefix = DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))!;
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${matchedPrefix}"`);
-      }
-      if (!ENV_NAME_RE.test(key)) {
-        throw new Error(`Invalid env var name: "${key}" — must match /^[A-Z_][A-Z0-9_]*$/`);
-      }
-      if (DANGEROUS_ENV_VARS.has(key)) {
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
-      }
-      // Value hardening (Issue #1908): reject CR/LF and control chars
-      if (/[\r\n]/.test(value)) {
-        throw new Error(`Forbidden env var value for "${key}" — contains CR/LF characters`);
-      }
-      if (hasControlChars(value)) {
-        throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
-      }
-      if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
-        throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
-      }
-      mergedEnv[key] = value;
-    }
+    const mergedEnv = sanitizeSessionEnv(this.config.defaultSessionEnv, opts.env);
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
     // Permission guard: if permissionMode is "default", neutralize any project-level
@@ -576,90 +549,7 @@ export class SessionManager {
   updateStatusFromHook(id: string, hookEvent: string, hookTimestamp?: number): UIState | null {
     const session = this.state.sessions[id];
     if (!session) return null;
-
-    const prevStatus = session.status;
-    const now = Date.now();
-
-    // Map hook events to UI states
-    switch (hookEvent) {
-      case 'Stop':
-      case 'TaskCompleted':
-      case 'SessionEnd':
-        // Issue #2538: CC finished work — transition to idle immediately
-        // so the API returns the correct status instead of staying "working".
-        session.status = 'idle';
-        break;
-      case 'TeammateIdle':
-        // Informational — a teammate went idle, not this session
-        break;
-      case 'PreToolUse':
-        // Issue #2520: Track tool use count for premature termination detection
-        session.toolUseCount = (session.toolUseCount ?? 0) + 1;
-        session.status = 'working';
-        break;
-      case 'PostToolUse':
-      case 'SubagentStart':
-      case 'UserPromptSubmit':
-        session.status = 'working';
-        break;
-      case 'PermissionRequest':
-        session.status = 'permission_prompt';
-        break;
-      case 'StopFailure':
-      case 'PostToolUseFailure':
-        session.status = 'error';
-        break;
-      case 'Notification':
-      case 'PreCompact':
-      case 'PostCompact':
-      case 'SubagentStop':
-        // Informational events — no status change
-        break;
-      default:
-        // Unknown hook events: no status change
-        break;
-    }
-
-    // Issue #2520: Detect premature termination. Upstream CC kills background
-    // agents at ~20-30 tool uses with no wrap-up (upstream #55707).
-    const PREMATURE_MIN_TOOLS = parseInt(process.env.PREMATURE_TERMINATION_MIN_TOOLS ?? '30', 10);
-    const PREMATURE_MIN_DURATION_MS = parseInt(process.env.PREMATURE_TERMINATION_MIN_DURATION_MS ?? '30000', 10);
-    if ((hookEvent === 'TaskCompleted' || hookEvent === 'Stop') && session.toolUseCount !== undefined) {
-      const toolCount = session.toolUseCount;
-      const duration = now - session.createdAt;
-      if (toolCount > 0 && toolCount <= PREMATURE_MIN_TOOLS && duration >= PREMATURE_MIN_DURATION_MS) {
-        session.prematureTermination = true;
-        log.warn({
-          component: 'session',
-          operation: 'possiblePrematureTermination',
-          sessionId: id,
-          attributes: { toolCount, durationMs: duration, thresholdTools: PREMATURE_MIN_TOOLS, thresholdMs: PREMATURE_MIN_DURATION_MS },
-        });
-      }
-    }
-
-    session.lastHookAt = now;
-    session.lastActivity = now;
-
-    // Issue #87: Record hook receive timestamp for latency calculation
-    session.lastHookReceivedAt = now;
-    if (hookTimestamp) {
-      // Issue #828: Clamp future timestamps to prevent clock skew corruption.
-      // If the client's clock is ahead of ours, store our timestamp instead.
-      if (hookTimestamp > now) {
-        log.warn({ component: 'session', operation: 'clampedFutureTimestamp', sessionId: id, attributes: { hookTimestamp, now } });
-        session.lastHookEventAt = now;
-      } else {
-        session.lastHookEventAt = hookTimestamp;
-      }
-    }
-
-    // Issue #87: Track permission prompt timestamp
-    if (hookEvent === 'PermissionRequest') {
-      session.permissionPromptAt = now;
-    }
-
-    return prevStatus;
+    return applyHookEvent(session, hookEvent, hookTimestamp);
   }
 
   /** Issue #812: Detect if CC is waiting for user input by analyzing the JSONL transcript.
