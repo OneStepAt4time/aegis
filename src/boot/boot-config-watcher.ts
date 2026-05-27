@@ -2,11 +2,11 @@
 
 import { watch } from 'node:fs';
 import { timers as nodeTimers } from 'node:timers';
-import { reloadAllowedWorkDirs } from '../config.js';
+import { reloadAllowedWorkDirs, findConfigFilePath } from '../config.js';
 import type { AppContext } from '../app-context.js';
 
 export function setupConfigWatcherImpl(ctx: AppContext, logger: any, timers: any): void {
-  const configPath = (awaitFindConfigPath());
+  const configPath = findConfigFilePath();
   if (!configPath) return;
   ctx.watchedConfigPath = configPath;
 
@@ -31,11 +31,6 @@ export function setupConfigWatcherImpl(ctx: AppContext, logger: any, timers: any
   }
 }
 
-async function awaitFindConfigPath(): Promise<string | null> {
-  // Placeholder: caller should supply configPath via ctx or resolve function.
-  // To avoid circular imports, expect ctx.watchedConfigPath to be set before use.
-  return null;
-}
 
 export async function handleConfigReloadImpl(source: string, ctx: AppContext, logger: any): Promise<void> {
   try {
