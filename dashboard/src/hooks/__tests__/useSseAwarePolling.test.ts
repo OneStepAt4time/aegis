@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useSseAwarePolling } from '../useSseAwarePolling';
 
 describe('useSseAwarePolling', () => {
-  let refresh: ReturnType<typeof vi.fn>;
+  let refresh: ReturnType<typeof vi.fn<() => Promise<void>>>;
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

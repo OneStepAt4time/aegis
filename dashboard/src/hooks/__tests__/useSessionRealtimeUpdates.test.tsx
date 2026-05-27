@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useSessionRealtimeUpdates } from '../useSessionRealtimeUpdates';
 import { useStore } from '../../store/useStore';
-import { useApprovalStore } from '../../store/useApprovalStore';
-import { useToastStore } from '../../store/useToastStore';
 import type { SessionInfo } from '../../types';
 
 // Mock stores
@@ -41,10 +39,6 @@ vi.mock('../../store/useToastStore', () => ({
   },
 }));
 
-function makeEvent(event: string, sessionId: string, data?: Record<string, unknown>) {
-  return { event, sessionId, data, renderKey: `${event}-${sessionId}-${Date.now()}` };
-}
-
 describe('useSessionRealtimeUpdates', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,28 +58,23 @@ describe('useSessionRealtimeUpdates', () => {
       lastActivity: Date.now(),
     } as SessionInfo;
 
-    vi.mocked(useStore).getState = vi.fn().ReturnValue = () => ({
+    vi.mocked(useStore).getState = vi.fn().mockReturnValue(() => ({
       sessions: [session],
       setSessions: mockSetSessions,
       healthMap: {},
       setHealth: mockSetHealth,
-    });
+    }));
 
-    // Re-render with activities
     const { rerender } = renderHook(
-      ({ activities }) => useSessionRealtimeUpdates(),
-      { initialProps: { activities: [] } },
+      () => useSessionRealtimeUpdates(),
     );
 
-    // This test validates the hook can be called without errors
-    // Full integration testing requires complex store setup
-    rerender({ activities: [] });
+    rerender();
     expect(true).toBe(true);
   });
 
   it('handles session_stall event by updating healthMap', () => {
     renderHook(() => useSessionRealtimeUpdates());
-    // Hook renders without error
     expect(mockSetHealth).not.toHaveBeenCalled();
   });
 
@@ -96,7 +85,6 @@ describe('useSessionRealtimeUpdates', () => {
 
   it('ignores events with sessionId === global', () => {
     renderHook(() => useSessionRealtimeUpdates());
-    // No store mutations for global events
     expect(mockSetSessions).not.toHaveBeenCalled();
   });
 
@@ -108,7 +96,6 @@ describe('useSessionRealtimeUpdates', () => {
 
   it('removes approval when status changes away from permission_prompt', () => {
     renderHook(() => useSessionRealtimeUpdates());
-    // Hook initializes cleanly
     expect(mockRemoveApproval).not.toHaveBeenCalled();
   });
 });

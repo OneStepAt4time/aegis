@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals('EventSource');
+  vi.unstubAllGlobals();
 });
 
 describe('useAcpApproval', () => {
