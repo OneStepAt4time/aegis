@@ -144,4 +144,75 @@ describe('useSessionParticipants', () => {
     act(() => result.current.clearError());
     expect(result.current.error).toBeNull();
   });
+
+  // Additional tests for branch coverage
+
+  it('handles non-Error claim rejection', async () => {
+    mockGetSessionParticipants.mockResolvedValue(null);
+    mockClaimDriver.mockRejectedValue('string error');
+
+    const { useSessionParticipants } = await import('../useSessionParticipants');
+    const { result } = renderHook(() => useSessionParticipants('sess-1'));
+
+    await act(async () => {
+      await result.current.claim();
+    });
+
+    expect(result.current.error).toBe('Failed to claim driver');
+  });
+
+  it('handles non-Error release rejection', async () => {
+    mockGetSessionParticipants.mockResolvedValue(mockParticipants);
+    mockReleaseDriver.mockRejectedValue('string error');
+
+    const { useSessionParticipants } = await import('../useSessionParticipants');
+    const { result } = renderHook(() => useSessionParticipants('sess-1'));
+
+    await waitFor(() => expect(result.current.participants).toBeTruthy());
+
+    await act(async () => {
+      await result.current.release();
+    });
+
+    expect(result.current.error).toBe('Failed to release driver');
+  });
+
+  it('handles non-Error transfer rejection', async () => {
+    mockGetSessionParticipants.mockResolvedValue(mockParticipants);
+    mockTransferDriver.mockRejectedValue('string error');
+
+    const { useSessionParticipants } = await import('../useSessionParticipants');
+    const { result } = renderHook(() => useSessionParticipants('sess-1'));
+
+    await waitFor(() => expect(result.current.participants).toBeTruthy());
+
+    await act(async () => {
+      await result.current.transfer({ targetSubscriberId: 'user-2' });
+    });
+
+    expect(result.current.error).toBe('Failed to transfer driver');
+  });
+
+  it('detects isDriver=false when no currentUserId', async () => {
+    mockGetSessionParticipants.mockResolvedValue(mockParticipants);
+
+    const { useSessionParticipants } = await import('../useSessionParticipants');
+    const { result } = renderHook(() => useSessionParticipants('sess-1'));
+
+    await waitFor(() => {
+      expect(result.current.participants).toBeTruthy();
+      expect(result.current.isDriver).toBe(false);
+    });
+  });
+
+  it('detects isDriver=false when driver is null', async () => {
+    mockGetSessionParticipants.mockResolvedValue({ ...mockParticipants, driver: null });
+
+    const { useSessionParticipants } = await import('../useSessionParticipants');
+    const { result } = renderHook(() => useSessionParticipants('sess-1', 'user-1'));
+
+    await waitFor(() => {
+      expect(result.current.isDriver).toBe(false);
+    });
+  });
 });
