@@ -1,12 +1,6 @@
 import { readNewEntries } from '../../transcript.js';
 import type { SessionInfo, UIState } from '../../session-types.js';
 
-export type LatencyMetrics = {
-  hook_latency_ms: number | null;
-  state_change_detection_ms: number | null;
-  permission_response_ms: number | null;
-};
-
 export type SessionHealthInfo = {
   alive: boolean;
   claudeRunning: boolean;
@@ -18,29 +12,6 @@ export type SessionHealthInfo = {
   details: string;
   actionHints?: Record<string, { method: string; url: string; description: string }>;
 };
-
-export function computeLatencyMetrics(session: SessionInfo | null | undefined): LatencyMetrics | null {
-  if (!session) return null;
-
-  let hookLatency: number | null = null;
-  if (session.lastHookReceivedAt && session.lastHookEventAt) {
-    hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
-    if (hookLatency < 0) hookLatency = null;
-  }
-
-  const stateChangeDetection: number | null = hookLatency;
-
-  let permissionResponse: number | null = null;
-  if (session.permissionPromptAt && session.permissionRespondedAt) {
-    permissionResponse = session.permissionRespondedAt - session.permissionPromptAt;
-  }
-
-  return {
-    hook_latency_ms: hookLatency,
-    state_change_detection_ms: stateChangeDetection,
-    permission_response_ms: permissionResponse,
-  };
-}
 
 export async function checkWaitingForInput(session: SessionInfo): Promise<boolean> {
   if (!session?.jsonlPath) return false;

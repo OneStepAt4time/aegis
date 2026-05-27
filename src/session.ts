@@ -11,7 +11,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState } from './services/state/state-store.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
-import { buildSessionHealth, checkWaitingForInput, computeLatencyMetrics } from './services/session/session-health.js';
+import { buildSessionHealth, checkWaitingForInput } from './services/session/session-health.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';

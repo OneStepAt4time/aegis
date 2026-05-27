@@ -7,7 +7,8 @@ vi.mock('../transcript.js', () => ({
 import { readNewEntries } from '../transcript.js';
 const mockReadNewEntries = vi.mocked(readNewEntries);
 
-import { computeLatencyMetrics, buildSessionHealth, checkWaitingForInput } from '../services/session/session-health.js';
+import { computeLatencyMetrics } from '../services/session/latency-metrics.js';
+import { buildSessionHealth, checkWaitingForInput } from '../services/session/session-health.js';
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {
@@ -32,10 +33,6 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 }
 
 describe('computeLatencyMetrics', () => {
-  it('returns null for falsy session', () => {
-        expect(computeLatencyMetrics(null)).toBeNull();
-  });
-
   it('computes metrics when all timestamps present', () => {
     const now = Date.now();
     const session = makeSession({ lastHookReceivedAt: now, lastHookEventAt: now - 50, permissionPromptAt: now - 200, permissionRespondedAt: now - 100 });
