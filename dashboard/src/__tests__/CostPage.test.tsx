@@ -165,8 +165,10 @@ describe('CostPage', () => {
     });
 
     // Model names should be visible in the model breakdown
-    expect(screen.getAllByText('claude-sonnet-4.6').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('claude-opus-4.7').length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText('claude-sonnet-4.6').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('claude-opus-4.7').length).toBeGreaterThan(0);
+    });
   });
 
   it('displays time range picker with 7d, 30d, and 90d options', async () => {
