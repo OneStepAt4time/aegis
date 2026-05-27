@@ -19,7 +19,7 @@ export type SessionHealthInfo = {
   actionHints?: Record<string, { method: string; url: string; description: string }>;
 };
 
-export function computeLatencyMetrics(session: SessionInfo): LatencyMetrics | null {
+export function computeLatencyMetrics(session: SessionInfo | null | undefined): LatencyMetrics | null {
   if (!session) return null;
 
   let hookLatency: number | null = null;
