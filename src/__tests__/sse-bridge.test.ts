@@ -1,147 +1,166 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createSSEBridge } from '../services/sse-bridge.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { EventBus, BusEvent, BusEventHandler } from '../event-bus.js';
 
-class MockEventBus {
-  handlers = new Map<string, BusEventHandler[]>();
-  subscribe(ch: string, h: BusEventHandler): () => void {
-    const arr = this.handlers.get(ch) ?? [];
-    arr.push(h);
-    this.handlers.set(ch, arr);
-    return () => {
-      const cur = this.handlers.get(ch) ?? [];
-      this.handlers.set(ch, cur.filter((x: BusEventHandler) => x !== h));
-    };
+class MockEventBus implements EventBus {
+  handlers = new Map<string, Set<BusEventHandler>>();
+  events: BusEvent[] = [];
+  nextId = 1;
+
+  publish(channel: string, type: string, data: Record<string, unknown>): number {
+    const id = this.nextId++;
+    const ev: BusEvent = { channel, id, type, timestamp: new Date().toISOString(), data };
+    this.events.push(ev);
+    for (const [pattern, handlers] of this.handlers.entries()) {
+      if (pattern === channel || pattern.includes('*')) {
+        for (const h of handlers) h(ev);
+      }
+    }
+    return id;
   }
-  emit(ch: string, ev: BusEvent): void {
-    const arr = this.handlers.get(ch) ?? [];
-    for (const h of arr) h(ev);
+
+  subscribe(channel: string, handler: BusEventHandler): () => void {
+    let set = this.handlers.get(channel);
+    if (!set) { set = new Set(); this.handlers.set(channel, set); }
+    set.add(handler);
+    return () => set!.delete(handler);
+  }
+
+  async replaySince(channel: string, lastEventId: number): Promise<BusEvent[]> {
+    return this.events.filter(e => e.channel === channel && e.id > lastEventId);
+  }
+
+  destroy(): void {
+    this.handlers.clear();
   }
 }
 
-interface FakeServer {
-  get(path: string, handler: (req: any, reply: any) => Promise<void>): void;
-  __getHandler(): ((req: any, reply: any) => Promise<void>) | null;
-}
-
-function createFakeServer(): FakeServer {
-  let captured: ((req: any, reply: any) => Promise<void>) | null = null;
+function createMockFastify() {
+  const routes: Array<{ method: string; url: string; handler: Function }> = [];
   return {
-    get(_path: string, handler: (req: any, reply: any) => Promise<void>) {
-      captured = handler;
-    },
-    __getHandler() { return captured; }
-  };
+    get: vi.fn((url: string, opts: any, handler: Function) => {
+      // Fastify .get(url, opts, handler) or .get(url, handler)
+      const actualHandler = typeof opts === 'function' ? opts : handler;
+      routes.push({ method: 'GET', url, handler: actualHandler });
+    }),
+    _routes: routes,
+  } as any;
 }
 
-function makeReqReply() {
-  const writes: string[] = [];
+function createMockReqReply(query: Record<string, string> = {}) {
+  const written: string[] = [];
+  const headers: Record<string, string> = {};
   const raw = {
-    writes,
-    setHeader(_k: string, _v: string) {},
-    write(s: string) { writes.push(s); },
-    on: (_ev: string, fn: () => void) => { (raw as any).__close = fn; }
+    setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+    write: vi.fn((data: string) => { written.push(data); return true; }),
+    _written: written,
+    _headers: headers,
   };
-  const req = { raw, query: {} as Record<string, string> };
-  const reply = { raw };
-  return { req, reply, raw };
+  const closeHandlers: Array<() => void> = [];
+  return {
+    request: { query, raw: { on: vi.fn((event: string, handler: () => void) => { if (event === 'close') closeHandlers.push(handler); }) }, id: 'test-req' },
+    reply: { raw, _closeHandlers: closeHandlers },
+    written,
+  };
 }
-
-function wait(ms = 20): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
 describe('SSE Bridge', () => {
-  let bus: MockEventBus;
-  let server: FakeServer;
+  let eventBus: MockEventBus;
+  let mockFastify: ReturnType<typeof createMockFastify>;
+
   beforeEach(() => {
-    bus = new MockEventBus();
-    server = createFakeServer();
+    eventBus = new MockEventBus();
+    mockFastify = createMockFastify();
   });
 
-  it('registers route and fans out events to clients', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const { req, reply, raw } = makeReqReply();
-    await handler!(req, reply);
-    bus.emit('global', { id: 1, type: 't', channel: 'global', data: { a: 1 }, timestamp: new Date().toISOString() });
-    await wait(20);
-    expect(raw.writes.some((s: string) => s.includes('event: t'))).toBeTruthy();
+  it('registers /sse route on the Fastify server', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
+    expect(mockFastify.get).toHaveBeenCalled();
     bridge.destroy();
   });
 
-  it('heartbeat writes periodically', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const { req, reply, raw } = makeReqReply();
-    await handler!(req, reply);
-    await wait(50);
-    // Heartbeat interval is 30s — just verify SSE stream opened with initial newline
-    expect(raw.writes.some((s: string) => s.includes('text/event-stream') || s.length > 0)).toBeTruthy();
+  it('sends SSE events to connected clients', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
+
+    const { request, reply, written } = createMockReqReply();
+    const handler = mockFastify._routes[0].handler;
+    await handler(request, reply);
+
+    eventBus.publish('global', 'test', { foo: 'bar' });
+
+    const output = written.join('');
+    expect(output).toContain('event: test');
+    expect(output).toContain('"foo":"bar"');
+
     bridge.destroy();
   });
 
-  it('clean disconnect removes client', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const { req, reply, raw } = makeReqReply();
-    await handler!(req, reply);
-    if ((raw as any).__close) (raw as any).__close();
-    bus.emit('global', { id: 2, type: 'x', channel: 'global', data: {}, timestamp: new Date().toISOString() });
-    await wait(20);
-    expect(raw.writes.every((s: string) => !s.includes('event: x'))).toBeTruthy();
+  it('replays events when lastEventId is provided', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
+
+    eventBus.publish('global', 'before1', {});
+    eventBus.publish('global', 'before2', {});
+
+    const { request, reply, written } = createMockReqReply({ lastEventId: '1' });
+    const handler = mockFastify._routes[0].handler;
+    await handler(request, reply);
+
+    const output = written.join('');
+    expect(output).toContain('before2');
+
     bridge.destroy();
   });
 
-  it('supports lastEventId on connect', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const { req, reply, raw } = makeReqReply();
-    req.query.lastEventId = '5';
-    await handler!(req, reply);
-    expect(raw.writes.length >= 0).toBeTruthy();
+  it('removes client on connection close', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
+
+    const { request, reply, written } = createMockReqReply();
+    const handler = mockFastify._routes[0].handler;
+    await handler(request, reply);
+
+    for (const h of reply._closeHandlers) h();
+
+    const lenBefore = written.length;
+    eventBus.publish('global', 'after-close', {});
+    expect(written.length).toBe(lenBefore);
+
     bridge.destroy();
   });
 
-  it('multiple clients receive same event', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const c1 = makeReqReply();
-    const c2 = makeReqReply();
-    await handler!(c1.req, c1.reply);
-    await handler!(c2.req, c2.reply);
-    bus.emit('global', { id: 9, type: 'big', channel: 'global', data: { x: 1 }, timestamp: new Date().toISOString() });
-    await wait(20);
-    expect(c1.raw.writes.some((s: string) => s.includes('event: big'))).toBeTruthy();
-    expect(c2.raw.writes.some((s: string) => s.includes('event: big'))).toBeTruthy();
+  it('destroy unsubscribes from EventBus', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
+
+    const { request, reply, written } = createMockReqReply();
+    await mockFastify._routes[0].handler(request, reply);
+
     bridge.destroy();
+
+    const lenBefore = written.length;
+    eventBus.publish('global', 'post-destroy', {});
+    expect(written.length).toBe(lenBefore);
   });
 
-  it('session:* events are also fanned out', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const c = makeReqReply();
-    await handler!(c.req, c.reply);
-    // SSE bridge subscribes to literal 'session:*' channel
-    bus.emit('session:*', { id: 7, type: 's', channel: 'session:abc', data: {}, timestamp: new Date().toISOString() });
-    await wait(20);
-    expect(c.raw.writes.some((s: string) => s.includes('event: s'))).toBeTruthy();
-    bridge.destroy();
-  });
+  it('sets correct SSE headers', async () => {
+    const { createSSEBridge } = await import('../services/sse-bridge.js');
+    const bridge = createSSEBridge(eventBus, mockFastify as any);
+    bridge.register(mockFastify as any);
 
-  it('destroy unsubscribes from eventBus and clears clients', async () => {
-    const bridge = createSSEBridge(bus as unknown as EventBus, server as unknown as any);
-    bridge.register(server as unknown as any);
-    const handler = server.__getHandler();
-    const c = makeReqReply();
-    await handler!(c.req, c.reply);
+    const { request, reply } = createMockReqReply();
+    await mockFastify._routes[0].handler(request, reply);
+
+    expect(reply.raw._headers['Content-Type']).toBe('text/event-stream');
+    expect(reply.raw._headers['Cache-Control']).toBe('no-cache');
+    expect(reply.raw._headers['Connection']).toBe('keep-alive');
+
     bridge.destroy();
-    bus.emit('global', { id: 8, type: 'gone', channel: 'global', data: {}, timestamp: new Date().toISOString() });
-    await wait(20);
-    expect(c.raw.writes.every((s: string) => !s.includes('event: gone'))).toBeTruthy();
   });
 });

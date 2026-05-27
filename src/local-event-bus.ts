@@ -88,10 +88,10 @@ export class LocalEventBus implements EventBus {
     };
   }
 
-  replaySince(channel: string, lastEventId: number): BusEvent[] {
+  async replaySince(channel: string, lastEventId: number): Promise<BusEvent[]> {
     const buffer = this.buffers.get(channel);
-    if (!buffer) return [];
-    return buffer.filter(e => e.id > lastEventId);
+    if (!buffer) return Promise.resolve([]);
+    return Promise.resolve(buffer.filter(e => e.id > lastEventId));
   }
 
   destroy(): void {

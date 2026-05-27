@@ -6,9 +6,10 @@
  * Future implementations: Redis Streams, Postgres LISTEN/NOTIFY.
  *
  * Design principles:
- * - Interface is minimal: publish, subscribe, unsubscribe, destroy
+ * - Interface is minimal: publish, subscribe, replay, destroy
  * - Typed channels — each channel maps to a domain (session events, global events)
  * - No delivery guarantees in the interface — implementations decide
+ * - replaySince is async to support remote backends (Redis, Postgres)
  */
 
 /** A typed event envelope on the bus. */
@@ -33,12 +34,13 @@ export type BusEventHandler<T = Record<string, unknown>> = (event: BusEvent<T>) 
  *
  * Implementations:
  * - `LocalEventBus`: in-process EventEmitter (default, zero deps)
- * - Future: `RedisEventBus` (Redis Streams), `PostgresEventBus` (LISTEN/NOTIFY)
+ * - `RedisEventBus`: Redis Streams (optional, for multi-node)
  */
 export interface EventBus {
   /**
    * Publish an event to a channel.
    * Returns the assigned event ID.
+   * For async backends, the event may not be persisted yet when this returns.
    */
   publish(channel: string, type: string, data: Record<string, unknown>): number;
 
@@ -52,8 +54,9 @@ export interface EventBus {
   /**
    * Replay events from a channel since the given event ID.
    * Returns events with id > lastEventId, up to the implementation's buffer limit.
+   * Async to support remote backends (Redis, Postgres).
    */
-  replaySince(channel: string, lastEventId: number): BusEvent[];
+  replaySince(channel: string, lastEventId: number): Promise<BusEvent[]>;
 
   /**
    * Clean up all subscriptions and resources.
