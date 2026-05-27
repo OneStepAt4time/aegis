@@ -5,23 +5,18 @@
  * Tracks: session ID, window ID, byte offset for JSONL reading, status.
  */
 
-import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, dirname, basename } from 'node:path';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState } from './services/state/state-store.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
+import { restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
+import { cleanupHookSettingsFile } from './hook-settings.js';
 import { computeStallThreshold } from './config.js';
-import { getConfiguredBaseUrl } from './base-url.js';
-import { validateWorkdirPath } from './tenant-workdir.js';
-import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, sanitizeWindowName } from './validation.js';
-import type { z } from 'zod';
-import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 // PermissionDecision and request management now via SessionPermissionService
 import { QuestionManager } from './question-manager.js';
 import { Mutex } from 'async-mutex';
@@ -35,7 +30,7 @@ import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel 
 import { SessionApprovalService } from './services/session/approval-flow.js';
 import { readHookSecretFromSettingsFile } from './services/session/hook-secret-reader.js';
 import { computeLatencyMetrics, type LatencyMetrics } from './services/session/latency-metrics.js';
-import { hydrateSessions, isObjectRecord, detectModelFromSettings, detectIsolationMode, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
+import { hydrateSessions, isObjectRecord, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
 export { resolveApprovalInput };
 export type { PermissionDecision };
 
@@ -48,15 +43,12 @@ export type { UIState, SessionInfo, SessionState, PersistedStateData };
 import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 import { recordHookFailure as _recordHookFailure, recordHookSuccess as _recordHookSuccess, checkHookCircuitBreaker as _checkHookCircuitBreaker } from './session-hook-circuit-breaker.js';
 import { applyHookEvent } from './session-status-updater.js';
-import { sanitizeSessionEnv } from './session-env.js';
+import { buildSessionInfo, SessionCreationError } from './services/session/session-factory.js';
+export { SessionCreationError };
 export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
-// Cache for hook cleanup to avoid running on every createSession (Issue #1134).
-// TTL of 30 seconds prevents redundant disk I/O during batch session creation.
-let lastCleanupTime = 0;
-let lastCleanupWorkDir = '';
-const CLEANUP_TTL_MS = 30_000;
+// Hook cleanup cache moved to session-factory.ts
 
 /** Issue #1798: Maximum time (ms) sendMessage waits for CC to become idle. */
 const SEND_MESSAGE_IDLE_TIMEOUT_MS = 30_000;
@@ -96,13 +88,7 @@ const SEND_MESSAGE_IDLE_POLL_MS = 500;
  * Coordinates session lifecycle, persistence, transcript discovery, and
  * interactive approval/question flows for all managed Claude Code sessions.
  */
-/** Issue #3613: Error thrown when session creation is rejected by isolation policy. */
-export class SessionCreationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SessionCreationError';
-  }
-}
+// SessionCreationError moved to session-factory.ts (re-exported above)
 
 export class SessionManager {
   private state: SessionState = { sessions: Object.create(null) as Record<string, SessionInfo> };
@@ -306,175 +292,24 @@ export class SessionManager {
     opts: Parameters<SessionManager['createSession']>[0],
     parentSpan: Span,
   ): Promise<SessionInfo> {
-    // Issue #1945: Validate workdir path against tenant workdir namespace
-    const workdirValidation = validateWorkdirPath(opts.tenantId, opts.workDir, this.config);
-    if (!workdirValidation.allowed) {
-      throw new Error(workdirValidation.reason ?? 'workDir is outside tenant root');
-    }
+    // Delegate pure construction to SessionFactory
+    const existingSessions = this.listSessions().map(s => ({
+      id: s.id,
+      tenantId: s.tenantId as string,
+      displayName: s.displayName,
+      model: s.model,
+      effort: s.effort,
+    }));
+    const activeIds = new Set(this.listSessions().map(s => s.id));
 
-    // Compute a sensible display name with fallbacks:
-    // 1) explicit name
-    // 3) basename(workDir)
-    // 4) fallback id prefix
-    const candidateName = opts.name ? String(opts.name) : basename(opts.workDir || '') || `cc-${id.slice(0,8)}`;
-    let displayName = sanitizeWindowName(candidateName);
-    // Trim to 200 chars
-    if (displayName.length > 200) displayName = displayName.slice(0, 200);
-    // De-duplicate display names: append numeric suffix when needed (per-tenant scope)
-    const existing = this.listSessions().filter(s => s.tenantId === opts.tenantId).map(s=>s.displayName);
-    if (existing.includes(displayName)) {
-      let suffix = 1;
-      const originalBase = displayName;
-      while (existing.includes(displayName)) {
-        const suffixStr = `-${suffix}`;
-        const maxBaseLen = 200 - suffixStr.length;
-        displayName = `${originalBase.slice(0, maxBaseLen)}${suffixStr}`;
-        suffix++;
-      }
-    }
+    const { session } = await buildSessionInfo(id, opts, this.config, existingSessions, activeIds);
 
-
-    // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
-    const mergedEnv = sanitizeSessionEnv(this.config.defaultSessionEnv, opts.env);
-    const hasEnv = Object.keys(mergedEnv).length > 0;
-
-    // Permission guard: if permissionMode is "default", neutralize any project-level
-    // settings.local.json that has bypassPermissions. The CLI flag --permission-mode
-    // should be authoritative, but CC lets project settings override it.
-    // We back up the file, patch it, and restore on session cleanup.
-    const effectivePermissionMode = opts.permissionMode
-      ?? (opts.autoApprove === true ? 'bypassPermissions' : opts.autoApprove === false ? 'default' : undefined)
-      ?? this.config.defaultPermissionMode
-      ?? 'default';
-    let settingsPatched = false;
-    if (effectivePermissionMode === 'bypassPermissions') {
-      // Issue #3436: When bypassPermissions is requested, we must write it to the
-      // project-level settings.local.json so the ACP agent picks it up. The ACP
-      // reads permissionMode from SettingsManager (settings files), NOT from
-      // session/new params. Without this, Claude always spawns with --permission-mode default.
-      settingsPatched = await activateBypassPermissions(opts.workDir);
-    } else {
-      settingsPatched = await neutralizeBypassPermissions(opts.workDir, effectivePermissionMode);
-    }
-
-    // Issue #629: Generate per-session HMAC secret for hook URL authentication.
-    const hookSecret = randomBytes(32).toString('hex');
-
-    // Issue #169 Phase 2: Generate HTTP hook settings for this session.
-    // Detect isolation mode from project/global Claude settings (Issue #3590)
-    const detectedIsolation = await detectIsolationMode(opts.workDir).catch(() => undefined);
-    const detectedModel = await detectModelFromSettings(opts.workDir).catch(() => undefined);
-    let isolationMode: 'worktree' | 'none' = detectedIsolation ?? 'worktree';
-
-    // Issue #3613: Enforce isolation policy
-    const policy = opts.isolationPolicy ?? this.config.isolationPolicy;
-    if (policy === 'enforce-worktree' && isolationMode === 'none') {
-      log.warn({ component: 'session', operation: 'worktreePolicyRejected', sessionId: id, attributes: { policy, detectedIsolation: 'none' } });
-      throw new SessionCreationError(
-        `Session rejected: isolation policy is 'enforce-worktree' but CC settings have bgIsolation="none". ` +
-        `Set worktree.bgIsolation to "worktree" in .claude/settings.json or change the server isolation policy.`
-      );
-    }
-    if (policy === 'enforce-direct') {
-      if (isolationMode !== 'none') {
-        log.warn({ component: 'session', operation: 'directPolicyOverride', sessionId: id });
-      }
-      isolationMode = 'none';
-    }
-    // policy === 'respect-cc' → use detected isolationMode as-is
-
-    // Writes a temp file with hooks pointing to Aegis's hook receiver.
-      // Issue #936: Clean stale session hooks from settings.local.json before writing new hooks.
-      // This prevents CC from loading dead hook URLs on restart.
-      // Issue #1134: Skip cleanup if ran recently for this workDir
-        // Note: cleanup runs BEFORE the new session is added to this.state.sessions.
-        // We must include the new session's ID in activeIds to prevent cleanup from
-        // removing hooks for a session that was just created.
-        const now = Date.now();
-        if (now - lastCleanupTime < CLEANUP_TTL_MS && lastCleanupWorkDir === opts.workDir) {
-          // Skipped: cleanup ran recently for this workDir
-        } else {
-          try {
-            const activeIds = new Set(this.listSessions().map(s => s.id));
-            activeIds.add(id); // Include the new session so cleanup preserves its hooks
-            if (activeIds.size > 0) {
-              await cleanupStaleSessionHooks(opts.workDir, activeIds);
-              lastCleanupTime = now;
-              lastCleanupWorkDir = opts.workDir;
-            }
-          } catch (e) {
-            log.warn({ component: 'session', operation: 'hookCleanupFailed', attributes: { error: (e as Error).message } });
-          }
-        }
-
-    let hookSettingsFile: string | undefined;
-    try {
-      const baseUrl = getConfiguredBaseUrl(this.config);
-      hookSettingsFile = await writeHookSettingsFile(baseUrl, id, hookSecret, opts.workDir);
-    } catch (e) {
-      log.error({ component: 'session', operation: 'hookSettingsGenerateFailed', attributes: { error: (e as Error).message } });
-      // Non-fatal: hooks won't work for this session, but CC still launches
-    }
-
-    let windowId: string;
-    let finalName: string;
-    let freshSessionId: string | undefined;
-    // ACP mode: create session without window manager
-    windowId = '';
-    finalName = displayName;
-
-    // Issue #3948: When resuming, carry over model/effort from the original session
-    // if no explicit override is provided. This preserves /model changes made mid-session.
-    let effectiveModel = opts.model || detectedModel;
-    let effectiveEffort = opts.effort;
-    if (opts.resumeSessionId && !opts.model) {
-      const oldSession = this.state.sessions[opts.resumeSessionId];
-      if (oldSession?.model) {
-        effectiveModel = oldSession.model;
-      }
-      if (!opts.effort && oldSession?.effort) {
-        effectiveEffort = oldSession.effort;
-      }
-    }
-
-    const session: SessionInfo = {
-      id,
-      windowId,
-      displayName: finalName,
-      workDir: opts.workDir,
-      // If we know the CC session ID upfront (from --session-id), set it immediately.
-      // This eliminates the discovery delay and prevents stale ID assignment entirely.
-      claudeSessionId: freshSessionId || undefined,
-      byteOffset: 0,
-      monitorOffset: 0,
-      status: opts.initialStatus ?? 'pending',
-      createdAt: Date.now(),
-      lastActivity: Date.now(),
-      latestActivityText: 'Starting session',
-      stallThresholdMs: opts.stallThresholdMs || SessionManager.DEFAULT_STALL_THRESHOLD_MS,
-      permissionStallMs: opts.permissionStallMs || SessionManager.DEFAULT_PERMISSION_STALL_MS,
-      permissionMode: effectivePermissionMode,
-      settingsPatched,
-      hookSettingsFile,
-      hookSecret,
-      prd: opts.prd,
-      ownerKeyId: opts.ownerKeyId ?? undefined,
-      tenantId: opts.tenantId,
-      // Issue #2535: Store model at creation so analytics can group by model
-      // Issue #3740: Fall back to model from CC settings if not provided at creation.
-      // Issue #3948: effectiveModel includes resume carry-over from original session.
-      model: effectiveModel,
-      effort: effectiveEffort,
-      runnerName: opts.runnerName,
-      isolationMode: isolationMode,
-      isolationPolicy: policy,
-    };
-
+    // State mutations remain in SessionManager
     this.state.sessions[id] = session;
     this.invalidateSessionsListCache();
     await this.save();
 
-        // Issue #702: Register child with parent
+    // Register child with parent (Issue #702)
     if (opts.parentId) {
       const parent = this.state.sessions[opts.parentId];
       if (parent) {
@@ -483,31 +318,20 @@ export class SessionManager {
         await this.save();
       }
     }
-    // Issue #353: Fetch CC process PID for swarm parent matching.
-    // Fire-and-forget — PID is not needed synchronously.
-    // Issue #574: Add .catch() to prevent unhandled rejection if runtime fails mid-lookup.
 
-    // Issue #4088: Session approval gate — skip CC launch when approval is required.
+    // Session approval gate (Issue #4088)
     if (this.config.requireSessionApproval) {
       session.status = 'awaiting_approval';
       session.awaitingApproval = true;
       this.invalidateSessionsListCache();
       await this.save();
-      // Issue #4114: Auto-reject after timeout.
       this.scheduleApprovalTimeout(session.id);
       return session;
     }
-    // Start coordinated discovery polling:
-    // - Hook/session_map sync: fast path
-    // - Filesystem scan fallback: works when hooks fail or are skipped (Issue #16)
-    // Field bug (Zeus 2026-03-22): hooks may not fire even without --bare
-    this.discovery.startDiscoveryPolling(id, opts.workDir);
 
-    // P0 fix: Clean stale entries from session_map.json for BOTH window name AND id.
-    // After archiving old .jsonl files, stale session_map entries would point
-    // to moved files, causing discovery to pick up ghost session IDs.
-    // Also cleans stale windowId entries that could collide after restart.
-    await this.discovery.cleanSessionMapForWindow(finalName, windowId);
+    // Start discovery polling
+    this.discovery.startDiscoveryPolling(id, opts.workDir);
+    await this.discovery.cleanSessionMapForWindow(session.displayName, session.windowId);
 
     return session;
   }
