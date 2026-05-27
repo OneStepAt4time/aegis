@@ -40,6 +40,7 @@ import type { UIState, SessionInfo, SessionState, PersistedStateData } from './s
 export type { UIState, SessionInfo, SessionState, PersistedStateData };
 
 import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
+import { recordHookFailure as _recordHookFailure, recordHookSuccess as _recordHookSuccess, checkHookCircuitBreaker as _checkHookCircuitBreaker } from './session-hook-circuit-breaker.js';
 export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
@@ -1001,38 +1002,24 @@ export class SessionManager {
   recordHookFailure(id: string): void {
     const session = this.state.sessions[id];
     if (!session) return;
-    if (!session.hookFailureTimestamps) session.hookFailureTimestamps = [];
-    session.hookFailureTimestamps.push(Date.now());
+    _recordHookFailure(session);
   }
 
   /** Issue #2518: Record a Stop (success) event — resets circuit breaker state. */
   recordHookSuccess(id: string): void {
     const session = this.state.sessions[id];
     if (!session) return;
-    session.hookFailureTimestamps = [];
-    session.circuitBreakerTripped = false;
+    _recordHookSuccess(session);
   }
 
   /**
    * Issue #2518: Check whether the circuit breaker should trip.
-   * Prunes stale timestamps outside the sliding window, then trips if the
-   * failure count meets or exceeds maxFailures. Once tripped, always returns true.
+   * Delegates to session-hook-circuit-breaker.ts.
    */
   checkHookCircuitBreaker(id: string, maxFailures: number, windowMs: number): boolean {
     const session = this.state.sessions[id];
     if (!session) return false;
-    if (session.circuitBreakerTripped) return true;
-
-    const now = Date.now();
-    const cutoff = now - windowMs;
-    const recent = (session.hookFailureTimestamps ?? []).filter(ts => ts >= cutoff);
-    session.hookFailureTimestamps = recent;
-
-    if (recent.length >= maxFailures) {
-      session.circuitBreakerTripped = true;
-      return true;
-    }
-    return false;
+    return _checkHookCircuitBreaker(session, maxFailures, windowMs);
   }
 
   /** Issue #89 L25: Update the model field on a session from hook payload. */
