@@ -49,9 +49,9 @@ describe("EffortIndicator", () => {
   });
 
   it("sets title attribute", () => {
-    render(<EffortIndicator effort="high" />);
-    const el = screen.getByText("High").parentElement;
-    expect(el!.getAttribute("title")).toBe("Effort: high");
+    const { container } = render(<EffortIndicator effort="high" />);
+    const span = container.querySelector('[title="Effort: high"]');
+    expect(span).not.toBeNull();
   });
 
   it("is case-insensitive", () => {
