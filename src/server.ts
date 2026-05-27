@@ -639,8 +639,15 @@ setupAuth(app, ctx);
   if (corsOrigin === '*') {
     throw new Error('CORS_ORIGIN=* wildcard is not allowed. Specify explicit origins (comma-separated) or leave unset to disable CORS.');
   }
+  // Issue #4356: Use a callback instead of `false` so the CORS plugin still
+  // registers its OPTIONS handler. With `origin: false` the plugin is a no-op
+  // and OPTIONS requests fall through to route matching → 404.
   await app.register(fastifyCors, {
-    origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : false,
+    origin: corsOrigin
+      ? corsOrigin.split(',').map(s => s.trim())
+      : ((origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+          callback(null, false);
+        }),
   });
 await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
