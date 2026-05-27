@@ -14,7 +14,7 @@ const log = new StructuredLogger();
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
-import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
+import { watch, type FSWatcher } from 'node:fs';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
