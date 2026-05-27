@@ -652,7 +652,7 @@ export default function SessionHistoryPage() {
                       className="h-4 w-4 rounded border-[var(--color-void-lighter)] bg-[var(--color-void-light)] text-[var(--color-accent-cyan)] focus:ring-[var(--color-accent-cyan)]/30"
                     />
                   </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">{t('sessionHistory.nameColumn')}</th>
+                  <th scope="col" className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">{t('sessionHistory.nameColumn')}</th>
                   {sortableHeader(t('sessionHistory.sessionIdColumn'), "id")}
                   {sortableHeader(t('sessionHistory.ownerColumn'), "owner")}
                   {sortableHeader(t('sessionHistory.statusColumn'), "status")}

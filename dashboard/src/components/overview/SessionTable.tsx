@@ -817,7 +817,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
             <table className="w-full text-left text-sm" aria-label={t("aria.sessionsTable")}>
               <thead>
                 <tr className="border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)]">
-                  <th className="px-4 py-3 font-medium">
+                  <th scope="col" className="px-4 py-3 font-medium">
                     <input
                       type="checkbox"
                       aria-label={t("aria.selectAll")}
@@ -826,15 +826,15 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="hidden md:table-cell px-4 py-3 font-medium">Created by</th>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">WorkDir</th>
-                  <th className="px-4 py-3 font-medium">Age</th>
-                  <th className="px-4 py-3 font-medium">Last Activity</th>
-                  <th className="px-4 py-3 font-medium">Permission</th>
-                  <th className="px-4 py-3 font-medium">Cost</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">Created by</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Name</th>
+                  <th scope="col" className="px-4 py-3 font-medium">WorkDir</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Age</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Last Activity</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Permission</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Cost</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="sr-only">
