@@ -5,8 +5,8 @@
  * aria-labels, and i18n labels.
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
 import StatusDot from './StatusDot';
 import type { UIState } from '../../types';
 
@@ -117,3 +117,28 @@ describe('StatusDot', () => {
     });
   });
 });
+  describe('status transition flash', () => {
+    it('has enlarged glow when status changes to working', () => {
+      const { rerender } = render(<StatusDot status='idle' />);
+      rerender(<StatusDot status='working' />);
+      const dot = screen.getByRole('img');
+      expect(dot.style.boxShadow).toContain('12px');
+    });
+
+    it('returns to normal glow after flash duration', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const { rerender } = render(<StatusDot status='idle' />);
+      rerender(<StatusDot status='permission_prompt' />);
+      const dot = screen.getByRole('img');
+      expect(dot.style.boxShadow).toContain('12px');
+      await act(async () => { vi.advanceTimersByTime(801); });
+      expect(dot.style.boxShadow).not.toContain('12px');
+      vi.useRealTimers();
+    });
+
+    it('does not flash on initial render', () => {
+      const { container } = render(<StatusDot status='working' />);
+      const dot = container.firstChild as HTMLElement;
+      expect(dot.style.boxShadow).not.toContain('12px');
+    });
+  });
