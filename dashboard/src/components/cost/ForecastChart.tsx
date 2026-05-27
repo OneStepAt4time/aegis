@@ -1,39 +1,34 @@
 /**
  * ForecastChart.tsx — Cost forecast line chart with projected trend.
- *
- * Shows actual daily spend and a linear regression projection line.
- * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
+ * Migrated from recharts to chart.js for bundle savings.
+ * @ticket #4310
  */
 
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
   Tooltip,
-  CartesianGrid,
-  ReferenceLine,
   Legend,
-} from 'recharts';
+  type ChartOptions,
+
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
-import { ChartFrame } from '../shared/ChartFrame';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, CHART_STROKE,
-  TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB } from '../../utils/chartTheme';
 import { useT } from '../../i18n/context';
 
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
+
 export interface ForecastChartProps {
-  /** Daily cost trends from analytics API. */
   dailyTrends: Array<{
     date: string;
     estimatedCostUsd: number;
     sessions: number;
   }>;
-  /** Optional monthly budget cap for reference line. Zero = no line. */
   monthlyCap?: number;
 }
 
@@ -46,12 +41,10 @@ interface ChartPoint {
 function linearRegression(points: Array<{ x: number; y: number }>): { slope: number; intercept: number } {
   const n = points.length;
   if (n < 2) return { slope: 0, intercept: n === 1 ? points[0].y : 0 };
-
   const sumX = points.reduce((s, p) => s + p.x, 0);
   const sumY = points.reduce((s, p) => s + p.y, 0);
   const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
   const sumXX = points.reduce((s, p) => s + p.x * p.x, 0);
-
   const denominator = n * sumXX - sumX * sumX;
   if (denominator === 0) return { slope: 0, intercept: sumY / n };
   const slope = (n * sumXY - sumX * sumY) / denominator;
@@ -61,82 +54,33 @@ function linearRegression(points: Array<{ x: number; y: number }>): { slope: num
 
 function buildChartData(dailyTrends: ForecastChartProps['dailyTrends']): ChartPoint[] {
   if (dailyTrends.length === 0) return [];
-
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // Build regression from actual data points
-  const regressionPoints = dailyTrends.map((d, i) => ({
-    x: i,
-    y: d.estimatedCostUsd,
-  }));
+  const regressionPoints = dailyTrends.map((d, i) => ({ x: i, y: d.estimatedCostUsd }));
   const { slope, intercept } = linearRegression(regressionPoints);
-
-  // Generate chart data: actual days + projected remaining days
   const chartData: ChartPoint[] = [];
-
-  // Actual data points
   dailyTrends.forEach((d) => {
-    chartData.push({
-      date: d.date,
-      actual: d.estimatedCostUsd,
-      projected: null,
-    });
+    chartData.push({ date: d.date, actual: d.estimatedCostUsd, projected: null });
   });
-
-  // Projected data: start from last actual point, extend to end of month
   if (dailyTrends.length >= 2) {
     const lastIdx = dailyTrends.length - 1;
     const lastDate = new Date(dailyTrends[lastIdx].date + 'T00:00:00Z');
     const lastDay = lastDate.getDate();
-
-    // Add the last actual point as projection start for continuity
     chartData[lastIdx].projected = dailyTrends[lastIdx].estimatedCostUsd;
-
     for (let day = lastDay + 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const projectedIdx = lastIdx + (day - lastDay);
       const projectedValue = Math.max(0, slope * projectedIdx + intercept);
-      chartData.push({
-        date: dateStr,
-        actual: null,
-        projected: projectedValue,
-      });
+      chartData.push({ date: dateStr, actual: null, projected: projectedValue });
     }
   }
-
   return chartData;
 }
 
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string; dataKey?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>
-        {label ? formatDateShort(label) : ''}
-      </p>
-      {payload.map((entry, index) => (
-        <div key={index} className={TOOLTIP_STYLE.row}>
-          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
-          <span className={TOOLTIP_STYLE.rowValue}>
-            {formatCurrency(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProps) {
-    const t = useT();
-
+  const t = useT();
   const chartData = buildChartData(dailyTrends);
   const hasData = chartData.length > 0;
 
@@ -156,12 +100,97 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
     );
   }
 
-  // Calculate projected monthly total for display
   const lastProjected = chartData.filter(d => d.projected !== null);
   const projectedMonthlyTotal = lastProjected.length > 0
-    ? lastProjected.reduce((sum, d) => sum + (d.projected ?? 0), 0) + 
+    ? lastProjected.reduce((sum, d) => sum + (d.projected ?? 0), 0) +
       chartData.filter(d => d.actual !== null && d.projected === null).reduce((sum, d) => sum + (d.actual ?? 0), 0)
     : 0;
+
+  const cyan = `rgba(${CHART_RGB.cyan}, 1)`;
+  const danger = `rgba(${CHART_RGB.danger}, 1)`;
+
+  const datasets = [
+    {
+      label: 'Actual Spend',
+      data: chartData.map((d) => d.actual),
+      borderColor: cyan,
+      backgroundColor: cyan,
+      pointRadius: 3,
+      pointBackgroundColor: cyan,
+      borderWidth: 2,
+      spanGaps: false,
+    },
+    {
+      label: 'Projected',
+      data: chartData.map((d) => d.projected),
+      borderColor: cyan,
+      borderDash: [8, 4],
+      pointRadius: 0,
+      borderWidth: 2,
+      spanGaps: false,
+    },
+  ];
+
+  // Add budget cap as a horizontal annotation line (via a flat dataset)
+  if (monthlyCap > 0) {
+    datasets.push({
+      label: `Cap: ${formatCurrency(monthlyCap)}`,
+      data: chartData.map(() => monthlyCap),
+      borderColor: danger,
+      borderDash: [4, 4],
+      pointRadius: 0,
+      borderWidth: 1,
+      spanGaps: true,
+    });
+  }
+
+  const chartJsData = { labels: chartData.map((d) => d.date), datasets };
+
+  const options: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: {
+        display: true,
+        labels: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 12 } },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 20, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        titleColor: 'rgba(255, 255, 255, 0.6)',
+        bodyColor: 'rgba(255, 255, 255, 0.9)',
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          title: (items) => formatDateShort(items[0].label),
+          label: (item) => `${item.dataset.label}: ${formatCurrency(Number(item.raw))}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { drawOnChartArea: true, color: 'rgba(255, 255, 255, 0.06)' },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: function (value) { return formatDateShort(this.getLabelForValue(value as number)); },
+          maxRotation: 0,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: { drawOnChartArea: true, color: 'rgba(255, 255, 255, 0.06)' },
+        ticks: {
+          color: 'rgba(255, 255, 255, 0.4)',
+          font: { size: 11 },
+          callback: (value) => `$${Number(value).toFixed(2)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
 
   return (
     <section
@@ -180,63 +209,9 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
           </p>
         )}
       </div>
-
-      <ChartFrame className="h-72 min-w-0" label="Cost forecast loading">
-        {({ width, height }) => (
-          <LineChart width={width} height={height} data={chartData}>
-            <CartesianGrid {...CHART_GRID} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={formatDateShort}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              tickFormatter={(value) => `$${value.toFixed(2)}`}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ color: 'var(--color-text-muted)', fontSize: 12 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="actual"
-              name="Actual Spend"
-              stroke={CHART_COLORS.cyan}
-              strokeWidth={CHART_STROKE.width}
-              dot={{ r: 3, fill: CHART_COLORS.cyan }}
-              connectNulls={false}
-              animationDuration={CHART_ANIMATION.duration}
-            />
-            <Line
-              type="monotone"
-              dataKey="projected"
-              name="Projected"
-              stroke={CHART_COLORS.cyan}
-              strokeWidth={CHART_STROKE.width}
-              strokeDasharray="8 4"
-              dot={false}
-              connectNulls={false}
-              animationDuration={CHART_ANIMATION.duration}
-            />
-            {monthlyCap > 0 && (
-              <ReferenceLine
-                y={monthlyCap}
-                stroke={CHART_COLORS.danger}
-                strokeDasharray="4 4"
-                label={{
-                  value: `Cap: ${formatCurrency(monthlyCap)}`,
-                  position: 'right',
-                  fill: 'var(--color-danger)',
-                  fontSize: 11,
-                }}
-              />
-            )}
-          </LineChart>
-        )}
-      </ChartFrame>
+      <div style={{ height: 288 }}>
+        <Line data={chartJsData} options={options} />
+      </div>
     </section>
   );
 }
