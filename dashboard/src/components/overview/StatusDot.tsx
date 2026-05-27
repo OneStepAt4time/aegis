@@ -1,7 +1,11 @@
 /**
  * components/overview/StatusDot.tsx — Colored status indicator dot.
+ *
+ * Includes a one-shot flash animation when the status changes,
+ * making SSE-driven status transitions visually obvious.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import type { UIState } from '../../types';
 import { useT } from '../../i18n/context';
 import type { SessionHealthState } from '../../types';
@@ -70,8 +74,13 @@ const HEALTH_KEYS: Record<SessionHealthState, string> = {
   dead: 'statusDot.dead',
 };
 
+const FLASH_DURATION_MS = 800;
+
 export default function StatusDot({ status, health }: StatusDotProps) {
   const t = useT();
+  const prevStatusRef = useRef(status);
+  const [flashing, setFlashing] = useState(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Health state (stall/dead) overrides the status color for emphasis
   const isStall = health === 'stall';
   const isDead = health === 'dead';
@@ -92,6 +101,19 @@ export default function StatusDot({ status, health }: StatusDotProps) {
     ? t(HEALTH_KEYS.stall)
     : t(STATUS_KEYS[status] ?? STATUS_KEYS.unknown);
 
+  // Trigger flash animation when status changes
+  useEffect(() => {
+    if (prevStatusRef.current !== status) {
+      prevStatusRef.current = status;
+      setFlashing(true);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = setTimeout(() => setFlashing(false), FLASH_DURATION_MS);
+    }
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, [status]);
+
   return (
     <span
       role="img"
@@ -103,8 +125,11 @@ export default function StatusDot({ status, health }: StatusDotProps) {
         height: 8,
         borderRadius: '50%',
         backgroundColor: baseColor,
-        boxShadow: `0 0 6px ${baseColor}66`,
+        boxShadow: flashing
+          ? `0 0 12px ${baseColor}, 0 0 24px ${baseColor}88`
+          : `0 0 6px ${baseColor}66`,
         animation: shouldPulse ? `pulse ${pulseDuration} ease-in-out infinite` : undefined,
+        transition: 'box-shadow 0.4s ease-out',
       }}
     />
   );
