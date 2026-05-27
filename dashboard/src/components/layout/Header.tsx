@@ -3,6 +3,7 @@
  */
 
 import { lazy, Suspense } from 'react';
+import { SSEStatusIndicator } from './SSEStatusIndicator';
 import Breadcrumb from '../shared/Breadcrumb';
 import { ApprovalBadge } from '../approvals/ApprovalNotification';
 import { Sun, Moon, Plus, Search, RefreshCw, Menu } from 'lucide-react';
@@ -64,6 +65,7 @@ export function Header({
               PREVIEW
             </span>
 
+            <SSEStatusIndicator />
             <ApprovalBadge />
 
             <button
