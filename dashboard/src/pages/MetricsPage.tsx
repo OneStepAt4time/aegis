@@ -6,18 +6,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Clock, DollarSign, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
   Tooltip,
-  CartesianGrid,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar as ChartBar, Line as ChartLine } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip);
 import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_RGB,
 } from '../utils/chartTheme';
 
 import { getMetricsAggregate, type AggregateMetricsResponse } from '../api/client';
@@ -26,7 +28,6 @@ import { useT } from '../i18n/context';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import { downloadCSV } from '../utils/csv-export';
-import { ChartFrame } from '../components/shared/ChartFrame';
 import { sanitizeErrorMessage } from '../utils/sanitizeErrorMessage';
 import { SkeletonStatCard } from '../components/shared/Skeleton';
 import { ErrorState } from '../components/ErrorState';
@@ -49,26 +50,6 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
-      {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
-            {entry.name.toLowerCase().includes('cost') ? formatCurrency(entry.value) : entry.value.toLocaleString()}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function generateCSV(data: AggregateMetricsResponse): string {
   const headers = ['Timestamp', 'Sessions', 'Messages', 'Tool Calls', 'Token Cost (USD)'];
@@ -283,39 +264,23 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Sessions &amp; Cost Over Time
           </h3>
-          <ChartFrame className="h-64 min-w-0" label="Loading sessions and cost chart">
-            {({ width, height }) => (
-              <BarChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  yAxisId="sessions"
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  yAxisId="cost"
-                  orientation="right"
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  yAxisId="sessions"
-                  dataKey="sessions"
-                  name={t("metrics.chartSessions")}
-                  fill={CHART_COLORS.cyan}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            )}
-          </ChartFrame>
+          <div className="h-64 min-w-0">
+            <ChartBar data={{
+              labels: data.timeSeries.map((d) => d.timestamp),
+              datasets: [{
+                label: t("metrics.chartSessions"),
+                data: data.timeSeries.map((d) => d.sessions),
+                backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+                borderRadius: 4,
+                borderSkipped: false,
+              }],
+            }} options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15,15,25,0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, cornerRadius: 8, padding: 12, titleFont: { size: 11 }, titleColor: '#9ca3af', bodyFont: { family: 'monospace', size: 13, weight: 'bold' }, bodyColor: '#f3f4f6', displayColors: false, callbacks: { title: (items) => formatDateShort(items[0]?.label ?? '') } } },
+              scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 }, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } }, y: { grid: { color: 'rgba(255,255,255,0.06)', drawTicks: false }, ticks: { color: '#9ca3af', font: { size: 11 } }, border: { color: 'rgba(255,255,255,0.06)' } } },
+            } satisfies ChartOptions<'bar'>} />
+          </div>
         </section>
       )}
 
@@ -325,33 +290,24 @@ export default function MetricsPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Token Cost Trend
           </h3>
-          <ChartFrame className="h-48 min-w-0" label="Loading token cost trend chart">
-            {({ width, height }) => (
-              <LineChart width={width} height={height} data={data.timeSeries}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="tokenCostUsd"
-                  name={t("metrics.chartTokenCost")}
-                  stroke={CHART_COLORS.purple}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            )}
-          </ChartFrame>
+          <div className="h-48 min-w-0">
+            <ChartLine data={{
+              labels: data.timeSeries.map((d) => d.timestamp),
+              datasets: [{
+                label: t("metrics.chartTokenCost"),
+                data: data.timeSeries.map((d) => d.tokenCostUsd),
+                borderColor: `rgba(${CHART_RGB.purple}, 1)`,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+              }],
+            }} options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15,15,25,0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, cornerRadius: 8, padding: 12, titleFont: { size: 11 }, titleColor: '#9ca3af', bodyFont: { family: 'monospace', size: 13, weight: 'bold' }, bodyColor: '#f3f4f6', displayColors: false, callbacks: { title: (items) => formatDateShort(items[0]?.label ?? ''), label: (ctx) => `$${((ctx.parsed.y ?? 0) as number).toFixed(2)}` } } },
+              scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 }, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } }, y: { grid: { color: 'rgba(255,255,255,0.06)', drawTicks: false }, ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => `$${((v as number) ?? 0).toFixed(2)}` }, border: { color: 'rgba(255,255,255,0.06)' } } },
+            } satisfies ChartOptions<'line'>} />
+          </div>
         </section>
       )}
 

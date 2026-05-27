@@ -3,24 +3,23 @@
  *
  * Displays session volume, token usage by model, cost trends,
  * top API keys, duration trends, and error/permission stats.
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useT } from '../i18n/context';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
   Tooltip,
-  CartesianGrid,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar as BarChart, Line as LineChart, Pie as PieChart } from 'react-chartjs-2';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { KPIBanner } from '../components/analytics/KPIBanner';
 import type { KPIItem } from '../components/analytics/KPIBanner';
@@ -36,15 +35,38 @@ import { RateLimitForecastCard } from '../components/analytics/RateLimitForecast
 import { AgentContributionsPanel } from '../components/analytics/AgentContributionsPanel';
 import {
   MODEL_COLORS as CHART_MODEL_COLORS,
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, CHART_DOT, CHART_STROKE,
-  CHART_BAR_RADIUS, TOOLTIP_STYLE,
+  CHART_RGB,
 } from '../utils/chartTheme';
 
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip);
 
-// Model colors centralized in chartTheme.ts (#3399) // token-ok
 const MODEL_COLORS = CHART_MODEL_COLORS;
+
+const MODEL_RGB: Record<string, string> = {
+  'claude-opus-4.7': CHART_RGB.purple,
+  'claude-sonnet-4.6': CHART_RGB.cyan,
+  'claude-haiku-4.5': CHART_RGB.success,
+  'gpt-5.4': CHART_RGB.warning,
+  'gpt-4.1': CHART_RGB.info,
+  other: CHART_RGB.cyan,
+};
+
+const darkTooltip = {
+  backgroundColor: 'rgba(15, 15, 25, 0.95)',
+  borderColor: 'rgba(255, 255, 255, 0.1)',
+  borderWidth: 1,
+  cornerRadius: 8,
+  padding: 12,
+  titleFont: { size: 11 },
+  titleColor: '#9ca3af',
+  bodyFont: { family: 'monospace' as const, size: 13, weight: 'bold' as const },
+  bodyColor: '#f3f4f6',
+  displayColors: false,
+};
+
+const gridColor = 'rgba(255, 255, 255, 0.06)';
+const tickColor = '#9ca3af';
+const tickFont = { size: 11 };
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -60,31 +82,6 @@ function formatTokenCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
-}
-
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>{label}</p>
-      {payload.map((entry, i) => (
-        <div key={i} className={TOOLTIP_STYLE.row}>
-          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
-          <span className={TOOLTIP_STYLE.rowValue}>
-            {typeof entry.value === 'number' && entry.name?.toLowerCase().includes('cost')
-              ? formatCurrency(entry.value)
-              : typeof entry.value === 'number' && entry.name?.toLowerCase().includes('duration')
-                ? formatDuration(entry.value)
-                : String(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export default function AnalyticsPage() {
@@ -151,7 +148,6 @@ export default function AnalyticsPage() {
       )
     : 0;
 
-  // Build KPI items from analytics data
   function buildKPIItems(
     analytics: AnalyticsSummary,
     cost: number,
@@ -163,41 +159,163 @@ export default function AnalyticsPage() {
       ? ((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)
       : '0';
     return [
-      {
-        id: 'cost',
-        label: 'Total Cost',
-        value: formatCurrency(cost),
-        color: 'cost',
-        subtitle: analytics.costTrends.length > 1 ? t('analytics.last14Days') : undefined,
-      },
-      {
-        id: 'tokens',
-        label: 'Total Tokens',
-        value: formatTokenCount(tokens),
-        color: 'input',
-        subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined,
-      },
-      {
-        id: 'sessions',
-        label: 'Sessions',
-        value: String(totalSessions),
-        color: 'neutral',
-      },
-      {
-        id: 'duration',
-        label: 'Avg Duration',
-        value: formatDuration(avgDur),
-        color: 'time',
-      },
-      {
-        id: 'errors',
-        label: 'Error Rate',
-        value: `${errorRate}%`,
-        color: parseFloat(errorRate) > 5 ? 'cost' : 'efficiency',
-        trend: parseFloat(errorRate) > 5 ? 'up' : 'flat',
-      },
+      { id: 'cost', label: 'Total Cost', value: formatCurrency(cost), color: 'cost', subtitle: analytics.costTrends.length > 1 ? t('analytics.last14Days') : undefined },
+      { id: 'tokens', label: 'Total Tokens', value: formatTokenCount(tokens), color: 'input', subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined },
+      { id: 'sessions', label: 'Sessions', value: String(totalSessions), color: 'neutral' },
+      { id: 'duration', label: 'Avg Duration', value: formatDuration(avgDur), color: 'time' },
+      { id: 'errors', label: 'Error Rate', value: `${errorRate}%`, color: parseFloat(errorRate) > 5 ? 'cost' : 'efficiency', trend: parseFloat(errorRate) > 5 ? 'up' : 'flat' },
     ];
   }
+
+  // Session Volume Line Chart
+  const sessionVolumeData = {
+    labels: data.sessionVolume.map((d) => d.date),
+    datasets: [{
+      label: 'Sessions',
+      data: data.sessionVolume.map((d) => d.created),
+      borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+      backgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
+      pointRadius: 3,
+      pointBackgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
+      borderWidth: 2,
+      tension: 0.4,
+    }],
+  };
+
+  const lineOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...darkTooltip,
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil(data.sessionVolume.length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
+        border: { color: gridColor },
+      },
+      y: {
+        grid: { color: gridColor, drawTicks: false },
+        ticks: { color: tickColor, font: tickFont },
+        border: { color: gridColor },
+      },
+    },
+  };
+
+  // Token Usage Pie Chart
+  const tokenPieData = {
+    labels: (data.tokenUsageByModel ?? []).map((m) => m.model),
+    datasets: [{
+      data: (data.tokenUsageByModel ?? []).map((m) => m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens),
+      backgroundColor: (data.tokenUsageByModel ?? []).map((m) => `rgba(${MODEL_RGB[m.model] ?? MODEL_RGB.other}, 0.7)`),
+      hoverBackgroundColor: (data.tokenUsageByModel ?? []).map((m) => `rgba(${MODEL_RGB[m.model] ?? MODEL_RGB.other}, 0.9)`),
+      borderWidth: 0,
+    }],
+  };
+
+  const pieOptions: ChartOptions<'pie'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...darkTooltip,
+        callbacks: {
+          label: (ctx) => `${ctx.label}: ${formatTokenCount(ctx.parsed ?? 0)}`,
+        },
+      },
+    },
+  };
+
+  // Cost Trends Bar Chart
+  const costTrendsData = {
+    labels: data.costTrends.map((d) => d.date),
+    datasets: [{
+      label: 'Daily Cost',
+      data: data.costTrends.map((d) => d.cost),
+      backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+      borderRadius: 4,
+      borderSkipped: false as const,
+    }],
+  };
+
+  const costBarOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...darkTooltip,
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+          label: (ctx) => formatCurrency(ctx.parsed.y ?? 0),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil(data.costTrends.length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
+        border: { color: gridColor },
+      },
+      y: {
+        grid: { color: gridColor, drawTicks: false },
+        ticks: { color: tickColor, font: tickFont, callback: (val) => `$${(val as number ?? 0).toFixed(2)}` },
+        border: { color: gridColor },
+      },
+    },
+  };
+
+  // Duration Trends Line Chart
+  const durationData = {
+    labels: (data.durationTrends ?? []).map((d) => d.date),
+    datasets: [{
+      label: 'Avg Duration',
+      data: (data.durationTrends ?? []).map((d) => d.avgDurationSec),
+      borderColor: `rgba(${CHART_RGB.purple}, 1)`,
+      backgroundColor: `rgba(${CHART_RGB.purple}, 1)`,
+      pointRadius: 3,
+      pointBackgroundColor: `rgba(${CHART_RGB.purple}, 1)`,
+      borderWidth: 2,
+      tension: 0.4,
+    }],
+  };
+
+  const durationLineOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...darkTooltip,
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+          label: (ctx) => formatDuration(ctx.parsed.y ?? 0),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil((data.durationTrends ?? []).length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
+        border: { color: gridColor },
+      },
+      y: {
+        grid: { color: gridColor, drawTicks: false },
+        ticks: { color: tickColor, font: tickFont, callback: (val) => formatDuration(val as number ?? 0) },
+        border: { color: gridColor },
+      },
+    },
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -218,26 +336,17 @@ export default function AnalyticsPage() {
         const hasChartData = (data.sessionVolume ?? []).length > 0 || (data.tokenUsageByModel ?? []).length > 0 || (data.durationTrends ?? []).length > 0;
         if (hasSessions && !hasChartData) {
           return (
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 px-4 py-3 text-sm text-[var(--color-warning-glow)]"
-            >
+            <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 px-4 py-3 text-sm text-[var(--color-warning-glow)]">
               <span aria-hidden="true">⚠</span>
-              <span>
-                <strong>Data aggregation in progress.</strong> Session count is available but chart data
-                is still being computed. Charts will populate once the metrics cache completes processing.
-              </span>
+              <span><strong>Data aggregation in progress.</strong> Session count is available but chart data is still being computed. Charts will populate once the metrics cache completes processing.</span>
             </div>
           );
         }
         return null;
       })()}
 
-      {/* CCMeter-style KPI Banner */}
       <KPIBanner items={buildKPIItems(data, totalCost, totalTokens, avgDuration)} />
 
-      {/* Model Distribution Bar */}
       {(data.tokenUsageByModel ?? []).length > 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">Model Distribution</h3>
@@ -251,229 +360,79 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label={t("analytics.totalSessions")} value={String(data.errorRates.totalSessions)} />
         <SummaryCard label={t("analytics.totalCost")} value={formatCurrency(totalCost)} />
-        <SummaryCard
-          label={t("analytics.totalTokens")}
-          value={data.errorRates.totalSessions > 0 && totalTokens === 0 ? 'Calculating…' : formatTokenCount(totalTokens)}
-        />
-        <SummaryCard
-          label={t("analytics.avgDuration")}
-          value={data.errorRates.totalSessions > 0 && avgDuration === 0 ? 'Calculating…' : formatDuration(avgDuration)}
-        />
+        <SummaryCard label={t("analytics.totalTokens")} value={data.errorRates.totalSessions > 0 && totalTokens === 0 ? 'Calculating…' : formatTokenCount(totalTokens)} />
+        <SummaryCard label={t("analytics.avgDuration")} value={data.errorRates.totalSessions > 0 && avgDuration === 0 ? 'Calculating…' : formatDuration(avgDuration)} />
       </div>
 
-      {/* Row 1: Session Volume + Token Usage */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Session Volume */}
         <ChartCard title={t("analytics.sessionVolume")}>
           {data.sessionVolume.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <LineChart data={data.sessionVolume}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                  allowDecimals={false}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="created"
-                  name="Sessions"
-                  stroke={CHART_COLORS.cyan}
-                  strokeWidth={CHART_STROKE.width}
-                  dot={CHART_DOT} animationDuration={CHART_ANIMATION.duration} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChart />
-          )}
+            <div style={{ width: '100%', height: 260 }}><LineChart data={sessionVolumeData} options={lineOptions} /></div>
+          ) : <EmptyChart />}
         </ChartCard>
 
-        {/* Token Usage by Model */}
         <ChartCard title={t("analytics.tokenUsage")}>
           {(data.tokenUsageByModel ?? []).length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
               <div className="h-[220px] w-full min-w-0 lg:w-1/2">
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <PieChart>
-                    <Pie
-                      data={(data.tokenUsageByModel ?? []).map((m) => ({
-                        ...m,
-                        totalTokens: m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens,
-                      }))}
-                      dataKey="totalTokens"
-                      nameKey="model"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }: { name?: string; percent?: number }) =>
-                        `${(name ?? '').replace('claude-', '').replace(/-\d+.*/, '')} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ stroke: 'var(--color-text-muted)' }}
-                    >
-                      {data.tokenUsageByModel.map((entry) => (
-                        <Cell
-                          key={entry.model}
-                          fill={MODEL_COLORS[entry.model] || MODEL_COLORS.other}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <PieChart data={tokenPieData} options={pieOptions} />
               </div>
               <div className="w-full lg:w-1/2 space-y-2">
                 {data.tokenUsageByModel.map((m) => (
                   <div key={m.model} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: MODEL_COLORS[m.model] || MODEL_COLORS.other }}
-                      />
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MODEL_COLORS[m.model] || MODEL_COLORS.other }} />
                       <span className="font-mono text-[var(--color-text-primary)]">{m.model}</span>
                     </div>
-                    <span className="font-mono text-[var(--color-text-muted)]">
-                      {formatTokenCount(m.inputTokens + m.outputTokens)} tokens
-                    </span>
+                    <span className="font-mono text-[var(--color-text-muted)]">{formatTokenCount(m.inputTokens + m.outputTokens)} tokens</span>
                   </div>
                 ))}
               </div>
             </div>
-          ) : (
-            <EmptyChart />
-          )}
+          ) : <EmptyChart />}
         </ChartCard>
       </div>
 
-      {/* Row 2: Cost Trends + Top API Keys */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Cost Trends */}
         <ChartCard title={t("analytics.costTrends")}>
           {data.costTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <BarChart data={data.costTrends}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar
-                  dataKey="cost"
-                  name="Daily Cost"
-                  fill={CHART_COLORS.cyan}
-                  radius={CHART_BAR_RADIUS} animationDuration={CHART_ANIMATION.duration} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChart />
-          )}
+            <div style={{ width: '100%', height: 260 }}><BarChart data={costTrendsData} options={costBarOptions} /></div>
+          ) : <EmptyChart />}
         </ChartCard>
 
-        {/* Top API Keys */}
         <ChartCard title={t("analytics.topApiKeys")}>
           {data.topApiKeys.length > 0 ? (
             <div className="space-y-3">
               {data.topApiKeys.map((key) => (
-                <div
-                  key={key.keyId}
-                  className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
-                >
+                <div key={key.keyId} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                   <div>
-                    <div className="text-sm font-medium text-[var(--color-text-primary)]">
-                      {key.keyName}
-                    </div>
-                    <div className="text-xs text-[var(--color-text-muted)]">
-                      {key.sessions} session{key.sessions !== 1 ? 's' : ''} &middot; {key.messages} message{key.messages !== 1 ? 's' : ''}
-                    </div>
+                    <div className="text-sm font-medium text-[var(--color-text-primary)]">{key.keyName}</div>
+                    <div className="text-xs text-[var(--color-text-muted)]">{key.sessions} session{key.sessions !== 1 ? 's' : ''} &middot; {key.messages} message{key.messages !== 1 ? 's' : ''}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-mono font-medium text-[var(--color-text-primary)]">
-                      {formatCurrency(key.estimatedCostUsd)}
-                    </div>
+                    <div className="text-sm font-mono font-medium text-[var(--color-text-primary)]">{formatCurrency(key.estimatedCostUsd)}</div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyChart />
-          )}
+          ) : <EmptyChart />}
         </ChartCard>
       </div>
 
-      {/* Row 3: Duration Trends + Error Rates */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Duration Trends */}
         <ChartCard title={t("analytics.avgSessionDuration")}>
-          {data.durationTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <LineChart data={data.durationTrends}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v) => formatDuration(v as number)}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="avgDurationSec"
-                  name="Avg Duration"
-                  stroke={CHART_COLORS.purple}
-                  strokeWidth={CHART_STROKE.width}
-                  dot={CHART_DOT}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChart />
-          )}
+          {(data.durationTrends ?? []).length > 0 ? (
+            <div style={{ width: '100%', height: 260 }}><LineChart data={durationData} options={durationLineOptions} /></div>
+          ) : <EmptyChart />}
         </ChartCard>
 
-        {/* Error & Permission Rates */}
         <ChartCard title={t("analytics.errorRates")}>
           <div className="space-y-5">
-            <RateBar
-              label={t("analytics.sessionFailureRate")}
-              value={data.errorRates.failureRate}
-              detail={`${data.errorRates.failedSessions} failed / ${data.errorRates.totalSessions} total`}
-              color="red"
-            />
-            <RateBar
-              label={t("analytics.autoApprovalRate")}
-              value={
-                data.errorRates.approvals > 0
-                  ? data.errorRates.autoApprovals / data.errorRates.approvals
-                  : 0
-              }
-              detail={`${data.errorRates.autoApprovals} auto / ${data.errorRates.approvals} total approvals`}
-              color="green"
-            />
+            <RateBar label={t("analytics.sessionFailureRate")} value={data.errorRates.failureRate} detail={`${data.errorRates.failedSessions} failed / ${data.errorRates.totalSessions} total`} color="red" />
+            <RateBar label={t("analytics.autoApprovalRate")} value={data.errorRates.approvals > 0 ? data.errorRates.autoApprovals / data.errorRates.approvals : 0} detail={`${data.errorRates.autoApprovals} auto / ${data.errorRates.approvals} total approvals`} color="green" />
             <div className="grid grid-cols-2 gap-4 pt-2">
               <MetricBox label={t("analytics.permissionPrompts")} value={String(data.errorRates.permissionPrompts)} />
               <MetricBox label={t("analytics.manualApprovals")} value={String(data.errorRates.approvals - data.errorRates.autoApprovals)} />
@@ -482,7 +441,6 @@ export default function AnalyticsPage() {
         </ChartCard>
       </div>
 
-      {/* Row 4: Rate-Limit Analytics */}
       {rateLimitData && (
         <div className="flex flex-col gap-4">
           <RateLimitChart perKey={rateLimitData.perKey} />
@@ -490,7 +448,6 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Agent Contributions (#3269) */} // token-ok
       <AgentContributionsPanel />
     </div>
   );
@@ -540,7 +497,7 @@ function RateBar({ label, value, detail, color }: { label: string; value: number
     <div>
       <div className="flex items-center justify-between text-sm">
         <span className="text-[var(--color-text-primary)]">{label}</span>
-        <span className={`font-mono font-medium ${textColor}`}>{(pct).toFixed(1)}%</span>
+        <span className={`font-mono font-medium ${textColor}`}>{pct.toFixed(1)}%</span>
       </div>
       <div className="mt-1 h-2 w-full rounded-full bg-[var(--color-void-lighter)]">
         <div className={`h-2 rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />

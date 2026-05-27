@@ -3,23 +3,22 @@
  *
  * Displays total USD grouped by model with color coding.
  * Part of issue #3273: Cost Analytics Panels. // token-ok
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   Tooltip,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
-import { ChartFrame } from '../shared/ChartFrame';
 import {
   MODEL_COLORS as THEME_MODEL_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, TOOLTIP_STYLE,
+  CHART_RGB,
 } from '../../utils/chartTheme';
 
 export interface CostByModelDataPoint {
@@ -43,23 +42,7 @@ const MOCK_DATA: CostByModelDataPoint[] = [
   { model: 'gpt-4.1', cost: 5.91 },
 ];
 
-function CustomTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: Array<{ payload: CostByModelDataPoint }>;
-}) {
-  if (!active || !payload?.length) return null;
-  const point = payload[0].payload;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className="mb-1 text-xs font-mono text-[var(--color-text-muted)]">
-        {point.model}
-      </p>
-      <p className="text-sm font-mono font-medium text-[var(--color-text-primary)]">
-        {formatCurrency(point.cost)}
-      </p>
-    </div>
-  );
-}
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 export function CostByModelChart({ data, loading = false, className = '' }: CostByModelChartProps) {
   const chartData = data ?? MOCK_DATA;
@@ -96,6 +79,78 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
     );
   }
 
+  const colorMap: Record<string, string> = {
+    'claude-opus-4.7': `rgba(${CHART_RGB.purple}, 0.7)`,
+    'claude-sonnet-4.6': `rgba(${CHART_RGB.cyan}, 0.7)`,
+    'claude-haiku-4.5': `rgba(${CHART_RGB.success}, 0.7)`,
+    'gpt-5.4': `rgba(${CHART_RGB.warning}, 0.7)`,
+    'gpt-4.1': `rgba(${CHART_RGB.info}, 0.7)`,
+    other: `rgba(${CHART_RGB.cyan}, 0.3)`,
+  };
+
+  const barColors = chartData.map((d) => colorMap[d.model] ?? colorMap.other);
+
+  const chart = {
+    labels: chartData.map((d) => d.model),
+    datasets: [
+      {
+        label: 'Cost',
+        data: chartData.map((d) => d.cost),
+        backgroundColor: barColors,
+        hoverBackgroundColor: barColors.map((c) => c.replace('0.7)', '0.9)')),
+        borderRadius: 4,
+        borderSkipped: false as const,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 25, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        titleFont: { family: 'monospace', size: 11 },
+        titleColor: '#9ca3af',
+        bodyFont: { family: 'monospace', size: 13, weight: 'bold' as const },
+        bodyColor: '#f3f4f6',
+        displayColors: false,
+        callbacks: {
+          label: (ctx) => formatCurrency(ctx.parsed.x ?? 0),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawTicks: false,
+        },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => `$${(val as number ?? 0).toFixed(0)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
+
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
@@ -123,35 +178,9 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
         ))}
       </div>
 
-      <ChartFrame className="h-64 min-w-0" label="Cost by model chart loading">
-        {({ width, height }) => (
-          <BarChart width={width} height={height} data={chartData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid {...CHART_GRID} horizontal={false} />
-            <XAxis
-              type="number"
-              tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              type="category"
-              dataKey="model"
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-              width={120}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="cost" radius={[0, 4, 4, 0]} animationDuration={CHART_ANIMATION.duration}>
-              {chartData.map((entry) => (
-                <Cell
-                  key={entry.model}
-                  fill={MODEL_COLORS[entry.model] ?? MODEL_COLORS.other}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        )}
-      </ChartFrame>
+      <div className="h-64 min-w-0">
+        <Bar data={chart} options={options} />
+      </div>
     </section>
   );
 }
