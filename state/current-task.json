@@ -1,10 +1,9 @@
 {
-  "updated": "2026-05-26T15:15Z",
-  "task": "#4235",
-  "status": "SUBAGENT_RUNNING",
-  "issue": 4235,
-  "stepDesc": "Extract types/constants from acp-lifecycle-probe.ts (step 1)",
-  "pr": null,
-  "sessionId": "subagent:12b412d8",
-  "notes": "#4224 PR #4286 verified. Now working #4235 (acp-lifecycle split step 1). 5 approved PRs pending."
+  "updated": "2026-05-27T17:51Z",
+  "task": "#4246 session.ts decomposition",
+  "status": "IN_PROGRESS",
+  "issue": 4246,
+  "pr": 4366,
+  "sessionId": null,
+  "notes": "Steps 6-7 done (hook secret reader + latency metrics). session.ts 1648→1052 (-36.2%). PR #4366 open. Continuing to step 8."
 }

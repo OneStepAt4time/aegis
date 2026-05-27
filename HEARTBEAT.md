@@ -47,6 +47,7 @@ If required context is missing, stop and escalate before running any session act
 - Always use the Aegis API to manage sessions; never kill OS processes.
 
 3) Start the next task via MCP
+- **Check GitHub assignments first** (from bootstrap step above). If you have assigned `in-progress` issues, continue those — do NOT pick new work.
 - Pick one ready/assigned issue (label: `ready` or highest priority). If none → triage with Athena.
 - Create a CC session including the full issue URL in the prompt: `https://github.com/OneStepAt4time/aegis/issues/N`.
 - Wait 8–12s for CC to boot and verify `promptDelivery.delivered`/status.
