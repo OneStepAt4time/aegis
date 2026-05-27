@@ -1,15 +1,15 @@
 /**
- * pages/OnboardingPage.tsx — Multi-step first-run onboarding wizard.
+ * pages/OnboardingWizard.tsx — Multi-step first-run onboarding wizard.
  * Shows on first authenticated visit. Stores completion in localStorage.
  *
  * Steps:
  *  1. Welcome — Aegis branding + intro
- *  2. Connect — guide user to run `ag init` or connect CC session
- *  3. First Session — walk through creating a session
- *  4. Explore — highlight key dashboard pages
+ *  2. Connect — guide user to run `ag init` or show connected status
+ *  3. First Session — walk through creating a session or show active sessions
+ *  4. Explore — highlight key dashboard pages with real session count
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Rocket,
   Terminal,
@@ -20,41 +20,25 @@ import {
   Copy,
   Check,
   X,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  Plus,
 } from 'lucide-react';
+import { getHealth } from '../../api/health';
+import { useDrawerStore } from '../../store/useDrawerStore';
 
 const TOTAL_STEPS = 4;
 
-const STEPS = [
-  {
-    id: 1,
-    icon: Rocket,
-    title: 'Welcome to Aegis',
-    description:
-      'Your Claude Code orchestration hub. Monitor sessions, manage permissions, and track costs — all from one dashboard.',
-  },
-  {
-    id: 2,
-    icon: Terminal,
-    title: 'Connect Your Environment',
-    description:
-      'Run the CLI init command to connect your Claude Code sessions to Aegis. Copy the snippet below and paste it into your terminal.',
-    snippet: 'npx @anthropic-ai/claude-code@latest && ag init',
-  },
-  {
-    id: 3,
-    icon: Play,
-    title: 'Create Your First Session',
-    description:
-      'Once connected, create a new Claude Code session from the dashboard. Aegis will handle permissions, audit logging, and real-time monitoring automatically.',
-  },
-  {
-    id: 4,
-    icon: Compass,
-    title: 'Explore the Dashboard',
-    description:
-      'You\'re all set! Key pages to check out:\n\n• Sessions — live session monitoring and history\n• Analytics — usage metrics and agent contributions\n• Cost — token tracking and budget alerts\n• Settings — configure preferences and API keys',
-  },
-] as const;
+const CONNECT_SNIPPET = 'npx @anthropic-ai/claude-code@latest && ag init';
+
+interface HealthState {
+  claudeAvailable: boolean;
+  claudeVersion: string | null;
+  claudeHealthy: boolean;
+  activeSessions: number;
+  totalSessions: number;
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -91,12 +75,96 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function StepContent({
-  step,
-}: {
-  step: (typeof STEPS)[number];
-}) {
-  const Icon = step.icon;
+/** Step 1 — Welcome */
+function WelcomeStep() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div
+        className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-cyan)]/10 ring-1 ring-[var(--color-accent-cyan)]/20"
+        aria-hidden="true"
+      >
+        <Rocket className="h-8 w-8 text-[var(--color-accent-cyan)]" />
+      </div>
+      <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+        Welcome to Aegis
+      </h2>
+      <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)] whitespace-pre-line">
+        Your Claude Code orchestration hub. Monitor sessions, manage permissions, and track costs — all from one dashboard.
+      </p>
+    </div>
+  );
+}
+
+/** Step 2 — Connect (health-aware) */
+function ConnectStep({ health, loading }: { health: HealthState | null; loading: boolean }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div
+        className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-cyan)]/10 ring-1 ring-[var(--color-accent-cyan)]/20"
+        aria-hidden="true"
+      >
+        <Terminal className="h-8 w-8 text-[var(--color-accent-cyan)]" />
+      </div>
+
+      {loading ? (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Checking connection…
+          </h2>
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Detecting Claude Code status
+          </div>
+        </>
+      ) : health?.claudeAvailable && health.claudeHealthy ? (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Claude Code Connected ✅
+          </h2>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
+              Claude Code v{health.claudeVersion} detected and healthy.
+            </span>
+          </p>
+        </>
+      ) : health?.claudeAvailable && !health.claudeHealthy ? (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Claude Code Detected
+          </h2>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-yellow-400" />
+              Claude Code was found but may have issues. You can still proceed.
+            </span>
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Connect Your Environment
+          </h2>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+            Run the CLI init command to connect your Claude Code sessions to Aegis. Copy the snippet below and paste it into your terminal.
+          </p>
+          <div className="mt-6 w-full max-w-md">
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void-dark)] p-3">
+              <code className="flex-1 overflow-x-auto text-left text-xs font-mono text-[var(--color-accent-cyan)]">
+                {CONNECT_SNIPPET}
+              </code>
+              <CopyButton text={CONNECT_SNIPPET} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Step 3 — First Session (health-aware) */
+function FirstSessionStep({ health, onCreateSession }: { health: HealthState | null; onCreateSession: () => void }) {
+  const hasActive = (health?.activeSessions ?? 0) > 0;
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -104,35 +172,79 @@ function StepContent({
         className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-cyan)]/10 ring-1 ring-[var(--color-accent-cyan)]/20"
         aria-hidden="true"
       >
-        <Icon className="h-8 w-8 text-[var(--color-accent-cyan)]" />
+        <Play className="h-8 w-8 text-[var(--color-accent-cyan)]" />
       </div>
-      <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-        {step.title}
-      </h2>
-      <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)] whitespace-pre-line">
-        {step.description}
-      </p>
-      {'snippet' in step && step.snippet && (
-        <div className="mt-6 w-full max-w-md">
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void-dark)] p-3">
-            <code className="flex-1 overflow-x-auto text-left text-xs font-mono text-[var(--color-accent-cyan)]">
-              {step.snippet}
-            </code>
-            <CopyButton text={step.snippet} />
-          </div>
-        </div>
+
+      {hasActive ? (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Sessions Running!
+          </h2>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+            You have {health!.activeSessions} active {health!.activeSessions === 1 ? 'session' : 'sessions'}.
+            Head to the Sessions page to monitor them in real-time.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+            Create Your First Session
+          </h2>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+            Once connected, create a new Claude Code session from the dashboard. Aegis will handle permissions, audit logging, and real-time monitoring automatically.
+          </p>
+          <button
+            type="button"
+            onClick={onCreateSession}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2.5 text-sm font-bold text-[var(--color-void-dark)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+            aria-label="Create your first session"
+          >
+            <Plus className="h-4 w-4" />
+            Create Your First Session
+          </button>
+        </>
       )}
     </div>
   );
 }
 
-function ProgressIndicator({ current }: { current: number }) {
+/** Step 4 — Explore (health-aware) */
+function ExploreStep({ health }: { health: HealthState | null }) {
+  const total = health?.totalSessions ?? 0;
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div
+        className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-cyan)]/10 ring-1 ring-[var(--color-accent-cyan)]/20"
+        aria-hidden="true"
+      >
+        <Compass className="h-8 w-8 text-[var(--color-accent-cyan)]" />
+      </div>
+      <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
+        Explore the Dashboard
+      </h2>
+      <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
+        {total > 0
+          ? `${total} session${total === 1 ? '' : 's'} monitored so far. Here are the key pages to explore:`
+          : "You're all set! Key pages to check out:"}
+      </p>
+      <ul className="mt-4 space-y-1 text-left text-sm text-[var(--color-text-muted)]">
+        <li>• <strong className="text-[var(--color-text-primary)]">Sessions</strong> — live session monitoring and history</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">Analytics</strong> — usage metrics and agent contributions</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">Cost</strong> — token tracking and budget alerts</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">Settings</strong> — configure preferences and API keys</li>
+      </ul>
+    </div>
+  );
+}
+
+function ProgressIndicator({ current, completedSteps }: { current: number; completedSteps: Set<number> }) {
   return (
     <div className="flex items-center gap-2" role="progressbar" aria-valuenow={current} aria-valuemin={1} aria-valuemax={TOTAL_STEPS} aria-label={`Step ${current} of ${TOTAL_STEPS}`}>
       {Array.from({ length: TOTAL_STEPS }, (_, i) => {
         const stepNum = i + 1;
         const isActive = stepNum === current;
-        const isComplete = stepNum < current;
+        const isComplete = completedSteps.has(stepNum);
 
         return (
           <div key={stepNum} className="flex items-center gap-2">
@@ -146,7 +258,7 @@ function ProgressIndicator({ current }: { current: number }) {
               }`}
               aria-current={isActive ? 'step' : undefined}
             >
-              {isComplete ? <Check className="h-4 w-4" /> : stepNum}
+              {isComplete && !isActive ? <Check className="h-4 w-4" /> : stepNum}
             </div>
             {stepNum < TOTAL_STEPS && (
               <div
@@ -171,17 +283,69 @@ interface OnboardingWizardProps {
 
 export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const step = STEPS[currentStep - 1];
+  const [health, setHealth] = useState<HealthState | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const healthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openNewSession = useDrawerStore((s) => s.openNewSession);
+
+  // Fetch health on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    // 3-second timeout fallback
+    healthTimeoutRef.current = setTimeout(() => {
+      if (!cancelled) {
+        setHealthLoading(false);
+      }
+    }, 3000);
+
+    getHealth()
+      .then((h) => {
+        if (cancelled) return;
+        if (healthTimeoutRef.current) clearTimeout(healthTimeoutRef.current);
+        setHealth({
+          claudeAvailable: h.claude?.available ?? false,
+          claudeVersion: h.claude?.version ?? null,
+          claudeHealthy: h.claude?.healthy ?? false,
+          activeSessions: h.sessions.active,
+          totalSessions: h.sessions.total,
+        });
+        setHealthLoading(false);
+
+        // Auto-mark step 2 as completed when Claude is connected
+        if (h.claude?.available && h.claude.healthy) {
+          setCompletedSteps((prev) => new Set([...prev, 2]));
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (healthTimeoutRef.current) clearTimeout(healthTimeoutRef.current);
+        // Health check failed — show default (disconnected) state
+        setHealthLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (healthTimeoutRef.current) clearTimeout(healthTimeoutRef.current);
+    };
+  }, []);
 
   const isLastStep = currentStep === TOTAL_STEPS;
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
       onComplete();
+      // If no active sessions, open the new session drawer after completing
+      if ((health?.activeSessions ?? 0) === 0) {
+        openNewSession();
+      }
     } else {
+      setCompletedSteps((prev) => new Set([...prev, currentStep]));
       setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
     }
-  }, [isLastStep, onComplete]);
+  }, [isLastStep, onComplete, health, openNewSession, currentStep]);
 
   const handleBack = useCallback(() => {
     setCurrentStep((s) => Math.max(s - 1, 1));
@@ -190,6 +354,11 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const handleSkip = useCallback(() => {
     onComplete();
   }, [onComplete]);
+
+  const handleCreateSession = useCallback(() => {
+    onComplete();
+    openNewSession();
+  }, [onComplete, openNewSession]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -204,8 +373,25 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   // Announce step changes to screen readers
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
-    setAnnouncement(`Step ${currentStep} of ${TOTAL_STEPS}: ${step.title}`);
-  }, [currentStep, step.title]);
+    const titles = ['Welcome to Aegis', 'Connect Your Environment', 'Create Your First Session', 'Explore the Dashboard'];
+    setAnnouncement(`Step ${currentStep} of ${TOTAL_STEPS}: ${titles[currentStep - 1]}`);
+  }, [currentStep]);
+
+  // Render current step
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return <WelcomeStep />;
+      case 2:
+        return <ConnectStep health={health} loading={healthLoading} />;
+      case 3:
+        return <FirstSessionStep health={health} onCreateSession={handleCreateSession} />;
+      case 4:
+        return <ExploreStep health={health} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div
@@ -233,12 +419,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-8 shadow-2xl">
         {/* Progress */}
         <div className="mb-8 flex justify-center">
-          <ProgressIndicator current={currentStep} />
+          <ProgressIndicator current={currentStep} completedSteps={completedSteps} />
         </div>
 
         {/* Step content */}
         <div className="mb-8 min-h-[240px] flex items-center">
-          <StepContent step={step} />
+          {renderStep()}
         </div>
 
         {/* Actions */}
