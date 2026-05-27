@@ -442,68 +442,14 @@ export { readParentPid as readPpid } from './process-utils.js';
  *  Only allowedWorkDirs is hot-reloaded — other config changes still require a restart. */
 // watchedConfigPath moved to AppContext
 
+import { setupConfigWatcherImpl, handleConfigReloadImpl } from './boot/boot-config-watcher.js';
+
 function setupConfigWatcher(ctx: AppContext): void {
-  const configPath = findConfigFilePath();
-  if (!configPath) return; // No config file to watch
-  ctx.watchedConfigPath = configPath;
-
-  // SIGHUP handler for manual reload
-  process.on('SIGHUP', () => {
-    void handleConfigReload('SIGHUP', ctx);
-  });
-
-  // fs.watch for automatic detection
-  try {
-    ctx.configWatcher = watch(configPath, (_eventType) => {
-      // Accept all event types — editors emit rename (atomic save), change, or undefined.
-      // Debounce: FS events can fire multiple times for one save
-        if (ctx.configReloadTimer) timers.clearTimeout(ctx.configReloadTimer);
-        ctx.configReloadTimer = timers.setTimeout(() => {
-          void handleConfigReload('file-change', ctx);
-        }, 300);
-    });
-    ctx.configWatcher.on('error', () => {
-      // Watcher failed (file deleted, permissions) — disable gracefully
-      ctx.configWatcher?.close();
-      ctx.configWatcher = null;
-    });
-    logger.info({
-      component: 'server',
-      operation: 'config_watcher_started',
-      attributes: { configPath },
-    });
-  } catch {
-    // watch() can throw if file is inaccessible — just skip
-  }
+  setupConfigWatcherImpl(ctx, logger, timers);
 }
 
-/** Reload allowedWorkDirs from config file and update the live config object. */
 async function handleConfigReload(source: string, ctx: AppContext): Promise<void> {
-  try {
-    const newDirs = await reloadAllowedWorkDirs(ctx.watchedConfigPath ?? undefined);
-    if (newDirs === null) return; // Config file gone/invalid
-    const oldDirs = ctx.config.allowedWorkDirs;
-    const changed = newDirs.length !== oldDirs.length
-      || newDirs.some((d, i) => d !== oldDirs[i]);
-    if (changed) {
-      ctx.config.allowedWorkDirs = newDirs;
-      logger.info({
-        component: 'server',
-        operation: 'config_hot_reload',
-        attributes: {
-          source,
-          field: 'allowedWorkDirs',
-          count: newDirs.length,
-        },
-      });
-    }
-  } catch (e) {
-    logger.warn({
-      component: 'server',
-      operation: 'config_hot_reload_failed',
-      attributes: { source, error: e instanceof Error ? e.message : String(e) },
-    });
-  }
+  return handleConfigReloadImpl(source, ctx, logger);
 }
 
 async function main(): Promise<void> {
