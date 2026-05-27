@@ -24,17 +24,14 @@ import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
 
+import { StallDetector, type StallDetectorConfig, type StallDetectorDeps } from './stall-detector.js';
+
 import { type AlertManager } from './alerting.js';
 import { type MetricsCollector } from './metrics.js';
 import { startToolSpan, setToolResult, spanOk } from './tracing.js';
 import type { Span } from '@opentelemetry/api';
 import { computeDelayMs, retryWithJitter } from './retry.js';
 import { RateLimitCoordinator } from './rate-limit-coordinator.js';
-
-/** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
-function parseCogitatedDuration(_statusText: string): number | null {
-  return null;
-}
 
 export interface MonitorConfig {
   pollIntervalMs: number;       // Base poll interval (default: 30000 — hooks are primary signal)
@@ -78,36 +75,41 @@ export class SessionMonitor {
   private lastStatus = new Map<string, UIState>();
   /** Active tool spans for OTel lifecycle tracking (#2807) */
   private _activeToolSpans = new Map<string, Span>();
-  private lastBytesSeen = new Map<string, { bytes: number; at: number }>();
-  // Issue #663: Nested Map for O(1) per-session stall lookup (was Set with O(n) prefix scan)
-  private stallNotified = new Map<string, Set<string>>();  // sessionId → Set<stallType>
+  /** Stall detector — encapsulates all stall detection logic and state. */
+  private stallDetector: StallDetector;
 
-  /** Issue #663: O(1) stall notification check. */
-  private stallHas(sessionId: string, stallType: string): boolean {
-    return this.stallNotified.get(sessionId)?.has(stallType) ?? false;
+  // -- Forwarding accessors for backward-compatible test access (via `as any`) --
+
+  /** @internal Backward compat: expose stallNotified for tests. */
+  get lastBytesSeen() { return this.stallDetector.lastBytesSeen; }
+  /** @internal Backward compat: expose stateSince for tests. */
+  get stateSince() { return this.stallDetector.stateSince; }
+  /** @internal Backward compat: expose prevStatusForStall for tests. */
+  get prevStatusForStall() { return this.stallDetector.prevStatusForStall; }
+  /** @internal Backward compat: expose rateLimitedSessions for tests. */
+  get rateLimitedSessions() { return this.stallDetector.rateLimitedSessions; }
+  /** @internal Backward compat: expose stallNotified for tests. */
+  get stallNotified() { return this.stallDetector.stallNotified; }
+
+  /** @internal Backward compat: forward to stallDetector. */
+  stallHas(sessionId: string, stallType: string): boolean {
+    return this.stallDetector.stallHas(sessionId, stallType);
   }
-
-  /** Issue #663: O(1) stall notification add. */
-  private stallAdd(sessionId: string, stallType: string): void {
-    const set = this.stallNotified.get(sessionId);
-    if (set) { set.add(stallType); } else { this.stallNotified.set(sessionId, new Set([stallType])); }
+  /** @internal Backward compat: forward to stallDetector. */
+  stallAdd(sessionId: string, stallType: string): void {
+    this.stallDetector.stallAdd(sessionId, stallType);
   }
-
-  /** Issue #663: O(1) stall notification delete. */
-  private stallDelete(sessionId: string, stallType: string): void {
-    this.stallNotified.get(sessionId)?.delete(stallType);
+  /** @internal Backward compat: forward to stallDetector. */
+  stallDelete(sessionId: string, stallType: string): void {
+    this.stallDetector.stallDelete(sessionId, stallType);
   }
-
-  /** Issue #663: Delete all stall notifications for a session. */
-  private stallDeleteAll(sessionId: string): void {
-    this.stallNotified.delete(sessionId);
+  /** @internal Backward compat: forward to stallDetector. */
+  stallDeleteAll(sessionId: string): void {
+    this.stallDetector.stallDeleteAll(sessionId);
   }
-
-  /** Issue #663: Delete specific stall types for a session. */
-  private stallDeleteTypes(sessionId: string, types: string[]): void {
-    const set = this.stallNotified.get(sessionId);
-    if (!set) return;
-    for (const t of types) set.delete(t);
+  /** @internal Backward compat: forward to stallDetector. */
+  stallDeleteTypes(sessionId: string, types: string[]): void {
+    this.stallDetector.stallDeleteTypes(sessionId, types);
   }
   private lastStallCheck = 0;
   private lastDeadCheck = 0;
@@ -117,18 +119,11 @@ export class SessionMonitor {
   private idleSince = new Map<string, number>();  // debounce: when idle started
   private processedStopSignals = new Set<string>(); // Issue #15: don't re-process signals
   private static readonly MAX_PROCESSED_STOP_SIGNALS = 1000; // #220: prevent unbounded growth
-  // Smart stall detection: track when each non-working state started
-  private stateSince = new Map<string, { state: string; since: number }>();  // sessionId → { state, since } (one entry per session)
   private deadNotified = new Set<string>();  // don't spam dead session events
-  private prevStatusForStall = new Map<string, UIState>();  // track previous status for stall transition detection
-  private rateLimitedSessions = new Set<string>();  // sessions in rate-limit backoff
   /** Issue #3931: Cross-session rate-limit retry coordinator. */
   private rateLimitCoordinator = new RateLimitCoordinator();
   // Issue #1324: Track statusText per session to detect extended thinking ("Cogitated for Xm Ys")
   private lastStatusText = new Map<string, string | null>();
-  /** Thinking stall threshold multiplier — CC extended thinking gets 5x the normal stall threshold. */
-  private static readonly THINKING_STALL_MULTIPLIER = 5;
-
   /** Issue #89 L4: Debounce status change broadcasts per session.
    *  If multiple status changes happen within 500ms, only emit the last one.
    *  Prevents rapid-fire notifications during state transitions. */
@@ -146,6 +141,26 @@ export class SessionMonitor {
     private config: MonitorConfig = DEFAULT_MONITOR_CONFIG,
   ) {
     this.config = { ...DEFAULT_MONITOR_CONFIG, ...config };
+    this.stallDetector = new StallDetector(
+      {
+        stallThresholdMs: this.config.stallThresholdMs,
+        permissionStallMs: this.config.permissionStallMs,
+        unknownStallMs: this.config.unknownStallMs,
+        permissionTimeoutMs: this.config.permissionTimeoutMs,
+        stallRecoveryEnabled: this.config.stallRecoveryEnabled,
+        stallRecoveryMaxRetries: this.config.stallRecoveryMaxRetries,
+      },
+      {
+        rejectSession: (sid) => this.sessions.reject(sid),
+        emitStall: (sid, type, detail) => this.eventBus?.emitStall(sid, type, detail),
+        statusChange: (payload) => { void this.channels.statusChange(payload); },
+        makePayload: (event, session, detail) => this.makePayload(event, session, detail),
+        alertFailure: (type, detail) => this.alertManager?.recordFailure(type as import('./alerting.js').AlertType, detail),
+        metricsFailed: (sid) => this.metrics?.sessionFailed(sid),
+        restartSession: undefined, // set later via setAcpBackend
+        onSessionIdle: (sid) => this.contextWarningCompacted.delete(sid),
+      },
+    );
   }
 
   /** Issue #32: Set the event bus for SSE streaming. */
@@ -171,11 +186,30 @@ export class SessionMonitor {
   private acpBackend?: AcpBackend;
   /** Issue #3754: Track retry attempts per session for rate-limit retries. */
   private rateLimitRetryAttempts = new Map<string, number>();
-  /** Issue #3752: Track sessions currently being recovered from stall. */
-  private stallRecovering = new Set<string>();
   /** Issue #3754: Set the ACP backend for rate-limit retry support. */
   setAcpBackend(acpBackend: AcpBackend): void {
     this.acpBackend = acpBackend;
+    // Wire up restartSession callback now that we have the backend
+    this.stallDetector = new StallDetector(
+      {
+        stallThresholdMs: this.config.stallThresholdMs,
+        permissionStallMs: this.config.permissionStallMs,
+        unknownStallMs: this.config.unknownStallMs,
+        permissionTimeoutMs: this.config.permissionTimeoutMs,
+        stallRecoveryEnabled: this.config.stallRecoveryEnabled,
+        stallRecoveryMaxRetries: this.config.stallRecoveryMaxRetries,
+      },
+      {
+        rejectSession: (sid) => this.sessions.reject(sid),
+        emitStall: (sid, type, detail) => this.eventBus?.emitStall(sid, type, detail),
+        statusChange: (payload) => { void this.channels.statusChange(payload); },
+        makePayload: (event, session, detail) => this.makePayload(event, session, detail),
+        alertFailure: (type, detail) => this.alertManager?.recordFailure(type as import('./alerting.js').AlertType, detail),
+        metricsFailed: (sid) => this.metrics?.sessionFailed(sid),
+        restartSession: (params) => acpBackend.restartSession(params),
+        onSessionIdle: (sid) => this.contextWarningCompacted.delete(sid),
+      },
+    );
   }
 
   /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */
@@ -265,235 +299,14 @@ export class SessionMonitor {
     }
   }
 
-  /** Smart stall detection: multiple stall types with graduated thresholds.
-   *
-   * Detects 4 types of stalls:
-   * 1. JSONL stall: "working" but no new JSONL bytes for stallThresholdMs
-   * 2. Permission stall: permission_prompt/bash_approval for permissionStallMs
-   * 3. Unknown stall: unknown state for unknownStallMs (CC stuck in transition)
-   * 4. State duration stall: any non-idle state for 2x its threshold
-   */
+  /** Stall detection: delegates to StallDetector. */
   private async checkForStalls(now: number): Promise<void> {
-    for (const session of this.sessions.listSessions()) {
-      const currentStatus = this.lastStatus.get(session.id);
-      const prevStallStatus = this.prevStatusForStall.get(session.id);
-
-      // Track state transitions — one entry per session, preserving timer across
-      // permission_prompt ↔ bash_approval transitions (both are "permission" states)
-      if (currentStatus && currentStatus !== 'idle') {
-        const entry = this.stateSince.get(session.id);
-        if (!entry) {
-          this.stateSince.set(session.id, { state: currentStatus, since: now });
-        } else if (entry.state !== currentStatus) {
-          const isPermState = (s: string): boolean => s === 'permission_prompt' || s === 'bash_approval';
-          if (isPermState(entry.state) && isPermState(currentStatus)) {
-            entry.state = currentStatus; // preserve since across permission sub-type transitions
-          } else {
-            this.stateSince.set(session.id, { state: currentStatus, since: now });
-          }
-        }
-      }
-
-      // --- Type 1: JSONL stall (working but no output) ---
-      if (currentStatus === 'working') {
-        // Skip stall detection for rate-limited sessions — CC is in backoff
-        if (this.rateLimitedSessions.has(session.id)) {
-          continue;
-        }
-
-        const prev = this.lastBytesSeen.get(session.id);
-        const currentBytes = session.monitorOffset;
-
-        if (!prev) {
-          this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-          continue;
-        }
-
-        if (currentBytes > prev.bytes) {
-          this.lastBytesSeen.set(session.id, { bytes: currentBytes, at: now });
-          this.stallDelete(session.id, 'jsonl');
-          this.stallDelete(session.id, 'thinking');
-        } else {
-          const stallDuration = now - prev.at;
-          const baseThreshold = session.stallThresholdMs || this.config.stallThresholdMs;
-
-          // Issue #1324: CC extended thinking ("Cogitated for Xm Ys") is legitimate work
-          // but produces no JSONL bytes. Use a longer threshold before flagging as stalled.
-          const statusText = this.lastStatusText.get(session.id) ?? null;
-          const thinkingDuration = statusText ? parseCogitatedDuration(statusText) : null;
-
-          if (thinkingDuration !== null) {
-            // CC is in extended thinking mode — use 5x the normal stall threshold
-            const thinkingThreshold = baseThreshold * SessionMonitor.THINKING_STALL_MULTIPLIER;
-            if (stallDuration >= thinkingThreshold && !this.stallHas(session.id, 'thinking')) {
-              this.stallAdd(session.id, 'thinking');
-              const minutes = Math.round(thinkingDuration / 60000);
-              const detail = `Session stalled: CC extended thinking for ${minutes}min with no output. ` +
-                  `Status: "${statusText}". Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
-              this.eventBus?.emitStall(session.id, 'thinking', detail);
-              this.channels.statusChange(
-                this.makePayload('status.stall', session, detail),
-              );
-            }
-          } else {
-            // Normal JSONL stall detection
-            if (stallDuration >= baseThreshold && !this.stallHas(session.id, 'jsonl')) {
-              this.stallAdd(session.id, 'jsonl');
-              const minutes = Math.round(stallDuration / 60000);
-              const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
-                  `Last activity: ${new Date(session.lastActivity).toISOString()}`;
-              this.eventBus?.emitStall(session.id, 'jsonl', detail);
-              this.channels.statusChange(
-                this.makePayload('status.stall', session, detail),
-              );
-              // Issue #3752: Attempt auto-recovery for JSONL stall
-              this.attemptStallRecovery(session, 'jsonl');
-            }
-          }
-        }
-      } else {
-        // Reset JSONL and thinking stall tracking when not working
-        this.stallDelete(session.id, 'jsonl');
-        this.stallDelete(session.id, 'thinking');
-      }
-
-      // --- Type 2: Permission stall (waiting for approval too long) ---
-      if (currentStatus === 'permission_prompt' || currentStatus === 'bash_approval') {
-        const entry = this.stateSince.get(session.id);
-        const permDuration = entry ? now - entry.since : 0;
-        if (permDuration >= this.config.permissionStallMs) {
-          if (!this.stallHas(session.id, 'permission')) {
-            this.stallAdd(session.id, 'permission');
-            const minutes = Math.round(permDuration / 60000);
-            const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
-                `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
-            this.eventBus?.emitStall(session.id, 'permission', detail);
-            this.channels.statusChange(
-              this.makePayload('status.stall', session, detail),
-            );
-          }
-        }
-        // L9: Auto-reject permission after timeout
-        if (permDuration >= this.config.permissionTimeoutMs) {
-          if (!this.stallHas(session.id, 'permission_timeout')) {
-            this.stallAdd(session.id, 'permission_timeout');
-            const minutes = Math.round(permDuration / 60000);
-            logger.warn({
-              component: 'monitor',
-              operation: 'permission_timeout_auto_reject',
-              sessionId: session.id,
-              errorCode: 'PERMISSION_TIMEOUT',
-              attributes: { displayName: session.displayName, timeoutMinutes: minutes },
-            });
-            try {
-              await this.sessions.reject(session.id);
-              const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.displayName})`;
-              this.eventBus?.emitStall(session.id, 'permission_timeout', detail);
-              this.channels.statusChange(
-                this.makePayload('status.permission_timeout', session, detail),
-              );
-            } catch (e: unknown) {
-              logger.error({
-                component: 'monitor',
-                operation: 'permission_timeout_auto_reject',
-                sessionId: session.id,
-                errorCode: 'AUTO_REJECT_FAILED',
-                attributes: { error: e instanceof Error ? e.message : String(e) },
-              });
-            }
-          }
-        }
-      }
-
-      // --- Type 3: Unknown stall (CC stuck in transition) ---
-      if (currentStatus === 'unknown') {
-        const entry = this.stateSince.get(session.id);
-        const unkDuration = entry ? now - entry.since : 0;
-        if (unkDuration >= this.config.unknownStallMs) {
-          if (!this.stallHas(session.id, 'unknown')) {
-            this.stallAdd(session.id, 'unknown');
-            const minutes = Math.round(unkDuration / 60000);
-            const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
-                `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
-            this.eventBus?.emitStall(session.id, 'unknown', detail);
-            this.channels.statusChange(
-              this.makePayload('status.stall', session, detail),
-            );
-          }
-        }
-      }
-
-      // --- Type 4: Extended state stall (any state held too long) ---
-      if (currentStatus && currentStatus !== 'idle' && currentStatus !== 'working') {
-        const entry = this.stateSince.get(session.id);
-        const stateDuration = entry ? now - entry.since : 0;
-        const extendedThreshold = this.config.stallThresholdMs * 2;
-        if (stateDuration >= extendedThreshold) {
-          if (!this.stallHas(session.id, 'extended')) {
-            this.stallAdd(session.id, 'extended');
-            const minutes = Math.round(stateDuration / 60000);
-            const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
-                `May need intervention: /interrupt, /approve, or /kill`;
-            this.eventBus?.emitStall(session.id, 'extended', detail);
-            this.channels.statusChange(
-              this.makePayload('status.stall', session, detail),
-            );
-          }
-        }
-      }
-
-      // --- Type 5: Extended working stall (working too long regardless of byte changes, ---
-      // Catches CC stuck in "Misting" state where internal loop detection
-      if (currentStatus === 'working') {
-        const entry = this.stateSince.get(session.id);
-        if (entry && entry.state === 'working') {
-          const workingDuration = now - entry.since;
-          const maxWorkingMs = this.config.stallThresholdMs * 3; // 15 min default
-          if (workingDuration >= maxWorkingMs && !this.stallHas(session.id, 'extended_working')) {
-            this.stallAdd(session.id, 'extended_working');
-            const minutes = Math.round(workingDuration / 60000);
-            const detail = `Session stalled: in "working" state for ${minutes}min. ` +
-              `CC may be stuck in an internal loop (e.g., Misting). Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
-            this.eventBus?.emitStall(session.id, 'extended_working', detail);
-            this.channels.statusChange(
-              this.makePayload('status.stall', session, detail),
-            );
-            // Issue #3752: Attempt auto-recovery for extended working stall
-            this.attemptStallRecovery(session, 'extended_working');
-          }
-        }
-      }
-
-      // Clean up stall notifications on state transitions (using prevStallStatus)
-      if (prevStallStatus && prevStallStatus !== currentStatus) {
-        const exitedPermission = prevStallStatus === 'permission_prompt' || prevStallStatus === 'bash_approval';
-        const exitedUnknown = prevStallStatus === 'unknown';
-
-        if (exitedPermission) {
-          this.stallDeleteTypes(session.id, ['permission', 'permission_timeout']);
-        }
-        if (exitedUnknown) {
-          this.stallDelete(session.id, 'unknown');
-        }
-      }
-
-      // Clean up all state tracking when idle (catch-all)
-      if (currentStatus === 'idle') {
-        this.rateLimitedSessions.delete(session.id);
-        this.stateSince.delete(session.id);
-        // Clean stall notifications (session recovered) — O(1) with Map
-        this.stallDeleteAll(session.id);
-        // Issue #1808: Reset auto-compact tracking so next context_warning triggers fresh
-        this.contextWarningCompacted.delete(session.id);
-      }
-
-      // Update prevStatusForStall for next cycle
-      if (currentStatus) {
-        this.prevStatusForStall.set(session.id, currentStatus);
-      } else {
-        this.prevStatusForStall.delete(session.id);
-      }
-    }
+    await this.stallDetector.check(
+      this.sessions.listSessions(),
+      this.lastStatus,
+      this.lastStatusText,
+      now,
+    );
   }
 
   /** Issue #15: Check for Stop/StopFailure signals written by hook.ts. */
@@ -502,96 +315,13 @@ export class SessionMonitor {
    * Attempts automatic retry with exponential backoff via ACP backend restart.
    * Extracted for testability.
    */
-  /**
-   * Issue #3752: Attempt stall recovery via ACP backend restart.
-   * Uses retryWithJitter for the restart attempt.
-   * Fire-and-forget to avoid blocking the monitor loop.
-   */
+  /** Delegate stall recovery to StallDetector. */
   attemptStallRecovery(session: SessionInfo, stallType: string): void {
-    if (!this.config.stallRecoveryEnabled) return;
-    if (!this.acpBackend) return;
-    if (this.stallRecovering.has(session.id)) return; // Already recovering
-
-    this.stallRecovering.add(session.id);
-
-    const maxRetries = this.config.stallRecoveryMaxRetries;
-    const backend = this.acpBackend;
-    const sid = session.id;
-    const cwd = session.workDir;
-    const tenantId = session.tenantId ?? SYSTEM_TENANT;
-    const ownerKeyId = session.ownerKeyId ?? 'master';
-    const displayName = session.displayName;
-
-    logger.info({
-      component: 'monitor',
-      operation: 'stall_recovery_start',
-      sessionId: sid,
-      attributes: { stallType, displayName },
-    });
-
-    this.channels.statusChange(
-      this.makePayload('status.stall', session,
-        `Stall recovery (${stallType}): restarting...`),
-    );
-
-    // Fire-and-forget recovery
-    retryWithJitter(
-      () => backend.restartSession({
-        sessionId: sid,
-        cwd,
-        tenantId,
-        ownerKeyId,
-        reason: `stall_recovery_${stallType}`,
-      }),
-      {
-        maxAttempts: maxRetries,
-        baseDelayMs: 2_000,
-        maxDelayMs: 10_000,
-        onRetry: (_err: unknown, attempt: number, delayMs: number) => {
-          logger.info({
-            component: 'monitor',
-            operation: 'stall_recovery_retry',
-            sessionId: sid,
-            attributes: { attempt, delayMs },
-          });
-        },
-      },
-    ).then((result) => {
-      logger.info({
-        component: 'monitor',
-        operation: 'stall_recovery_success',
-        sessionId: sid,
-        attributes: { backoffDelayMs: result.backoffDelayMs },
-      });
-      this.rateLimitedSessions.delete(sid);
-      this.stallRecovering.delete(sid);
-      this.stallDeleteAll(sid);
-      this.channels.statusChange(
-        this.makePayload('status.stall', { ...session, status: 'idle' } as SessionInfo,
-          `Stall recovery OK — session restarted.`),
-      );
-    }).catch((err: unknown) => {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.error({
-        component: 'monitor',
-        operation: 'stall_recovery_failed',
-        sessionId: sid,
-        errorCode: 'STALL_RECOVERY_ERROR',
-        attributes: { error: errMsg },
-      });
-      this.stallRecovering.delete(sid);
-      this.channels.statusChange(
-        this.makePayload('status.stall', session,
-          `Stall recovery failed: ${errMsg}`),
-      );
-      this.alertManager?.recordFailure('session_failure',
-        `Session "${displayName}" stall recovery failed: ${errMsg}`);
-      this.metrics?.sessionFailed(sid);
-    });
+    this.stallDetector.attemptStallRecovery(session, stallType);
   }
 
   async handleRateLimitSignal(session: SessionInfo, stopReason: string): Promise<void> {
-    this.rateLimitedSessions.add(session.id);
+    this.stallDetector.rateLimitedSessions.add(session.id);
     // Issue #3754: Attempt automatic retry with exponential backoff.
     const retryAttempt = (this.rateLimitRetryAttempts.get(session.id) ?? 0) + 1;
     const maxRetries = this.config.rateLimitMaxRetries;
@@ -638,7 +368,7 @@ export class SessionMonitor {
           sessionId: sid,
           attributes: { attempt: retryAttempt, backoffDelayMs: result.backoffDelayMs },
         });
-        this.rateLimitedSessions.delete(sid);
+        this.stallDetector.rateLimitedSessions.delete(sid);
         coordinator.release(sid);
       }).catch((err: unknown) => {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -772,8 +502,8 @@ export class SessionMonitor {
           session.status = 'idle';
           this.lastStatus.set(session.id, 'idle');
           // Clean up stall tracking so the session doesn't appear stalled
-          this.stallDeleteAll(session.id);
-          this.stateSince.delete(session.id);
+          this.stallDetector.stallDeleteAll(session.id);
+          this.stallDetector.stateSince.delete(session.id);
           this.idleNotified.add(session.id);
 
           this.channels.statusChange(
@@ -798,7 +528,7 @@ export class SessionMonitor {
 
     if (event.messages.length > 0) {
       // Clear rate-limited state — CC resumed producing real output
-      this.rateLimitedSessions.delete(event.sessionId);
+      this.stallDetector.rateLimitedSessions.delete(event.sessionId);
       // Issue #3754: Reset retry tracking when session resumes activity
       this.rateLimitRetryAttempts.delete(event.sessionId);
 
@@ -822,15 +552,15 @@ export class SessionMonitor {
     // Update JSONL stall tracking — only reset stall timer when real messages arrive
     // When no messages, only update bytes tracking (keep timestamp)
     const now = Date.now();
-    const prev = this.lastBytesSeen.get(event.sessionId);
+    const prev = this.stallDetector.lastBytesSeen.get(event.sessionId);
     if (event.newOffset > (prev?.bytes ?? -1)) {
       if (event.messages.length > 0) {
         // Real output — reset stall timer
-        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
-        this.stallDelete(event.sessionId, 'jsonl');
+        this.stallDetector.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: now });
+        this.stallDetector.stallDelete(event.sessionId, 'jsonl');
       } else {
         // File grew but no messages — only update bytes, keep timestamp
-        this.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: prev?.at ?? now });
+        this.stallDetector.lastBytesSeen.set(event.sessionId, { bytes: event.newOffset, at: prev?.at ?? now });
       }
     }
   }
@@ -846,7 +576,7 @@ export class SessionMonitor {
     // fallback just set jsonlPath but the watcher hasn't started yet — entries
     // read here would otherwise be dropped before the watcher subscribes.
     if (!this.jsonlWatcher?.isWatching(session.id) && result.messages.length > 0) {
-      this.rateLimitedSessions.delete(session.id);
+      this.stallDetector.rateLimitedSessions.delete(session.id);
       for (const msg of result.messages) {
         await this.forwardMessage(session, msg);
       }
@@ -1126,27 +856,22 @@ export class SessionMonitor {
     this.jsonlWatcher?.unwatch(sessionId);
     this.lastStatus.delete(sessionId);
     this.lastStatusText.delete(sessionId);
-    this.lastBytesSeen.delete(sessionId);
     this.deadNotified.delete(sessionId);
-    this.rateLimitedSessions.delete(sessionId);
     // Issue #3754: Clear retry tracking
     this.rateLimitRetryAttempts.delete(sessionId);
     // Issue #3931: Remove from rate-limit coordinator queue.
     this.rateLimitCoordinator.dequeue(sessionId);
-    this.stallRecovering.delete(sessionId);
     // Issue #89 L4: Clear pending debounce timer
     const pending = this.statusChangeDebounce.get(sessionId);
     if (pending) {
       clearTimeout(pending);
       this.statusChangeDebounce.delete(sessionId);
     }
-    // Clean all stall notifications for this session — O(1) with Map
-    this.stallDeleteAll(sessionId);
+    // Delegate all stall-related cleanup to StallDetector
+    this.stallDetector.removeSession(sessionId);
     this.idleNotified.delete(sessionId);
     this.contextWarningCompacted.delete(sessionId);
     this.idleSince.delete(sessionId);
-    this.stateSince.delete(sessionId);
-    this.prevStatusForStall.delete(sessionId);
     // Note: processedStopSignals uses claudeSessionId:timestamp keys, not bridge sessionId.
     // We don't clean them here — they're small and prevent re-processing.
   }
