@@ -1918,11 +1918,19 @@ export class TelegramChannel implements Channel {
         } else if (data.startsWith('session_approve:' )) {
           await this.onInbound?.({ sessionId, action: 'session_approve', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
           if (cb.message.message_id) {
+            try {
+              const approver = cb.from?.first_name ?? 'Telegram user';
+              await this.editMessage(sessionId, cb.message.message_id, `✅ Approved by ${esc(approver)}`);
+            } catch { /* non-critical */ }
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
         } else if (data.startsWith('session_reject:' )) {
           await this.onInbound?.({ sessionId, action: 'session_reject', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
           if (cb.message.message_id) {
+            try {
+              const rejector = cb.from?.first_name ?? 'Telegram user';
+              await this.editMessage(sessionId, cb.message.message_id, `❌ Rejected by ${esc(rejector)}`);
+            } catch { /* non-critical */ }
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
         } else if (data.startsWith('cb_option:')) {
@@ -1936,6 +1944,9 @@ export class TelegramChannel implements Channel {
           }
           await this.onInbound?.({ sessionId, action: 'message', text: optValue });
           if (cb.message.message_id) {
+            try {
+              await this.editMessage(sessionId, cb.message.message_id, `✅ Selected: ${esc(optValue)}`);
+            } catch { /* non-critical */ }
             await this.removeReplyMarkup(sessionId, cb.message.message_id);
           }
         } else if (data.startsWith('cb_yes:')) {
