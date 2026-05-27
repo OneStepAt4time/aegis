@@ -63,7 +63,6 @@ import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState, shutdownAcpRuntime } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
-import { readNewEntries, extractTokenDelta } from './transcript.js';
 import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
 import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
@@ -77,6 +76,7 @@ import { TimerRegistry } from './utils/timer-registry.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweeper.js';
 import { bootAcp, registerAcpServices } from './boot/boot-acp.js';
+import { bootMetering } from './boot/boot-metering.js';
 import { BudgetStore } from './budgets/store.js';
 import { BudgetEvaluator } from './budgets/evaluator.js';
 import { BudgetNotifier } from './budgets/notifications.js';
@@ -735,74 +735,14 @@ setupAuth(app, ctx);
 await container.start(['sessionManager', 'sessionMonitor', 'authManager', 'channelManager', 'acpLocalProfile', 'acpBackend']);
 
   // Issue #3264: Initialize MeteringService for persistent cost tracking.
-const metering = new MeteringService(eventBus, (sid) => ctx.sessions.getSession(sid)?.ownerKeyId, path.join(ctx.config.stateDir, 'metering.jsonl'));
-
-  // Issue #3310: Load persisted metering records from previous runs.
-  try {
-    await metering.load();
-    metering.start();
-  } catch (e) {
-    logger.error({ component: 'server', operation: 'metering_load_failed', attributes: { error: e instanceof Error ? e.message : String(e) } });
-  }
+  ctx.metering = new MeteringService(eventBus, (sid) => ctx.sessions.getSession(sid)?.ownerKeyId, path.join(ctx.config.stateDir, 'metering.jsonl'));
+  await bootMetering(ctx, ctx.metering, eventBus);
 
   // Issue #4195: Cost Alerts — budget store, evaluator, notifier, timer.
-const budgetStore = new BudgetStore(ctx.config.stateDir);
-const budgetNotifier = new BudgetNotifier({ telegramBotToken: ctx.config.tgBotToken || undefined });
-  const budgetEvaluator = new BudgetEvaluator(budgetStore, metering, budgetNotifier);
+  const budgetStore = new BudgetStore(ctx.config.stateDir);
+  const budgetNotifier = new BudgetNotifier({ telegramBotToken: ctx.config.tgBotToken || undefined });
+  const budgetEvaluator = new BudgetEvaluator(budgetStore, ctx.metering, budgetNotifier);
   const budgetTimer = new BudgetTimer(budgetEvaluator, budgetStore);
-  // Issue #488: Accumulate token usage from JSONL events into per-session metrics.
-  // Issue #2536: Also count messages and tool calls from JSONL events.
-  ctx.jsonlWatcher.onEntries((event) => {
-if (ctx.metrics) {
-      const { tokenUsageDelta } = event;
-      if (tokenUsageDelta.inputTokens > 0 || tokenUsageDelta.outputTokens > 0) {
-        const model = ctx.sessions.getSession(event.sessionId)?.model;
-ctx.metrics.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
-        // Issue #3264: Persist token usage to MeteringService for cost API queries.
-        if (metering) {
-          metering.recordTokenUsage(event.sessionId, tokenUsageDelta, model);
-        }
-      }
-      // Issue #2536: Count messages and tool calls from parsed entries.
-      for (const msg of event.messages) {
-ctx.metrics.messageReceived(event.sessionId);
-        if (msg.contentType === 'tool_use') {
-  ctx.metrics.toolCallReceived(event.sessionId);
-        }
-      }
-    }
-  });
-
-  // Start watching JSONL files for already-discovered sessions
-for (const session of ctx.sessions.listSessions()) {
-    if (session.jsonlPath) {
-      ctx.jsonlWatcher.watch(session.id, session.jsonlPath, session.monitorOffset);
-    }
-  }
-
-  // Issue #3310: Initial replay of existing JSONL data for metering backfill.
-  // The JSONL watcher only fires on file changes, so historical token data
-  // from sessions that were already completed would never be metered.
-for (const session of ctx.sessions.listSessions()) {
-    if (session.jsonlPath && session.monitorOffset > 0) {
-      try {
-        const result = await readNewEntries(session.jsonlPath, 0);
-        const delta = extractTokenDelta(result.raw);
-        if (delta.inputTokens > 0 || delta.outputTokens > 0) {
-  const model = ctx.sessions.getSession(session.id)?.model;
-          metering.recordTokenUsage(session.id, delta, model);
-        }
-      } catch {
-        // Non-critical: backfill failure should not block server startup.
-      }
-    }
-  }
-  // Persist the backfilled metering data.
-  try {
-    await metering.save();
-  } catch {
-    // Non-critical.
-  }
   // Register HTTP hook receiver (Issue #169, Issue #87: pass metrics for latency tracking)
 registerHookRoutes(app, { sessions: ctx.sessions, eventBus, metrics: ctx.metrics, hookSecretHeaderOnly: ctx.config.hookSecretHeaderOnly });
 
@@ -860,7 +800,7 @@ const routeCtx: RouteContext = {
     validateWorkDir: validateWorkDirWithConfig,
     serverState,
     quotas: new QuotaManager(),
-    metering,
+    metering: ctx.metering,
     metricsCache,
     dashboardOidc: ctx.dashboardOidc,
     dashboardTokenSessions: ctx.dashboardTokenSessions,
@@ -931,7 +871,7 @@ registerBudgetRoutes(app, { auth: ctx.auth, budgetStore, budgetEvaluator });
   }, ACP_ORPHAN_REAP_INTERVAL_MS);
 timers.setInterval(() => { void ctx.metrics.save(); }, 5 * 60 * 1000);
   // Issue #3310: Periodically persist metering data.
-  timers.setInterval(() => { void metering.save(); }, 5 * 60 * 1000);
+  timers.setInterval(() => { void ctx.metering!.save(); }, 5 * 60 * 1000);
   // #357: Prune stale IP rate-limit entries every minute
   timers.setInterval(pruneIpRateLimits, 60_000);
   // #632: Prune stale auth failure rate-limit buckets every minute
@@ -1104,7 +1044,7 @@ await ctx.metrics.save();
 
       // Issue #3310: Save metering data on shutdown.
       try {
-        await metering.save();
+        await ctx.metering!.save();
       } catch (e) {
         logger.error({
           component: 'server',

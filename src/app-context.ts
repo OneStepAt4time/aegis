@@ -30,6 +30,7 @@ import type { AcpBackend } from './services/acp/backend.js';
 import type { AcpTerminalBridge } from './services/acp/terminal-bridge.js';
 import type { AcpPauseInterventionStore } from './services/acp/pause-intervention.js';
 import type { ActionSweeper } from './services/acp/action-sweeper.js';
+import type { MeteringService } from './metering.js';
 
 /**
  * Typed application context holding all shared mutable state.
@@ -65,6 +66,7 @@ export interface AppContext {
   acpTerminalBridge: AcpTerminalBridge | null;
   acpPauseStore: AcpPauseInterventionStore | null;
   actionSweeper: ActionSweeper | null;
+  metering: MeteringService | null;
   configReloadTimer: ReturnType<typeof setTimeout> | null;
   watchedConfigPath: string | null;
 }
