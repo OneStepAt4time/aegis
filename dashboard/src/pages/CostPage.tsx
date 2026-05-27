@@ -13,25 +13,24 @@ import { SkeletonStatCard, SkeletonCard } from '../components/shared/Skeleton';
 import EmptyState from '../components/shared/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
   Tooltip,
-  CartesianGrid,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar as ChartBar, Pie as ChartPie } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip);
 import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
+  CHART_RGB,
 } from '../utils/chartTheme';
 
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
-import { ChartFrame } from '../components/shared/ChartFrame';
 import { getAnalyticsCosts, getCostSummary, getCostByModel, getSessions } from '../api/client';
 import type { AnalyticsCostsResponse, CostSummaryResponse, CostByModelResponse } from '../types';
 import { BudgetProgressBar } from '../components/shared/BudgetProgressBar';
@@ -82,27 +81,7 @@ function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: 
   );
 }
 
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
 
-  return (
-    <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 shadow-xl">
-      <p className="mb-2 text-xs font-medium text-[var(--color-text-primary)]">{label}</p>
-      {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--color-text-muted)]">{entry.name}:</span>
-          <span className="font-mono font-medium text-[var(--color-text-primary)]">
-            {formatCurrency(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 
 
@@ -364,31 +343,23 @@ export default function CostPage() {
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Daily Spend ({dailyData.length} days)
           </h3>
-          <ChartFrame className="h-64 min-w-0" label={t("cost.loadingDailySpend")}>
-            {({ width, height }) => (
-              <BarChart width={width} height={height} data={dailyData}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(value) => `$${value.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  dataKey="estimatedCostUsd"
-                  name={t("cost.dailyCost")}
-                  fill={CHART_COLORS.cyan}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            )}
-          </ChartFrame>
+          <div className="h-64 min-w-0">
+            <ChartBar data={{
+              labels: dailyData.map((d) => d.date),
+              datasets: [{
+                label: t("cost.dailyCost"),
+                data: dailyData.map((d) => d.estimatedCostUsd),
+                backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+                borderRadius: 4,
+                borderSkipped: false,
+              }],
+            }} options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15, 15, 25, 0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, cornerRadius: 8, padding: 12, titleFont: { size: 11 }, titleColor: '#9ca3af', bodyFont: { family: 'monospace', size: 13, weight: 'bold' }, bodyColor: '#f3f4f6', displayColors: false, callbacks: { title: (items) => formatDateShort(items[0]?.label ?? ''), label: (ctx) => formatCurrency(ctx.parsed.y ?? 0) } } },
+              scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 }, maxTicksLimit: 8, callback: function(v, i) { return i % Math.ceil(dailyData.length / 8) === 0 ? formatDateShort(this.getLabelForValue(v as number)) : ''; } }, border: { color: 'rgba(255,255,255,0.06)' } }, y: { grid: { color: 'rgba(255,255,255,0.06)', drawTicks: false }, ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => `$${((v as number) ?? 0).toFixed(2)}` }, border: { color: 'rgba(255,255,255,0.06)' } } },
+            } satisfies ChartOptions<'bar'>} />
+          </div>
         </section>
       )}
 
@@ -426,30 +397,15 @@ export default function CostPage() {
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Cost by Model
             </h3>
-            <ChartFrame className="h-64 min-w-0" label={t("cost.loadingCostByModel")}>
-              {({ width, height }) => (
-                <PieChart width={width} height={height}>
-                  <Pie
-                    data={modelData}
-                    dataKey="estimatedCostUsd"
-                    nameKey="model"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label
-                    labelLine={{ stroke: 'var(--color-text-muted)' }}
-                  >
-                    {modelData.map((entry) => (
-                      <Cell
-                        key={entry.model}
-                        fill={MODEL_COLORS[entry.model] || MODEL_COLORS.other}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              )}
-            </ChartFrame>
+            <div className="h-64 min-w-0">
+              <ChartPie data={{
+                labels: modelData.map((m) => m.model),
+                datasets: [{ data: modelData.map((m) => m.estimatedCostUsd), backgroundColor: modelData.map((m) => { const rgb = CHART_RGB[m.model === 'claude-opus-4.7' ? 'purple' : m.model === 'claude-sonnet-4.6' ? 'cyan' : m.model === 'claude-haiku-4.5' ? 'success' : m.model === 'gpt-5.4' ? 'warning' : m.model === 'gpt-4.1' ? 'info' : 'cyan']; return `rgba(${rgb}, 0.7)`; }), borderWidth: 0 }],
+              }} options={{
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15,15,25,0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, cornerRadius: 8, padding: 12, displayColors: false, callbacks: { label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.parsed ?? 0)}` } } },
+              } satisfies ChartOptions<'pie'>} />
+            </div>
           </section>
 
           {/* Model list */}
