@@ -6,7 +6,7 @@ import { esc } from '../telegram-style.js';
 import { StructuredLogger } from '../../logger.js';
 
 import type { TelegramChannelInternals } from './types.js';
-import { sleep, sendImmediate, removeReplyMarkup } from './telegram-sender.js';
+import { sleep, sendImmediate, removeReplyMarkup, editMessage } from './telegram-sender.js';
 
 const log = new StructuredLogger();
 
@@ -164,13 +164,19 @@ async function handleCallbackQuery(ctx: TelegramChannelInternals, cbQuery: unkno
           await removeReplyMarkup(ctx, sessionId, cb.message.message_id);
         }
       } else if (data.startsWith('session_approve:')) {
+        const approver = cb.from?.first_name ?? 'Telegram user';
+        log.info({ component: 'telegram', operation: 'inlineApprove', attributes: { sessionId, actorType: 'telegram', userId: String(cb.from?.id ?? 0), approver } });
         await ctx.onInbound?.({ sessionId, action: 'session_approve', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
         if (cb.message.message_id) {
+          try { await editMessage(ctx, sessionId, cb.message.message_id, `✅ Approved by ${esc(approver)}`); } catch { /* non-critical */ }
           await removeReplyMarkup(ctx, sessionId, cb.message.message_id);
         }
       } else if (data.startsWith('session_reject:')) {
+        const rejector = cb.from?.first_name ?? 'Telegram user';
+        log.info({ component: 'telegram', operation: 'inlineReject', attributes: { sessionId, actorType: 'telegram', userId: String(cb.from?.id ?? 0), rejector } });
         await ctx.onInbound?.({ sessionId, action: 'session_reject', actor: { type: 'telegram' as const, userId: cb.from?.id ?? 0, firstName: cb.from?.first_name ?? 'Unknown' } });
         if (cb.message.message_id) {
+          try { await editMessage(ctx, sessionId, cb.message.message_id, `❌ Rejected by ${esc(rejector)}`); } catch { /* non-critical */ }
           await removeReplyMarkup(ctx, sessionId, cb.message.message_id);
         }
       } else if (data.startsWith('cb_option:')) {
@@ -183,6 +189,7 @@ async function handleCallbackQuery(ctx: TelegramChannelInternals, cbQuery: unkno
         }
         await ctx.onInbound?.({ sessionId, action: 'message', text: optValue });
         if (cb.message.message_id) {
+          try { await editMessage(ctx, sessionId, cb.message.message_id, `✅ Selected: ${esc(optValue)}`); } catch { /* non-critical */ }
           await removeReplyMarkup(ctx, sessionId, cb.message.message_id);
         }
       } else if (data.startsWith('cb_yes:')) {
