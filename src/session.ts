@@ -34,6 +34,7 @@ import { SessionPersistenceService } from './services/session/persistence.js';
 import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel } from './services/session/permissions.js';
 import { SessionApprovalService } from './services/session/approval-flow.js';
 import { readHookSecretFromSettingsFile } from './services/session/hook-secret-reader.js';
+import { computeLatencyMetrics, type LatencyMetrics } from './services/session/latency-metrics.js';
 import { hydrateSessions, isObjectRecord, detectModelFromSettings, detectIsolationMode, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
 export { resolveApprovalInput };
 export type { PermissionDecision };
@@ -775,38 +776,10 @@ export class SessionManager {
   }
 
   /** Issue #87: Get latency metrics for a session. */
-  getLatencyMetrics(id: string): {
-    hook_latency_ms: number | null;
-    state_change_detection_ms: number | null;
-    permission_response_ms: number | null;
-  } | null {
+  getLatencyMetrics(id: string): LatencyMetrics | null {
     const session = this.state.sessions[id];
     if (!session) return null;
-
-    // hook_latency_ms: time from CC sending hook to Aegis receiving it
-    // Calculated from the difference between our receive time and the hook's timestamp
-    let hookLatency: number | null = null;
-    if (session.lastHookReceivedAt && session.lastHookEventAt) {
-      hookLatency = session.lastHookReceivedAt - session.lastHookEventAt;
-      // Guard against negative values (clock skew)
-      if (hookLatency < 0) hookLatency = null;
-    }
-
-    // state_change_detection_ms: time from CC state change to Aegis detection
-    // Approximated as hook_latency_ms since the hook IS the state change signal
-    const stateChangeDetection: number | null = hookLatency;
-
-    // permission_response_ms: time from permission prompt to user action
-    let permissionResponse: number | null = null;
-    if (session.permissionPromptAt && session.permissionRespondedAt) {
-      permissionResponse = session.permissionRespondedAt - session.permissionPromptAt;
-    }
-
-    return {
-      hook_latency_ms: hookLatency,
-      state_change_detection_ms: stateChangeDetection,
-      permission_response_ms: permissionResponse,
-    };
+    return computeLatencyMetrics(session);
   }
 
   /** Check if a session still exists and has a live process.
