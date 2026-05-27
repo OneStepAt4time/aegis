@@ -3,24 +3,24 @@
  *
  * Displays session volume, token usage by model, cost trends,
  * top API keys, duration trends, and error/permission stats.
+ * Migrated inline charts from recharts to chart.js for bundle savings.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useT } from '../i18n/context';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from 'recharts';
+  Chart,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Tooltip as ChartJSTooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { KPIBanner } from '../components/analytics/KPIBanner';
 import type { KPIItem } from '../components/analytics/KPIBanner';
@@ -36,15 +36,23 @@ import { RateLimitForecastCard } from '../components/analytics/RateLimitForecast
 import { AgentContributionsPanel } from '../components/analytics/AgentContributionsPanel';
 import {
   MODEL_COLORS as CHART_MODEL_COLORS,
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, CHART_DOT, CHART_STROKE,
-  CHART_BAR_RADIUS, TOOLTIP_STYLE,
+  CHART_RGB,
 } from '../utils/chartTheme';
 
+Chart.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, ChartJSTooltip, Legend, Filler);
 
 // Model colors centralized in chartTheme.ts (#3399) // token-ok
 const MODEL_COLORS = CHART_MODEL_COLORS;
+
+// chart.js needs rgba strings for canvas rendering (not CSS vars)
+const MODEL_RGB: Record<string, string> = {
+  'claude-opus-4.7': CHART_RGB.purple,
+  'claude-sonnet-4.6': CHART_RGB.cyan,
+  'claude-haiku-4.5': CHART_RGB.success,
+  'gpt-5.4': CHART_RGB.warning,
+  'gpt-4.1': CHART_RGB.info,
+  other: CHART_RGB.info,
+};
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -60,31 +68,6 @@ function formatTokenCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
-}
-
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>{label}</p>
-      {payload.map((entry, i) => (
-        <div key={i} className={TOOLTIP_STYLE.row}>
-          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
-          <span className={TOOLTIP_STYLE.rowValue}>
-            {typeof entry.value === 'number' && entry.name?.toLowerCase().includes('cost')
-              ? formatCurrency(entry.value)
-              : typeof entry.value === 'number' && entry.name?.toLowerCase().includes('duration')
-                ? formatDuration(entry.value)
-                : String(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export default function AnalyticsPage() {
@@ -267,71 +250,80 @@ export default function AnalyticsPage() {
 
       {/* Row 1: Session Volume + Token Usage */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Session Volume */}
+        {/* Session Volume — chart.js Line */}
         <ChartCard title={t("analytics.sessionVolume")}>
           {data.sessionVolume.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <LineChart data={data.sessionVolume}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                  allowDecimals={false}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="created"
-                  name="Sessions"
-                  stroke={CHART_COLORS.cyan}
-                  strokeWidth={CHART_STROKE.width}
-                  dot={CHART_DOT} animationDuration={CHART_ANIMATION.duration} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ height: 260 }}>
+              <Line
+                data={{
+                  labels: data.sessionVolume.map((d) => formatDateShort(d.date)),
+                  datasets: [{
+                    label: 'Sessions',
+                    data: data.sessionVolume.map((d) => d.created),
+                    borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+                    backgroundColor: `rgba(${CHART_RGB.cyan}, 0.1)`,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    tension: 0.4,
+                    fill: false,
+                  }],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { tooltip: { mode: 'index' as const, intersect: false } },
+                  scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 } }, beginAtZero: true },
+                  },
+                }}
+              />
+            </div>
           ) : (
             <EmptyChart />
           )}
         </ChartCard>
 
-        {/* Token Usage by Model */}
+        {/* Token Usage by Model — chart.js Pie */}
         <ChartCard title={t("analytics.tokenUsage")}>
           {(data.tokenUsageByModel ?? []).length > 0 ? (
             <div className="flex flex-col lg:flex-row items-center gap-4">
               <div className="h-[220px] w-full min-w-0 lg:w-1/2">
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <PieChart>
-                    <Pie
-                      data={(data.tokenUsageByModel ?? []).map((m) => ({
-                        ...m,
-                        totalTokens: m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens,
-                      }))}
-                      dataKey="totalTokens"
-                      nameKey="model"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }: { name?: string; percent?: number }) =>
-                        `${(name ?? '').replace('claude-', '').replace(/-\d+.*/, '')} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={{ stroke: 'var(--color-text-muted)' }}
-                    >
-                      {data.tokenUsageByModel.map((entry) => (
-                        <Cell
-                          key={entry.model}
-                          fill={MODEL_COLORS[entry.model] || MODEL_COLORS.other}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <Pie
+                  data={{
+                    labels: (data.tokenUsageByModel ?? []).map((m) =>
+                      m.model.replace('claude-', '').replace(/-\d+.*/, '')
+                    ),
+                    datasets: [{
+                      data: (data.tokenUsageByModel ?? []).map((m) =>
+                        m.inputTokens + m.outputTokens + m.cacheCreationTokens + m.cacheReadTokens
+                      ),
+                      backgroundColor: (data.tokenUsageByModel ?? []).map((m) =>
+                        `rgba(${MODEL_RGB[m.model] || MODEL_RGB.other}, 0.7)`
+                      ),
+                      borderColor: (data.tokenUsageByModel ?? []).map((m) =>
+                        `rgba(${MODEL_RGB[m.model] || MODEL_RGB.other}, 1)`
+                      ),
+                      borderWidth: 1,
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: (ctx: { label?: string; parsed: number; dataset: { data: number[] } }) => {
+                            const total = ctx.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(0) : '0';
+                            return `${ctx.label ?? ''} ${pct}%`;
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
               </div>
               <div className="w-full lg:w-1/2 space-y-2">
                 {data.tokenUsageByModel.map((m) => (
@@ -358,32 +350,39 @@ export default function AnalyticsPage() {
 
       {/* Row 2: Cost Trends + Top API Keys */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Cost Trends */}
+        {/* Cost Trends — chart.js Bar */}
         <ChartCard title={t("analytics.costTrends")}>
           {data.costTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <BarChart data={data.costTrends}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v) => `$${v.toFixed(2)}`}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar
-                  dataKey="cost"
-                  name="Daily Cost"
-                  fill={CHART_COLORS.cyan}
-                  radius={CHART_BAR_RADIUS} animationDuration={CHART_ANIMATION.duration} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ height: 260 }}>
+              <Bar
+                data={{
+                  labels: data.costTrends.map((d) => formatDateShort(d.date)),
+                  datasets: [{
+                    label: 'Daily Cost',
+                    data: data.costTrends.map((d) => d.cost),
+                    backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
+                    borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                  }],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    tooltip: {
+                      callbacks: {
+                        label: (ctx) => `$${(ctx.parsed?.y ?? 0).toFixed(2)}`,
+                      },
+                    },
+                  },
+                  scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 }, callback: (v: string | number) => `$${Number(v).toFixed(2)}` } },
+                  },
+                }}
+              />
+            </div>
           ) : (
             <EmptyChart />
           )}
@@ -422,34 +421,41 @@ export default function AnalyticsPage() {
 
       {/* Row 3: Duration Trends + Error Rates */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Duration Trends */}
+        {/* Duration Trends — chart.js Line */}
         <ChartCard title={t("analytics.avgSessionDuration")}>
           {data.durationTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
-              <LineChart data={data.durationTrends}>
-                <CartesianGrid {...CHART_GRID} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateShort}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <YAxis
-                  tickFormatter={(v) => formatDuration(v as number)}
-                  tick={CHART_TICK}
-                  {...CHART_AXIS}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="avgDurationSec"
-                  name="Avg Duration"
-                  stroke={CHART_COLORS.purple}
-                  strokeWidth={CHART_STROKE.width}
-                  dot={CHART_DOT}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ height: 260 }}>
+              <Line
+                data={{
+                  labels: data.durationTrends.map((d) => formatDateShort(d.date)),
+                  datasets: [{
+                    label: 'Avg Duration',
+                    data: data.durationTrends.map((d) => d.avgDurationSec),
+                    borderColor: `rgba(${CHART_RGB.purple}, 1)`,
+                    backgroundColor: `rgba(${CHART_RGB.purple}, 0.1)`,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    tension: 0.4,
+                    fill: false,
+                  }],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    tooltip: {
+                      callbacks: {
+                        label: (ctx) => formatDuration(ctx.parsed?.y ?? 0),
+                      },
+                    },
+                  },
+                  scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#888', font: { size: 11 }, callback: (v: string | number) => formatDuration(Number(v)) } },
+                  },
+                }}
+              />
+            </div>
           ) : (
             <EmptyChart />
           )}
