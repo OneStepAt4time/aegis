@@ -55,28 +55,27 @@ import { registerDashboardStatic } from './plugins/dashboard-static.js';
 
 import { registerMemoryRoutes } from './memory-routes.js';
 
-import { killAllSessions } from './signal-cleanup-helper.js';
 
 import { logger, setStructuredLogSink, isJsonLogsEnabled } from './logger.js';
-import { initTracing, shutdownTracing, loadTracingConfig } from './tracing.js';
+import { initTracing, loadTracingConfig } from './tracing.js';
 import { MemoryBridge } from './memory-bridge.js';
 import { cleanupTerminatedSessionState, shutdownAcpRuntime } from './session-cleanup.js';
 import { QuotaManager } from './services/auth/QuotaManager.js';
 import { MeteringService } from './metering.js';
 import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
-import { listenWithRetry, removePidFile, writePidFile } from './startup.js';
+import { listenWithRetry, writePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
 import { InMemoryPauseInterventionStore } from './services/acp/in-memory-pause-intervention-store.js';
-import { isWindowsShutdownMessage, parseShutdownTimeoutMs } from './shutdown-utils.js';
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
-import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, getRateLimiter, requestKeyMap } from './middleware/auth-setup.js';
+import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, requestKeyMap } from './middleware/auth-setup.js';
 import { TimerRegistry } from './utils/timer-registry.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweeper.js';
 import { bootAcp, registerAcpServices } from './boot/boot-acp.js';
 import { bootMetering } from './boot/boot-metering.js';
+import { registerShutdownHandler } from './boot/boot-shutdown.js';
 import { BudgetStore } from './budgets/store.js';
 import { BudgetEvaluator } from './budgets/evaluator.js';
 import { BudgetNotifier } from './budgets/notifications.js';
@@ -887,246 +886,20 @@ ctx.actionSweeper?.start();
   // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
   // Issue #4248: staticPruneInterval tracked via timers.track() after registration
   let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
-  let pidFilePath = '';
+  // #4243 step 4: Mutable refs for data set after registration
+  const shutdownLateRefs = { pidFilePath: '' };
 
-  // Issue #361: Graceful shutdown handler
-  // Issue #415: Reentrance guard at handler level prevents double execution on rapid SIGINT
-  let shuttingDown = false;
-  // Issue #1911: use config values for shutdown timeouts; fall back to legacy env var for compat.
-  const shutdownTimeoutMs = ctx.config.shutdownHardMs > 0
-    ? ctx.config.shutdownHardMs
-    : parseShutdownTimeoutMs(process.env.AEGIS_SHUTDOWN_TIMEOUT_MS);
-  async function gracefulShutdown(signal: string): Promise<void> {
-    logger.info({
-      component: 'server',
-      operation: 'graceful_shutdown_start',
-      attributes: { signal },
-    });
-
-    const forceExitTimer = setTimeout(() => {
-      logger.error({
-        component: 'server',
-        operation: 'graceful_shutdown_timeout',
-        errorCode: 'SHUTDOWN_TIMEOUT',
-        attributes: { signal, timeoutMs: shutdownTimeoutMs },
-      });
-      process.exit(1);
-    }, shutdownTimeoutMs);
-    forceExitTimer.unref?.();
-
-    try {
-
-      // 1. Flip health to draining and broadcast shutdown SSE frame
-      serverState.draining = true;
-      eventBus.emitShutdown();
-
-      // 2. Stop accepting new requests (waits up to shutdownGraceMs for in-flight requests)
-      try {
-        await Promise.race([
-          app.close(),
-          new Promise<void>(resolve => setTimeout(resolve, ctx.config.shutdownGraceMs)),
-        ]);
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_close_server',
-          errorCode: 'SHUTDOWN_CLOSE_SERVER_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 2. Stop background monitors and intervals
-  ctx.monitor.stop();
-      // Issue #1937: Stop session store
-      try {
-  await ctx.sessionStore.stop(AbortSignal.timeout(5000));
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_stop_store',
-          errorCode: 'SHUTDOWN_STOP_STORE_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      // #1753: Close config file watcher
-ctx.configWatcher?.close();
-      ctx.configWatcher = null;
-if (ctx.configReloadTimer) { timers.clearTimeout(ctx.configReloadTimer); ctx.configReloadTimer = null; }
-      // Issue #4248: Clear all tracked timers via TimerRegistry
-      timers.clearAll();
-      // Issue #4004: Stop orphan action sweeper
-ctx.actionSweeper?.stop();
-      // Issue #4195: Stop budget evaluation timer
-      budgetTimer.stop();
-      getRateLimiter().dispose();
-
-      // 3. Close file watchers, pipelines, and reaper
-      try {
-ctx.jsonlWatcher.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_jsonl_watcher',
-          errorCode: 'SHUTDOWN_DESTROY_JSONL_WATCHER_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-      try {
-await ctx.pipelines.destroy();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_destroy_pipelines',
-          errorCode: 'SHUTDOWN_DESTROY_PIPELINES_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-if (ctx.memoryBridge) {
-        try {
-          ctx.memoryBridge.stopReaper();
-        } catch (e) {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_memory_bridge_reaper',
-            errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
-            attributes: { error: e instanceof Error ? e.message : String(e) },
-          });
-        }
-      }
-
-      // Issue #569: Kill all CC sessions before exit
-      try {
-await killAllSessions(ctx.sessions, { monitor: ctx.monitor, metrics: ctx.metrics, toolRegistry: ctx.toolRegistry });
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_kill_all_sessions',
-          errorCode: 'SHUTDOWN_KILL_SESSIONS_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 4. Stop managed services in reverse dependency order with timeout safety
-      const serviceStopTimeoutMs = Math.max(1_000, Math.floor(shutdownTimeoutMs / 5));
-      const serviceStops = await container.stopAll({ timeoutMs: serviceStopTimeoutMs });
-      for (const stopResult of serviceStops) {
-        if (stopResult.status === 'timeout') {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_service',
-            errorCode: 'SERVICE_SHUTDOWN_TIMEOUT',
-            attributes: { service: stopResult.name },
-          });
-        } else if (stopResult.status === 'error') {
-          logger.error({
-            component: 'server',
-            operation: 'graceful_shutdown_stop_service',
-            errorCode: 'SERVICE_SHUTDOWN_FAILED',
-            attributes: {
-              service: stopResult.name,
-              error: stopResult.error instanceof Error ? stopResult.error.message : String(stopResult.error),
-            },
-          });
-        }
-      }
-
-      // 6. Save metrics
-      try {
-await ctx.metrics.save();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_save_metrics',
-          errorCode: 'SHUTDOWN_SAVE_METRICS_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // Issue #3310: Save metering data on shutdown.
-      try {
-        await ctx.metering!.save();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_save_metering',
-          errorCode: 'SHUTDOWN_SAVE_METERING_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 6b. Issue #2250: Flush analytics cache
-      try {
-        await metricsCache.stop();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_flush_metrics_cache',
-          errorCode: 'SHUTDOWN_FLUSH_METRICS_CACHE_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 7. Cleanup PID file
-      removePidFile(pidFilePath);
-
-      // 8. Issue #1911: Flush pending audit log writes with a hard cap of shutdownHardMs
-      try {
-        const auditFlushMs = Math.max(0, shutdownTimeoutMs - 1_000);
-        await Promise.race([
-ctx.auditLogger?.flush() ?? Promise.resolve(),
-          new Promise<void>(resolve => setTimeout(resolve, auditFlushMs)),
-        ]);
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_flush_audit',
-          errorCode: 'SHUTDOWN_FLUSH_AUDIT_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      // 9. Flush pending OpenTelemetry spans before exit
-      try {
-        await shutdownTracing();
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'graceful_shutdown_tracing',
-          errorCode: 'SHUTDOWN_TRACING_FAILED',
-          attributes: { error: e instanceof Error ? e.message : String(e) },
-        });
-      }
-
-      logger.info({
-        component: 'server',
-        operation: 'graceful_shutdown_complete',
-        attributes: { signal },
-      });
-      process.exit(0);
-    } finally {
-      clearTimeout(forceExitTimer);
-    }
-  }
-
-  process.on('SIGTERM', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGTERM'); } });
-  process.on('SIGINT', () => { if (!shuttingDown) { shuttingDown = true; void gracefulShutdown('SIGINT'); } });
-  if (process.platform === 'win32') {
-    process.on('message', (message: unknown) => {
-      if (!shuttingDown && isWindowsShutdownMessage(message)) {
-        shuttingDown = true;
-        void gracefulShutdown('WINMSG');
-      }
-    });
-  }
-  process.on('unhandledRejection', (reason) => {
-    logger.error({
-      component: 'server',
-      operation: 'unhandled_rejection',
-      errorCode: 'UNHANDLED_REJECTION',
-      attributes: {
-        reason: reason instanceof Error ? reason.message : String(reason),
-      },
-    });
+  // Issue #4243 step 4: Graceful shutdown handler extracted to boot/boot-shutdown.ts
+  registerShutdownHandler({
+    app,
+    ctx,
+    eventBus,
+    container,
+    metricsCache,
+    budgetTimer,
+    timers,
+    serverState,
+    lateRefs: shutdownLateRefs,
   });
 
   // Start monitor via dependency-aware service lifecycle.
@@ -1157,7 +930,7 @@ staticPruneInterval = await registerDashboardStatic(app, { enabled: ctx.config.d
   if (staticPruneInterval) timers.track(staticPruneInterval);
   await container.assertHealthy();
 await listenWithRetry(app, ctx.config.port, ctx.config.host, ctx.config.stateDir);
-pidFilePath = await writePidFile(ctx.config.stateDir);
+shutdownLateRefs.pidFilePath = await writePidFile(ctx.config.stateDir);
   logger.info({
     component: 'server',
     operation: 'startup_listening',
