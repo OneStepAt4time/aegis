@@ -2,7 +2,7 @@
  * usePrefersReducedMotion.test.tsx — Tests for reduced-motion media query hook.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 
