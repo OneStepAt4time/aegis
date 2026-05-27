@@ -157,10 +157,10 @@ export default function PipelineDetailPage() {
           <table className="w-full text-left text-sm" aria-label={t('pipelines.stepsLabel')}>
             <thead>
               <tr className="border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)]">
-                <th className="px-4 py-3 font-medium w-16">#</th>
-                <th className="px-4 py-3 font-medium">{t('pipelines.statusLabel')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="px-4 py-3 font-medium">{t('pipelines.sessionLabel')}</th>
+                <th scope="col" className="px-4 py-3 font-medium w-16">#</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('pipelines.statusLabel')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('common.name')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('pipelines.sessionLabel')}</th>
               </tr>
             </thead>
             <tbody>

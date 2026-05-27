@@ -213,11 +213,11 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           <table className="w-full text-xs">
             <thead>
               <tr>
-                <th className="text-left pb-2 font-normal text-[var(--color-text-muted)] uppercase tracking-wider">
+                <th scope="col" className="text-left pb-2 font-normal text-[var(--color-text-muted)] uppercase tracking-wider">
                   Type
                 </th>
-                <th className="pb-2 w-1/2" />
-                <th className="text-right pb-2 font-normal font-mono text-[var(--color-text-muted)] uppercase tracking-wider">
+                <th scope="col" className="pb-2 w-1/2" />
+                <th scope="col" className="text-right pb-2 font-normal font-mono text-[var(--color-text-muted)] uppercase tracking-wider">
                   Count
                 </th>
               </tr>
