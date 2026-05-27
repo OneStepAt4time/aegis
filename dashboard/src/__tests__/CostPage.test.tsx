@@ -5,6 +5,14 @@ import { I18nProvider } from '../i18n/context';
 import CostPage from '../pages/CostPage';
 import type { AnalyticsCostsResponse, CostSummaryResponse, CostByModelResponse } from '../types';
 
+vi.mock('react-chartjs-2', () => ({
+  Bar: () => null,
+  Line: () => null,
+  Pie: () => null,
+}));
+
+
+
 const mockGetAnalyticsCosts = vi.fn();
 const mockGetCostSummary = vi.fn();
 const mockGetCostByModel = vi.fn();
