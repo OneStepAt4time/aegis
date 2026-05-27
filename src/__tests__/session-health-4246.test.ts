@@ -33,7 +33,7 @@ function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
 
 describe('computeLatencyMetrics', () => {
   it('returns null for falsy session', () => {
-    // @ts-ignore - pass null to ensure graceful handling
+    // @ts-expect-error - pass null to ensure graceful handling
     expect(computeLatencyMetrics(null)).toBeNull();
   });
 
@@ -98,7 +98,7 @@ describe('checkWaitingForInput', () => {
   it('returns false when no jsonlPath', async () => {
     const s = makeSession();
     // remove jsonlPath
-    // @ts-ignore
+    // @ts-expect-error - remove required field for test
     delete s.jsonlPath;
     const r = await checkWaitingForInput(s);
     expect(r).toBe(false);
