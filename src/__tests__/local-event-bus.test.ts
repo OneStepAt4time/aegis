@@ -75,29 +75,29 @@ describe('LocalEventBus', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('replays events since a given ID', () => {
+  it('replays events since a given ID', async () => {
     bus.publish('session:abc', 'status', { step: 1 });
     bus.publish('session:abc', 'status', { step: 2 });
     bus.publish('session:abc', 'status', { step: 3 });
 
-    const replayed = bus.replaySince('session:abc', 1);
+    const replayed = await bus.replaySince('session:abc', 1);
     expect(replayed).toHaveLength(2);
     expect(replayed[0].data).toEqual({ step: 2 });
     expect(replayed[1].data).toEqual({ step: 3 });
   });
 
-  it('returns empty array for replay on unknown channel', () => {
-    const replayed = bus.replaySince('unknown', 0);
+  it('returns empty array for replay on unknown channel', async () => {
+    const replayed = await bus.replaySince('unknown', 0);
     expect(replayed).toEqual([]);
   });
 
-  it('respects buffer size limit', () => {
+  it('respects buffer size limit', async () => {
     // Buffer size is 10
     for (let i = 0; i < 15; i++) {
       bus.publish('session:abc', 'status', { step: i });
     }
 
-    const replayed = bus.replaySince('session:abc', 0);
+    const replayed = await bus.replaySince('session:abc', 0);
     expect(replayed).toHaveLength(10);
     // Oldest 5 should be evicted
     expect(replayed[0].data).toEqual({ step: 5 });
@@ -113,14 +113,14 @@ describe('LocalEventBus', () => {
     expect(id2).toBeLessThan(id3);
   });
 
-  it('cleans up all state on destroy', () => {
+  it('cleans up all state on destroy', async () => {
     const handler = vi.fn();
     bus.subscribe('session:abc', handler);
     bus.publish('session:abc', 'status', {});
     bus.destroy();
 
     // After destroy, replay returns empty
-    expect(bus.replaySince('session:abc', 0)).toEqual([]);
+    expect(await bus.replaySince('session:abc', 0)).toEqual([]);
   });
 
   it('cleans up emitter when last subscriber unsubscribes', () => {
@@ -137,9 +137,9 @@ describe('LocalEventBus', () => {
     expect(id).toBeGreaterThan(0);
   });
 
-  it('includes timestamp in ISO 8601 format', () => {
+  it('includes timestamp in ISO 8601 format', async () => {
     bus.publish('session:abc', 'status', {});
-    const [event] = bus.replaySince('session:abc', 0);
+    const [event] = await bus.replaySince('session:abc', 0);
     expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
