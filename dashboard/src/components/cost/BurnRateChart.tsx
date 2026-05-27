@@ -3,25 +3,25 @@
  *
  * Shows cost velocity over time (USD on Y, date on X).
  * Part of issue #3273: Cost Analytics Panels. // token-ok
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler,
   Tooltip,
-  CartesianGrid,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
-import { ChartFrame } from '../shared/ChartFrame';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, CHART_DOT, CHART_ACTIVE_DOT, CHART_STROKE,
-  GradientDefs, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB } from '../../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
 export interface BurnRateDataPoint {
   date: string;
@@ -41,30 +41,11 @@ function generateMockData(days: number): BurnRateDataPoint[] {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    // Upward trend with noise
     const base = 2 + (days - i) * 0.15;
     const noise = (Math.sin(i * 1.7) * 0.8 + Math.cos(i * 0.3) * 0.5);
     data.push({ date: dateStr, cost: Math.max(0.1, base + noise) });
   }
   return data;
-}
-
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>
-        {label ? formatDateShort(label) : ''}
-      </p>
-      <p className="text-sm font-mono font-medium text-[var(--color-accent-cyan)]">
-        {formatCurrency(payload[0].value)}
-      </p>
-    </div>
-  );
 }
 
 export function BurnRateChart({ data, loading = false, className = '' }: BurnRateChartProps) {
@@ -102,6 +83,84 @@ export function BurnRateChart({ data, loading = false, className = '' }: BurnRat
     );
   }
 
+  const chart = {
+    labels: chartData.map((d) => d.date),
+    datasets: [
+      {
+        label: 'Cost',
+        data: chartData.map((d) => d.cost),
+        borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        backgroundColor: (ctx: { chart: { ctx: CanvasRenderingContext2D; chartArea?: { top: number; bottom: number } } }) => {
+          const { ctx: canvasCtx, chartArea } = ctx.chart;
+          if (!chartArea) return `rgba(${CHART_RGB.cyan}, 0)`;
+          const gradient = canvasCtx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, `rgba(${CHART_RGB.cyan}, 0.3)`);
+          gradient.addColorStop(1, `rgba(${CHART_RGB.cyan}, 0)`);
+          return gradient;
+        },
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 25, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        titleFont: { size: 11 },
+        titleColor: '#9ca3af',
+        bodyFont: { family: 'monospace', size: 13, weight: 'bold' as const },
+        bodyColor: '#f3f4f6',
+        displayColors: false,
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+          label: (ctx) => formatCurrency(ctx.parsed.y ?? 0),
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          maxTicksLimit: 8,
+          callback: function (val, idx) {
+            return idx !== undefined && idx % Math.ceil(chartData.length / 8) === 0
+              ? formatDateShort(this.getLabelForValue(val as number))
+              : '';
+          },
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawTicks: false,
+        },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => `$${(val as number ?? 0).toFixed(2)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
+
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
@@ -115,36 +174,9 @@ export function BurnRateChart({ data, loading = false, className = '' }: BurnRat
           Cost velocity over time
         </span>
       </div>
-      <ChartFrame className="h-72 min-w-0" label="Burn rate chart loading">
-        {({ width, height }) => (
-          <AreaChart width={width} height={height} data={chartData}>
-            <CartesianGrid {...CHART_GRID} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={formatDateShort}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <GradientDefs gradients={['cyan']} />
-            <Area
-              type="monotone"
-              dataKey="cost"
-              stroke={CHART_COLORS.cyan}
-              strokeWidth={CHART_STROKE.width}
-              fill="url(#gradientCyan)"
-              dot={{ r: CHART_DOT.r, fill: CHART_COLORS.cyan }}
-              activeDot={{ r: CHART_ACTIVE_DOT.r, fill: CHART_COLORS.cyan }}
-              animationDuration={CHART_ANIMATION.duration}
-            />
-          </AreaChart>
-        )}
-      </ChartFrame>
+      <div className="h-72 min-w-0">
+        <Line data={chart} options={options} />
+      </div>
     </section>
   );
 }

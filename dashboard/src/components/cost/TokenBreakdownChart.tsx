@@ -3,25 +3,24 @@
  *
  * Shows input, output, cache-read, and cache-write tokens per day.
  * Part of issue #3273: Cost Analytics Panels. // token-ok
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   Tooltip,
-  CartesianGrid,
   Legend,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { formatCompact } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
-import { ChartFrame } from '../shared/ChartFrame';
-import {
-  TOKEN_COLORS as THEME_TOKEN_COLORS, TOKEN_LABELS as THEME_TOKEN_LABELS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_BAR_RADIUS, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB, TOKEN_LABELS } from '../../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 export interface TokenBreakdownDataPoint {
   date: string;
@@ -37,9 +36,12 @@ export interface TokenBreakdownChartProps {
   className?: string;
 }
 
-const TOKEN_COLORS = THEME_TOKEN_COLORS;
-
-const TOKEN_LABELS = THEME_TOKEN_LABELS;
+const TOKEN_COLORS_MAP = {
+  inputTokens: `rgba(${CHART_RGB.cyan}, 0.7)`,
+  outputTokens: `rgba(${CHART_RGB.purple}, 0.7)`,
+  cacheReadTokens: `rgba(${CHART_RGB.success}, 0.7)`,
+  cacheWriteTokens: `rgba(${CHART_RGB.warning}, 0.7)`,
+} as const;
 
 function generateMockData(days: number): TokenBreakdownDataPoint[] {
   const today = new Date();
@@ -57,50 +59,6 @@ function generateMockData(days: number): TokenBreakdownDataPoint[] {
     });
   }
   return data;
-}
-
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>
-        {label ? formatDateShort(label) : ''}
-      </p>
-      {payload.map((entry, index) => (
-        <div key={index} className={TOOLTIP_STYLE.row}>
-          <span className={TOOLTIP_STYLE.rowLabel}>
-            {TOKEN_LABELS[entry.name] ?? entry.name}:
-          </span>
-          <span className={TOOLTIP_STYLE.rowValue}>
-            {formatCompact(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CustomLegend({ payload }: { payload?: Array<{ value: string; color: string }> }) {
-  if (!payload) return null;
-  return (
-    <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
-      {payload.map((entry) => (
-        <div key={entry.value} className="flex items-center gap-1.5">
-          <div
-            className="h-2.5 w-2.5 rounded-sm"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {TOKEN_LABELS[entry.value] ?? entry.value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function TokenBreakdownChart({ data, loading = false, className = '' }: TokenBreakdownChartProps) {
@@ -138,6 +96,84 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
     );
   }
 
+  const keys = ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens'] as const;
+
+  const chart = {
+    labels: chartData.map((d) => d.date),
+    datasets: keys.map((key, idx) => ({
+      label: TOKEN_LABELS[key] ?? key,
+      data: chartData.map((d) => d[key]),
+      backgroundColor: TOKEN_COLORS_MAP[key],
+      borderRadius: idx === keys.length - 1 ? { topLeft: 4, topRight: 4 } : 0,
+      borderSkipped: false as const,
+    })),
+  };
+
+  const options: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          maxTicksLimit: 8,
+          callback: function (val, i) {
+            return i !== undefined && i % Math.ceil(chartData.length / 8) === 0
+              ? formatDateShort(this.getLabelForValue(val as number))
+              : '';
+          },
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        stacked: true,
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawTicks: false,
+        },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => formatCompact(val as number ?? 0),
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+    plugins: {
+      legend: {
+        display: true,
+        position: 'bottom' as const,
+        labels: {
+          color: '#9ca3af',
+          font: { size: 12 },
+          boxWidth: 10,
+          boxHeight: 10,
+          usePointStyle: true,
+          pointStyle: 'rectRounded' as const,
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 25, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        titleFont: { size: 11 },
+        titleColor: '#9ca3af',
+        bodyFont: { family: 'monospace', size: 12 },
+        bodyColor: '#f3f4f6',
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+          label: (ctx) => `${ctx.dataset.label}: ${formatCompact(ctx.parsed.y ?? 0)}`,
+        },
+      },
+    },
+  };
+
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
@@ -151,30 +187,9 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
           Stacked by category
         </span>
       </div>
-      <ChartFrame className="h-72 min-w-0" label="Token breakdown chart loading">
-        {({ width, height }) => (
-          <BarChart width={width} height={height} data={chartData}>
-            <CartesianGrid {...CHART_GRID} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={formatDateShort}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              tickFormatter={(v: number) => formatCompact(v)}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend content={<CustomLegend />} />
-            <Bar dataKey="inputTokens" stackId="tokens" fill={TOKEN_COLORS.inputTokens} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="outputTokens" stackId="tokens" fill={TOKEN_COLORS.outputTokens} />
-            <Bar dataKey="cacheReadTokens" stackId="tokens" fill={TOKEN_COLORS.cacheReadTokens} />
-            <Bar dataKey="cacheWriteTokens" stackId="tokens" fill={TOKEN_COLORS.cacheWriteTokens} radius={CHART_BAR_RADIUS} />
-          </BarChart>
-        )}
-      </ChartFrame>
+      <div className="h-72 min-w-0">
+        <Bar data={chart} options={options} />
+      </div>
     </section>
   );
 }

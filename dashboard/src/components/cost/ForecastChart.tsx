@@ -3,37 +3,34 @@
  *
  * Shows actual daily spend and a linear regression projection line.
  * Part of issue #3125: Budget Alerts & Cost Forecasts. // token-ok
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
   Tooltip,
-  CartesianGrid,
-  ReferenceLine,
   Legend,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
+import { Line } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
-import { ChartFrame } from '../shared/ChartFrame';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, CHART_STROKE,
-  TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_RGB } from '../../utils/chartTheme';
 import { useT } from '../../i18n/context';
 
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, annotationPlugin);
+
 export interface ForecastChartProps {
-  /** Daily cost trends from analytics API. */
   dailyTrends: Array<{
     date: string;
     estimatedCostUsd: number;
     sessions: number;
   }>;
-  /** Optional monthly budget cap for reference line. Zero = no line. */
   monthlyCap?: number;
 }
 
@@ -67,17 +64,14 @@ function buildChartData(dailyTrends: ForecastChartProps['dailyTrends']): ChartPo
   const month = today.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Build regression from actual data points
   const regressionPoints = dailyTrends.map((d, i) => ({
     x: i,
     y: d.estimatedCostUsd,
   }));
   const { slope, intercept } = linearRegression(regressionPoints);
 
-  // Generate chart data: actual days + projected remaining days
   const chartData: ChartPoint[] = [];
 
-  // Actual data points
   dailyTrends.forEach((d) => {
     chartData.push({
       date: d.date,
@@ -86,13 +80,11 @@ function buildChartData(dailyTrends: ForecastChartProps['dailyTrends']): ChartPo
     });
   });
 
-  // Projected data: start from last actual point, extend to end of month
   if (dailyTrends.length >= 2) {
     const lastIdx = dailyTrends.length - 1;
     const lastDate = new Date(dailyTrends[lastIdx].date + 'T00:00:00Z');
     const lastDay = lastDate.getDate();
 
-    // Add the last actual point as projection start for continuity
     chartData[lastIdx].projected = dailyTrends[lastIdx].estimatedCostUsd;
 
     for (let day = lastDay + 1; day <= daysInMonth; day++) {
@@ -110,32 +102,8 @@ function buildChartData(dailyTrends: ForecastChartProps['dailyTrends']): ChartPo
   return chartData;
 }
 
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color?: string; dataKey?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  return (
-    <div className={TOOLTIP_STYLE.container}>
-      <p className={TOOLTIP_STYLE.label}>
-        {label ? formatDateShort(label) : ''}
-      </p>
-      {payload.map((entry, index) => (
-        <div key={index} className={TOOLTIP_STYLE.row}>
-          <span className={TOOLTIP_STYLE.rowLabel}>{entry.name}:</span>
-          <span className={TOOLTIP_STYLE.rowValue}>
-            {formatCurrency(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProps) {
-    const t = useT();
+  const t = useT();
 
   const chartData = buildChartData(dailyTrends);
   const hasData = chartData.length > 0;
@@ -156,12 +124,117 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
     );
   }
 
-  // Calculate projected monthly total for display
   const lastProjected = chartData.filter(d => d.projected !== null);
   const projectedMonthlyTotal = lastProjected.length > 0
-    ? lastProjected.reduce((sum, d) => sum + (d.projected ?? 0), 0) + 
+    ? lastProjected.reduce((sum, d) => sum + (d.projected ?? 0), 0) +
       chartData.filter(d => d.actual !== null && d.projected === null).reduce((sum, d) => sum + (d.actual ?? 0), 0)
     : 0;
+
+  const chart = {
+    labels: chartData.map((d) => d.date),
+    datasets: [
+      {
+        label: 'Actual Spend',
+        data: chartData.map((d) => d.actual),
+        borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        backgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        pointRadius: 3,
+        pointBackgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
+        borderWidth: 2,
+        spanGaps: false,
+      },
+      {
+        label: 'Projected',
+        data: chartData.map((d) => d.projected),
+        borderColor: `rgba(${CHART_RGB.cyan}, 0.6)`,
+        borderDash: [8, 4],
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: false,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    plugins: {
+      legend: {
+        display: true,
+        labels: {
+          color: '#9ca3af',
+          font: { size: 12 },
+          boxWidth: 12,
+          boxHeight: 2,
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 25, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        titleFont: { size: 11 },
+        titleColor: '#9ca3af',
+        bodyFont: { family: 'monospace', size: 13, weight: 'bold' as const },
+        bodyColor: '#f3f4f6',
+        callbacks: {
+          title: (items) => formatDateShort(items[0]?.label ?? ''),
+          label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
+        },
+      },
+      ...(monthlyCap > 0 ? {
+        annotation: {
+          annotations: {
+            capLine: {
+              type: 'line' as const,
+              yMin: monthlyCap,
+              yMax: monthlyCap,
+              borderColor: `rgba(${CHART_RGB.danger}, 0.8)`,
+              borderWidth: 1,
+              borderDash: [4, 4],
+              label: {
+                display: true,
+                content: `Cap: ${formatCurrency(monthlyCap)}`,
+                position: 'end' as const,
+                color: `rgba(${CHART_RGB.danger}, 1)`,
+                font: { size: 11 },
+              },
+            },
+          },
+        },
+      } : {}),
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          maxTicksLimit: 8,
+          callback: function (val, idx) {
+            return idx !== undefined && idx % Math.ceil(chartData.length / 8) === 0
+              ? formatDateShort(this.getLabelForValue(val as number))
+              : '';
+          },
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawTicks: false,
+        },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => `$${(val as number ?? 0).toFixed(2)}`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+  };
 
   return (
     <section
@@ -181,62 +254,9 @@ export function ForecastChart({ dailyTrends, monthlyCap = 0 }: ForecastChartProp
         )}
       </div>
 
-      <ChartFrame className="h-72 min-w-0" label="Cost forecast loading">
-        {({ width, height }) => (
-          <LineChart width={width} height={height} data={chartData}>
-            <CartesianGrid {...CHART_GRID} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={formatDateShort}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <YAxis
-              tickFormatter={(value) => `$${value.toFixed(2)}`}
-              tick={CHART_TICK}
-              {...CHART_AXIS}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ color: 'var(--color-text-muted)', fontSize: 12 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="actual"
-              name="Actual Spend"
-              stroke={CHART_COLORS.cyan}
-              strokeWidth={CHART_STROKE.width}
-              dot={{ r: 3, fill: CHART_COLORS.cyan }}
-              connectNulls={false}
-              animationDuration={CHART_ANIMATION.duration}
-            />
-            <Line
-              type="monotone"
-              dataKey="projected"
-              name="Projected"
-              stroke={CHART_COLORS.cyan}
-              strokeWidth={CHART_STROKE.width}
-              strokeDasharray="8 4"
-              dot={false}
-              connectNulls={false}
-              animationDuration={CHART_ANIMATION.duration}
-            />
-            {monthlyCap > 0 && (
-              <ReferenceLine
-                y={monthlyCap}
-                stroke={CHART_COLORS.danger}
-                strokeDasharray="4 4"
-                label={{
-                  value: `Cap: ${formatCurrency(monthlyCap)}`,
-                  position: 'right',
-                  fill: 'var(--color-danger)',
-                  fontSize: 11,
-                }}
-              />
-            )}
-          </LineChart>
-        )}
-      </ChartFrame>
+      <div className="h-72 min-w-0">
+        <Line data={chart} options={options} />
+      </div>
     </section>
   );
 }

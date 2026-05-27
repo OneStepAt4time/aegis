@@ -5,30 +5,34 @@
  * with color-coded thresholds: <66% cyan, 66-90% amber, >90% red.
  *
  * @ticket #3399 — chart polish with design tokens // token-ok
+ * @ticket #4310 — recharts → chart.js migration
  */
 
 import {
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   Tooltip,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
+  type ChartOptions,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import type { RateLimitKeyUsage } from '../../types';
 import { useT } from '../../i18n/context';
-import {
-  CHART_COLORS,
-  CHART_GRID, CHART_TICK, CHART_AXIS,
-  CHART_ANIMATION, TOOLTIP_STYLE,
-} from '../../utils/chartTheme';
+import { CHART_COLORS, CHART_RGB } from '../../utils/chartTheme';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 export function barColor(ratio: number): string {
   if (ratio >= 0.9) return CHART_COLORS.danger;
   if (ratio >= 0.66) return CHART_COLORS.warning;
   return CHART_COLORS.cyan;
+}
+
+function barColorRgb(ratio: number): string {
+  if (ratio >= 0.9) return `rgba(${CHART_RGB.danger}, 0.7)`;
+  if (ratio >= 0.66) return `rgba(${CHART_RGB.warning}, 0.7)`;
+  return `rgba(${CHART_RGB.cyan}, 0.7)`;
 }
 
 export interface RateLimitChartProps {
@@ -78,44 +82,8 @@ function formatUsd(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; payload?: ChartRow }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const row = payload[0]?.payload;
-  if (!row) return null;
-
-  return (
-    <div className={TOOLTIP_STYLE.container} role="tooltip">
-      <p className={TOOLTIP_STYLE.label}>{label}</p>
-      <div className="space-y-1 text-xs">
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Sessions:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {row.sessions}{row.sessionsMax != null ? ` / ${row.sessionsMax}` : ''}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Tokens:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {formatTokenCount(row.tokens)}{row.tokensMax != null ? ` / ${formatTokenCount(row.tokensMax)}` : ''}
-          </span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className={TOOLTIP_STYLE.rowLabel}>Spend:</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
-            {formatUsd(row.spend)}{row.spendMax != null ? ` / ${formatUsd(row.spendMax)}` : ''}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function RateLimitChart({ perKey }: RateLimitChartProps) {
-    const t = useT();
+  const t = useT();
 
   if (perKey.length === 0) {
     return (
@@ -130,6 +98,89 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
   }
 
   const data = toChartRows(perKey);
+
+  const chart = {
+    labels: data.map((d) => d.name),
+    datasets: [
+      {
+        label: 'Sessions',
+        data: data.map((d) => d.sessionRatio),
+        backgroundColor: data.map((d) => barColorRgb(d.sessionRatio)),
+        borderRadius: 4,
+        borderSkipped: false as const,
+      },
+      {
+        label: 'Tokens',
+        data: data.map((d) => d.tokenRatio),
+        backgroundColor: data.map((d) => barColorRgb(d.tokenRatio)),
+        borderRadius: 4,
+        borderSkipped: false as const,
+      },
+      {
+        label: 'Spend',
+        data: data.map((d) => d.spendRatio),
+        backgroundColor: data.map((d) => barColorRgb(d.spendRatio)),
+        borderRadius: 4,
+        borderSkipped: false as const,
+      },
+    ],
+  };
+
+  const options: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500 },
+    scales: {
+      x: {
+        min: 0,
+        max: 1,
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawTicks: false,
+        },
+        ticks: {
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => `${Math.round((val as number ?? 0) * 100)}%`,
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          color: '#f3f4f6',
+          font: { size: 11 },
+        },
+        border: { color: 'rgba(255, 255, 255, 0.06)' },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 15, 25, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        titleColor: '#9ca3af',
+        bodyColor: '#f3f4f6',
+        displayColors: false,
+        callbacks: {
+          title: (items) => items[0]?.label ?? '',
+          label: (ctx) => {
+            const row = data[ctx.dataIndex];
+            if (!row) return '';
+            return [
+              `Sessions: ${row.sessions}${row.sessionsMax != null ? ` / ${row.sessionsMax}` : ''}`,
+              `Tokens: ${formatTokenCount(row.tokens)}${row.tokensMax != null ? ` / ${formatTokenCount(row.tokensMax)}` : ''}`,
+              `Spend: ${formatUsd(row.spend)}${row.spendMax != null ? ` / ${formatUsd(row.spendMax)}` : ''}`,
+            ];
+          },
+        },
+      },
+    },
+  };
 
   return (
     <section
@@ -157,64 +208,9 @@ export function RateLimitChart({ perKey }: RateLimitChartProps) {
         </span>
       </div>
 
-      {/* Bar chart — shows max session ratio as the primary bar */}
-      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 60)} minWidth={1} minHeight={1}>
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ left: 0, right: 20, top: 5, bottom: 5 }}
-        >
-          <CartesianGrid {...CHART_GRID} horizontal={false} />
-          <XAxis
-            type="number"
-            domain={[0, 1]}
-            tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-            tick={CHART_TICK}
-            {...CHART_AXIS}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            tick={{ ...CHART_TICK, fill: 'var(--color-text-primary)' }}
-            {...CHART_AXIS}
-            width={100}
-          />
-          <Tooltip content={<ChartTooltip />} />
-          <Bar
-            dataKey="sessionRatio"
-            name="Sessions"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.sessionUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`s-${i}`} fill={barColor(row.sessionRatio)} />
-            ))}
-          </Bar>
-          <Bar
-            dataKey="tokenRatio"
-            name="Tokens"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.tokenUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`t-${i}`} fill={barColor(row.tokenRatio)} />
-            ))}
-          </Bar>
-          <Bar
-            dataKey="spendRatio"
-            name="Spend"
-            radius={[0, 4, 4, 0]}
-            aria-label={t("aria.spendUsage")}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            {data.map((row, i) => (
-              <Cell key={`sp-${i}`} fill={barColor(row.spendRatio)} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div style={{ width: '100%', height: Math.max(200, data.length * 60) }}>
+        <Bar data={chart} options={options} />
+      </div>
     </section>
   );
 }
