@@ -189,27 +189,8 @@ export class SessionMonitor {
   /** Issue #3754: Set the ACP backend for rate-limit retry support. */
   setAcpBackend(acpBackend: AcpBackend): void {
     this.acpBackend = acpBackend;
-    // Wire up restartSession callback now that we have the backend
-    this.stallDetector = new StallDetector(
-      {
-        stallThresholdMs: this.config.stallThresholdMs,
-        permissionStallMs: this.config.permissionStallMs,
-        unknownStallMs: this.config.unknownStallMs,
-        permissionTimeoutMs: this.config.permissionTimeoutMs,
-        stallRecoveryEnabled: this.config.stallRecoveryEnabled,
-        stallRecoveryMaxRetries: this.config.stallRecoveryMaxRetries,
-      },
-      {
-        rejectSession: (sid) => this.sessions.reject(sid),
-        emitStall: (sid, type, detail) => this.eventBus?.emitStall(sid, type, detail),
-        statusChange: (payload) => { void this.channels.statusChange(payload); },
-        makePayload: (event, session, detail) => this.makePayload(event, session, detail),
-        alertFailure: (type, detail) => this.alertManager?.recordFailure(type as import('./alerting.js').AlertType, detail),
-        metricsFailed: (sid) => this.metrics?.sessionFailed(sid),
-        restartSession: (params) => acpBackend.restartSession(params),
-        onSessionIdle: (sid) => this.contextWarningCompacted.delete(sid),
-      },
-    );
+    // Wire up restartSession callback without discarding accumulated stall state.
+    this.stallDetector.setRestartSession((params) => acpBackend.restartSession(params));
   }
 
   /** Issue #84: Set the JSONL watcher for fs.watch-based message detection. */

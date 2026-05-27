@@ -76,6 +76,11 @@ export class StallDetector {
     private deps: StallDetectorDeps,
   ) {}
 
+  /** Update the restartSession callback without resetting accumulated state. */
+  setRestartSession(restartSession: StallDetectorDeps['restartSession']): void {
+    this.deps.restartSession = restartSession;
+  }
+
   /** Issue #663: O(1) stall notification check. */
   stallHas(sessionId: string, stallType: string): boolean {
     return this.stallNotified.get(sessionId)?.has(stallType) ?? false;
