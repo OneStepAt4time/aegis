@@ -628,54 +628,16 @@ function setupAuth(authManager: AuthManager): void {
 
 // ── Session Reaper ──────────────────────────────────────────────────
 
-async function reapStaleSessions(maxAgeMs: number): Promise<void> {
-  const now = Date.now();
-  // Snapshot list before iterating — killSession() modifies the sessions map
-  const snapshot = [...sessions.listSessions()];
-  for (const session of snapshot) {
-    // Guard: session may have been deleted by DELETE handler between snapshot and here
-    if (!sessions.getSession(session.id)) continue;
-    // Issue #4027: Skip pinned sessions — user explicitly wants them alive.
-    if (session.isPinned) continue;
-    const age = now - session.createdAt;
-    if (age > maxAgeMs) {
-    const ageMin = Math.round(age / 60000);
-      logger.info({
-        component: 'server',
-        operation: 'reap_stale_sessions',
-        sessionId: session.id,
-        attributes: {
-          displayName: session.displayName,
-          ageMinutes: ageMin,
-        },
-      });
-      try {
-        // #842: killSession first, then notify — avoids race where channels
-        // reference a session that is still being destroyed.
-        await sessions.killSession(session.id);
-        eventBus.cleanupSession(session.id);
-        channels.sessionEnded({
-          event: 'session.ended',
-          timestamp: new Date().toISOString(),
-          session: { id: session.id, name: session.displayName, workDir: session.workDir },
-          detail: `Auto-killed: exceeded ${maxAgeMs / 3600000}h time limit`,
-        });
-        cleanupTerminatedSessionState(session.id, { monitor, metrics, toolRegistry });
-      } catch (e) {
-        logger.error({
-          component: 'server',
-          operation: 'reap_stale_sessions',
-          sessionId: session.id,
-          errorCode: 'REAPER_KILL_FAILED',
-          attributes: {
-            error: e instanceof Error ? e.message : String(e),
-          },
-        });
-      }
-    }
-  }
-}
+import { reapStaleSessionsImpl, reapZombieSessionsImpl, ZOMBIE_REAP_DELAY_MS, ZOMBIE_REAP_INTERVAL_MS, cleanupTerminatedSessionState as cleanupReaperState } from './boot/boot-reaper.js';
 
+// Reaper wrappers (forward to extracted implementations)
+const ZOMBIE_REAP_DELAY_MS = ZOMBIE_REAP_DELAY_MS; // re-exported for compatibility
+async function reapStaleSessions(maxAgeMs: number): Promise<void> {
+  await reapStaleSessionsImpl({ sessions, eventBus, channels, metrics, monitor, toolRegistry, logger }, maxAgeMs);
+}
+async function reapZombieSessions(): Promise<void> {
+  await reapZombieSessionsImpl({ sessions, eventBus, channels, metrics, monitor, toolRegistry, logger });
+}
 // ── Zombie Reaper (Issue #283) ──────────────────────────────────────
 
 const ZOMBIE_REAP_DELAY_MS = parseIntSafe(process.env.ZOMBIE_REAP_DELAY_MS, 60000);
