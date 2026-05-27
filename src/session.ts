@@ -19,7 +19,7 @@ import { computeStallThreshold } from './config.js';
 import { getConfiguredBaseUrl } from './base-url.js';
 import { validateWorkdirPath } from './tenant-workdir.js';
 import { neutralizeBypassPermissions, activateBypassPermissions, restoreSettings, cleanOrphanedBackup } from './permission-guard.js';
-import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, ENV_NAME_RE, ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, stripCrLf, hasControlChars, ENV_VALUE_MAX_BYTES, sanitizeWindowName } from './validation.js';
+import { persistedStateSchema, type PermissionPolicy, type PermissionProfile, sanitizeWindowName } from './validation.js';
 import type { z } from 'zod';
 import { writeHookSettingsFile, cleanupHookSettingsFile, cleanupStaleSessionHooks } from './hook-settings.js';
 // PermissionDecision and request management now via SessionPermissionService
@@ -45,6 +45,7 @@ export type { UIState, SessionInfo, SessionState, PersistedStateData };
 import { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod } from './session-ui-parser.js';
 import { recordHookFailure as _recordHookFailure, recordHookSuccess as _recordHookSuccess, checkHookCircuitBreaker as _checkHookCircuitBreaker } from './session-hook-circuit-breaker.js';
 import { applyHookEvent } from './session-status-updater.js';
+import { sanitizeSessionEnv } from './session-env.js';
 export { detectUIState, hasBlankPromptNearBottom, detectApprovalMethod };
 
 /** Convert parsed JSON arrays to Sets for activeSubagents (#668). */
@@ -346,36 +347,7 @@ export class SessionManager {
 
 
     // Merge defaultSessionEnv (from config) with per-session env (per-session wins)
-    // Security: validate env var names to prevent injection attacks
-    const DANGEROUS_ENV_VARS = new Set(ENV_DENYLIST);
-    const DANGEROUS_ENV_PREFIXES = ENV_DANGEROUS_PREFIXES;
-    const mergedEnv: Record<string, string> = {};
-    const allEnv = { ...this.config.defaultSessionEnv, ...opts.env };
-    for (const [key, value] of Object.entries(allEnv)) {
-      // Issue #1093: Check dangerous prefixes FIRST (before name regex), since some
-      // dangerous prefixes like npm_config_ are lowercase and would fail the regex check.
-      if (DANGEROUS_ENV_PREFIXES.some(prefix => key.startsWith(prefix))) {
-        const matchedPrefix = DANGEROUS_ENV_PREFIXES.find(p => key.startsWith(p))!;
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variable prefix "${matchedPrefix}"`);
-      }
-      if (!ENV_NAME_RE.test(key)) {
-        throw new Error(`Invalid env var name: "${key}" — must match /^[A-Z_][A-Z0-9_]*$/`);
-      }
-      if (DANGEROUS_ENV_VARS.has(key)) {
-        throw new Error(`Forbidden env var: "${key}" — cannot override dangerous environment variables`);
-      }
-      // Value hardening (Issue #1908): reject CR/LF and control chars
-      if (/[\r\n]/.test(value)) {
-        throw new Error(`Forbidden env var value for "${key}" — contains CR/LF characters`);
-      }
-      if (hasControlChars(value)) {
-        throw new Error(`Forbidden env var value for "${key}" — contains control characters`);
-      }
-      if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
-        throw new Error(`Env var "${key}" value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
-      }
-      mergedEnv[key] = value;
-    }
+    const mergedEnv = sanitizeSessionEnv(this.config.defaultSessionEnv, opts.env);
     const hasEnv = Object.keys(mergedEnv).length > 0;
 
     // Permission guard: if permissionMode is "default", neutralize any project-level
