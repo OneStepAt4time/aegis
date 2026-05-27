@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import type { StateStore, SerializedSessionState } from './services/state/state-store.js';
 import { readNewEntries, type ParsedEntry } from './transcript.js';
+import { buildSessionHealth, checkWaitingForInput, computeLatencyMetrics } from './services/session/session-health.js';
 import { SessionTranscripts } from './session-transcripts.js';
 import { SessionDiscovery } from './session-discovery.js';
 import type { Config } from './config.js';
@@ -409,22 +410,7 @@ export class SessionManager {
   }> {
     const session = this.state.sessions[id];
     if (!session) throw new Error(`Session ${id} not found`);
-    const status = session.status;
-    const lastActivityAgo = Date.now() - session.lastActivity;
-    const actionHints = (status === 'permission_prompt' || status === 'bash_approval')
-      ? {
-          approve: { method: 'POST', url: `/v1/sessions/${session.id}/approve`, description: 'Approve the pending permission' },
-          reject: { method: 'POST', url: `/v1/sessions/${session.id}/reject`, description: 'Reject the pending permission' },
-        }
-      : undefined;
-    return {
-      alive: true, claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question',
-      status, hasTranscript: !!session.jsonlPath,
-      lastActivity: session.lastActivity, lastActivityAgo,
-      sessionAge: Date.now() - session.createdAt,
-      details: `Session ${id}: ${status} (ACP mode)`,
-      actionHints,
-    };
+    return buildSessionHealth(session);
   }
 
   /** Send message (ACP stub — use JSON-RPC). */
@@ -532,25 +518,8 @@ export class SessionManager {
 
   async detectWaitingForInput(id: string): Promise<boolean> {
     const session = this.state.sessions[id];
-    if (!session?.jsonlPath) return false;
-
-    try {
-      const { raw } = await readNewEntries(session.jsonlPath, session.byteOffset);
-      // Walk backwards to find the last assistant JSONL entry
-      for (let i = raw.length - 1; i >= 0; i--) {
-        const entry = raw[i];
-        if (entry.type !== 'assistant' || !entry.message) continue;
-        const content = entry.message.content;
-        if (typeof content === 'string') return true; // text-only message
-        if (!Array.isArray(content)) return false;
-        // Check if any content block is a tool_use
-        const hasToolUse = content.some((block: { type: string }) => block.type === 'tool_use');
-        return !hasToolUse;
-      }
-    } catch {
-      // If we can't read the transcript, don't override status
-    }
-    return false;
+    if (!session) return false;
+    return checkWaitingForInput(session);
   }
 
   /** Issue #88: Add an active subagent to a session. */
