@@ -99,7 +99,10 @@ describe('useSessionEventsStore', () => {
         useSessionEventsStore.getState().ensureSession('s1');
       });
 
-      const metrics = { totalTokensIn: 100, totalTokensOut: 200, totalCost: 0.05 } as SessionMetrics;
+      const metrics: SessionMetrics = {
+        durationSec: 60, messages: 5, toolCalls: 2, approvals: 1, autoApprovals: 0, statusChanges: [],
+        tokenUsage: { inputTokens: 100, outputTokens: 200, cacheCreationTokens: 0, cacheReadTokens: 0, estimatedCostUsd: 0.05 },
+      };
       act(() => {
         useSessionEventsStore.getState().setMetrics('s1', metrics);
       });

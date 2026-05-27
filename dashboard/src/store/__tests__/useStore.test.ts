@@ -4,7 +4,29 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import { useStore } from '../useStore';
-import type { SessionInfo, GlobalMetrics, RowHealth } from '../../types';
+import type { SessionInfo, GlobalMetrics, GlobalSSEEvent, RowHealth } from '../../types';
+
+function makeGlobalMetrics(overrides: Partial<GlobalMetrics> = {}): GlobalMetrics {
+  return {
+    uptime: 100,
+    sessions: {
+      total_created: overrides.uptime ?? 0,
+      currently_active: 0,
+      completed: 0,
+      failed: 0,
+      avg_duration_sec: 0,
+      avg_messages_per_session: 0,
+      infra_failed: 0,
+      killed: 0,
+      ...overrides.sessions,
+    },
+    auto_approvals: 0,
+    webhooks_sent: 0,
+    webhooks_failed: 0,
+    screenshots_taken: 0,
+    ...overrides,
+  } as GlobalMetrics;
+}
 
 // Helper to create a minimal SessionInfo
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
@@ -159,7 +181,7 @@ describe('useStore', () => {
 
   describe('metrics', () => {
     it('sets metrics', () => {
-      const metrics: GlobalMetrics = { totalSessions: 5, activeSessions: 2 } as GlobalMetrics;
+      const metrics = makeGlobalMetrics();
       act(() => {
         useStore.getState().setMetrics(metrics);
       });
@@ -167,7 +189,7 @@ describe('useStore', () => {
     });
 
     it('skips update when metrics are equal', () => {
-      const metrics: GlobalMetrics = { totalSessions: 5 } as GlobalMetrics;
+      const metrics = makeGlobalMetrics();
       act(() => {
         useStore.getState().setMetrics(metrics);
       });
@@ -181,7 +203,7 @@ describe('useStore', () => {
     });
 
     it('sets metrics from null to value', () => {
-      const metrics: GlobalMetrics = { totalSessions: 1 } as GlobalMetrics;
+      const metrics = makeGlobalMetrics();
       act(() => {
         useStore.getState().setMetrics(metrics);
       });
@@ -190,14 +212,14 @@ describe('useStore', () => {
 
     it('detects metrics change via JSON comparison', () => {
       act(() => {
-        useStore.getState().setMetrics({ totalSessions: 1 } as GlobalMetrics);
+        useStore.getState().setMetrics(makeGlobalMetrics());
       });
 
       act(() => {
-        useStore.getState().setMetrics({ totalSessions: 2 } as GlobalMetrics);
+        useStore.getState().setMetrics(makeGlobalMetrics({ uptime: 200, sessions: { total_created: 2, currently_active: 0, completed: 0, failed: 0, avg_duration_sec: 0, avg_messages_per_session: 0, infra_failed: 0, killed: 0 } }));
       });
 
-      expect((useStore.getState().metrics as any).totalSessions).toBe(2);
+      expect((useStore.getState().metrics as any).uptime).toBe(200);
     });
   });
 
@@ -226,10 +248,10 @@ describe('useStore', () => {
   });
 
   describe('activity stream', () => {
-    const makeEvent = (sessionId = 's1') => ({
+    const makeEvent = (sessionId = 's1'): GlobalSSEEvent => ({
       sessionId,
-      timestamp: Date.now(),
-      event: 'status_change' as const,
+      timestamp: new Date().toISOString(),
+      event: 'session_status_change',
       data: {},
     });
 
@@ -285,9 +307,9 @@ describe('useStore', () => {
 
     it('sets activity filter by type', () => {
       act(() => {
-        useStore.getState().setActivityFilterType('tool_approval');
+        useStore.getState().setActivityFilterType('session_approval');
       });
-      expect(useStore.getState().activityFilterType).toBe('tool_approval');
+      expect(useStore.getState().activityFilterType).toBe('session_approval');
     });
 
     it('clears activity filter', () => {
