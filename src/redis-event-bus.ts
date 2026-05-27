@@ -72,7 +72,7 @@ export class RedisEventBus implements EventBus {
       try {
         await this.client.xadd(stream, '*', ...fields);
       } catch (err) {
-        log.warn({ component: 'redis-event-bus', err, channel, op: 'xadd' });
+        log.warn({ component: 'redis-event-bus', operation: 'xadd', attributes: { error: String(err), channel } });
       }
       // notify in-process subscribers by letting their poll pick it up
       return Number(numericSeq);
@@ -82,9 +82,9 @@ export class RedisEventBus implements EventBus {
     // (tests rely on publish returning the assigned id synchronously-ish)
     // For simplicity, if client.incr is sync we can return immediately.
     if (!(seqPromise instanceof Promise)) {
-      // @ts-expect-error allow numeric
+      // fire-and-forget async
       void allocateAndXadd();
-      // @ts-expect-error seq is number
+      // seq is number
       return seq as number;
     }
 
@@ -117,7 +117,7 @@ export class RedisEventBus implements EventBus {
     if (!state) {
       state = { lastId: '0-0', handlers: new Set() };
       this.running.set(key, state);
-      this.pollLoop(channel, key, state).catch(err => log.warn({ component: 'redis-event-bus', err }));
+      this.pollLoop(channel, key, state).catch(err => log.warn({ component: 'redis-event-bus', operation: 'subscribe', attributes: { error: String(err) } }));
     }
     state.handlers.add(handler);
 
@@ -136,7 +136,7 @@ export class RedisEventBus implements EventBus {
     try {
       let cursor = 0;
       do {
-        // @ts-expect-error scan args
+        // scan args
         const res: any = await this.client.scan(cursor, { MATCH: pattern, COUNT: 100 });
         cursor = Number(res[0]);
         const keys: string[] = res[1];
@@ -153,7 +153,7 @@ export class RedisEventBus implements EventBus {
         }
       } while (cursor !== 0);
     } catch (err) {
-      log.warn({ component: 'redis-event-bus', err, op: 'scan' });
+      log.warn({ component: 'redis-event-bus', operation: 'scan', attributes: { error: String(err) } });
     }
   }
 
@@ -170,15 +170,15 @@ export class RedisEventBus implements EventBus {
             for (const h of Array.from(state.handlers)) {
               try {
                 // deliver asynchronously
-                setImmediate(() => h(ev));
+                setImmediate(() => { try { h(ev); } catch (_e) { /* handler error, already logged */ } });
               } catch (e) {
-                log.warn({ component: 'redis-event-bus', err: e });
+                log.warn({ component: 'redis-event-bus', operation: 'poll', attributes: { error: String(e) } });
               }
             }
           }
         }
       } catch (err) {
-        log.warn({ component: 'redis-event-bus', err, op: 'poll' });
+        log.warn({ component: 'redis-event-bus', operation: 'poll', attributes: { error: String(err) } });
       }
 
       // wait
@@ -194,7 +194,7 @@ export class RedisEventBus implements EventBus {
       const key = this.streamKey(channel);
       // Note: client.xrange may be async; we call synchronously only when mock supports sync.
       // To keep interface sync we only support sync mock in tests.
-      // @ts-expect-error possible Promise
+      // possible Promise — cast to any
       const entries = this.client.xrange(key, '-', '+') as any;
       const arr = entries instanceof Promise ? [] : entries;
       const out: BusEvent[] = [];
@@ -204,7 +204,7 @@ export class RedisEventBus implements EventBus {
       }
       return out;
     } catch (err) {
-      log.warn({ component: 'redis-event-bus', err, op: 'replaySince' });
+      log.warn({ component: 'redis-event-bus', operation: 'replaySince', attributes: { error: String(err) } });
       return [];
     }
   }
