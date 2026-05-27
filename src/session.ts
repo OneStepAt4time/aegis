@@ -33,6 +33,7 @@ import { StructuredLogger } from './logger.js';
 import { SessionPersistenceService } from './services/session/persistence.js';
 import { SessionPermissionService, resolveApprovalInput, normalizeApprovalLabel } from './services/session/permissions.js';
 import { SessionApprovalService } from './services/session/approval-flow.js';
+import { readHookSecretFromSettingsFile } from './services/session/hook-secret-reader.js';
 import { hydrateSessions, isObjectRecord, detectModelFromSettings, detectIsolationMode, getUiApprovalInput, type PermissionDecision } from './session-helpers.js';
 export { resolveApprovalInput };
 export type { PermissionDecision };
@@ -237,33 +238,9 @@ export class SessionManager {
       if (session.hookSecret) continue; // Already plaintext
       // Fall back to reading the hook settings file.
       if (session.hookSettingsFile) {
-        session.hookSecret = await this.readHookSecretFromSettingsFile(session.hookSettingsFile);
+        session.hookSecret = await readHookSecretFromSettingsFile(session.hookSettingsFile);
       }
     }
-  }
-  private async readHookSecretFromSettingsFile(settingsPath: string): Promise<string | undefined> {
-    try {
-      const raw = await readFile(settingsPath, 'utf-8');
-      const parsed = JSON.parse(raw) as unknown;
-      if (!isObjectRecord(parsed) || !isObjectRecord(parsed.hooks)) return undefined;
-
-      for (const eventEntries of Object.values(parsed.hooks)) {
-        if (!Array.isArray(eventEntries)) continue;
-        for (const entry of eventEntries) {
-          if (!isObjectRecord(entry) || !Array.isArray(entry.hooks)) continue;
-          for (const hook of entry.hooks) {
-            if (!isObjectRecord(hook) || !isObjectRecord(hook.headers)) continue;
-            const secret = hook.headers['X-Hook-Secret'];
-            if (typeof secret === 'string' && secret.length > 0) {
-              return secret;
-            }
-          }
-        }
-      }
-    } catch {
-      return undefined;
-    }
-    return undefined;
   }
 
   /** Default stall threshold: 2 min (Issue #392: 1.5x CC's 90s default, configurable via CLAUDE_STREAM_IDLE_TIMEOUT_MS). */
