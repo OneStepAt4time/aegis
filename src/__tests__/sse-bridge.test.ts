@@ -35,9 +35,9 @@ class MockEventBus implements EventBus {
 }
 
 function createMockFastify() {
-  const routes: Array<{ method: string; url: string; handler: Function }> = [];
+  const routes: Array<{ method: string; url: string; handler: (req: any, reply: any) => void }> = [];
   return {
-    get: vi.fn((url: string, opts: any, handler: Function) => {
+    get: vi.fn((url: string, opts: any, handler: (req: any, reply: any) => void) => {
       // Fastify .get(url, opts, handler) or .get(url, handler)
       const actualHandler = typeof opts === 'function' ? opts : handler;
       routes.push({ method: 'GET', url, handler: actualHandler });
