@@ -14,6 +14,7 @@ const mockRecords: AuditRecord[] = [
     ts: '2026-05-27T10:00:00Z',
     detail: 'Allow write to /tmp/test?',
     actor: 'claude-agent',
+    prevHash: 'prev001',
   },
   {
     hash: 'def456',
@@ -21,6 +22,7 @@ const mockRecords: AuditRecord[] = [
     ts: '2026-05-27T10:01:00Z',
     detail: 'Write to /tmp/test approved',
     actor: 'admin',
+    prevHash: 'abc123',
   },
   {
     hash: 'ghi789',
@@ -28,6 +30,7 @@ const mockRecords: AuditRecord[] = [
     ts: '2026-05-27T10:02:00Z',
     detail: 'Exec rm -rf denied',
     actor: 'reviewer',
+    prevHash: 'def456',
   },
 ];
 
@@ -88,6 +91,9 @@ describe('AuditTrailPanel', () => {
       hash: 'minimal',
       action: 'session_start',
       ts: '2026-05-27T09:00:00Z',
+      detail: '',
+      actor: 'system',
+      prevHash: '',
     };
     render(<AuditTrailPanel records={[record]} loading={false} error={null} />);
     expect(screen.getByText('session_start')).toBeDefined();
