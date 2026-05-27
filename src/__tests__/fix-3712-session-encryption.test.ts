@@ -12,6 +12,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SessionManager } from '../session.js';
+import { readHookSecretFromSettingsFile } from '../services/session/hook-secret-reader.js';
 import { getConfig } from '../config.js';
 
 // SessionManager has private encrypt/decrypt — access via (sm as any)
@@ -212,14 +213,14 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
         },
       }));
 
-      const result = await (sm as any).readHookSecretFromSettingsFile(settingsPath);
+      const result = await readHookSecretFromSettingsFile(settingsPath);
       expect(result).toBe('hook-secret-from-file');
     });
 
     it('returns undefined for missing file', async () => {
       const sm = createTestSM(tmpDir);
 
-      const result = await (sm as any).readHookSecretFromSettingsFile('/nonexistent/path.json');
+      const result = await readHookSecretFromSettingsFile('/nonexistent/path.json');
       expect(result).toBeUndefined();
     });
 
@@ -229,7 +230,7 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
       const settingsPath = join(tmpDir, 'bad.json');
       writeFileSync(settingsPath, '{ not valid json }}}');
 
-      const result = await (sm as any).readHookSecretFromSettingsFile(settingsPath);
+      const result = await readHookSecretFromSettingsFile(settingsPath);
       expect(result).toBeUndefined();
     });
 
@@ -239,7 +240,7 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
       const settingsPath = join(tmpDir, 'no-hooks.json');
       writeFileSync(settingsPath, JSON.stringify({ other: 'data' }));
 
-      const result = await (sm as any).readHookSecretFromSettingsFile(settingsPath);
+      const result = await readHookSecretFromSettingsFile(settingsPath);
       expect(result).toBeUndefined();
     });
 
@@ -257,7 +258,7 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
         },
       }));
 
-      const result = await (sm as any).readHookSecretFromSettingsFile(settingsPath);
+      const result = await readHookSecretFromSettingsFile(settingsPath);
       expect(result).toBeUndefined();
     });
 
@@ -280,7 +281,7 @@ describe('Issue #3712 — session.ts encryption/decryption', () => {
         },
       }));
 
-      const result = await (sm as any).readHookSecretFromSettingsFile(settingsPath);
+      const result = await readHookSecretFromSettingsFile(settingsPath);
       expect(result).toBe('second-secret');
     });
   });
