@@ -188,11 +188,9 @@ describe('AnalyticsPage', () => {
 
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('Model Distribution')).toBeDefined();
-      expect(screen.getByText('claude-sonnet-4.6')).toBeDefined();
-      expect(screen.getByText('claude-opus-4.7')).toBeDefined();
-    });
+    await screen.findByText('Model Distribution');
+    expect(await screen.findByText('claude-sonnet-4.6')).toBeDefined();
+    expect(await screen.findByText('claude-opus-4.7')).toBeDefined();
   });
 
   it('calculates error rate correctly and color-codes high error rates', async () => {
