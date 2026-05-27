@@ -84,7 +84,7 @@ function fullMetrics(overrides: Record<string, unknown> = {}) {
       sent: 100,
       delivered: 95,
       failed: 5,
-      success_rate: 95.0,
+      success_rate: 95.0 as number | null,
     },
     latency: {
       hook_latency_ms: { avg: 123.4, p50: 100, p95: 200, p99: 300 },
