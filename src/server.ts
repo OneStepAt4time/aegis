@@ -15,7 +15,6 @@ import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
-import { getAuthTokenFilePath, persistAuthTokenFile } from './utils/auth-token-path.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -75,6 +74,7 @@ import { bootAcp, registerAcpServices } from './boot/boot-acp.js';
 import { bootMetering } from './boot/boot-metering.js';
 import { registerShutdownHandler } from './boot/boot-shutdown.js';
 import { registerRoutes } from './boot/boot-routes.js';
+import { registerCoreServices } from './boot/boot-services.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
 import { BudgetStore } from './budgets/store.js';
 import { BudgetEvaluator } from './budgets/evaluator.js';
@@ -625,70 +625,7 @@ ctx.auth.setAuditLogger(ctx.auditLogger!);
   // Issue #3754: Wire ACP backend for rate-limit retry support
 if (ctx.acpBackend) ctx.monitor.setAcpBackend(ctx.acpBackend);
   ctx.monitor.setJsonlWatcher(ctx.jsonlWatcher);
-container.register('sessionManager', ctx.sessions, {
-    start: async () => {
-      await ctx.sessions.load();
-      ctx.sessions.startCleanupTimer(); // Issue #4124
-    },
-    stop: async () => {
-      ctx.sessions.stopCleanupTimer(); // Issue #4124
-      await ctx.sessions.save();
-    },
-health: async () => ({ healthy: true, details: `sessions=${ctx.sessions.listSessions().length}` }),
-  }, []);
-container.register('authManager', ctx.auth, {
-    start: async () => {
-      await ctx.auth.load();
-      // #3356/#3484/#3567: Detect and auto-repair an orphaned ~/.aegis/auth-token
-      // whose content no longer matches any registered key. Auto-repair by
-      // persisting the current master token so the CLI keeps working after restarts.
-      const clientTokenFile = getAuthTokenFilePath();
-      const currentMaster = ctx.auth.getMasterToken();
-      if (currentMaster) {
-        try {
-          const fileToken = existsSync(clientTokenFile)
-            ? readFileSync(clientTokenFile, 'utf-8').trim()
-            : '';
-          if (!fileToken || !ctx.auth.checkClientToken(fileToken).matched) {
-            persistAuthTokenFile(currentMaster);
-            if (fileToken) {
-              log.warn({
-              component: 'server',
-              operation: 'authTokenDesyncRepaired',
-              attributes: { file: clientTokenFile },
-              });
-            }
-          }
-        } catch {
-          // Unreadable — try to persist anyway
-          persistAuthTokenFile(currentMaster);
-        }
-      }
-    },
-    stop: async () => {},
-health: async () => ({ healthy: ctx.auth.isHealthy(), details: ctx.auth.isHealthy() ? undefined : "keys.json missing — state dir may have been wiped" }),
-  });
-  container.register('channelManager', channels, {
-    start: async () => {
-      await channels.init((cmd) => handleInbound(cmd, ctx));
-    },
-    stop: async () => {
-      await channels.destroy();
-    },
-    health: async () => ({ healthy: true, details: `channels=${channels.count}` }),
-  }, ['sessionManager']);
-  container.register('sessionMonitor', ctx.monitor, {
-    start: async () => {
-      ctx.monitor.start();
-    },
-    stop: async () => {
-  ctx.monitor.stop();
-    },
-    health: async () => ({
-      healthy: ctx.monitor.isRunning,
-      details: ctx.monitor.isRunning ? 'running' : 'not running',
-    }),
-  }, ['sessionManager', 'channelManager']);
+registerCoreServices(container, { ctx, channels, handleInbound: (cmd) => handleInbound(cmd, ctx) });
   registerAcpServices(container, ctx);
 
 setupAuth(app, ctx);
