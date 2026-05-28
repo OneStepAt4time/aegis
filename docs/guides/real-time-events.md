@@ -236,6 +236,40 @@ source.onerror = () => {
 
 The `SessionEventBus` is the central hub. All event producers (hooks, monitor, metering) call `emit()`, and SSE route handlers subscribe to receive events in real time.
 
+## Security
+
+SSE streams are protected at multiple layers:
+
+### Authentication
+
+- **SSE tokens required** — regular API keys are rejected with `401`. Tokens are obtained via `POST /v1/auth/sse-token` and are short-lived (default 5 minutes).
+- **Token limit** — max 10 outstanding SSE tokens per API key. Prevents token farming.
+
+### Authorization
+
+**Per-session stream** (`/v1/sessions/:id/events`):
+1. Session lookup → 404 if not found (generic error, doesn't leak existence)
+2. Master key / null auth → bypasses ownership checks
+3. **Tenant scoping** — if caller has a `tenantId` that's not `SYSTEM_TENANT`, cross-tenant sessions return 404
+4. Admin role → bypasses ownership
+5. Otherwise → must match `session.ownerKeyId` or get 403
+
+**Global stream** (`/v1/events`):
+- Events are filtered by `isGlobalEventVisibleToRequest()` which checks `session.tenantId === requestTenantId`
+- Admin/master keys see all events
+- Operator/viewer keys see only events from sessions owned by their tenant
+- The `toGlobalEvent()` mapping preserves `sessionId` so tenant filtering can look up the session's tenant at the route level
+
+### Connection Limits
+
+- `SSEConnectionLimiter` enforces per-IP and global connection limits
+- `SSEWriter` handles back-pressure and socket timeouts
+- Consecutive failure tracking prevents zombie connections
+
+### Audit
+
+Security audit completed by Themis (2026-05-28). Both SSE endpoints confirmed secure with proper tenant isolation.
+
 ## Dashboard Integration (for developers)
 
 When building the SSE consumer in the Aegis dashboard (see issue #4347):
