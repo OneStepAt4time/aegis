@@ -12,7 +12,7 @@ vi.mock('../retry.js', () => ({
 
 function makeDeps(): RateLimitRetryDeps {
   return {
-    makePayload: vi.fn((event, session, detail) => ({ event, session: { id: session.id }, detail })),
+    makePayload: vi.fn((event, session, detail) => ({ event, session: { id: session.id }, detail })) as any,
     statusChange: vi.fn(),
     alertFailure: vi.fn(),
     metricsFailed: vi.fn(),
