@@ -773,6 +773,8 @@ export const en = {
     activeSessions: 'Active sessions',
     allSessions: 'All sessions',
     checkingAuth: 'Checking authentication',
+    expandEntry: 'Expand transcript entry',
+    collapseEntry: 'Collapse transcript entry',
   },
 
   cliShortcuts: {

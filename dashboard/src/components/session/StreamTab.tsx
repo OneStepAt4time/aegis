@@ -86,7 +86,7 @@ export function StreamTab({ sessionId, isDriver }: StreamTabProps) {
               role="tab"
               aria-selected={viewMode === mode}
               onClick={() => selectView(mode)}
-              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+              className={`min-h-[44px] px-3 py-2 text-xs font-medium rounded transition-colors ${
                 viewMode === mode
                   ? 'bg-[var(--color-cta-bg)] text-[var(--color-void)] shadow-sm'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)]/30'

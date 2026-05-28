@@ -279,21 +279,21 @@ export function MessageFooter({
             {t('sessionDetail.toSend')} · {t('sessionDetail.tryLabel')}{' '}
             <button
               type="button"
-              className="text-[var(--color-accent-cyan)] hover:underline"
+              className="min-h-[28px] inline-flex items-center rounded px-1.5 py-0.5 text-[var(--color-accent-cyan)] hover:underline hover:bg-[var(--color-void-lighter)]/30"
               onClick={() => { setMsgInput('/help'); getVisibleMessageInput()?.focus(); }}
             >
               /help
             </button>{' '}·{' '}
             <button
               type="button"
-              className="text-[var(--color-accent-cyan)] hover:underline"
+              className="min-h-[28px] inline-flex items-center rounded px-1.5 py-0.5 text-[var(--color-accent-cyan)] hover:underline hover:bg-[var(--color-void-lighter)]/30"
               onClick={() => { setMsgInput('/status'); getVisibleMessageInput()?.focus(); }}
             >
               /status
             </button>{' '}·{' '}
             <button
               type="button"
-              className="text-[var(--color-accent-cyan)] hover:underline"
+              className="min-h-[28px] inline-flex items-center rounded px-1.5 py-0.5 text-[var(--color-accent-cyan)] hover:underline hover:bg-[var(--color-void-lighter)]/30"
               onClick={() => { setMsgInput('/cost'); getVisibleMessageInput()?.focus(); }}
             >
               /cost

@@ -574,7 +574,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       setPage(1);
                     }}
                     aria-label={t("aria.filterByDirectory")}
-                    className="min-h-[36px] rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-cyan)] max-w-[180px]"
+                    className="min-h-[44px] rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-cyan)] max-w-[180px]"
                   >
                     <option value="all">{t("aria.allDirectories")} ({sessions.length})</option>
                     {uniqueWorkDirs.map(([key, full]) => (

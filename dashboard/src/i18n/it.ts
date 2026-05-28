@@ -766,6 +766,8 @@ export const it = {
     activeSessions: 'Sessioni attive',
     allSessions: 'Tutte le sessioni',
     checkingAuth: 'Verifica autenticazione',
+    expandEntry: 'Espandi voce trascrizione',
+    collapseEntry: 'Comprimi voce trascrizione',
   },
 
   cliShortcuts: {

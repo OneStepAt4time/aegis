@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useT } from '../../i18n/context';
 import type { ParsedEntry } from '../../types';
 import { RenderWithCodeBlocks } from '../shared/CodeBlock';
 import { CopyButton } from '../shared/CopyButton';
@@ -46,6 +47,7 @@ function getRoleColor(role: string, contentType: string): string {
 }
 
 export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptBubbleProps) {
+  const t = useT();
   const [showRelativeTime, setShowRelativeTime] = useState(false);
   const [collapsed, setCollapsed] = useState(
     entry.contentType === 'tool_use' || 
@@ -126,7 +128,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
               e.stopPropagation();
               setCollapsed(!collapsed);
             }}
-            aria-label="Collapse transcript entry"
+            aria-label={collapsed ? t("aria.expandEntry") : t("aria.collapseEntry")}
             className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors py-1"
           >
             <Icon 
@@ -177,7 +179,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 e.stopPropagation();
                 setCollapsed(!collapsed);
               }}
-              aria-label="Collapse transcript entry"
+              aria-label={collapsed ? t("aria.expandEntry") : t("aria.collapseEntry")}
             className={`w-full text-left rounded-lg overflow-hidden border transition-colors ${
                 isFailed
                   ? 'border-[var(--color-danger)]/40 bg-[var(--color-void)]'

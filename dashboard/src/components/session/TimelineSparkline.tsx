@@ -121,7 +121,7 @@ export function TimelineSparkline({
               role="tab"
               aria-selected={range === r}
               onClick={() => setRange(r)}
-              className={`px-2 py-0.5 text-[10px] font-mono uppercase rounded transition-colors ${
+              className={`min-h-[32px] px-2.5 py-1 text-[10px] font-mono uppercase rounded transition-colors ${
                 range === r
                   ? 'bg-[var(--color-cta-bg)] text-[var(--color-void)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
