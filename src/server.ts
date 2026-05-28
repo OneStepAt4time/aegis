@@ -68,7 +68,7 @@ import { AlertManager } from './alerting.js';
 
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
-import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, requestKeyMap } from './middleware/auth-setup.js';
+import { setupAuth, pruneAuthFailLimits, pruneIpRateLimits, requestKeyMap } from './boot/boot-auth.js';
 import { TimerRegistry } from './utils/timer-registry.js';
 import { AcpBackend } from './services/acp/backend.js';
 import { ActionSweeper, resolveSweeperConfig } from './services/acp/action-sweeper.js';
