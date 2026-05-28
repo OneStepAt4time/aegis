@@ -621,6 +621,7 @@ export const en = {
 
   notifications: {
     disconnect: 'Disconnect',
+    staleData: 'Live updates disconnected — data may be stale. {{error}}',
   },
 
   aria: {

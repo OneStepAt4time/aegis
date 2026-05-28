@@ -128,10 +128,10 @@ export function Sidebar({
                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
             } ${isCollapsed ? 'justify-center' : ''}`
           }
-          title={isCollapsed ? 'Settings' : undefined}
+          title={isCollapsed ? t('nav.settings') : undefined}
         >
           <Cog className="h-4 w-4 shrink-0" />
-          {!isCollapsed && <span className="truncate">Settings</span>}
+          {!isCollapsed && <span className="truncate">{t('nav.settings')}</span>}
         </NavLink>
 
         {!isCollapsed && <ServerHealthDot />}
@@ -155,6 +155,7 @@ export function Sidebar({
           type="button"
           onClick={onLogout}
           tabIndex={hiddenMobileSidebarControlTabIndex}
+          title={isCollapsed ? t('aria.signOut') : undefined}
           className={`flex items-center gap-2.5 rounded-lg px-3 py-3 min-h-[44px] text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors w-full ${isCollapsed ? 'justify-center' : ''}`}
           aria-label={t("aria.signOut")}
         >
