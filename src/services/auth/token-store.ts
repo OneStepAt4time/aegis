@@ -117,7 +117,7 @@ export async function removeStoredAuth(
       await unlink(filePath);
     } catch (e) {
       // File may already be gone — ignore but log
-      log.debug({ component: 'token-store', operation: 'removeStoredAuth', attributes: { filePath, error: e instanceof Error ? e.message : String(e) } });
+      log.warn({ component: 'token-store', operation: 'removeStoredAuth', attributes: { filePath, error: e instanceof Error ? e.message : String(e) } });
     }
     return true;
   }
