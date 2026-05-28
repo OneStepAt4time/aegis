@@ -139,6 +139,12 @@ export const it = {
     dailyCost: 'Costo Giornaliero',
     loadingDailySpend: 'Caricamento grafico spesa giornaliera',
     loadingCostByModel: 'Caricamento grafico costi per modello',
+    budgetAlertSection: {
+      title: 'Avvisi Budget',
+      description: 'Configura i limiti di spesa giornalieri e mensili in',
+      settingsLink: 'Impostazioni',
+    },
+    dismissBudgetAlert: 'Ignora avviso budget',
   },
 
   audit: {
@@ -646,12 +652,6 @@ export const it = {
     claudeRuntimeStatus: 'Stato runtime Claude',
     sessionSummary: 'Riepilogo sessione',
     permissionPrompt: 'Richiesta di permesso',
-    budgetAlertSection: {
-      title: 'Avvisi Budget',
-      description: 'Configura i limiti di spesa giornalieri e mensili in',
-      settingsLink: 'Impostazioni',
-    },
-    dismissBudgetAlert: 'Ignora avviso budget',
     close: 'Chiudi',
     removeRow: 'Rimuovi riga',
     newSession: 'Nuova Sessione',
