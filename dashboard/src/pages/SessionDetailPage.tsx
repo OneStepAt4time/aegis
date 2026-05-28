@@ -66,6 +66,7 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('stream');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   const [killConfirmOpen, setKillConfirmOpen] = useState(false);
+  const killConfirmOpenRef = useRef(false);
   const [fullBleed, setFullBleed] = useState(false);
   const fullBleedRef = useRef(false);
   fullBleedRef.current = fullBleed;
@@ -177,6 +178,8 @@ export default function SessionDetailPage() {
           setFullBleed(false);
           return;
         }
+        // Don't interrupt if a modal (kill confirm, etc.) is open
+        if (killConfirmOpenRef.current) return;
         e.preventDefault();
         handleInterruptRef.current();
         return;
@@ -269,10 +272,13 @@ export default function SessionDetailPage() {
     );
   }
   function handleKillRequest() {
-    setKillConfirmOpen(true);
+    setKillConfirmOpen(true); killConfirmOpenRef.current = true;
   }
+  const killFiredRef = useRef(false);
   async function handleKill() {
-    setKillConfirmOpen(false);
+    if (killFiredRef.current) return;
+    killFiredRef.current = true;
+    setKillConfirmOpen(false); killConfirmOpenRef.current = false;
     try {
       await killSession(s.id);
       navigate('/');

@@ -54,6 +54,7 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
   const [pendingApproval, setPendingApproval] = useState<AcpApprovalRequest | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ttlTick, setTtlTick] = useState(0);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -92,8 +93,8 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
         // Approval expired — stop ticking
         window.clearInterval(timer);
       }
-      // Force re-render by triggering state update
-      setPendingApproval((prev) => (prev ? { ...prev } : null));
+      // Trigger re-render for countdown display
+      setTtlTick((t) => t + 1);
     }, 1000);
     return () => window.clearInterval(timer);
   }, [pendingApproval?.expiresAt, remainingMs]);
