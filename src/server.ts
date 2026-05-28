@@ -40,8 +40,7 @@ import { SessionEventBus } from './events.js';
 
 import { SSEConnectionLimiter } from './sse-limiter.js';
 import { PipelineManager } from './pipeline.js';
-import { createSSEBridge } from './services/sse-bridge.js';
-import { LocalEventBus } from './local-event-bus.js';
+import { registerSSEBridge } from './services/sse-bridge.js';
 import { ToolRegistry } from './tool-registry.js';
 import {
   AuthManager,
@@ -546,10 +545,8 @@ new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
     requestKeyMap,
   });
 
-  // Wire SSE bridge (EventBus -> /sse) so dashboard can consume live events
-  const sseEventBus = new LocalEventBus();
-  const sseBridge = createSSEBridge(sseEventBus, app);
-  sseBridge.register(app);
+  // Issue #4393: Wire SSE bridge (/v1/sse) — auth-protected, tenant-scoped, connection-limited
+  registerSSEBridge(app, routeCtx);
 
   // Issue #361: Store interval refs so graceful shutdown can clear them
   timers.setInterval(() => reapStaleSessions(ctx.config.maxSessionAgeMs, ctx, { logger, eventBus, channels }), ctx.config.reaperIntervalMs);

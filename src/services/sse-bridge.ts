@@ -1,90 +1,103 @@
 /**
  * sse-bridge.ts — SSE endpoint that bridges EventBus events to browser clients.
  *
- * Provides a /sse endpoint on the Fastify server that pushes real-time events
+ * Provides a /v1/sse endpoint on the Fastify server that pushes real-time events
  * to connected clients via Server-Sent Events protocol.
  *
- * Auth is handled by the global onRequest hook set up by setupAuth() in
- * middleware/auth-setup.ts — no additional per-route auth needed.
- *
- * Review fixes applied:
- * - Proper Fastify types (no `any`)
- * - lastEventId triggers replay on connect
- * - Structured error logging (no silent catch)
+ * Security (#4393):
+ * - Route is covered by auth middleware (SSE token, Bearer, dashboard cookie)
+ * - Tenant-scoped: events filtered via isGlobalEventVisibleToRequest()
+ * - Connection-limited: reuses SSEConnectionLimiter from server context
+ * - Wired to real SessionEventBus (not an isolated LocalEventBus)
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { type EventBus, type BusEvent } from '../event-bus.js';
+import type { GlobalSSEEvent } from '../events.js';
+import type { RouteContext } from '../routes/context.js';
+import { isGlobalEventVisibleToRequest } from '../routes/events.js';
 import { StructuredLogger } from '../logger.js';
+import { SYSTEM_TENANT } from '../config.js';
 
 const log = new StructuredLogger();
 
-interface SSEClient {
-  res: FastifyReply['raw'];
-  lastEventId?: number;
-}
+export function registerSSEBridge(app: FastifyInstance, ctx: RouteContext): void {
+  const { sessions, eventBus, sseLimiter } = ctx;
 
-export function createSSEBridge(eventBus: EventBus, fastifyServer: FastifyInstance) {
-  const clients: Set<SSEClient> = new Set();
-
-  function sendSSE(res: FastifyReply['raw'], event: BusEvent) {
-    try {
-      res.write(`id: ${event.id}\n`);
-      res.write(`event: ${event.type}\n`);
-      res.write(`data: ${JSON.stringify({ channel: event.channel, data: event.data, timestamp: event.timestamp })}\n\n`);
-    } catch (err) {
-      log.warn({ component: 'sse-bridge', operation: 'send', attributes: { error: String(err) } });
-    }
-  }
-
-  // Subscribe to global and session:* events
-  const unsubGlobal = eventBus.subscribe('global', (e) => {
-    for (const c of clients) sendSSE(c.res, e);
-  });
-  const unsubSessions = eventBus.subscribe('session:*', (e) => {
-    for (const c of clients) sendSSE(c.res, e);
-  });
-
-  function register(server: FastifyInstance) {
-    server.get<{ Querystring: { lastEventId?: string } }>('/sse', async (
-      request: FastifyRequest<{ Querystring: { lastEventId?: string } }>,
-      reply: FastifyReply,
-    ) => {
-      const raw = reply.raw;
-      raw.setHeader('Content-Type', 'text/event-stream');
-      raw.setHeader('Cache-Control', 'no-cache');
-      raw.setHeader('Connection', 'keep-alive');
-      raw.write('\n');
-
-      const lastEventId = request.query.lastEventId ? Number(request.query.lastEventId) : undefined;
-      const client: SSEClient = { res: raw, lastEventId };
-      clients.add(client);
-
-      // Replay missed events if client provides lastEventId
-      if (lastEventId !== undefined && !isNaN(lastEventId)) {
-        const globalEvents = await eventBus.replaySince('global', lastEventId);
-        for (const ev of globalEvents) sendSSE(raw, ev);
-      }
-
-      // Heartbeat to keep connection alive
-      const hb = setInterval(() => {
-        try { raw.write(': hb\n\n'); } catch (_e) { /* connection closed */ }
-      }, 30000);
-
-      request.raw.on('close', () => {
-        clearInterval(hb);
-        clients.delete(client);
+  app.get('/v1/sse', async (request: FastifyRequest, reply: FastifyReply) => {
+    // Connection limiting
+    const clientIp = request.ip;
+    const acquireResult = sseLimiter.acquire(clientIp);
+    if (!acquireResult.allowed) {
+      const status = acquireResult.reason === 'per_ip_limit' ? 429 : 503;
+      return reply.status(status).send({
+        error: acquireResult.reason === 'per_ip_limit'
+          ? `Per-IP connection limit reached (${acquireResult.current}/${acquireResult.limit})`
+          : `Global connection limit reached (${acquireResult.current}/${acquireResult.limit})`,
+        reason: acquireResult.reason,
       });
+    }
+
+    const connectionId = acquireResult.connectionId;
+
+    // Determine tenant scope from authenticated request
+    const scopedAuthContext = request.authKeyId != null
+      || request.authRole != null
+      || request.tenantId != null;
+    const requestTenantId = request.tenantId;
+
+    const eventIsVisible = (event: GlobalSSEEvent): boolean =>
+      isGlobalEventVisibleToRequest(event, sessions, requestTenantId, scopedAuthContext);
+
+    // Set up SSE response
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
     });
-  }
+    reply.raw.write('\n');
 
-  function destroy() {
-    unsubGlobal();
-    unsubSessions();
-    clients.clear();
-  }
+    let unsubscribe: (() => void) | undefined;
 
-  return { register, destroy };
+    // Subscribe to global events with tenant filtering
+    const handler = (event: GlobalSSEEvent): void => {
+      if (!eventIsVisible(event)) return;
+      try {
+        const id = event.id != null ? `id: ${event.id}\n` : '';
+        reply.raw.write(`${id}data: ${JSON.stringify(event)}\n\n`);
+      } catch (err) {
+        log.warn({ component: 'sse-bridge', operation: 'send', attributes: { error: String(err) } });
+      }
+    };
+
+    try {
+      unsubscribe = eventBus.subscribeGlobal(handler);
+    } catch (err) {
+      log.error({ component: 'sse-bridge', operation: 'subscribe', attributes: { error: String(err) } });
+      sseLimiter.release(connectionId);
+      return reply.status(500).send({ error: 'Failed to create SSE subscription' });
+    }
+
+    // Send connected event
+    reply.raw.write(`data: ${JSON.stringify({
+      event: 'connected',
+      timestamp: new Date().toISOString(),
+    })}\n\n`);
+
+    // Heartbeat to keep connection alive
+    const hb = setInterval(() => {
+      try { reply.raw.write(': hb\n\n'); } catch (_e) { /* connection closed */ }
+    }, 30000);
+
+    // Cleanup on disconnect
+    request.raw.on('close', () => {
+      clearInterval(hb);
+      unsubscribe?.();
+      sseLimiter.release(connectionId);
+    });
+
+    await reply;
+  });
 }
 
-export default createSSEBridge;
+export default registerSSEBridge;
