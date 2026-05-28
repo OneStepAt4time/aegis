@@ -13,7 +13,7 @@ function makeDeps(): DeadDetectorDeps {
       approve: vi.fn(),
       killSession: vi.fn(async () => {}),
     } as any,
-    makePayload: vi.fn((event, session, detail) => ({ event, session: { id: session.id }, detail })) as any,
+    makePayload: ((event: any, session: any, detail: any) => ({ event, session: { id: session.id }, detail })) as DeadDetectorDeps['makePayload'],
     emitDead: vi.fn(),
     alertFailure: vi.fn(),
     statusChange: vi.fn(),

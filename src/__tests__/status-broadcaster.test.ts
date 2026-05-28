@@ -10,7 +10,7 @@ function makeDeps(): StatusBroadcasterDeps {
     sessions: {
       approve: vi.fn(async () => {}),
     } as any,
-    makePayload: vi.fn((event, session, detail) => ({ event, session: { id: session.id }, detail })) as any,
+    makePayload: ((event: any, session: any, detail: any) => ({ event, session: { id: session.id }, detail })) as StatusBroadcasterDeps['makePayload'],
     statusChange: vi.fn(),
     emitApproval: vi.fn(),
     emitStatus: vi.fn(),
