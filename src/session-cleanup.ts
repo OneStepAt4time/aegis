@@ -7,6 +7,9 @@
 
 import type { AppContext } from './app-context.js';
 import { SYSTEM_TENANT } from './config.js';
+import { StructuredLogger } from './logger.js';
+
+const log = new StructuredLogger();
 
 export interface SessionCleanupDeps {
   monitor: { removeSession(sessionId: string): void };
@@ -30,8 +33,9 @@ export async function shutdownAcpRuntime(
       tenantId: session?.tenantId ?? SYSTEM_TENANT,
       ownerKeyId: session?.ownerKeyId ?? 'master',
     });
-  } catch {
+  } catch (e) {
     // Best-effort — session metadata cleanup must proceed regardless.
+    log.warn({ component: 'session-cleanup', operation: 'shutdownAcpRuntime', attributes: { sessionId, error: e instanceof Error ? e.message : String(e) } });
   }
 }
 

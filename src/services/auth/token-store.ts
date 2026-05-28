@@ -10,6 +10,9 @@ import { join } from 'node:path';
 import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { secureFilePermissions } from '../../file-utils.js';
+import { StructuredLogger } from '../../logger.js';
+
+const log = new StructuredLogger();
 
 /** Stored identity extracted from id_token at login time. */
 export interface StoredIdentity {
@@ -58,7 +61,8 @@ export async function readAuthStore(authDir?: string): Promise<AuthStore> {
   try {
     const raw = await readFile(filePath, 'utf-8');
     return JSON.parse(raw) as AuthStore;
-  } catch {
+  } catch (e) {
+    log.warn({ component: 'token-store', operation: 'readAuthStore', attributes: { filePath, error: e instanceof Error ? e.message : String(e) } });
     return {};
   }
 }
@@ -111,8 +115,9 @@ export async function removeStoredAuth(
     const filePath = resolveAuthFilePath(authDir);
     try {
       await unlink(filePath);
-    } catch {
-      // File may already be gone — ignore
+    } catch (e) {
+      // File may already be gone — ignore but log
+      log.debug({ component: 'token-store', operation: 'removeStoredAuth', attributes: { filePath, error: e instanceof Error ? e.message : String(e) } });
     }
     return true;
   }
@@ -129,7 +134,8 @@ export async function deleteAuthStore(authDir?: string): Promise<boolean> {
   try {
     await unlink(filePath);
     return true;
-  } catch {
+  } catch (e) {
+    log.warn({ component: 'token-store', operation: 'deleteAuthStore', attributes: { filePath, error: e instanceof Error ? e.message : String(e) } });
     return false;
   }
 }
