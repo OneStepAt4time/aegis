@@ -434,6 +434,7 @@ export const en = {
 
   sessionDetail: {
     notFound: 'Session not found',
+    staleData: 'Live updates disconnected — data may be stale.',
     stream: 'Stream',
     metrics: 'Metrics',
     audit: 'Audit',
@@ -776,6 +777,7 @@ export const en = {
     activeSessions: 'Active sessions',
     allSessions: 'All sessions',
     checkingAuth: 'Checking authentication',
+    staleDataBanner: 'Live updates disconnected, data may be stale',
   },
 
   cliShortcuts: {

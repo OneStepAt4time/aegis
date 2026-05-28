@@ -16,7 +16,7 @@ export function StaleDataBanner({ error }: StaleDataBannerProps) {
     <div
       className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-4 py-2.5 text-sm text-[var(--color-warning-glow)]"
       role="alert"
-      aria-label={t('notifications.staleData', { error })}
+aria-label={t('notifications.staleData', { error })}
     >
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span>

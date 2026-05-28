@@ -128,7 +128,7 @@ export function Sidebar({
                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
             } ${isCollapsed ? 'justify-center' : ''}`
           }
-          title={isCollapsed ? t('nav.settings') : undefined}
+title={isCollapsed ? t('settings.title') : undefined}
         >
           <Cog className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span className="truncate">{t('nav.settings')}</span>}

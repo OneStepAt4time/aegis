@@ -437,6 +437,7 @@ export const it = {
 
   sessionDetail: {
     notFound: 'Sessione non trovata',
+    staleData: 'Aggiornamenti live disconnessi — i dati potrebbero non essere aggiornati.',
     stream: 'Stream',
     metrics: 'Metriche',
     audit: 'Audit',
@@ -768,6 +769,7 @@ export const it = {
     activeSessions: 'Sessioni attive',
     allSessions: 'Tutte le sessioni',
     checkingAuth: 'Verifica autenticazione',
+    staleDataBanner: 'Aggiornamenti live disconnessi, dati potrebbero non essere aggiornati',
   },
 
   cliShortcuts: {
