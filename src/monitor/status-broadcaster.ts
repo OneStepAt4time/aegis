@@ -24,9 +24,6 @@ export interface StatusBroadcasterDeps {
   emitStatus?: (sessionId: string, status: string, detail: string) => void;
 }
 
-/** Debounce interval for status change broadcasts (ms). */
-const STATUS_CHANGE_DEBOUNCE_MS = 500;
-
 /**
  * StatusBroadcaster handles status change detection and notification.
  *
@@ -44,19 +41,20 @@ export class StatusBroadcaster {
 
   constructor(private deps: StatusBroadcasterDeps) {}
 
-  /** Build a standard event payload. */
-  makePayload(event: SessionEvent, session: SessionInfo, detail: string): SessionEventPayload {
-    return {
-      event,
-      timestamp: new Date().toISOString(),
-      session: {
-        id: session.id,
-        name: session.displayName,
-        workDir: session.workDir,
-      },
-      detail: detail.slice(0, 2000),
-    };
+  /** Public getter for idle notification tracking. */
+  getIdleNotified(): Set<string> { return this.idleNotified; }
+
+  /** Public getter for idle-since timestamps. */
+  getIdleSince(): Map<string, number> { return this.idleSince; }
+
+  /** Public getter for status change debounce timers. */
+  getDebounceMap(): Map<string, NodeJS.Timeout> { return this.statusChangeDebounce; }
+
+  /** Update dependency callbacks (e.g. after setEventBus). */
+  updateDeps(deps: Partial<StatusBroadcasterDeps>): void {
+    Object.assign(this.deps, deps);
   }
+
 
   /**
    * Broadcast a status change for a session.
@@ -82,7 +80,7 @@ export class StatusBroadcaster {
         try {
           await this.deps.sessions.approve(session.id);
           this.deps.statusChange(
-            this.makePayload('status.permission', session,
+            this.deps.makePayload('status.permission', session,
               `[AUTO-APPROVED] ${result.interactiveContent || 'Permission auto-approved'}`),
           );
         } catch (e: unknown) {
@@ -95,19 +93,19 @@ export class StatusBroadcaster {
             attributes: { error: errMsg },
           });
           this.deps.statusChange(
-            this.makePayload('status.permission', session,
+            this.deps.makePayload('status.permission', session,
               `[AUTO-APPROVE FAILED] ${result.interactiveContent || 'Permission requested'}: ${errMsg}`),
           );
         }
       } else {
         this.deps.statusChange(
-          this.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
+          this.deps.makePayload('status.permission', session, result.interactiveContent || 'Permission requested'),
         );
       }
     } else if (status === 'plan_mode') {
       this.deps.emitStatus?.(session.id, 'plan_mode', result.interactiveContent || 'Plan review requested');
       this.deps.statusChange(
-        this.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),
+        this.deps.makePayload('status.plan', session, result.interactiveContent || 'Plan review requested'),
       );
     } else if (status === 'idle') {
       const idleStart = this.idleSince.get(session.id) || Date.now();
@@ -116,7 +114,7 @@ export class StatusBroadcaster {
         this.idleNotified.add(session.id);
         this.deps.emitStatus?.(session.id, 'idle', result.statusText || 'Session finished working, awaiting input');
         this.deps.statusChange(
-          this.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
+          this.deps.makePayload('status.idle', session, result.statusText || 'Session finished working, awaiting input'),
         );
       }
     } else if (status === 'context_warning' && prevStatus !== 'context_warning') {
@@ -130,7 +128,7 @@ export class StatusBroadcaster {
         });
         try {
           this.deps.statusChange(
-            this.makePayload('status.context_warning', session,
+            this.deps.makePayload('status.context_warning', session,
               'Context window nearing limit — auto-injected /compact to prevent overflow'),
           );
         } catch (e: unknown) {
@@ -146,7 +144,7 @@ export class StatusBroadcaster {
     } else if (status === 'ask_question' && prevStatus !== 'ask_question') {
       this.deps.emitStatus?.(session.id, 'ask_question', result.interactiveContent || 'Session is asking a question');
       this.deps.statusChange(
-        this.makePayload('status.question', session, result.interactiveContent || 'Session is asking a question'),
+        this.deps.makePayload('status.question', session, result.interactiveContent || 'Session is asking a question'),
       );
     }
 

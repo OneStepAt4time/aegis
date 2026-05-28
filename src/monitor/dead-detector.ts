@@ -39,6 +39,14 @@ export class DeadDetector {
 
   constructor(private deps: DeadDetectorDeps) {}
 
+  /** Public getter for dead-notified session tracking. */
+  getDeadNotified(): Set<string> { return this.deadNotified; }
+
+  /** Update dependency callbacks (e.g. after setAlertManager). */
+  updateDeps(deps: Partial<DeadDetectorDeps>): void {
+    Object.assign(this.deps, deps);
+  }
+
   /** Check all sessions for dead processes. */
   async checkDeadSessions(): Promise<void> {
     const sessions = this.deps.sessions.listSessions();
