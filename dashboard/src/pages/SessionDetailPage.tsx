@@ -286,9 +286,6 @@ export default function SessionDetailPage() {
 
   return (
     <div className="min-h-screen bg-transparent">
-      {needsApproval && (
-        <div className="fixed inset-0 z-30 bg-black/40 sm:hidden" aria-hidden="true" />
-      )}
 
       <div
         className="mx-auto max-w-6xl px-3 py-3 sm:px-4 sm:py-4"
@@ -344,7 +341,7 @@ export default function SessionDetailPage() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="hidden p-3 pb-0 sm:block sm:p-4"
+                className="p-3 pb-0 sm:p-4"
               >
                 <ApprovalBanner
                   prompt={pendingPermission?.prompt ?? h.details}
