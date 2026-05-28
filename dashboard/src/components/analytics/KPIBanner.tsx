@@ -65,7 +65,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
         role="status"
         aria-label={t("aria.noKpiData")}
       >
-        {t('analytics.noData') || 'No data available'}
+        {t('common.noData') || 'No data available'}
       </div>
     );
   }
