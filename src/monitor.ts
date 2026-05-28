@@ -338,8 +338,13 @@ export class SessionMonitor {
 
     if (now - this.lastDeadCheck >= this.config.deadCheckIntervalMs) {
       this.lastDeadCheck = now;
-      await this.deadDetector.checkDeadSessions();
+      await this.checkDeadSessions();
     }
+  }
+
+  /** @internal Forward to deadDetector for backward compat with tests. */
+  async checkDeadSessions(): Promise<void> {
+    return this.deadDetector.checkDeadSessions();
   }
 
   /** Stall detection: delegates to StallDetector. */
