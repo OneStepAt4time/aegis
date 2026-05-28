@@ -808,9 +808,6 @@ export class SessionManager {
     if (!session) return;
 
     const span = startSessionSpan('kill', id, { displayName: session.displayName });
-    try {
-    } catch (e) {
-    }
 
     try {
       // Permission guard: restore original settings.local.json if we patched it
