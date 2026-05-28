@@ -76,29 +76,34 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
     [pendingApproval?.expiresAt],
   );
 
-  // TTL countdown tick — use separate counter to avoid recreating callbacks every second
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (remainingMs === null || remainingMs <= 0) return;
-    const timer = window.setInterval(() => {
-      setTick((prev) => prev + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [remainingMs]);
+  // TTL countdown — only trigger re-render when formatted countdown string changes
+  const [countdown, setCountdown] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
-  // Recompute remaining on each tick
+  useEffect(() => {
+    if (remainingMs === null || remainingMs <= 0) {
+      setCountdown(null);
+      setIsExpired(remainingMs !== null && remainingMs <= 0);
+      return;
+    }
+
+    const update = () => {
+      const ms = clampRemaining(pendingApproval?.expiresAt);
+      if (ms === null) return;
+      const next = formatCountdown(ms);
+      setCountdown((prev) => (prev !== next ? next : prev));
+      if (ms <= 0) setIsExpired(true);
+    };
+
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [remainingMs, pendingApproval?.expiresAt]);
+
   const liveRemainingMs = useMemo(
     () => clampRemaining(pendingApproval?.expiresAt),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pendingApproval?.expiresAt, tick],
+    [pendingApproval?.expiresAt, countdown],
   );
-
-  const countdown = useMemo(
-    () => liveRemainingMs !== null ? formatCountdown(liveRemainingMs) : null,
-    [liveRemainingMs],
-  );
-
-  const isExpired = liveRemainingMs !== null && liveRemainingMs <= 0;
 
   const approve = useCallback(async (reason?: string) => {
     if (!sessionId || !pendingApproval) return;
