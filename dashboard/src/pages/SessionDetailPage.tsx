@@ -24,6 +24,7 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { CliShortcutsPanel } from '../components/session/CliShortcutsPanel';
 import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
+import { useAuthStore } from '../store/useAuthStore';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
 const SessionTimelineView = lazy(() => import('../components/session/SessionTimelineView').then(m => ({ default: m.SessionTimelineView })));
@@ -284,6 +285,14 @@ export default function SessionDetailPage() {
   handleSendRef.current = handleSend;
   handleInterruptRef.current = handleInterrupt;
 
+  // Map auth role to DriverControlBar role
+  const authRole = useAuthStore((s) => s.identity?.role);
+  const userRole: 'admin' | 'operator' | 'observer' = authRole === 'admin'
+    ? 'admin'
+    : authRole === 'operator'
+      ? 'operator'
+      : 'observer';
+
   return (
     <div className="min-h-screen bg-transparent">
       {needsApproval && (
@@ -330,7 +339,7 @@ export default function SessionDetailPage() {
             onClaim={() => claimDriverRole()}
             onRelease={() => releaseDriverRole()}
             onTransfer={(targetSubscriberId, reason) => transferDriverRole({ targetSubscriberId, reason })}
-            userRole="observer"
+            userRole={userRole}
           />
 
           <TabBar tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
