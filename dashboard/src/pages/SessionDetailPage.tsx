@@ -24,7 +24,6 @@ import { SessionHeader } from '../components/session/SessionHeader';
 import { CliShortcutsPanel } from '../components/session/CliShortcutsPanel';
 import { PauseControlBar } from '../components/session/PauseControlBar';
 import { DriverControlBar } from '../components/session/DriverControlBar';
-import { useAuthStore } from '../store/useAuthStore';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
 const SessionTimelineView = lazy(() => import('../components/session/SessionTimelineView').then(m => ({ default: m.SessionTimelineView })));
@@ -285,16 +284,11 @@ export default function SessionDetailPage() {
   handleSendRef.current = handleSend;
   handleInterruptRef.current = handleInterrupt;
 
-  // Map auth role to DriverControlBar role
-  const authRole = useAuthStore((s) => s.identity?.role);
-  const userRole: 'admin' | 'operator' | 'observer' = authRole === 'admin'
-    ? 'admin'
-    : authRole === 'operator'
-      ? 'operator'
-      : 'observer';
-
   return (
     <div className="min-h-screen bg-transparent">
+      {needsApproval && (
+        <div className="fixed inset-0 z-30 bg-black/40 sm:hidden" aria-hidden="true" />
+      )}
 
       <div
         className="mx-auto max-w-6xl px-3 py-3 sm:px-4 sm:py-4"
@@ -336,7 +330,7 @@ export default function SessionDetailPage() {
             onClaim={() => claimDriverRole()}
             onRelease={() => releaseDriverRole()}
             onTransfer={(targetSubscriberId, reason) => transferDriverRole({ targetSubscriberId, reason })}
-            userRole={userRole}
+            userRole="observer"
           />
 
           <TabBar tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -350,7 +344,7 @@ export default function SessionDetailPage() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 pb-0 sm:p-4"
+                className="block p-3 pb-0 sm:p-4"
               >
                 <ApprovalBanner
                   prompt={pendingPermission?.prompt ?? h.details}
