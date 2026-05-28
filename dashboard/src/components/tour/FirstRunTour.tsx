@@ -142,6 +142,9 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err: unknown) {
       // Still mark as complete even if kill fails
+      try {
+        markTourCompleted();
+      } catch { /* ignore storage errors */ }
       addToast('warning', 'Cleanup note', 'You may need to manually kill the tour session');
       setTimeout(() => {
         onComplete();
