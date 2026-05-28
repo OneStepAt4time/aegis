@@ -2,7 +2,7 @@
  * components/CreateSessionModal.tsx â€” Modal dialog for creating new sessions.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
@@ -29,10 +29,10 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const abortRef = useRef<AbortController | null>(null);
   const trapRef = useFocusTrap(open);
 
-  const handleClose = useCallback((): void => {
+  function handleClose(): void {
     resetForm();
     onClose();
-  }, [onClose]);
+  }
 
 
   // Close on Escape key â€” abort in-flight request

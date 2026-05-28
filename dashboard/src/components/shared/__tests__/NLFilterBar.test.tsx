@@ -157,12 +157,12 @@ describe('NLFilterBar', () => {
     expect(onFilter).toHaveBeenCalled();
   });
 
-  it('commits filter on blur when input has value', () => {
+  it('does not commit filter on blur (removed auto-commit)', () => {
     render(<NLFilterBar onFilter={onFilter} />);
     const input = screen.getByLabelText('aria.naturalLanguageFilter');
     fireEvent.change(input, { target: { value: 'today' } });
     fireEvent.blur(input);
-    expect(onFilter).toHaveBeenCalled();
+    expect(onFilter).not.toHaveBeenCalled();
   });
 
   it('does not commit on blur when input is empty', () => {
