@@ -111,6 +111,7 @@ export default function App() {
   if (isAuthenticated && showOnboarding) {
     return <Suspense fallback={<LoadingFallback />}><OnboardingWizard onComplete={() => {
       setShowOnboarding(false);
+      localStorage.setItem('aegis:onboarded', 'true');
       if (!isTourCompleted()) setShowTour(true);
     }} /></Suspense>;
   }
