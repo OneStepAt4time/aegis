@@ -24,6 +24,9 @@ import type {
   SerializedPipelineEntry,
   SerializedPipelineState,
 } from './state-store.js';
+import { StructuredLogger } from '../../logger.js';
+
+const log = new StructuredLogger();
 
 /** Commands available on a Redis MULTI pipeline. */
 export interface RedisPipeline {
@@ -161,7 +164,8 @@ export class RedisStateStore implements StateStore {
     if (!raw) return undefined;
     try {
       return JSON.parse(raw) as SerializedSessionInfo;
-    } catch {
+    } catch (e) {
+      log.warn({ component: 'redis-state-store', operation: 'getSession', attributes: { sessionId: id, error: e instanceof Error ? e.message : String(e) } });
       return undefined;
     }
   }
@@ -234,7 +238,8 @@ export class RedisStateStore implements StateStore {
     if (!raw) return undefined;
     try {
       return JSON.parse(raw) as SerializedPipelineEntry;
-    } catch {
+    } catch (e) {
+      log.warn({ component: 'redis-state-store', operation: 'getPipeline', attributes: { pipelineId: id, error: e instanceof Error ? e.message : String(e) } });
       return undefined;
     }
   }
