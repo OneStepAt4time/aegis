@@ -72,6 +72,14 @@ GET /v1/sessions/:id/events?token=<sse-token>
 
 Streams events for a single session. Also available as `GET /v1/sessions/:id/stream` (alias).
 
+### SSE Bridge (Dashboard)
+
+```
+GET /v1/sse?token=<sse-token>
+```
+
+Bridges the internal `SessionEventBus` to browser/dashboard clients. Same event format as the global stream, with tenant-scoped filtering and connection limiting. Also accepts dashboard cookie authentication.
+
 ## Event Reference
 
 ### Per-Session Event Types

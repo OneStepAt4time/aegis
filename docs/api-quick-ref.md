@@ -213,6 +213,7 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | Method | Path | Auth | Summary |
 |--------|------|------|---------|
 | `GET` | `/v1/events` | SSE Token | Global SSE event stream (all sessions) |
+| `GET` | `/v1/sse` | SSE Token / Cookie | SSE bridge stream (dashboard, same events with tenant scoping) |
 
 ---
 

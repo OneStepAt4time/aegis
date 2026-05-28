@@ -4181,6 +4181,40 @@ curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 data: {"event":"connected","timestamp":"2026-04-22T10:00:00.000Z","data":{"activeSessions":5}}
 ```
 
+### SSE Bridge (Dashboard)
+
+```
+GET /v1/sse
+```
+
+Server-Sent Events stream bridging the internal `SessionEventBus` to browser/dashboard clients. Similar to `GET /v1/events` but optimized for dashboard consumption.
+
+```bash
+# Step 1: Get an SSE token
+curl -s -X POST http://localhost:9100/v1/auth/sse-token \
+  -H "Authorization: Bearer $API_KEY"
+# Step 2: Connect to the bridge stream
+curl -N "http://localhost:9100/v1/sse?token=$SSE_TOKEN"
+```
+
+**Authentication:** SSE token via query parameter (`?token=<sse-token>`) or Bearer header (`Authorization: Bearer sse_...`). Also accepts dashboard cookie auth. Regular API keys are rejected.
+
+**Event types:** Same as `GET /v1/events` — all global session events filtered by tenant scope.
+
+**Tenant scoping:** Events are filtered via `isGlobalEventVisibleToRequest()`. Admin/master keys see all events; tenant-scoped keys see only their own.
+
+**Connection limits:** Per-IP and global connection limits apply (shared with `GET /v1/events`). Returns `429` when per-IP limit is reached, `503` when global limit is reached.
+
+**Heartbeat:** Server sends `: hb` comments every 30 seconds to keep the connection alive.
+
+**Error responses:**
+
+| Status | Description |
+|--------|-------------|
+| 429 | Per-IP connection limit reached |
+| 500 | Failed to create SSE subscription |
+| 503 | Global connection limit reached |
+
 ---
 
 ## Usage & Metering
