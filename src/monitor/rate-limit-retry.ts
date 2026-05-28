@@ -53,6 +53,14 @@ export class RateLimitRetryHandler {
     private acpBackend?: AcpBackend,
   ) {}
 
+  /** Public getter for retry attempt tracking. */
+  getRetryAttempts(): Map<string, number> { return this.retryAttempts; }
+
+  /** Update dependency callbacks (e.g. after setAlertManager/setMetrics). */
+  updateDeps(deps: Partial<RateLimitRetryDeps>): void {
+    Object.assign(this.deps, deps);
+  }
+
   /** Update the ACP backend (may be set after construction). */
   setAcpBackend(backend: AcpBackend): void {
     this.acpBackend = backend;

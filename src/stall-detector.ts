@@ -76,6 +76,11 @@ export class StallDetector {
     private deps: StallDetectorDeps,
   ) {}
 
+  /** Update dependency callbacks (e.g. after setEventBus/setAlertManager/setMetrics). */
+  updateDeps(deps: Partial<StallDetectorDeps>): void {
+    Object.assign(this.deps, deps);
+  }
+
   /** Update the restartSession callback without resetting accumulated state. */
   setRestartSession(restartSession: StallDetectorDeps['restartSession']): void {
     this.deps.restartSession = restartSession;

@@ -100,17 +100,17 @@ export class SessionMonitor {
   /** @internal Backward compat: expose stallNotified for tests. */
   get stallNotified() { return this.stallDetector.stallNotified; }
   /** @internal Backward compat: expose idleNotified via statusBroadcaster. */
-  get idleNotified() { return this.statusBroadcaster['idleNotified']; }
+  get idleNotified() { return this.statusBroadcaster.getIdleNotified(); }
   /** @internal Backward compat: expose idleSince via statusBroadcaster. */
-  get idleSince() { return this.statusBroadcaster['idleSince']; }
+  get idleSince() { return this.statusBroadcaster.getIdleSince(); }
   /** @internal Backward compat: expose deadNotified via deadDetector. */
-  get deadNotified() { return this.deadDetector['deadNotified']; }
+  get deadNotified() { return this.deadDetector.getDeadNotified(); }
   /** @internal Backward compat: expose rateLimitRetryAttempts via rateLimitHandler. */
-  get rateLimitRetryAttempts() { return this.rateLimitHandler['retryAttempts']; }
+  get rateLimitRetryAttempts() { return this.rateLimitHandler.getRetryAttempts(); }
   /** @internal Backward compat: expose rateLimitCoordinator via rateLimitHandler. */
   get rateLimitCoordinator() { return this.rateLimitHandler.rateLimitCoordinator; }
   /** @internal Backward compat: expose statusChangeDebounce via statusBroadcaster. */
-  get statusChangeDebounce() { return this.statusBroadcaster['statusChangeDebounce']; }
+  get statusChangeDebounce() { return this.statusBroadcaster.getDebounceMap(); }
 
   /** @internal Backward compat: forward to stallDetector. */
   stallHas(sessionId: string, stallType: string): boolean {
@@ -222,27 +222,39 @@ export class SessionMonitor {
   /** Issue #32: Set the event bus for SSE streaming. */
   setEventBus(bus: SessionEventBus): void {
     this.eventBus = bus;
-    // Re-wire event bus callbacks
-    this.statusBroadcaster['deps'].emitApproval = (sid, content) => bus.emitApproval(sid, content);
-    this.statusBroadcaster['deps'].emitStatus = (sid, status, detail) => bus.emitStatus(sid, status, detail);
-    this.deadDetector['deps'].emitDead = (sid, detail) => bus.emitDead(sid, detail);
-    this.stallDetector['deps'].emitStall = (sid, type, detail) => bus.emitStall(sid, type, detail);
+    // Re-wire event bus callbacks via public updateDeps methods
+    this.statusBroadcaster.updateDeps({
+      emitApproval: (sid, content) => bus.emitApproval(sid, content),
+      emitStatus: (sid, status, detail) => bus.emitStatus(sid, status, detail),
+    });
+    this.deadDetector.updateDeps({
+      emitDead: (sid, detail) => bus.emitDead(sid, detail),
+    });
+    this.stallDetector.updateDeps({
+      emitStall: (sid, type, detail) => bus.emitStall(sid, type, detail),
+    });
   }
 
   /** Issue #1418: Set the AlertManager for production alerting. */
   setAlertManager(alertManager: AlertManager): void {
     this.alertManager = alertManager;
-    // Re-wire alert callbacks
-    this.deadDetector['deps'].alertFailure = (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail);
-    this.rateLimitHandler['deps'].alertFailure = (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail);
-    this.stallDetector['deps'].alertFailure = (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail);
+    // Re-wire alert callbacks via public updateDeps methods
+    this.deadDetector.updateDeps({
+      alertFailure: (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail),
+    });
+    this.rateLimitHandler.updateDeps({
+      alertFailure: (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail),
+    });
+    this.stallDetector.updateDeps({
+      alertFailure: (type, detail) => alertManager.recordFailure(type as import('./alerting.js').AlertType, detail),
+    });
   }
 
   /** Issue #2067: Set the MetricsCollector for completed/failed session counters. */
   setMetrics(metrics: MetricsCollector): void {
     this.metrics = metrics;
-    this.rateLimitHandler['deps'].metricsFailed = (sid) => metrics.sessionFailed(sid);
-    this.stallDetector['deps'].metricsFailed = (sid) => metrics.sessionFailed(sid);
+    this.rateLimitHandler.updateDeps({ metricsFailed: (sid) => metrics.sessionFailed(sid) });
+    this.stallDetector.updateDeps({ metricsFailed: (sid) => metrics.sessionFailed(sid) });
   }
 
   /** Issue #3754: Set the ACP backend for rate-limit retry support. */
@@ -434,7 +446,7 @@ export class SessionMonitor {
           this.lastStatus.set(session.id, 'idle');
           this.stallDetector.stallDeleteAll(session.id);
           this.stallDetector.stateSince.delete(session.id);
-          this.statusBroadcaster['idleNotified'].add(session.id);
+          this.statusBroadcaster.getIdleNotified().add(session.id);
 
           this.channels.statusChange(
             this.makePayload('status.stopped', session,
@@ -455,7 +467,7 @@ export class SessionMonitor {
 
     if (event.messages.length > 0) {
       this.stallDetector.rateLimitedSessions.delete(event.sessionId);
-      this.rateLimitHandler['retryAttempts'].delete(event.sessionId);
+      this.rateLimitHandler.getRetryAttempts().delete(event.sessionId);
 
       for (const msg of event.messages) {
         void this.forwardMessage(session, msg).catch(e =>
@@ -498,15 +510,15 @@ export class SessionMonitor {
     // Track idle debounce state via statusBroadcaster
     this.statusBroadcaster.recordStatus(session.id, result.status);
 
-    const idleSince = this.statusBroadcaster['idleSince'].get(session.id);
+    const idleSince = this.statusBroadcaster.getIdleSince().get(session.id);
     const idleReadyToBroadcast = result.status === 'idle'
       && idleSince !== undefined
       && Date.now() - idleSince >= 3_000
-      && !this.statusBroadcaster['idleNotified'].has(session.id);
+      && !this.statusBroadcaster.getIdleNotified().has(session.id);
 
     // Debounce status changes
     if (result.status !== prevStatus || idleReadyToBroadcast) {
-      const debounceMap = this.statusBroadcaster['statusChangeDebounce'];
+      const debounceMap = this.statusBroadcaster.getDebounceMap();
       const existing = debounceMap.get(session.id);
       if (existing) clearTimeout(existing);
 
@@ -577,9 +589,18 @@ export class SessionMonitor {
     this.channels.message(this.makePayload(event, session, msg.text));
   }
 
-  /** Build a standard event payload — delegates to StatusBroadcaster. */
+  /** Build a standard event payload. */
   makePayload(event: SessionEvent, session: SessionInfo, detail: string): SessionEventPayload {
-    return this.statusBroadcaster.makePayload(event, session, detail);
+    return {
+      event,
+      timestamp: new Date().toISOString(),
+      session: {
+        id: session.id,
+        name: session.displayName,
+        workDir: session.workDir,
+      },
+      detail: detail.slice(0, 2000),
+    };
   }
 
   /** Clean up tracking for a killed session. */
