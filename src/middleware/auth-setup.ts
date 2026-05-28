@@ -124,7 +124,7 @@ export function setupAuth(app: FastifyInstance, ctx: AppContext): void {
       }
     }
 
-    const isSSERoute = /^\/v1\/events$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
+    const isSSERoute = /^\/v1\/(events|sse)$|^\/v1\/sessions\/[^/]+\/(events|stream)$/.test(urlPath);
     let token: string | undefined;
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
