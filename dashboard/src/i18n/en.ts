@@ -688,6 +688,7 @@ export const en = {
     dismissError: 'Dismiss error',
     claimDriver: 'Claim driver role',
     releaseDriver: 'Release driver role',
+    removeRow: 'Remove row',
     transferDriver: 'Transfer driver role',
     requestTransfer: 'Request driver transfer',
     confirmTransfer: 'Confirm transfer',
