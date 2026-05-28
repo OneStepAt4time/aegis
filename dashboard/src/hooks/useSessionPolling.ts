@@ -87,6 +87,14 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
   }, [addToast]);
   loadSessionAndHealthRef.current = loadSessionAndHealth;
 
+  // Track consecutive failures to avoid toast spam on flaky connections
+  const paneFailCountRef = useRef(0);
+  const metricsFailCountRef = useRef(0);
+  const latencyFailCountRef = useRef(0);
+  const PANE_FAIL_THRESHOLD = 3;
+  const METRICS_FAIL_THRESHOLD = 3;
+  const LATENCY_FAIL_THRESHOLD = 3;
+
   // Fetch pane + metrics + latency
   const loadPaneAndMetrics = useCallback(async () => {
     if (cancelledRef.current) return;
@@ -100,22 +108,37 @@ export function useSessionPolling(sessionId: string): UseSessionPollingReturn {
 
     if (paneRes.status === 'fulfilled') {
       if (!cancelledRef.current) setPaneContent(paneRes.value.pane ?? '');
+      paneFailCountRef.current = 0;
     } else {
-      addToast('warning', 'Failed to load terminal pane', paneRes.reason instanceof Error ? paneRes.reason.message : undefined);
+      paneFailCountRef.current++;
+      if (paneFailCountRef.current >= PANE_FAIL_THRESHOLD) {
+        addToast('warning', 'Failed to load terminal pane', paneRes.reason instanceof Error ? paneRes.reason.message : undefined);
+        paneFailCountRef.current = 0; // reset so it can alert again after another 3 failures
+      }
     }
     if (!cancelledRef.current) setPaneLoading(false);
 
     if (metricsRes.status === 'fulfilled') {
       if (!cancelledRef.current) setMetrics(metricsRes.value);
+      metricsFailCountRef.current = 0;
     } else {
-      addToast('warning', 'Failed to load session metrics', metricsRes.reason instanceof Error ? metricsRes.reason.message : undefined);
+      metricsFailCountRef.current++;
+      if (metricsFailCountRef.current >= METRICS_FAIL_THRESHOLD) {
+        addToast('warning', 'Failed to load session metrics', metricsRes.reason instanceof Error ? metricsRes.reason.message : undefined);
+        metricsFailCountRef.current = 0;
+      }
     }
     if (!cancelledRef.current) setMetricsLoading(false);
 
     if (latencyRes.status === 'fulfilled') {
       if (!cancelledRef.current) setLatency(latencyRes.value);
+      latencyFailCountRef.current = 0;
     } else {
-      addToast('warning', 'Failed to load session latency', latencyRes.reason instanceof Error ? latencyRes.reason.message : undefined);
+      latencyFailCountRef.current++;
+      if (latencyFailCountRef.current >= LATENCY_FAIL_THRESHOLD) {
+        addToast('warning', 'Failed to load session latency', latencyRes.reason instanceof Error ? latencyRes.reason.message : undefined);
+        latencyFailCountRef.current = 0;
+      }
     }
     if (!cancelledRef.current) setLatencyLoading(false);
   }, [addToast]);

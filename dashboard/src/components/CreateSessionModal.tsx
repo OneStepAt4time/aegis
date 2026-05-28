@@ -173,6 +173,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
       if (dirError) {
         setWorkDirError(dirError);
         workDirRef.current?.focus();
+        setLoading(false);
         return;
       }
       setWorkDirError(null);
@@ -276,6 +277,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               placeholder="/home/user/project"
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
             />
+            {workDirError && (
+              <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
+            )}
           </div>
 
           {/* Name */}
@@ -291,9 +295,6 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               placeholder="my-session"
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
-            {workDirError && (
-              <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
-            )}
           </div>
 
           {/* Claude Command */}

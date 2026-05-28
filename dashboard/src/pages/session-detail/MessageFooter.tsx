@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { Send } from 'lucide-react';
-import { sendCommand } from '../../api/client';
+import { sendCommand, quickApprove, quickReject } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
 import { useT } from '../../i18n/context';
 import { PendingQuestionCard } from '../../components/session/PendingQuestionCard';
@@ -345,8 +345,8 @@ export function MessageFooter({
               prompt={h.details}
               pendingPermission={s.pendingPermission}
               permissionPromptAt={s.permissionPromptAt ?? undefined}
-              onApprove={() => {}} // handled by parent
-              onReject={() => {}}  // handled by parent
+              onApprove={() => { quickApprove(s.id).catch((e: unknown) => addToast('error', t('sessionDetail.approveFailed'), e instanceof Error ? e.message : undefined)); }}
+              onReject={() => { quickReject(s.id).catch((e: unknown) => addToast('error', t('sessionDetail.rejectFailed'), e instanceof Error ? e.message : undefined)); }}
               onEscape={handleEscape}
               onKill={handleKillRequest}
             />
