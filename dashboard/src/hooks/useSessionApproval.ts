@@ -76,27 +76,29 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
     [pendingApproval?.expiresAt],
   );
 
-  const countdown = useMemo(
-    () => remainingMs !== null ? formatCountdown(remainingMs) : null,
-    [remainingMs],
-  );
-
-  const isExpired = remainingMs !== null && remainingMs <= 0;
-
-  // TTL countdown tick
+  // TTL countdown tick — use separate counter to avoid recreating callbacks every second
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (remainingMs === null) return;
+    if (remainingMs === null || remainingMs <= 0) return;
     const timer = window.setInterval(() => {
-      const updated = clampRemaining(pendingApproval?.expiresAt);
-      if (updated !== null && updated <= 0) {
-        // Approval expired — stop ticking
-        window.clearInterval(timer);
-      }
-      // Force re-render by triggering state update
-      setPendingApproval((prev) => (prev ? { ...prev } : null));
+      setTick((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [pendingApproval?.expiresAt, remainingMs]);
+  }, [remainingMs]);
+
+  // Recompute remaining on each tick
+  const liveRemainingMs = useMemo(
+    () => clampRemaining(pendingApproval?.expiresAt),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pendingApproval?.expiresAt, tick],
+  );
+
+  const countdown = useMemo(
+    () => liveRemainingMs !== null ? formatCountdown(liveRemainingMs) : null,
+    [liveRemainingMs],
+  );
+
+  const isExpired = liveRemainingMs !== null && liveRemainingMs <= 0;
 
   const approve = useCallback(async (reason?: string) => {
     if (!sessionId || !pendingApproval) return;

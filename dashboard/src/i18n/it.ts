@@ -486,6 +486,10 @@ export const it = {
     failedKill: 'Impossibile terminare la sessione',
     dismiss: 'Ignora',
     pendingQuestionContent: 'Claude sta aspettando la tua risposta. Rispondi sotto per continuare.',
+    pendingQuestionTitle: 'Claude ha bisogno di una risposta',
+    pendingQuestionReply: 'Rispondi sotto per continuare la sessione.',
+    approveFailed: 'Approvazione permesso fallita',
+    rejectFailed: 'Rifiuto permesso fallito',
   },
 
   newSession: {

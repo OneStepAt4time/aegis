@@ -1,4 +1,5 @@
 import type { PendingQuestionInfo } from '../../types';
+import { useT } from '../../i18n/context';
 
 interface PendingQuestionCardProps {
   pendingQuestion: PendingQuestionInfo;
@@ -9,12 +10,14 @@ export function PendingQuestionCard({
   pendingQuestion,
   onSelectOption,
 }: PendingQuestionCardProps) {
+  const t = useT();
+
   return (
     <div className="rounded-lg border border-[var(--color-info)]/30 bg-[var(--color-info-bg)]/60 p-3">
       <div className="flex flex-col gap-2">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent-cyan)]">
-            Claude needs an answer
+            {t('sessionDetail.pendingQuestionTitle')}
           </div>
           <p className="mt-1 text-sm text-[var(--color-text-primary)]">
             {pendingQuestion.content}
@@ -37,7 +40,7 @@ export function PendingQuestionCard({
         )}
 
         <p className="text-xs text-[var(--color-text-muted)]">
-          Reply below to keep the session moving.
+          {t('sessionDetail.pendingQuestionReply')}
         </p>
       </div>
     </div>

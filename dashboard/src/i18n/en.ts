@@ -484,6 +484,10 @@ export const en = {
     failedKill: 'Failed to kill session',
     dismiss: 'Dismiss',
     pendingQuestionContent: 'Claude is waiting for your answer. Reply below to continue.',
+    pendingQuestionTitle: 'Claude needs an answer',
+    pendingQuestionReply: 'Reply below to keep the session moving.',
+    approveFailed: 'Failed to approve permission',
+    rejectFailed: 'Failed to reject permission',
   },
   
   newSession: {
