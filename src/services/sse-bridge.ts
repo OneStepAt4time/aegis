@@ -48,18 +48,10 @@ export function registerSSEBridge(app: FastifyInstance, ctx: RouteContext): void
     const eventIsVisible = (event: GlobalSSEEvent): boolean =>
       isGlobalEventVisibleToRequest(event, sessions, requestTenantId, scopedAuthContext);
 
-    // Set up SSE response
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
-    reply.raw.write('\n');
-
     let unsubscribe: (() => void) | undefined;
 
-    // Subscribe to global events with tenant filtering
+    // Subscribe to global events BEFORE writing response headers
+    // so that a subscribe failure can still send a proper error response.
     const handler = (event: GlobalSSEEvent): void => {
       if (!eventIsVisible(event)) return;
       try {
@@ -77,6 +69,15 @@ export function registerSSEBridge(app: FastifyInstance, ctx: RouteContext): void
       sseLimiter.release(connectionId);
       return reply.status(500).send({ error: 'Failed to create SSE subscription' });
     }
+
+    // Set up SSE response — after subscribe succeeds to avoid headers-already-sent on error
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    reply.raw.write('\n');
 
     // Send connected event
     reply.raw.write(`data: ${JSON.stringify({
