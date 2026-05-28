@@ -464,8 +464,8 @@ export const it = {
     forkedToast: 'Sessione biforcata',
     forkedToastDescription: 'Nuova sessione {id} creata',
     forkFailed: 'Biforcazione fallita',
-    approveFailed: 'Approvazione fallita',
-    rejectFailed: 'Rifiuto fallito',
+    approveFailed: 'Approvazione permesso fallita',
+    rejectFailed: 'Rifiuto permesso fallito',
     interruptFailed: 'Interruzione fallita',
     sessionSlashCommand: 'Comando slash',
     sessionCaptureScreenshot: 'Cattura screenshot',
@@ -488,8 +488,6 @@ export const it = {
     pendingQuestionContent: 'Claude sta aspettando la tua risposta. Rispondi sotto per continuare.',
     pendingQuestionTitle: 'Claude ha bisogno di una risposta',
     pendingQuestionReply: 'Rispondi sotto per continuare la sessione.',
-    approveFailed: 'Approvazione permesso fallita',
-    rejectFailed: 'Rifiuto permesso fallito',
   },
 
   newSession: {

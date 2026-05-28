@@ -461,8 +461,8 @@ export const en = {
     forkedToast: 'Session forked',
     forkedToastDescription: 'New session {id} created',
     forkFailed: 'Fork failed',
-    approveFailed: 'Approve failed',
-    rejectFailed: 'Reject failed',
+    approveFailed: 'Failed to approve permission',
+    rejectFailed: 'Failed to reject permission',
     interruptFailed: 'Interrupt failed',
     // Session action aria-labels
     sessionSlashCommand: 'Slash command',
@@ -486,8 +486,6 @@ export const en = {
     pendingQuestionContent: 'Claude is waiting for your answer. Reply below to continue.',
     pendingQuestionTitle: 'Claude needs an answer',
     pendingQuestionReply: 'Reply below to keep the session moving.',
-    approveFailed: 'Failed to approve permission',
-    rejectFailed: 'Failed to reject permission',
   },
   
   newSession: {
