@@ -132,6 +132,10 @@ export class SessionMonitor {
   stallDeleteTypes(sessionId: string, types: string[]): void {
     this.stallDetector.stallDeleteTypes(sessionId, types);
   }
+  /** @internal Backward compat: forward to deadDetector for test access. */
+  async checkDeadSessions(): Promise<void> {
+    return this.deadDetector.checkDeadSessions();
+  }
 
   private lastStallCheck = 0;
   private lastDeadCheck = 0;
