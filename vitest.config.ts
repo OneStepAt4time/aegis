@@ -6,6 +6,9 @@ export default defineConfig({
       '**/node_modules/**',
       'dist',
       'dashboard/**',
+      'aegis/dashboard/**',
+      'aegis/src/**',
+      'aegis/e2e/**',
       // Worktree directories contain duplicate source/test files. In CI only
       // the root source is tested, but local runs pick up worktree copies.
       // Exclude all wt-* directories to prevent:
