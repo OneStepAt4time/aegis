@@ -137,6 +137,12 @@ export const en = {
     dailyCost: 'Daily Cost',
     loadingDailySpend: 'Loading daily spend chart',
     loadingCostByModel: 'Loading cost by model chart',
+    budgetAlertSection: {
+      title: 'Budget Alerts',
+      description: 'Configure daily and monthly spending caps in',
+      settingsLink: 'Settings',
+    },
+    dismissBudgetAlert: 'Dismiss budget alert',
   },
   
   audit: {
@@ -647,12 +653,6 @@ export const en = {
     claudeRuntimeStatus: 'Claude runtime status',
     sessionSummary: 'Session summary',
     permissionPrompt: 'Permission prompt',
-    budgetAlertSection: {
-      title: 'Budget Alerts',
-      description: 'Configure daily and monthly spending caps in',
-      settingsLink: 'Settings',
-    },
-    dismissBudgetAlert: 'Dismiss budget alert',
     close: 'Close',
     removeRow: 'Remove row',
     newSession: 'New Session',
