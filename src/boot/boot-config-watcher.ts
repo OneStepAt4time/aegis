@@ -1,7 +1,6 @@
 // boot/boot-config-watcher.ts — extracted config watcher and reload handler
 
 import { watch } from 'node:fs';
-import { timers as nodeTimers } from 'node:timers';
 import { reloadAllowedWorkDirs, findConfigFilePath } from '../config.js';
 import type { AppContext } from '../app-context.js';
 
