@@ -445,7 +445,7 @@ export default function SettingsPage() {
                         min="1"
                         step="10"
                         value={settings.budgetDailyCapUsd}
-                        onChange={(e) => { const v = Number(e.target.value); if (v > 0) update('budgetDailyCapUsd', v); }}}
+                        onChange={(e) => { const v = Number(e.target.value); if (v > 0) update('budgetDailyCapUsd', v); }}
                         className="min-h-[44px] w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
                       />
                     </div>
@@ -464,7 +464,7 @@ export default function SettingsPage() {
                         min="1"
                         step="100"
                         value={settings.budgetMonthlyCapUsd}
-                        onChange={(e) => { const v = Number(e.target.value); if (v > 0) update('budgetMonthlyCapUsd', v); }}}
+                        onChange={(e) => { const v = Number(e.target.value); if (v > 0) update('budgetMonthlyCapUsd', v); }}
                         className="min-h-[44px] w-24 rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] font-mono"
                       />
                     </div>
