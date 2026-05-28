@@ -122,15 +122,23 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
       if (e.key === 'j') {
         e.preventDefault();
-        setFocusedIndex(prev => Math.min(prev + 1, filteredMessages.length - 1));
+        setFocusedIndex(prev => {
+          const next = Math.min(prev + 1, filteredMessages.length - 1);
+          virtualizer.scrollToIndex(next, { align: 'auto' });
+          return next;
+        });
       } else if (e.key === 'k') {
         e.preventDefault();
-        setFocusedIndex(prev => Math.max(prev - 1, 0));
+        setFocusedIndex(prev => {
+          const next = Math.max(prev - 1, 0);
+          virtualizer.scrollToIndex(next, { align: 'auto' });
+          return next;
+        });
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [filteredMessages.length]);
+  }, [filteredMessages.length, virtualizer]);
 
   // Listen for copy-transcript-up-to events
   useEffect(() => {

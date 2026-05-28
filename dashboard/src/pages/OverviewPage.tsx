@@ -93,6 +93,9 @@ export default function OverviewPage() {
       if (e.key === 'n' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setModalOpen(true);
+      } else if (e.key === 'r' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        window.location.reload();
       }
     };
     window.addEventListener('keydown', handler);

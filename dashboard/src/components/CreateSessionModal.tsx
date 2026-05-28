@@ -2,7 +2,7 @@
  * components/CreateSessionModal.tsx â€” Modal dialog for creating new sessions.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
@@ -29,10 +29,10 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
   const abortRef = useRef<AbortController | null>(null);
   const trapRef = useFocusTrap(open);
 
-  const handleClose = useCallback((): void => {
+  function handleClose(): void {
     resetForm();
     onClose();
-  }, [onClose]);
+  }
 
 
   // Close on Escape key â€” abort in-flight request
@@ -386,7 +386,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onChange={(e) => setSharedPrompt(e.target.value)}
               placeholder="Apply to all sessions without a per-row prompt..."
               rows={2}
-              className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
+              className="w-full min-h-[56px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
             />
           </div>
 

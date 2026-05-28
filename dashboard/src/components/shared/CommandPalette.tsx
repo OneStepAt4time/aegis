@@ -173,10 +173,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }
   };
 
-  // Reset active index when filtered list changes
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
+
 
   // Compute a flat index for stagger delay
   let runningIndex = 0;
@@ -221,7 +218,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   aria-controls="command-palette-listbox"
                   aria-activedescendant={flatFiltered[activeIndex] ? `cmd-item-${flatFiltered[activeIndex].id}` : undefined}
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
                   onKeyDown={handleInputKeyDown}
                   placeholder="Search sessions, navigate, run commands…"
                   className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-[var(--color-text-muted)] outline-none"
