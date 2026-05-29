@@ -1331,6 +1331,20 @@ export const en = {
     dontAsk: "Don't Ask",
     autoAccept: 'Auto-accept',
   },
+  webhooks: {
+    deliveryHistory: 'Webhook Delivery History',
+    deliveryHistoryDescription: 'Recent delivery attempts for configured webhooks.',
+    loadingDeliveries: 'Loading deliveries…',
+    noDeliveries: 'No deliveries recorded yet.',
+    noHooks: 'No webhooks configured. Webhooks appear here once created.',
+    deliveryTable: 'Webhook delivery log',
+    timestamp: 'Time',
+    status: 'Status',
+    statusCode: 'Code',
+    duration: 'Latency',
+    attempts: 'Attempts',
+    error: 'Error',
+  },
 } as const;
 
 export type Messages = typeof en;

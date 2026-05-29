@@ -1325,4 +1325,20 @@ export const it = {
     dontAsk: "Non Chiedere",
     autoAccept: 'Auto-accetta',
   },
+
+  webhooks: {
+    deliveryHistory: 'Cronologia Consegne Webhook',
+    deliveryHistoryDescription: 'Tentativi di consegna recenti per i webhook configurati.',
+    loadingDeliveries: 'Caricamento consegne…',
+    noDeliveries: 'Nessuna consegna registrata.',
+    noHooks: 'Nessun webhook configurato. I webhook appariranno qui una volta creati.',
+    deliveryTable: 'Log consegne webhook',
+    timestamp: 'Ora',
+    status: 'Stato',
+    statusCode: 'Codice',
+    duration: 'Latenza',
+    attempts: 'Tentativi',
+    error: 'Errore',
+  },
+
 };
