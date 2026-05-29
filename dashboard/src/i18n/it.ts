@@ -552,6 +552,7 @@ export const it = {
     timeline: 'Timeline',
     pr: 'PR',
     diff: 'Diff',
+    metadata: 'Metadati',
     insertSlash: 'Inserisci Slash',
     sendingSlash: 'Invio Slash in corso…',
     runSlash: 'Esegui Slash',
@@ -1341,4 +1342,20 @@ export const it = {
     error: 'Errore',
   },
 
+
+  metadata: {
+    panelLabel: 'Metadati sessione',
+    loading: 'Caricamento metadati…',
+    empty: 'Nessun metadato impostato. Aggiungi coppie chiave/valore per taggare questa sessione.',
+    tableLabel: 'Voci metadati sessione',
+    key: 'Chiave',
+    value: 'Valore',
+    deleteKey: 'Rimuovi {key}',
+    add: 'Aggiungi',
+    keyPlaceholder: 'chiave',
+    valuePlaceholder: 'valore',
+    newKeyLabel: 'Nuova chiave metadato',
+    newValueLabel: 'Nuovo valore metadato',
+    countHint: '{count}/{max} chiavi utilizzate',
+  },
 };
