@@ -143,6 +143,7 @@ export function SessionHeader({
   onSaveTemplate,
   onFork,
 }: SessionHeaderProps) {
+  const t = useT();
 
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
   const badgeStatus = uiStateToSessionBadgeStatus(health.status, health.alive);
@@ -193,6 +194,12 @@ export function SessionHeader({
             Owner: {session.ownerKeyId.slice(0, 8)}
             {session.ownerKeyId.length > 8 ? '…' : ''}
             <CopyButton value={session.ownerKeyId} label="owner key ID" size={16} />
+          </span>
+        )}
+        {session.claudeSessionId && (
+          <span className="group hidden font-mono sm:inline-flex items-center gap-1">
+            {t('aria.ccSessionId')}: {truncateMiddle(session.claudeSessionId, 16)}
+            <CopyButton value={session.claudeSessionId} label={t('aria.copyCcSessionId')} size={16} />
           </span>
         )}
         {session.permissionMode && session.permissionMode !== 'default' && (

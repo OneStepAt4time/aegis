@@ -275,4 +275,15 @@ describe('SessionHeader', () => {
     render(<SessionHeader session={baseSession} health={baseHealth} />);
     expect(screen.queryByText('default')).toBeNull();
   });
+
+  it('shows CC session ID when claudeSessionId is present', () => {
+    const session = { ...baseSession, claudeSessionId: 'cc-xyz789abc012' };
+    render(<SessionHeader session={session} health={baseHealth} />);
+    expect(screen.getByText(/Claude Code session/)).not.toBeNull();
+  });
+
+  it('does not show CC session ID when absent', () => {
+    render(<SessionHeader session={baseSession} health={baseHealth} />);
+    expect(screen.queryByText(/Claude Code session/)).toBeNull();
+  });
 });
