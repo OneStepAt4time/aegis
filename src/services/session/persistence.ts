@@ -16,7 +16,7 @@ import type { StateStore, SerializedSessionState, SerializedSessionInfo } from '
 import { StructuredLogger } from '../../logger.js';
 import type { z } from 'zod';
 import { persistedStateSchema } from '../../validation.js';
-import type { SessionInfo, SessionState } from '../../session.js';
+import type { SessionInfo, SessionState } from '../../session-types.js';
 import { SessionEncryptionService } from './encryption.js';
 
 const log = new StructuredLogger();

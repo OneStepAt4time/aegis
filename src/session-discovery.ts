@@ -13,7 +13,7 @@ import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { loadContinuationPointers, type ContinuationPointerEntry } from './continuation-pointer.js';
 import { computeProjectHash } from './path-utils.js';
 import type { Config } from './config.js';
-import type { SessionInfo } from './session.js';
+import type { SessionInfo } from './session-types.js';
 import { StructuredLogger } from './logger.js';
 
 const log = new StructuredLogger();

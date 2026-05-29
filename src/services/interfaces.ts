@@ -5,7 +5,7 @@
  * in both remote mode (via HTTP/AegisClient) and embedded mode (direct calls).
  */
 
-import type { SessionInfo } from '../session.js';
+import type { SessionInfo } from '../session-types.js';
 import type { SessionMetrics, SessionLatencySummary } from '../metrics.js';
 import type { PipelineState, BatchResult } from '../pipeline.js';
 

@@ -2,7 +2,7 @@
 
 import { resolve } from 'node:path';
 import { isValidUUID } from '../validation.js';
-import type { SessionInfo } from '../session.js';
+import type { SessionInfo } from '../session-types.js';
 import type { SessionMetrics } from '../metrics.js';
 import type { PipelineState, BatchResult } from '../pipeline.js';
 import type {

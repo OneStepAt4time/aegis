@@ -6,7 +6,7 @@
  */
 
 import { PermissionRequestManager, type PermissionDecision } from '../../permission-request-manager.js';
-import type { SessionInfo } from '../../session.js';
+import type { SessionInfo } from '../../session-types.js';
 
 export type { PermissionDecision };
 

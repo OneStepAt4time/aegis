@@ -16,8 +16,8 @@ import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { computeProjectHash } from './path-utils.js';
 import type { AcpEventStore } from './services/acp/event-store.js';
 import type { Config } from './config.js';
-import type { SessionInfo } from './session.js';
-import type { UIState } from './session.js';
+import type { SessionInfo } from './session-types.js';
+import type { UIState } from './session-types.js';
 
 /** Stub: detect UI state from terminal pane text (ACP mode).
  * Issue #3081: In ACP mode there is no tmux pane to read, so we cannot

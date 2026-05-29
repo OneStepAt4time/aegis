@@ -16,7 +16,7 @@
  * Issue #1938: Pipeline state persistence on the same abstraction.
  */
 
-import type { SessionInfo, SessionState } from '../../session.js';
+import type { SessionInfo, SessionState } from '../../session-types.js';
 import type { PipelineState, PipelineConfig } from '../../pipeline.js';
 import type { LifecycleService, ServiceHealth } from '../../container.js';
 
