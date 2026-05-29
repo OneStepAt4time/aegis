@@ -549,6 +549,7 @@ export const en = {
     timeline: 'Timeline',
     pr: 'PR',
     diff: 'Diff',
+    metadata: 'Metadata',
     insertSlash: 'Insert Slash',
     sendingSlash: 'Sending Slash…',
     runSlash: 'Run Slash',
@@ -1345,7 +1346,22 @@ export const en = {
     attempts: 'Attempts',
     error: 'Error',
   },
-} as const;
+
+  metadata: {
+    panelLabel: 'Session metadata',
+    loading: 'Loading metadata…',
+    empty: 'No metadata set. Add key/value pairs to tag this session.',
+    tableLabel: 'Session metadata entries',
+    key: 'Key',
+    value: 'Value',
+    deleteKey: 'Remove {key}',
+    add: 'Add',
+    keyPlaceholder: 'key',
+    valuePlaceholder: 'value',
+    newKeyLabel: 'New metadata key',
+    newValueLabel: 'New metadata value',
+    countHint: '{count}/{max} keys used',
+  },} as const;
 
 export type Messages = typeof en;
 export type MessageKey = string;

@@ -42,6 +42,7 @@ import { useT } from '../i18n/context';
 
 // Extracted modules
 import type { TabId } from './session-detail/types';
+import { SessionMetadataPanel } from '../components/session/SessionMetadataPanel';
 import { TabBar } from './session-detail/TabBar';
 import { useAuditData } from './session-detail/useAuditData';
 import { useMessageInput } from './session-detail/useMessageInput';
@@ -84,6 +85,7 @@ export default function SessionDetailPage() {
     { id: 'timeline', label: t('sessionDetail.timeline') },
     { id: 'pr', label: t('sessionDetail.pr') },
     { id: 'diff', label: t('sessionDetail.diff') },
+    { id: 'metadata', label: t('sessionDetail.metadata') },
   ];
 
   const {
@@ -512,6 +514,23 @@ export default function SessionDetailPage() {
                     isLoading={prLoading}
                   />
                   </Suspense></ErrorBoundary>
+                </motion.div>
+              )}
+              {activeTab === 'metadata' && (
+                <motion.div
+                  key="panel-metadata"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  id="panel-metadata"
+                  role="tabpanel"
+                  aria-labelledby="tab-metadata"
+                  tabIndex={0}
+                >
+                  <ErrorBoundary>
+                    <SessionMetadataPanel sessionId={id!} />
+                  </ErrorBoundary>
                 </motion.div>
               )}
             </AnimatePresence>
