@@ -10,7 +10,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import type { FastifyInstance } from 'fastify';
 import { registerHealthRoutes } from '../routes/health.js';
-import { registerOpenApiRoute, registerOpenApiSpec } from '../routes/openapi.js';
+import { registerOpenApiRoute, registerOpenApiSpec } from '../routes/openapi/index.js';
 import type { RouteContext } from '../routes/context.js';
 
 function makeMockApp(): FastifyInstance {

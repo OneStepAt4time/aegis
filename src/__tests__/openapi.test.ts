@@ -21,7 +21,7 @@ import {
   generateOpenApiDocument,
   validationErrorResponse,
 } from '../openapi.js';
-import { registerOpenApiSpec } from '../routes/openapi.js';
+import { registerOpenApiSpec } from '../routes/openapi/index.js';
 
 interface OpenApiTestDocument {
   openapi: string;
