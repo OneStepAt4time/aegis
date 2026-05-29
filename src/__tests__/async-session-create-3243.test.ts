@@ -55,12 +55,19 @@ function buildMockAcpBackend(sendPromptImpl?: () => Promise<{ delivered: boolean
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
+  const initializingSession = { ...mockAcpSession, status: 'initializing' as const };
   return {
     _mockSessionId: sessionId,
     createSession: vi.fn().mockResolvedValue({
       session: mockAcpSession,
       initializeResult: {},
       backendRunId: 'run-1',
+    }),
+    // Issue #4456: async variant returns session immediately with 'initializing' status
+    createSessionAsync: vi.fn().mockResolvedValue({
+      session: initializingSession,
+      initializeResult: {},
+      backendRunId: 'run-async-1',
     }),
     sendPrompt: vi.fn(sendPromptImpl ?? (() => Promise.resolve({ delivered: true, attempts: 1 }))),
     shutdownSession: vi.fn().mockResolvedValue({}),
