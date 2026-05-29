@@ -85,6 +85,7 @@ export async function handleLogout(args: string[], io: CliIO, fetchFn: typeof fe
     const store = await readAuthStore();
     const entries = Object.entries(store);
     if (entries.length === 0) {
+      // No stored credentials — treat as a successful no-op (consistent with --all)
       if (jsonOutput) {
         writeLine(io.stdout, JSON.stringify({ message: 'Not logged in', code: 'NOT_LOGGED_IN' }));
       } else {
