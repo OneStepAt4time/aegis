@@ -53,11 +53,13 @@ const MODEL_COLORS: Record<string, string> = {
 
 type TimeRange = '7d' | '30d' | '90d';
 
-const TIME_RANGES: Array<{ value: TimeRange; label: string }> = [
-  { value: '7d', label: '7 Days' },
-  { value: '30d', label: '30 Days' },
-  { value: '90d', label: '90 Days' },
-];
+const TIME_RANGES: TimeRange[] = ['7d', '30d', '90d'];
+
+const TIME_RANGE_KEYS: Record<TimeRange, string> = {
+  '7d': 'cost.7days',
+  '30d': 'cost.30days',
+  '90d': 'cost.90days',
+};
 
 function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
   const t = useT();
@@ -65,17 +67,17 @@ function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: 
     <div className="inline-flex rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)]" role="group" aria-label={t('aria.timeRangeSelector')}>
       {TIME_RANGES.map((range) => (
         <button
-          key={range.value}
+          key={range}
           type="button"
-          onClick={() => onChange(range.value)}
+          onClick={() => onChange(range)}
           className={`min-h-[44px] px-3 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
-            value === range.value
+            value === range
               ? 'bg-[var(--color-accent-cyan)] text-[var(--color-void)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
           }`}
-          aria-pressed={value === range.value}
+          aria-pressed={value === range}
         >
-          {range.label}
+          {t(TIME_RANGE_KEYS[range])}
         </button>
       ))}
     </div>
