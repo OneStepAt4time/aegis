@@ -42,6 +42,7 @@ interface HealthState {
 }
 
 function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -59,17 +60,17 @@ function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={handleCopy}
       className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-accent-cyan)] px-3 py-1.5 text-xs font-medium text-[var(--color-void-dark)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
-      aria-label={copied ? 'Copied to clipboard' : 'Copy command to clipboard'}
+      aria-label={copied ? t('onboarding.copiedToClipboard') : t('onboarding.copyCommandToClipboard')}
     >
       {copied ? (
         <>
           <Check className="h-3.5 w-3.5" />
-          Copied
+          {t('onboarding.copied')}
         </>
       ) : (
         <>
           <Copy className="h-3.5 w-3.5" />
-          Copy
+          {t('onboarding.copy')}
         </>
       )}
     </button>
@@ -78,6 +79,7 @@ function CopyButton({ text }: { text: string }) {
 
 /** Step 1 — Welcome */
 function WelcomeStep() {
+  const t = useT();
   return (
     <div className="flex flex-col items-center text-center">
       <div
@@ -87,10 +89,10 @@ function WelcomeStep() {
         <Rocket className="h-8 w-8 text-[var(--color-accent-cyan)]" />
       </div>
       <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-        Welcome to Aegis
+        {t('onboarding.welcomeTitle')}
       </h2>
       <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)] whitespace-pre-line">
-        Your Claude Code orchestration hub. Monitor sessions, manage permissions, and track costs — all from one dashboard.
+        {t('onboarding.welcomeDescription')}
       </p>
     </div>
   );
@@ -98,6 +100,7 @@ function WelcomeStep() {
 
 /** Step 2 — Connect (health-aware) */
 function ConnectStep({ health, loading }: { health: HealthState | null; loading: boolean }) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center text-center">
       <div
@@ -110,44 +113,44 @@ function ConnectStep({ health, loading }: { health: HealthState | null; loading:
       {loading ? (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Checking connection…
+            {t('onboarding.checkingConnection')}
           </h2>
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Detecting Claude Code status
+            {t('onboarding.detectingClaudeStatus')}
           </div>
         </>
       ) : health?.claudeAvailable && health.claudeHealthy ? (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Claude Code Connected ✅
+            {t('onboarding.claudeConnected')}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-green-400" />
-              Claude Code v{health.claudeVersion} detected and healthy.
+              {t('onboarding.claudeHealthy', { version: health.claudeVersion ?? '' })}
             </span>
           </p>
         </>
       ) : health?.claudeAvailable && !health.claudeHealthy ? (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Claude Code Detected
+            {t('onboarding.claudeDetected')}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-1.5">
               <AlertTriangle className="h-4 w-4 text-yellow-400" />
-              Claude Code was found but may have issues. You can still proceed.
+              {t('onboarding.claudeIssues')}
             </span>
           </p>
         </>
       ) : (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Connect Your Environment
+            {t('onboarding.connectTitle')}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
-            Run the CLI init command to connect your Claude Code sessions to Aegis. Copy the snippet below and paste it into your terminal.
+            {t('onboarding.connectDescription')}
           </p>
           <div className="mt-6 w-full max-w-md">
             <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-void-dark)] p-3">
@@ -180,7 +183,7 @@ function FirstSessionStep({ health, onCreateSession }: { health: HealthState | n
       {hasActive ? (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Sessions Running!
+            {t('onboarding.sessionsRunning')}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
             You have {health!.activeSessions} active {health!.activeSessions === 1 ? 'session' : 'sessions'}.
@@ -190,10 +193,10 @@ function FirstSessionStep({ health, onCreateSession }: { health: HealthState | n
       ) : (
         <>
           <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-            Create Your First Session
+            {t('onboarding.createFirstSessionTitle')}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
-            Once connected, create a new Claude Code session from the dashboard. Aegis will handle permissions, audit logging, and real-time monitoring automatically.
+            {t('onboarding.createFirstSessionDescription')}
           </p>
           <button
             type="button"
@@ -212,6 +215,7 @@ function FirstSessionStep({ health, onCreateSession }: { health: HealthState | n
 
 /** Step 4 — Explore (health-aware) */
 function ExploreStep({ health }: { health: HealthState | null }) {
+  const t = useT();
   const total = health?.totalSessions ?? 0;
 
   return (
@@ -223,18 +227,18 @@ function ExploreStep({ health }: { health: HealthState | null }) {
         <Compass className="h-8 w-8 text-[var(--color-accent-cyan)]" />
       </div>
       <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-primary)]">
-        Explore the Dashboard
+        {t('onboarding.exploreTitle')}
       </h2>
       <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
         {total > 0
-          ? `${total} session${total === 1 ? '' : 's'} monitored so far. Here are the key pages to explore:`
-          : "You're all set! Key pages to check out:"}
+          ? t(total === 1 ? 'onboarding.sessionsMonitored' : 'onboarding.sessionsMonitored_plural', { count: total })
+          : t('onboarding.allSetDescription')}
       </p>
       <ul className="mt-4 space-y-1 text-left text-sm text-[var(--color-text-muted)]">
-        <li>• <strong className="text-[var(--color-text-primary)]">Sessions</strong> — live session monitoring and history</li>
-        <li>• <strong className="text-[var(--color-text-primary)]">Analytics</strong> — usage metrics and agent contributions</li>
-        <li>• <strong className="text-[var(--color-text-primary)]">Cost</strong> — token tracking and budget alerts</li>
-        <li>• <strong className="text-[var(--color-text-primary)]">Settings</strong> — configure preferences and API keys</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">{t('overview.sessions')}</strong> — {t('onboarding.exploreSessions')}</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">{t('analytics.title')}</strong> — {t('onboarding.exploreAnalytics')}</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">{t('cost.title')}</strong> — {t('onboarding.exploreCost')}</li>
+        <li>• <strong className="text-[var(--color-text-primary)]">{t('settings.title')}</strong> — {t('onboarding.exploreSettings')}</li>
       </ul>
     </div>
   );
@@ -376,8 +380,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   // Announce step changes to screen readers
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
-    const titles = ['Welcome to Aegis', 'Connect Your Environment', 'Create Your First Session', 'Explore the Dashboard'];
-    setAnnouncement(`Step ${currentStep} of ${TOTAL_STEPS}: ${titles[currentStep - 1]}`);
+    const titles = [t('onboarding.welcomeTitle'), t('onboarding.connectTitle'), t('onboarding.createFirstSessionTitle'), t('onboarding.exploreTitle')];
+    setAnnouncement(t('onboarding.stepAnnouncement', { current: currentStep, total: TOTAL_STEPS, title: titles[currentStep - 1] }));
   }, [currentStep]);
 
   // Render current step
@@ -440,7 +444,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             aria-label={t('aria.goToPreviousStep')}
           >
             <ChevronLeft className="h-4 w-4" />
-            Back
+            {t('onboarding.back')}
           </button>
 
           <button
@@ -448,16 +452,16 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             onClick={handleSkip}
             className="text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)]"
           >
-            Skip tour
+            {t('onboarding.skipTour')}
           </button>
 
           <button
             type="button"
             onClick={handleNext}
             className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2 text-sm font-bold text-[var(--color-void-dark)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
-            aria-label={isLastStep ? 'Complete onboarding and go to dashboard' : 'Go to next step'}
+            aria-label={isLastStep ? t('aria.completeOnboarding') : t('aria.goToNextStep')}
           >
-            {isLastStep ? 'Get Started' : 'Next'}
+            {isLastStep ? t('onboarding.getStarted') : t('onboarding.next')}
             {!isLastStep && <ChevronRight className="h-4 w-4" />}
           </button>
         </div>
@@ -465,7 +469,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
       {/* Footer branding */}
       <p className="mt-6 text-xs text-[var(--color-text-muted)]">
-        Aegis — Claude Code Orchestration Hub
+        {t('onboarding.footer')}
       </p>
     </div>
   );
