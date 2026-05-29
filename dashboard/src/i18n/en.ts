@@ -22,6 +22,7 @@ export const en = {
     subtitle: 'System health and session controls.',
     newSession: 'New Session',
     recentSessions: 'Recent Sessions',
+    recentSessionsLabel: 'Recent Sessions',
     totalCost: 'Total Cost',
     totalTokens: 'Total Tokens',
     sessions: 'Sessions',
