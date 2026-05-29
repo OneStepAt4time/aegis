@@ -1,9 +1,9 @@
 # Zero-Config Epic — Progress Report
 
 **Epic:** #3489 — Zero-config first run for solo dev
-**Status:** 7/10 child issues closed, 3 remaining
+**Status:** 8/10 child issues closed, 2 remaining
 **Target:** Phase 3 completion
-**Report date:** 2026-05-17
+**Report date:** 2026-05-17 · **Updated:** 2026-05-29
 
 ---
 
@@ -23,7 +23,7 @@ One command. Zero config. No tokens, no prompts, no manual setup on localhost.
 
 ## Child Issue Status
 
-### ✅ Closed (7/10)
+### ✅ Closed (8/10)
 
 | Issue | Title | PRs | Severity |
 |-------|-------|-----|----------|
@@ -33,16 +33,15 @@ One command. Zero config. No tokens, no prompts, no manual setup on localhost.
 | #3498 | ag run --yes 30s output timeout | #3518 | P1 — critical |
 | #3499 | ag list, read, kill, status, tail subcommands | #3508, #3510 | P1 |
 | #3500 | Human-friendly startup hint + --json-logs | #3519 | P1 |
+| #3501 | Detect CC + auto-offer MCP wiring | #3611 | P1 |
 | #3502 | Normalize workDir on Windows | #3555 | P2 |
 
-### 🔲 Open (3/10)
+### 🔲 Open (2/10)
 
 | Issue | Title | Severity | Status |
 |-------|-------|----------|--------|
-| #3501 | Detect CC + auto-offer MCP wiring | P1 | Open, needs implementation |
 | — | Friendlier session display names (F16) | P2 | Addressed by #3506 (dashboard names), CLI slug names remain |
 | — | Hide OIDC from --help (F20) | P2 | Not yet filed |
-| — | README rewrite around post-epic flow | P3 | Partially done (#3504), full rewrite pending |
 
 ---
 
@@ -90,13 +89,11 @@ These are accuracy bugs, not blockers. Will fix in separate docs PR.
 
 ## What's Left for the Magic 5 Minutes
 
-The core flow works. Three items remain:
+The core flow works. Two items remain:
 
-1. **#3501 — Auto MCP wiring** (P1): When Claude Code is detected during `ag init`, offer to run `claude mcp add aegis -- ag mcp`. This is the last manual step in the zero-config flow.
+1. **F16 — CLI slug names** (P2): Dashboard shows friendlier session names (#3506), but CLI still uses slugs. Low priority.
 
-2. **F20 — Hide OIDC from --help** (P2): `ag login`/`ag logout` mention enterprise OIDC in the solo-dev CLI. Hide behind feature flag or remove from help text.
-
-3. **README full rewrite** (P3): Current Quick Start is good but still has the step-by-step fallback. Post-epic, the README should lead with `ag run` and move everything else to docs.
+2. **F20 — Hide OIDC from --help** (P2): `ag login`/`ag logout` mention enterprise OIDC in the solo-dev CLI. Hide behind feature flag or remove from help text. Not yet filed.
 
 ---
 
