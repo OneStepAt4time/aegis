@@ -74,6 +74,8 @@ export interface SessionInfo {
   promptDelivery?: { delivered: boolean; attempts: number; status?: "pending" | "delivered" | "failed" | "timeout" };  // Issue #3243: async prompt delivery status
   runnerName?: string;            // Issue #3681: Agent runner name (e.g. "claude-code", "codex", "gemini-cli")
   actionHints?: Record<string, { method: string; url: string; description: string }>;  // API contract compat: actionable hints
+  /** Issue #4484: Per-session user-defined metadata KV store. Max 20 keys, max 256 chars/value. */
+  metadata?: Record<string, string>;
   // Issue #2518: Hook failure circuit breaker
   hookFailureTimestamps?: number[];   // Sliding window of StopFailure timestamps (ms)
   circuitBreakerTripped?: boolean;    // True once the circuit breaker has fired
