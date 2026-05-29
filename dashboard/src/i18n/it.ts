@@ -311,6 +311,8 @@ export const it = {
     useSessionToast: 'Sessione creata dal modello',
     createdLabel: 'Creato',
     promptLabel: 'Prompt:',
+    stepNameLabel: 'Nome',
+    stepPromptLabel: 'Prompt',
   },
 
   settings: {
