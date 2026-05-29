@@ -1,25 +1,25 @@
 # Aegis Competitive Differentiators
 
 > **Audience:** Technical decision-makers evaluating Claude Code orchestration platforms.
-> **Last updated:** 2026-05-14 | **Sources:** Issue #2764 positioning, #3216 (Verdent AI), #3316 (hooks), competitive-threat-matrix.md, Orpheus gap analyses.
+> **Last updated:** 2026-05-29 | **Sources:** Issue #2764 positioning, #3216 (Verdent AI), #3316 (hooks), competitive-threat-matrix.md, Orpheus gap analyses.
 
 ## Executive Summary
 
 Aegis is the **only open-source, API-first Claude Code orchestration middleware** with enterprise-grade security, observability, and deployment. Competitors win on simplicity or agent count. Aegis wins on **production readiness**: the layer between "someone typed a message" and "code shipped to production."
 
-This document compares Aegis against two key competitors across three pillars: **Security**, **Deployment**, and **Extensibility**.
+This document compares Aegis against three key competitors across three pillars: **Security**, **Deployment**, and **Extensibility**.
 
 ---
 
 ## Competitors Covered
 
-| | Aegis | cc-connect | Verdent AI |
-|---|---|---|---|
-| **License** | MIT (open source) | Proprietary | Proprietary |
-| **Architecture** | Node.js API server + MCP | Go binary + TOML | Mac desktop app |
-| **Agent support** | Claude Code (1 runner) | 10+ agent backends | Parallel agents (proprietary) |
-| **Target market** | Enterprise / DevOps | Developer tools | Consumer / prosumer |
-| **⭐ Stars** | ~200 | 8K | N/A (closed) |
+| | Aegis | cc-connect | Verdent AI | Multica |
+|---|---|---|---|---|
+| **License** | MIT (open source) | Proprietary | Proprietary | MIT (open source) |
+| **Architecture** | Node.js API server + MCP | Go binary + TOML | Mac desktop app | Go + Next.js + PostgreSQL |
+| **Agent support** | Claude Code (1 runner) | 10+ agent backends | Parallel agents (proprietary) | 11+ CLI runtimes (auto-detected) |
+| **Target market** | Enterprise / DevOps | Developer tools | Consumer / prosumer | Teams ("Linear for AI agents") |
+| **⭐ Stars** | ~200 | 8K | N/A (closed) | 30.7K |
 
 ---
 
@@ -66,20 +66,21 @@ This document compares Aegis against two key competitors across three pillars: *
 
 ### Security Scorecard
 
-| Capability | Aegis | cc-connect | Verdent AI |
-|-----------|-------|-----------|-----------|
-| RBAC with roles | ✅ 3 roles | ❌ | ❌ |
-| OIDC/SSO | ✅ | ❌ | ❌ |
-| Audit trail (hash-chained) | ✅ | ❌ | ❌ |
-| API key rotation | ✅ immediate + grace period | ❌ | ❌ |
-| Per-key quotas | ✅ | ❌ | ❌ |
-| Per-key permissions | ✅ | ❌ | ❌ |
-| Hook secret auth | ✅ timing-safe | ⚠️ basic | N/A |
-| Session ID enumeration protection | ✅ | ❌ | N/A |
-| Release signing | ✅ Sigstore | ❌ | ✅ App Store |
-| SOC2/GDPR readiness | ✅ | ❌ | ❌ |
+| Capability | Aegis | cc-connect | Verdent AI | Multica |
+|-----------|-------|-----------|-----------|--------|
+| RBAC with roles | ✅ 3 roles + strictRBAC | ❌ | ❌ | ⚠️ workspace-scoped |
+| OIDC/SSO | ✅ | ❌ | ❌ | ❌ |
+| Audit trail (hash-chained) | ✅ | ❌ | ❌ | ❌ |
+| API key rotation | ✅ immediate + grace period | ❌ | ❌ | ❌ (PAT with expiry only) |
+| Per-key quotas | ✅ | ❌ | ❌ | ❌ |
+| Per-key permissions | ✅ | ❌ | ❌ | ❌ |
+| Hook secret auth | ✅ timing-safe | ⚠️ basic | N/A | N/A |
+| Session ID enumeration protection | ✅ | ❌ | N/A | ❌ |
+| Release signing | ✅ Sigstore | ❌ | ✅ App Store | ❌ |
+| SOC2/GDPR readiness | ✅ | ❌ | ❌ | ❌ |
+| Webhook delivery tracking | ❌ | ❌ | ❌ | ✅ delivery history + retry |
 
-**Verdict:** Aegis is the only option for organizations that need compliance, audit, and access control. Neither competitor has any enterprise security story.
+**Verdict:** Aegis is the only option for organizations that need compliance, audit, and access control. Multica has workspace-scoped roles and webhook delivery tracking but lacks hash-chained audit, OIDC, and per-key quotas. Neither cc-connect nor Verdent AI has any enterprise security story.
 
 ---
 
@@ -132,20 +133,22 @@ This document compares Aegis against two key competitors across three pillars: *
 
 ### Deployment Scorecard
 
-| Capability | Aegis | cc-connect | Verdent AI |
-|-----------|-------|-----------|-----------|
-| REST API (programmatic) | ✅ 108 endpoints | ❌ | ❌ |
-| MCP server | ✅ 34 tools | ❌ | ❌ |
-| Web dashboard | ✅ full React | ⚠️ basic | ❌ (desktop) |
-| Docker/K8s deployment | ✅ Helm chart | ❌ | ❌ |
-| SSE event streaming | ✅ per-session + global | ❌ | ❌ |
-| CI/CD automation | ✅ `ag run` + API | ⚠️ CLI-only | ❌ |
-| Client SDKs | ✅ TS + Python | ❌ | ❌ |
-| Prometheus/OTel | ✅ | ❌ | ❌ |
-| Chat platform breadth | ⚠️ 4 platforms | ✅ 11 platforms | ⚠️ 2 platforms |
-| Cross-platform | ✅ Linux/Mac/Docker | ✅ Mac/Linux/Win | ❌ Mac only |
+| Capability | Aegis | cc-connect | Verdent AI | Multica |
+|-----------|-------|-----------|-----------|--------|
+| REST API (programmatic) | ✅ 108 endpoints | ❌ | ❌ | ✅ full CRUD |
+| MCP server | ✅ 34 tools | ❌ | ❌ | ❌ |
+| Web dashboard | ✅ full React | ⚠️ basic | ❌ (desktop) | ✅ Next.js + Kanban |
+| Docker/K8s deployment | ✅ Helm chart | ❌ | ❌ | ⚠️ Docker Compose only |
+| SSE event streaming | ✅ per-session + global | ❌ | ❌ | ✅ WebSocket + Redis |
+| CI/CD automation | ✅ `ag run` + API | ⚠️ CLI-only | ❌ | ⚠️ CLI + daemon |
+| Client SDKs | ✅ TS + Python | ❌ | ❌ | ❌ |
+| Prometheus/OTel | ✅ | ❌ | ❌ | ❌ |
+| Chat platform breadth | ⚠️ 4 platforms | ✅ 11 platforms | ⚠️ 2 platforms | ❌ email only |
+| Cross-platform | ✅ Linux/Mac/Docker | ✅ Mac/Linux/Win | ❌ Mac only | ✅ Mac/Linux/Win |
+| Desktop app | ❌ | ❌ | ✅ Mac | ✅ Electron |
+| CLI self-update | ❌ | ❌ | N/A | ✅ `multica update` |
 
-**Verdict:** Aegis is the only infrastructure-grade option. cc-connect wins on chat breadth. Verdent AI is consumer-only — cannot be deployed as infrastructure.
+**Verdict:** Aegis is the only infrastructure-grade option with MCP, OTel, and Kubernetes. Multica wins on desktop UX and task management (Kanban, agent profiles). cc-connect wins on chat breadth. Verdent AI is consumer-only — cannot be deployed as infrastructure.
 
 ---
 
@@ -192,20 +195,26 @@ This document compares Aegis against two key competitors across three pillars: *
 
 ### Extensibility Scorecard
 
-| Capability | Aegis | cc-connect | Verdent AI |
-|-----------|-------|-----------|-----------|
-| MCP server (34 tools) | ✅ | ❌ | ❌ |
-| Lifecycle hooks (29 events) | ✅ with policy engine | ⚠️ basic callbacks | ❌ |
-| ACP runner abstraction | ✅ | ❌ | ❌ |
-| Session templates | ✅ | ⚠️ TOML config | ❌ |
-| Pipeline orchestration | ✅ | ❌ | ❌ |
-| Cross-session memory | ✅ Memory Bridge | ❌ | ✅ project memory |
-| Permission profiles | ✅ per-tool/per-path | ⚠️ flat lists | ❌ |
-| Plugin system | ✅ Fastify plugins | ❌ | ❌ |
-| Dead-letter queue | ✅ | ❌ | ❌ |
-| Parallel agents | ❌ | ✅ multi-backend | ✅ core feature |
+| Capability | Aegis | cc-connect | Verdent AI | Multica |
+|-----------|-------|-----------|-----------|--------|
+| MCP server (34 tools) | ✅ | ❌ | ❌ | ❌ |
+| Lifecycle hooks (29 events) | ✅ with policy engine | ⚠️ basic callbacks | ❌ | ❌ |
+| ACP runner abstraction | ✅ | ❌ | ❌ | ❌ |
+| Session templates | ✅ | ⚠️ TOML config | ❌ | ❌ (autopilots instead) |
+| Pipeline orchestration | ✅ | ❌ | ❌ | ❌ |
+| Cross-session memory | ✅ Memory Bridge | ❌ | ✅ project memory | ❌ |
+| Permission profiles | ✅ per-tool/per-path | ⚠️ flat lists | ❌ | ⚠️ per-workspace |
+| Plugin system | ✅ Fastify plugins | ❌ | ❌ | ❌ |
+| Dead-letter queue | ✅ | ❌ | ❌ | ❌ |
+| Parallel agents | ❌ | ✅ multi-backend | ✅ core feature | ✅ squads + auto-delegation |
+| Skills marketplace | ❌ | ❌ | ❌ | ✅ reusable + importable |
+| Webhook delivery tracking | ❌ | ❌ | ❌ | ✅ history + retry |
+| Agent profiles/identity | ❌ | ❌ | ❌ | ✅ named profiles + avatars |
+| Task board (Kanban) | ❌ | ❌ | ❌ | ✅ full issue lifecycle |
+| Multi-runtime (11+ CLIs) | ❌ | ✅ 10+ backends | ❌ | ✅ 11+ auto-detected |
+| Session metadata KV | ❌ | ❌ | ❌ | ✅ per-issue queryable KV |
 
-**Verdict:** Aegis is the most extensible platform for programmatic control. Verdent AI wins on parallel agent execution and project memory — both identified gaps. cc-connect is rigid — TOML config, no API, no plugins.
+**Verdict:** Aegis is the most extensible platform for programmatic control via API/MCP. Multica dominates on task management and multi-agent features (squads, skills, Kanban). cc-connect is rigid — TOML config, no API, no plugins.
 
 ---
 
@@ -253,22 +262,31 @@ Aegis is the **middleware** that connects enterprise systems to AI coding agents
 
 | Gap | Who has it | Priority |
 |-----|-----------|----------|
-| **Parallel agents** | Verdent AI, cc-connect, Ruflo | P0 |
+| **Parallel agents** | Verdent AI, cc-connect, Ruflo, Multica | P0 |
+| **Multi-runtime support** (11+ CLIs) | Multica, cc-connect | P0 |
+| **Task board (Kanban)** | Multica, Cline | P0 |
+| **Agent profiles/identity** | Multica | P1 |
+| **Skills marketplace** | Multica | P1 |
 | **Project memory** | Verdent AI, Ruflo | P1 |
 | **Chat platform breadth** (11 platforms) | cc-connect | P1 |
-| **Desktop app** | Verdent AI | P2 |
+| **Webhook delivery tracking** | Multica | P1 |
+| **Session metadata KV store** | Multica | P1 |
+| **CLI self-update** | Multica | P2 |
+| **Desktop app** | Verdent AI, Multica | P2 |
 | **Task decomposition** | Verdent AI | P2 |
 | **Academic credibility** (ICSE paper) | Verdent AI | P3 |
 
 These are real gaps. But they're **feature gaps**, not architectural gaps. Adding parallel agents to Aegis is a runner backend. Adding project memory is a storage layer. Adding chat platforms is a channel adapter.
 
-What competitors **cannot easily add** is enterprise security, audit, observability, and API-first architecture — those require fundamental redesign.
+What competitors **cannot easily add** is enterprise security, audit, observability, and API-first architecture — those require fundamental redesign. Multica's 30.7K-star velocity is the highest competitive threat — they're building breadth fast, but lack depth in security, audit, MCP, and observability.
 
 ---
 
 ## See Also
 
 - [Competitive Threat Matrix](./competitive-threat-matrix.md) — full competitive landscape with star counts and market pulse
+- [Multica Feature Gap Analysis](./competitive-intel/multica-feature-gap-raw.md) — 52-point feature gap comparison
+- [CC v2.1.153-156 Intel](./competitive-intel/cc-v2.1.153-156.md) — Dynamic Workflows threat assessment
 - [Lifecycle Hooks Guide](./hooks-guide.md) — detailed hook architecture comparison
 - [Architecture Overview](./architecture.md) — Aegis internal architecture
 - [API Reference](./api-reference.md) — full REST API documentation
