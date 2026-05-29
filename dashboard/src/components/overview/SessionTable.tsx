@@ -426,7 +426,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     let source = sessions;
     if (agentFilter) {
       source = source.filter((s) => {
-        const rn = (s as any).runnerName;
+        const rn = s.runnerName;
         if (rn) return rn === agentFilter;
         // Heuristic: infer from model field
         const m = (s.model ?? '').toLowerCase();
