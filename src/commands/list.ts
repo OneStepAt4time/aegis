@@ -5,6 +5,8 @@
  * Issue #3633: Add --full-ids and --json flags for better CLI workflow.
  * Issue #3731: Hide killed/completed/crashed by default; --all shows everything.
  * Issue #3894: Mention partial ID support in tips.
+ * Issue #4457: --json now outputs structured { sessions, pagination } matching
+ *   the API response, and errors are emitted as JSON to stdout.
  */
 
 import { resolveBaseUrl, resolveAuthToken, buildHeaders, requireServer, writeLine, type CliIO } from '../cli-http.js';
@@ -44,11 +46,16 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
+    const message = ((err as { error?: string }).error) || res.statusText;
+    if (jsonOutput) {
+      writeLine(io.stdout, JSON.stringify({ error: message }));
+    } else {
+      writeLine(io.stderr, `  ❌ ${message}`);
+    }
     return 1;
   }
 
-  const body = await res.json() as { sessions?: any[]; data?: any[] };
+  const body = await res.json() as { sessions?: any[]; data?: any[]; pagination?: any };
   let sessions = body.sessions ?? body.data ?? [];
 
   // #3731: Filter terminal statuses unless --all
@@ -57,8 +64,8 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   }
 
   if (jsonOutput) {
-    // Machine-readable JSON output — include full IDs
-    writeLine(io.stdout, JSON.stringify(sessions, null, 2));
+    // #4457: Output structured response matching API format
+    writeLine(io.stdout, JSON.stringify({ sessions, pagination: body.pagination ?? null }, null, 2));
     return 0;
   }
 
