@@ -134,7 +134,8 @@ describe('Issue #3633: CLI prefix matching and list flags', () => {
     expect(exitCode).toBe(0);
     const text = output.join('');
     const parsed = JSON.parse(text);
-    expect(parsed.length).toBe(2);
-    expect(parsed[0].id).toBe('a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5');
+    // CLI --json now emits structured { sessions, pagination }
+    expect(parsed.sessions).toHaveLength(2);
+    expect(parsed.sessions[0].id).toBe('a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5');
   });
 });
