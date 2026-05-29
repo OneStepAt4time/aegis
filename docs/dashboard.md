@@ -15,13 +15,16 @@ Switch between dark and light theme. The dashboard defaults to your system prefe
 
 ### Internationalization (i18n)
 
-The dashboard supports multiple languages. Users can switch languages from the header.
+The dashboard uses a custom, zero-dependency i18n system with React Context. Users can switch languages from the Settings page.
 
 - **Supported languages:** English (default), Italian
-- **Language switcher** in the header — select your preferred language
-- **Persistence** — choice saved in `localStorage` across sessions
-- **13 pages localized:** NotFound, Activity, Login, Overview, Sessions, Analytics, Audit, Cost, Metrics, Auth Keys, Settings, Templates
+- **20 pages localized:** all page components use the `useT()` hook for user-facing strings
+- **28 namespaces** in the message catalog, including `aria.*` for accessibility labels
+- **Persistence** — choice saved in `localStorage` (`aegis:locale` key) across sessions
 - **Catalog** — `dashboard/src/i18n/` contains translation files per language (`en.ts`, `it.ts`)
+- **i18n gate** — `node scripts/i18n-gate.cjs` catches hardcoded inline strings
+
+See the [i18n Guide](./guides/i18n.md) for the full reference: adding keys, new locales, format utilities, and gotchas.
 
 ### Keyboard Shortcuts
 
