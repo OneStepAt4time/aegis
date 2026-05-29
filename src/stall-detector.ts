@@ -10,7 +10,7 @@
  * 5. Extended working stall: working for 3x stallThresholdMs (internal loop)
  */
 
-import { type SessionInfo, type UIState } from './session.js';
+import type { SessionInfo, UIState } from './session-types.js';
 import { type SessionEventPayload, type SessionEvent } from './channels/index.js';
 import { SYSTEM_TENANT } from './config.js';
 import { retryWithJitter } from './retry.js';
