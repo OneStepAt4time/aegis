@@ -588,3 +588,120 @@ describe('ag init --start (#4100)', () => {
     expect(openModule.default).not.toHaveBeenCalled();
   });
 });
+
+// --- #4348: E2E init → run zero-config flow ---
+
+describe('#4348 — ag init → run zero-config E2E', () => {
+  let originalCwd: string;
+  let originalEnv: NodeJS.ProcessEnv;
+  let projectDir: string;
+  let stateDir: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    originalEnv = { ...process.env };
+    projectDir = mkdtempSync(join(tmpdir(), 'aegis-e2e-init-run-'));
+    stateDir = join(projectDir, 'state');
+    process.chdir(projectDir);
+
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('AEGIS_') || key.startsWith('MANUS_')) {
+        delete process.env[key];
+      }
+    }
+    process.env.AEGIS_STATE_DIR = stateDir;
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    process.env = originalEnv;
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it('ag init --yes creates valid config that ag run can parse', async () => {
+    // Step 1: Run init with zero-config defaults
+    const initStdin = new PassThrough();
+    const initStdout = new CaptureStream();
+    const initStderr = new CaptureStream();
+    setImmediate(() => initStdin.end());
+
+    const initCode = await runCli(['init', '--yes', '--no-start'], { stdin: initStdin, stdout: initStdout, stderr: initStderr });
+    expect(initCode).toBe(0);
+
+    const initOut = initStdout.text();
+
+    // Verify init output includes dashboard URL
+    expect(initOut).toContain('Dashboard:');
+    expect(initOut).toContain('http://127.0.0.1');
+
+    // Verify config file exists and is valid YAML
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    expect(existsSync(configPath)).toBe(true);
+
+    const configText = readFileSync(configPath, 'utf-8');
+    const config = parseYaml(configText) as Record<string, unknown>;
+    expect(config.baseUrl).toBeDefined();
+    expect(config.dashboardEnabled).toBe(true);
+
+    // Verify zero-config: no token was created on localhost
+    expect(config.clientAuthToken).toBeUndefined();
+    expect(initOut).toContain('zero-config');
+
+    // Step 2: Verify state directory was created
+    expect(existsSync(stateDir)).toBe(true);
+  });
+
+  it('ag init --yes with --name scaffolds identity and valid config', async () => {
+    const initStdin = new PassThrough();
+    const initStdout = new CaptureStream();
+    const initStderr = new CaptureStream();
+    setImmediate(() => initStdin.end());
+
+    const initCode = await runCli(['init', '--yes', '--no-start', '--name', 'TestAgent'], { stdin: initStdin, stdout: initStdout, stderr: initStderr });
+    expect(initCode).toBe(0);
+
+    // Verify identity file was scaffolded
+    const identityPath = join(projectDir, '.aegis', 'identity.md');
+    expect(existsSync(identityPath)).toBe(true);
+    const identity = readFileSync(identityPath, 'utf-8');
+    expect(identity).toContain('TestAgent');
+
+    // Config is still valid
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    const config = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+    expect(config.baseUrl).toBeDefined();
+  });
+
+  it('ag init --yes --model sets default model in config', async () => {
+    const initStdin = new PassThrough();
+    const initStdout = new CaptureStream();
+    const initStderr = new CaptureStream();
+    setImmediate(() => initStdin.end());
+
+    const initCode = await runCli(['init', '--yes', '--no-start', '--model', 'claude-opus-4'], { stdin: initStdin, stdout: initStdout, stderr: initStderr });
+    expect(initCode).toBe(0);
+
+    const configPath = join(projectDir, '.aegis', 'config.yaml');
+    const config = parseYaml(readFileSync(configPath, 'utf-8')) as {
+      baseUrl?: string;
+      defaultSessionEnv?: Record<string, string>;
+    };
+    expect(config.defaultSessionEnv?.ANTHROPIC_DEFAULT_MODEL).toBe('claude-opus-4');
+  });
+
+  it('init prints next-steps with working command prefix', async () => {
+    const initStdin = new PassThrough();
+    const initStdout = new CaptureStream();
+    const initStderr = new CaptureStream();
+    setImmediate(() => initStdin.end());
+
+    const initCode = await runCli(['init', '--yes', '--no-start'], { stdin: initStdin, stdout: initStdout, stderr: initStderr });
+    expect(initCode).toBe(0);
+
+    const out = initStdout.text();
+    // Next steps section should include start command
+    expect(out).toContain('Next steps:');
+    expect(out).toContain('Start:');
+    expect(out).toContain('Dashboard:');
+  });
+});
