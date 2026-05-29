@@ -101,7 +101,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   if (state.loading && !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[var(--color-text-muted)] text-sm animate-pulse">
-        t('sessionDetail.loadingMetrics')
+        {t('sessionDetail.loadingMetrics')}
       </div>
     );
   }
@@ -252,7 +252,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           </table>
 
           <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-            t('sessionDetail.costDisclaimer')
+            {t('sessionDetail.costDisclaimer')}
           </div>
         </div>
       )}
