@@ -20,7 +20,7 @@ import {
   withOwnership,
   withSessionOwnership,
   requireSessionOwnership,
-} from './context.js';
+  safeErrorMessage } from './context.js';
 
 export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteContext): void {
   const {
@@ -172,7 +172,7 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
     try {
       return await sessions.readMessagesFromSession(session);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }));
 

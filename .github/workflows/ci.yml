@@ -184,18 +184,22 @@ jobs:
             kill "$AEGIS_PID" || true
           fi
       - name: Check bundle size
-        run: "THRESHOLD_KB=2560\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
-          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
-          echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
-          $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
-          \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
-          \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
-          \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-          \ | \u274C Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
-          \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
-          \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-          \ | \u2705 Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server\
-          \ bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
+        run: |
+          THRESHOLD_KB=2100
+          SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" ! -path "*/dashboard/*" -exec wc -c {} + | tail -1 | awk '{printf "%.0f", $1/1024}')
+          SERVER_SIZE_KB=$((SERVER_SIZE))
+          echo "## Bundle Size Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scope | Size (KB) | Threshold (KB) | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-----------|----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SERVER_SIZE_KB" -gt "$THRESHOLD_KB" ]; then
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ❌ Exceeds threshold |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Server bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold"
+            exit 1
+          else
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ✅ Within budget |" >> "$GITHUB_STEP_SUMMARY"
+            echo "Server bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)"
+          fi
       - name: Build dashboard
         run: cd dashboard && npm ci && npm run build
       - name: Run dashboard E2E tests (PR gate)
@@ -332,18 +336,22 @@ jobs:
           }
       - name: Check bundle size
         if: runner.os != 'Windows'
-        run: "THRESHOLD_KB=2560\nSERVER_SIZE=$(find dist/ -name \"*.js\" ! -path \"\
-          */__tests__/*\" ! -path \"*/dashboard/*\" -exec du -ck {} + | tail -1 | awk '{print $1}')\nSERVER_SIZE_KB=$((SERVER_SIZE))\n\
-          echo \"## Bundle Size Report\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"\" >> \"\
-          $GITHUB_STEP_SUMMARY\"\necho \"| Scope | Size (KB) | Threshold (KB) | Status\
-          \ |\" >> \"$GITHUB_STEP_SUMMARY\"\necho \"|-------|-----------|----------------|--------|\"\
-          \ >> \"$GITHUB_STEP_SUMMARY\"\nif [ \"$SERVER_SIZE_KB\" -gt \"$THRESHOLD_KB\"\
-          \ ]; then\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-          \ | ❌ Exceeds threshold |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"::error::Server\
-          \ bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold\"\n\
-          \  exit 1\nelse\n  echo \"| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB}\
-          \ | ✅ Within budget |\" >> \"$GITHUB_STEP_SUMMARY\"\n  echo \"Server bundle\
-          \ size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)\"\nfi\n"
+        run: |
+          THRESHOLD_KB=2100
+          SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" ! -path "*/dashboard/*" -exec wc -c {} + | tail -1 | awk '{printf "%.0f", $1/1024}')
+          SERVER_SIZE_KB=$((SERVER_SIZE))
+          echo "## Bundle Size Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scope | Size (KB) | Threshold (KB) | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-----------|----------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SERVER_SIZE_KB" -gt "$THRESHOLD_KB" ]; then
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ❌ Exceeds threshold |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Server bundle size ${SERVER_SIZE_KB}KB exceeds ${THRESHOLD_KB}KB threshold"
+            exit 1
+          else
+            echo "| Server (excl. tests) | ${SERVER_SIZE_KB} | ${THRESHOLD_KB} | ✅ Within budget |" >> "$GITHUB_STEP_SUMMARY"
+            echo "Server bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)"
+          fi
       - name: Build dashboard
         run: cd dashboard && npm ci && npm run build
       - name: Run dashboard E2E tests (PR gate)

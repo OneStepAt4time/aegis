@@ -15,7 +15,7 @@ import {
   withSessionOwnership,
   requirePermission,
   resolveRequestAuditActor,
-} from './context.js';
+  safeErrorMessage } from './context.js';
 
 export function registerDriverRoutes(app: Parameters<typeof registerWithLegacy>[0], ctx: RouteContext): void {
   const { auth, getAuditLogger } = ctx;
@@ -45,7 +45,7 @@ export function registerDriverRoutes(app: Parameters<typeof registerWithLegacy>[
       if (message.includes('already claimed')) {
         return reply.status(409).send({ error: 'Driver already claimed', code: 'DRIVER_CLAIMED' });
       }
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -69,7 +69,7 @@ export function registerDriverRoutes(app: Parameters<typeof registerWithLegacy>[
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'driver.released', `Driver released: ${session.id}`, session.id, scope.tenantId);
       return result;
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -94,7 +94,7 @@ export function registerDriverRoutes(app: Parameters<typeof registerWithLegacy>[
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'driver.transferred', `Driver transferred: ${session.id}`, session.id, scope.tenantId);
       return result;
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 

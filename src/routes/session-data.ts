@@ -133,7 +133,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       const result = await captureScreenshot({ url, fullPage, width, height, hostResolverRule });
       return reply.status(200).send(result);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: `Screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }));
 
@@ -152,7 +152,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       return reply.status(httpStatus).send(result);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ ok: false, summary: `Verification error: ${msg}` });
+      return reply.status(500).send({ ok: false, summary: 'Verification error' });
     }
   }));
 
