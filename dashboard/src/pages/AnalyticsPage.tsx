@@ -159,7 +159,7 @@ export default function AnalyticsPage() {
       ? ((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)
       : '0';
     return [
-      { id: 'cost', label: 'Total Cost', value: formatCurrency(cost), color: 'cost', subtitle: analytics.costTrends.length > 1 ? t('analytics.last14Days') : undefined },
+      { id: 'cost', label: 'Total Cost', value: formatCurrency(cost), color: 'cost', subtitle: (analytics.costTrends ?? []).length > 1 ? t('analytics.last14Days') : undefined },
       { id: 'tokens', label: 'Total Tokens', value: formatTokenCount(tokens), color: 'input', subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined },
       { id: 'sessions', label: 'Sessions', value: String(totalSessions), color: 'neutral' },
       { id: 'duration', label: 'Avg Duration', value: formatDuration(avgDur), color: 'time' },
@@ -169,10 +169,10 @@ export default function AnalyticsPage() {
 
   // Session Volume Line Chart
   const sessionVolumeData = {
-    labels: data.sessionVolume.map((d) => d.date),
+    labels: (data.sessionVolume ?? []).map((d) => d.date),
     datasets: [{
       label: 'Sessions',
-      data: data.sessionVolume.map((d) => d.created),
+      data: (data.sessionVolume ?? []).map((d) => d.created),
       borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
       backgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
       pointRadius: 3,
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil(data.sessionVolume.length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
+        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil((data.sessionVolume ?? []).length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
         border: { color: gridColor },
       },
       y: {
@@ -236,10 +236,10 @@ export default function AnalyticsPage() {
 
   // Cost Trends Bar Chart
   const costTrendsData = {
-    labels: data.costTrends.map((d) => d.date),
+    labels: (data.costTrends ?? []).map((d) => d.date),
     datasets: [{
       label: 'Daily Cost',
-      data: data.costTrends.map((d) => d.cost),
+      data: (data.costTrends ?? []).map((d) => d.cost),
       backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
       borderRadius: 4,
       borderSkipped: false as const,
@@ -263,7 +263,7 @@ export default function AnalyticsPage() {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil(data.costTrends.length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
+        ticks: { color: tickColor, font: tickFont, maxTicksLimit: 8, callback: function(val, idx) { return idx !== undefined && idx % Math.ceil((data.costTrends ?? []).length / 8) === 0 ? formatDateShort(this.getLabelForValue(val as number)) : ''; } },
         border: { color: gridColor },
       },
       y: {
@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title={t("analytics.sessionVolume")}>
-          {data.sessionVolume.length > 0 ? (
+          {(data.sessionVolume ?? []).length > 0 ? (
             <div style={{ width: '100%', height: 260 }}><LineChart data={sessionVolumeData} options={lineOptions} /></div>
           ) : <EmptyChart />}
         </ChartCard>
@@ -398,15 +398,15 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title={t("analytics.costTrends")}>
-          {data.costTrends.length > 0 ? (
+          {(data.costTrends ?? []).length > 0 ? (
             <div style={{ width: '100%', height: 260 }}><BarChart data={costTrendsData} options={costBarOptions} /></div>
           ) : <EmptyChart />}
         </ChartCard>
 
         <ChartCard title={t("analytics.topApiKeys")}>
-          {data.topApiKeys.length > 0 ? (
+          {(data.topApiKeys ?? []).length > 0 ? (
             <div className="space-y-3">
-              {data.topApiKeys.map((key) => (
+              {(data.topApiKeys ?? []).map((key) => (
                 <div key={key.keyId} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                   <div>
                     <div className="text-sm font-medium text-[var(--color-text-primary)]">{key.keyName}</div>
