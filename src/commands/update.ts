@@ -7,12 +7,11 @@
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { createReadStream, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Readable } from 'node:stream';
 
 // ---------------------------------------------------------------------------
 // Version resolution
@@ -98,7 +97,6 @@ function isNpmInstall(): boolean {
     // process.execPath is the node binary; process.argv[1] is the script.
     // For a globally-installed CLI, the script lives under node_modules.
     const scriptPath = process.argv[1] ?? '';
-    const exePath = process.execPath;
 
     // Typical npm global layout: <prefix>/lib/node_modules/@scope/pkg/dist/cli.js
     // Binary symlink: <prefix>/bin/ag -> ../lib/node_modules/@scope/pkg/dist/cli.js
@@ -207,15 +205,6 @@ function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
   stream.write(`${text}\n`);
 }
 
-// ---------------------------------------------------------------------------
-// CliIO interface
-// ---------------------------------------------------------------------------
-
-export interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
 
 // ---------------------------------------------------------------------------
 // Confirmation prompt
@@ -247,6 +236,7 @@ async function confirmUpdate(io: CliIO, message: string): Promise<boolean> {
 
 export async function handleUpdate(argv: string[], io: CliIO): Promise<number> {
   const checkOnly = argv.includes('--check');
+  const dryRun = argv.includes('--dry-run');
   const skipConfirm = argv.includes('--yes') || argv.includes('-y');
 
   const currentVersion = getCurrentVersion();
@@ -289,6 +279,13 @@ export async function handleUpdate(argv: string[], io: CliIO): Promise<number> {
 
   writeLine(io.stdout);
   writeLine(io.stdout, `  Update available! (${npmDetected ? 'npm global install detected' : 'direct binary install detected'})`);
+
+  // --- Dry-run mode ---
+  if (dryRun) {
+    writeLine(io.stdout);
+    writeLine(io.stdout, '  (dry-run — no changes made)');
+    return 1;
+  }
 
   // --- Confirm ---
   if (!skipConfirm) {
@@ -335,44 +332,40 @@ export async function handleUpdate(argv: string[], io: CliIO): Promise<number> {
         return 1;
       }
 
-      // For now, we extract and replace the binary
-      // Since the CLI is typically run via node, the "binary" replacement means
-      // extracting to a temp location and replacing the dist/ directory contents.
-      // However, for direct binary installs (compiled/bundled), we replace the executable.
-      const { execPath } = process;
+      // Resolve the actual CLI script path (not process.execPath which is the
+      // Node binary). For npm installs this is the JS entry point; for standalone
+      // builds it may be the compiled binary.
+      const cliScriptPath = process.argv[1] ?? process.execPath;
 
       // Write archive to temp, extract, and replace
-      const os = await import('node:os');
-      const path = await import('node:path');
-      const fs = await import('node:fs');
-      const child_process = await import('node:child_process');
 
-      const tmpDir = fs.mkdtempSync(join(os.tmpdir(), 'aegis-update-'));
+
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-update-'));
       const archivePath = join(tmpDir, assetName);
 
       try {
         // Write downloaded archive
-        fs.writeFileSync(archivePath, archiveData);
+        writeFileSync(archivePath, archiveData);
 
         // Extract
-        child_process.execFileSync('tar', ['-xzf', archivePath, '-C', tmpDir], { timeout: 30_000 });
+        execFileSync('tar', ['-xzf', archivePath, '-C', tmpDir], { timeout: 30_000 });
 
         // Find the extracted binary/script — look for 'ag' or 'aegis' or 'dist/' contents
-        const extractedFiles = fs.readdirSync(tmpDir).filter(f => f !== assetName);
+        const extractedFiles = readdirSync(tmpDir).filter(f => f !== assetName);
 
         // Look for a nested directory structure
         let binarySource: string | null = null;
         const possibleNames = ['ag', 'aegis', 'ag.bin'];
         for (const name of possibleNames) {
           const candidate = join(tmpDir, name);
-          if (fs.existsSync(candidate)) {
+          if (existsSync(candidate)) {
             binarySource = candidate;
             break;
           }
           // Check inside subdirectory
           for (const dir of extractedFiles) {
             const nestedCandidate = join(tmpDir, dir, name);
-            if (fs.existsSync(nestedCandidate)) {
+            if (existsSync(nestedCandidate)) {
               binarySource = nestedCandidate;
               break;
             }
@@ -387,23 +380,23 @@ export async function handleUpdate(argv: string[], io: CliIO): Promise<number> {
         }
 
         // Atomic replace: write to temp file adjacent to target, then rename
-        const targetPath = execPath;
-        const tmpTarget = join(path.dirname(targetPath), `.aegis-update-${Date.now()}`);
+        const targetPath = cliScriptPath;
+        const tmpTarget = join(dirname(targetPath), `.aegis-update-${Date.now()}`);
 
         // Preserve permissions
-        const originalStat = fs.statSync(targetPath);
-        fs.copyFileSync(binarySource, tmpTarget);
-        fs.chmodSync(tmpTarget, originalStat.mode);
+        const originalStat = statSync(targetPath);
+        copyFileSync(binarySource, tmpTarget);
+        chmodSync(tmpTarget, originalStat.mode);
 
         // Atomic rename
-        fs.renameSync(tmpTarget, targetPath);
+        renameSync(tmpTarget, targetPath);
 
         writeLine(io.stdout, `  Updated to v${latestVersion} ✅`);
         writeLine(io.stdout, `  Replaced: ${targetPath}`);
       } finally {
         // Cleanup temp directory
         try {
-          fs.rmSync(tmpDir, { recursive: true, force: true });
+          rmSync(tmpDir, { recursive: true, force: true });
         } catch {
           // Best-effort cleanup
         }

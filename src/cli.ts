@@ -348,6 +348,7 @@ function printHelp(io: CliIO): void {
     ag update               Check for and apply self-update
     ag update --check       Only check, no update (exit 1 if available)
     ag update --yes         Skip confirmation prompt
+    ag update --dry-run      Show what would happen without updating
 ${authBlock}  Flags:
     --json-logs           Emit structured JSON logs (default: quiet mode)
 
