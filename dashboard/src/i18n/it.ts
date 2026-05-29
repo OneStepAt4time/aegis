@@ -623,6 +623,7 @@ export const it = {
 
   notifications: {
     disconnect: 'Disconnetti',
+    staleData: 'Aggiornamenti live disconnessi — i dati potrebbero essere obsoleti. {{error}}',
   },
 
   aria: {
