@@ -59,7 +59,7 @@ describe('TranscriptBubble', () => {
       const entry: ParsedEntry = { ...baseEntry, role: 'user', text: 'Hi', timestamp: '2026-05-27T14:30:00Z' };
       render(<TranscriptBubble entry={entry} index={0} />);
       // toLocaleTimeString output varies by env, just check the time is present
-      const timeEl = screen.getByTitle(/\d+m ago|\d+h ago|\d+s ago/);
+      const timeEl = screen.getByTitle(/\d+[mhsd] ago/);
       expect(timeEl).toBeDefined();
     });
 
