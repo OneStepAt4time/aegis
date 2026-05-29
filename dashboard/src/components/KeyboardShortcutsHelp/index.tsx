@@ -43,7 +43,7 @@ export function KeyboardShortcutsHelp({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Keyboard className="h-5 w-5 text-[var(--color-accent-cyan)]" />
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Keyboard Shortcuts</h2>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('keyboard.title')}</h2>
           </div>
           <button type="button"
             onClick={onClose}

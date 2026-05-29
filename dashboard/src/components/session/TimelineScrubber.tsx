@@ -128,7 +128,7 @@ export function TimelineScrubber({ events, currentTime, onSeek, className = '' }
   if (events.length === 0) {
     return (
       <div className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 ${className}`}>
-        <div className="text-xs text-[var(--color-text-muted)] text-center">No timeline events</div>
+        <div className="text-xs text-[var(--color-text-muted)] text-center">{t('sessionDetail.noTimelineEvents')}</div>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export function TimelineScrubber({ events, currentTime, onSeek, className = '' }
   return (
     <div className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-3 ${className}`}>
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-xs font-medium text-[var(--color-text-primary)]">Timeline</div>
+        <div className="text-xs font-medium text-[var(--color-text-primary)]">{t('sessionDetail.timeline')}</div>
         <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
           {Object.entries(EVENT_ICONS).map(([type, Icon]) => {
             const count = events.filter(e => e.type === type).length;

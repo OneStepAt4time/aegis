@@ -148,7 +148,7 @@ export function Sidebar({
           ) : (
             <ChevronLeft className="h-4 w-4 shrink-0" />
           )}
-          {!isCollapsed && <span className="truncate">Collapse</span>}
+          {!isCollapsed && <span className="truncate">{t('drawer.collapse')}</span>}
         </button>
 
         <button
@@ -160,7 +160,7 @@ export function Sidebar({
           aria-label={t("aria.signOut")}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          {!isCollapsed && <span className="truncate">Sign out</span>}
+          {!isCollapsed && <span className="truncate">{t('drawer.signOut')}</span>}
         </button>
       </div>
     </aside>

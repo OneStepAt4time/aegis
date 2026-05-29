@@ -53,7 +53,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 px-4 py-3 text-sm">
         <CheckCircle2 className="h-4 w-4 text-[var(--color-success)]" aria-hidden="true" />
-        <span className="text-[var(--color-success)] font-medium">Approved</span>
+        <span className="text-[var(--color-success)] font-medium">{t('approvalStatus.approved')}</span>
       </div>
     );
   }
@@ -62,7 +62,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-error-bg)]/10 px-4 py-3 text-sm">
         <XCircle className="h-4 w-4 text-[var(--color-danger)]" aria-hidden="true" />
-        <span className="text-[var(--color-danger)] font-medium">Rejected</span>
+        <span className="text-[var(--color-danger)] font-medium">{t('approvalStatus.rejected')}</span>
       </div>
     );
   }

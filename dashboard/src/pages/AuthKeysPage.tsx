@@ -268,7 +268,7 @@ export default function AuthKeysPage() {
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="ops-primary"
+                placeholder={t('authKeyForm.namePlaceholder')}
                 className="min-h-[44px] w-full rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none"
               />
             </div>

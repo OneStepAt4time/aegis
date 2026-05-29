@@ -212,18 +212,18 @@ export default function NotificationSettingsPage() {
             {isConnected && connection.botUsername && (
               <div className="mb-4 flex flex-col gap-1 rounded-md bg-[var(--color-surface)] p-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Bot</span>
+                  <span className="text-[var(--color-text-muted)]">{t('notificationSettings.bot')}</span>
                   <span className="font-mono text-[var(--color-text-primary)]">@{connection.botUsername}</span>
                 </div>
                 {connection.chatTitle && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-muted)]">Chat</span>
+                    <span className="text-[var(--color-text-muted)]">{t('notificationSettings.chat')}</span>
                     <span className="text-[var(--color-text-primary)]">{connection.chatTitle}</span>
                   </div>
                 )}
                 {connection.connectedAt && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-muted)]">Connected</span>
+                    <span className="text-[var(--color-text-muted)]">{t('notificationSettings.connected')}</span>
                     <span className="text-[var(--color-text-primary)]">
                       {new Date(connection.connectedAt).toLocaleDateString(undefined, {
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -271,7 +271,7 @@ export default function NotificationSettingsPage() {
                     type={showToken ? 'text' : 'password'}
                     value={botToken}
                     onChange={(e) => setBotToken(e.target.value)}
-                    placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                    placeholder={t('notificationSettings.botTokenPlaceholder')}
                     disabled={isConnected}
                     autoComplete="off"
                     aria-label={t('aria.telegramBotToken')}
@@ -311,7 +311,7 @@ export default function NotificationSettingsPage() {
                   type="text"
                   value={chatId}
                   onChange={(e) => setChatId(e.target.value)}
-                  placeholder="-1001234567890"
+                  placeholder={t('notificationSettings.chatIdPlaceholder')}
                   disabled={isConnected}
                   autoComplete="off"
                   aria-label={t('aria.telegramChatId')}
@@ -410,11 +410,11 @@ export default function NotificationSettingsPage() {
                 </a>
                 .
               </li>
-              <li>Enter both above and hit <strong className="text-[var(--color-text-primary)]">Connect</strong>.</li>
+              <li>Enter both above and hit <strong className="text-[var(--color-text-primary)]">{t('notificationSettings.connect')}</strong>.</li>
               <li>
                 When a session needs approval, you'll get a Telegram message with{' '}
-                <strong className="text-[var(--color-success)]">Approve</strong> /{' '}
-                <strong className="text-[var(--color-danger)]">Reject</strong> buttons.
+                <strong className="text-[var(--color-success)]">{t('sessionDetail.approve')}</strong> /{' '}
+                <strong className="text-[var(--color-danger)]">{t('sessionDetail.reject')}</strong> buttons.
               </li>
             </ol>
           </section>

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getHealth, getMetrics } from '../../api/client';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
+import { useT } from '../../i18n/context';
 import { useStore } from '../../store/useStore';
 import type { HealthResponse } from '../../types';
 import MetricCard from './MetricCard';
@@ -37,6 +38,7 @@ const FALLBACK_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 
 export default function MetricCards() {
+  const t = useT();
   const metrics = useStore((s) => s.metrics);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -137,7 +139,7 @@ export default function MetricCards() {
       )}
 
       {/* ── Header ─────────────────────── */}
-      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-1">Operational Metrics</h4>
+      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-1">{t('metricsOverview.operationalMetrics')}</h4>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {/* ── Operational Metrics ──────────────────────────────── */}
       {completedSessions > 0 && (
@@ -184,26 +186,26 @@ export default function MetricCards() {
               <p className="text-2xl font-mono font-bold text-white">
                 {deliveryRate_ !== null ? `${deliveryRate_.toFixed(1)}%` : '—'}
               </p>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Trailing session average</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('metricsOverview.trailingAverage')}</p>
             </div>
             {(promptsDelivered > 0 || promptsFailed > 0) && (
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Delivered</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.delivered')}</p>
                   </div>
                 )}
                 {promptsFailed > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Failed</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.failed')}</p>
                   </div>
                 )}
                 {promptsSent > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Total Sent</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.totalSent')}</p>
                   </div>
                 )}
               </div>

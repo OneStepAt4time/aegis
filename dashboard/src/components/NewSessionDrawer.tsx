@@ -152,7 +152,7 @@ export function NewSessionDrawer() {
                   type="text"
                   value={workDir}
                   onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
-                  placeholder="/home/user/projects/myapp"
+                  placeholder={t('newSession.workDirPlaceholder')}
                   required
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
@@ -172,7 +172,7 @@ export function NewSessionDrawer() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="my-session"
+                  placeholder={t('newSession.sessionNamePlaceholder')}
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
               </div>
@@ -187,7 +187,7 @@ export function NewSessionDrawer() {
                   type="text"
                   value={claudeCommand}
                   onChange={(e) => setClaudeCommand(e.target.value)}
-                  placeholder="claude --print"
+                  placeholder={t('newSession.commandPlaceholder')}
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.claudeCommandDefault')}</p>
@@ -202,7 +202,7 @@ export function NewSessionDrawer() {
                   id="drawer-prompt"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="What do you want to accomplish?"
+                  placeholder={t('newSession.promptPlaceholder')}
                   rows={3}
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)] resize-y"
                 />

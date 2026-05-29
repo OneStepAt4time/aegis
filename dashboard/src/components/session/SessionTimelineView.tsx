@@ -105,8 +105,8 @@ export function SessionTimelineView({ events, isLoading }: SessionTimelineViewPr
     return (
       <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
         <Clock className="h-8 w-8 mb-2 opacity-40" />
-        <p className="text-sm">No timeline events yet</p>
-        <p className="text-xs mt-1 opacity-60">Events will appear as the session progresses</p>
+        <p className="text-sm">{t('sessionDetail.noTimelineEvents')}</p>
+        <p className="text-xs mt-1 opacity-60">{t('sessionDetail.timelineEventsHint')}</p>
       </div>
     );
   }

@@ -69,7 +69,7 @@ export default function LoginPage() {
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-[var(--color-cta-bg)]" />
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Aegis</h1>
+          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t('login.brandName')}</h1>
           <p className="text-sm text-[var(--color-text-muted)]">
             {oidcAvailable ? 'Sign in with your identity provider to continue' : 'Enter your API token to continue'}
           </p>
@@ -91,14 +91,14 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="relative">
-              <label htmlFor="token" className="sr-only">API token</label>
+              <label htmlFor="token" className="sr-only">{t('login.tokenLabel')}</label>
               <input
                 id="token"
                 name="token"
                 type={showToken ? 'text' : 'password'}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="API token"
+                placeholder={t('login.tokenPlaceholder')}
                 autoFocus
                 autoComplete="current-password"
                 className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-2.5 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none touch-action-manipulation"

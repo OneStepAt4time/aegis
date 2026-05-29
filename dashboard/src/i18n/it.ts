@@ -34,13 +34,9 @@ export const it = {
     activeDays: '{n} giorni attivi',
     processed: '{n} elaborati',
     total: 'totale',
-    activityHeatmap: 'Mappa di Attività',
-    heatmapPending: 'La mappa richiede un breakdown giornaliero dei token — in attesa di API backend',
-    loadingMetrics: 'Caricamento metriche…',
-    costPerDay: 'Costo / Giorno',
-    noCostData: 'Nessun dato sui costi ancora disponibile',
-    recentSessionsLabel: 'Sessioni Recenti',
-    newSessionShortcut: 'Nuova Sessione (⌘N)',
+    activityHeatmap: 'Mappa Attività',
+    efficiency: 'Efficienza',
+    modelDistribution: 'Distribuzione Modelli',
   },
 
   sessions: {
@@ -169,24 +165,8 @@ export const it = {
       settingsLink: 'Impostazioni',
     },
     dismissBudgetAlert: 'Ignora avviso budget',
+    usageTracking: 'Monitoraggio utilizzo, burn rate e avvisi budget',
     avgDaily: 'Media Giornaliera',
-    last7DaysAvg: 'Media Ultimi 7 Giorni',
-    projectedMonth: 'Proiezione Mensile',
-    daysPastRemaining: '{passed}g passati, {remaining}g rimanenti',
-    costLabel: 'Costo {days} giorni',
-    costLabelShort: 'Costo Totale',
-    usageTracking: 'Tracciamento utilizzo, burn rate e avvisi budget',
-    dailySpendDays: 'Spesa Giornaliera ({count} giorni)',
-    costAnalyticsTitle: 'Analisi Costi',
-    costByModel: 'Costo per Modello',
-    modelDetails: 'Dettagli Modello',
-    burnRatePerHour: '{rate}/hr burn rate',
-    sessionsRunningNoCost: 'Le sessioni sono in esecuzione ma i dati sui costi non sono ancora disponibili. Le metriche si popoleranno una volta che la pipeline avrà elaborato i dati.',
-    costWillAppear: 'Le metriche sui costi appariranno quando Aegis inizierà a tracciare l\'utilizzo. Avvia una sessione per raccogliere dati.',
-    vsAvg: '{pct}% rispetto alla media',
-    range7d: '7 Giorni',
-    range30d: '30 Giorni',
-    range90d: '90 Giorni',
   },
 
   audit: {
@@ -209,6 +189,9 @@ export const it = {
     integrityVerified: 'Integrità verificata',
     integrityFailed: 'Verifica integrità fallita',
     timestamp: 'Timestamp',
+    actorPlaceholder: 'es. chiave-admin',
+    actionPlaceholder: 'es. session.kill',
+    sessionPlaceholder: 'es. 11111111-1111-1111-1111-111111111111',
     actor: 'Attore',
     action: 'Azione',
     session: 'Sessione',
@@ -225,29 +208,14 @@ export const it = {
     exportNdjson: 'Esporta NDJSON',
     verificationFailed: 'Verifica fallita',
     exportFailed: 'Esportazione log audit fallita',
-    latestExportMetadata: 'Metadati ultima esportazione',
-    chainBroken: 'Catena interrotta',
     recordDetail: 'Dettaglio Record',
     previousHash: 'Hash Precedente',
-    fullRecordJson: 'Record Completo (JSON)',
-    filters: 'Filtri',
-    sessionIdLabel: 'ID Sessione',
-    fromLabel: 'Da',
-    toLabel: 'A',
-    endpointMissing: 'Endpoint audit non ancora disponibile',
-    endpointMissingDescription: "L'endpoint /v1/audit non è stato implementato sul server.",
-    failedLoad: 'Impossibile caricare i log di audit',
     auditTrail: 'Audit Trail',
-    auditTrailSubtitle: 'Interroga eventi di audit, esporta CSV o NDJSON, e verifica metadati integrità catena.',
-    verifyingChain: 'Verifica catena…',
-    chainVerified: 'Catena verificata ({count} record)',
-    integrityCheckFailedError: 'Verifica integrità fallita: {error}',
-    exportFiltersNote: 'Le esportazioni CSV e NDJSON usano i filtri attualmente applicati.',
-    chainVerificationFailed: 'Verifica catena fallita alla riga {line}.',
-    recordsCount: '{total} record',
-    recordsCount_one: '1 record',
-    pageOf: 'Pagina {page} di {totalPages}',
-    perPage: '{size} / pagina',
+    filters: 'Filtri',
+    sessionId: 'ID Sessione',
+    endpointNotAvailable: 'Endpoint audit non ancora disponibile',
+    failedToLoad: 'Caricamento log audit fallito',
+    pageSize: 'Dimensione pagina',
   },
 
   analytics: {
@@ -272,23 +240,8 @@ export const it = {
     manualApprovals: 'Approvazioni Manuali',
     heatmapLess: 'Meno',
     heatmapMore: 'Più',
-    analyticsTitle: 'Analisi',
-    analyticsSubtitle: 'Volume sessioni, utilizzo token, trend costi e tassi di errore',
-    modelDistribution: 'Distribuzione Modelli',
-    totalCostKpi: 'Costo Totale',
-    totalTokensKpi: 'Token Totali',
-    sessionsKpi: 'Sessioni',
-    avgDurationKpi: 'Durata Media',
-    errorRateKpi: 'Tasso di Errore',
-    loadingAnalytics: 'Caricamento analisi...',
     dataAggregationInProgress: 'Aggregazione dati in corso.',
-    dataAggregationDescription: 'Il conteggio delle sessioni è disponibile ma i dati dei grafici sono ancora in fase di elaborazione. I grafici si popoleranno una volta completata l\'elaborazione della cache.',
-    noDataAvailable: 'Nessun dato ancora disponibile',
-    calculating: 'Calcolo in corso…',
-    tokens: 'token',
-    dailyCostChart: 'Costo Giornaliero',
-    sessionsChart: 'Sessioni',
-    avgDurationChart: 'Durata Media',
+    modelDistribution: 'Distribuzione Modelli',
   },
 
   metrics: {
@@ -301,23 +254,8 @@ export const it = {
     emptyState: "Nessun dato di sessione trovato per l'intervallo selezionato.",
     sessions: 'Sessioni',
     tokenCost: 'Costo Token',
-    totalSessions: 'Sessioni Totali',
-    avgDuration: 'Durata Media',
-    totalCost: 'Costo Totale',
-    approvalRate: 'Tasso di Approvazione',
-    sessionsCostOverTime: 'Sessioni e Costo nel Tempo',
-    tokenCostTrend: 'Trend Costo Token',
-    breakdownByKey: 'Breakdown per Chiave API',
-    keyName: 'Nome Chiave',
-    messagesCol: 'Messaggi',
-    toolCallsCol: 'Chiamate Strumenti',
-    tokenCostCol: 'Costo Token',
-    anomalousSessions: 'Sessioni Anomale ({count})',
-    anomalyDescription: 'Sessioni segnalate per costo token superiore al p95 di 3x o più.',
-    exportCsv: 'Esporta CSV',
-    range7d: '7 Giorni',
-    range30d: '30 Giorni',
-    range90d: '90 Giorni',
+    messages: 'Messaggi',
+    toolCalls: 'Chiamate Strumento',
   },
 
   authKeys: {
@@ -407,6 +345,8 @@ export const it = {
     title: 'Impostazioni',
     subtitle: 'Preferenze dashboard',
     saveErrorTitle: 'Impossibile salvare le impostazioni',
+    storageUnavailable: 'Archiviazione impostazioni non disponibile',
+    onboarding: 'Onboarding',
 
     display: {
       title: 'Visualizzazione',
@@ -597,6 +537,40 @@ export const it = {
     pendingQuestionContent: 'Claude sta aspettando la tua risposta. Rispondi sotto per continuare.',
     pendingQuestionTitle: 'Claude ha bisogno di una risposta',
     pendingQuestionReply: 'Rispondi sotto per continuare la sessione.',
+    // i18n sweep 4
+    noMessages: 'Nessun messaggio',
+    noAuditEvents: 'Nessun evento di audit per questa sessione',
+    noFileChanges: 'Nessuna modifica file rilevata in questa sessione.',
+    noTimelineEvents: 'Nessun evento timeline',
+    timelineEventsHint: 'Gli eventi appariranno man mano che la sessione procede',
+    filterLabel: 'Filtro:',
+    noTokenData: 'Nessun dato token',
+    scanningPR: 'Scansione trascrizione per info PR…',
+    pullRequest: 'Pull Request',
+    noPRDetected: 'Nessuna pull request rilevata per questa sessione.',
+    noPRHint: 'Le info PR appariranno qui quando viene creata una PR tramite',
+    ciStatusHint: 'Lo stato CI e i commenti richiedono integrazione API GitHub (Fase 2).',
+    repository: 'Repository:',
+    noDriverClaimed: 'Nessun driver assegnato',
+    expiredRequest: 'Questa richiesta di approvazione è scaduta.',
+    toolApprovalRequired: 'Approvazione Strumento Richiesta',
+    noDescription: 'Nessuna descrizione disponibile.',
+    hideToolInput: 'Nascondi input strumento',
+    showToolInput: 'Mostra input strumento',
+    addApprovalReason: '▶ Aggiungi motivo approvazione (opzionale)',
+    hideApprovalReason: '▼ Nascondi',
+    approvalReasonLabel: 'Motivo approvazione (per log audit)',
+    rejectionReasonLabel: 'Motivo rifiuto (opzionale, per log audit)',
+    confirmReject: 'Conferma Rifiuto',
+    commandPlaceholder: 'Digita un comando...',
+    approveReasonPlaceholder: 'es., comando revisionato',
+    rejectReasonPlaceholder: 'es., comando non sicuro',
+    pauseReasonPlaceholder: 'es., revisione sicurezza necessaria',
+    resumeInstructionsPlaceholder: 'Fornisci istruzioni per l\'agente dopo la ripresa...',
+    subscriberIdPlaceholder: 'Inserisci ID sottoscrittore',
+    transferReasonPlaceholder: 'es., passaggio a mobile',
+    sessionCost: 'Costo',
+    idLabel: 'ID:',
   },
 
   newSession: {
@@ -604,6 +578,9 @@ export const it = {
     subtitle: 'Crea una nuova sessione Aegis',
     workDir: 'Directory di Lavoro',
     workDirDescription: 'Percorso assoluto dove verrà eseguita la sessione',
+    workDirPlaceholder: '/home/utente/progetti/miaapp',
+    sessionNamePlaceholder: 'mia-sessione',
+    commandPlaceholder: 'claude --print',
     sessionName: 'Nome Sessione',
     optional: '(opzionale)',
     claudeCommand: 'Comando Claude',
@@ -681,6 +658,7 @@ export const it = {
     invalidToken: 'Token API non valido',
     hideToken: 'Nascondi token',
     showToken: 'Mostra token',
+    brandName: 'Aegis',
   },
 
   modal: {
@@ -1066,6 +1044,23 @@ export const it = {
     newSessionShortcut: 'Nuova sessione (⌘N)',
 },
 
+
+  commandPalette: {
+    searchPlaceholder: 'Cerca sessioni, naviga, esegui comandiu2026',
+  },
+
+  notificationSettings: {
+    botTokenPlaceholder: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+    chatIdPlaceholder: '-1001234567890',
+    bot: 'Bot',
+    chat: 'Chat',
+    connected: 'Connesso',
+    connect: 'Connetti',
+  },
+
+  authKeyForm: {
+    namePlaceholder: 'ops-primary',
+  },
   cliShortcuts: {
     title: 'Scorciatoie CLI',
     viewOutput: 'Visualizza output',
@@ -1089,5 +1084,123 @@ export const it = {
   modelBadge: {
     title: 'Modello',
     effortTitle: 'Sforzo',
+  },
+
+  // i18n sweep 4
+  sessionTable: {
+    wakingAgents: 'Risveglio Agent',
+    wakingAgentsDescription: 'Connessione neurale con le sessioni attive...',
+    status: 'Stato',
+    createdBy: 'Creato da',
+    name: 'Nome',
+    workDir: 'WorkDir',
+    age: 'Età',
+    lastActivity: 'Ultima Attività',
+    permission: 'Permessi',
+    cost: 'Costo',
+    actions: 'Azioni',
+    activity: 'Attività',
+    searchPlaceholder: 'Cerca sessioni…',
+  },
+
+  newPipeline: {
+    title: 'Nuova Pipeline',
+    workDir: 'Directory di Lavoro',
+    workDirPlaceholder: '/home/utente/progetto',
+    namePlaceholder: 'nome',
+    promptPlaceholder: 'Prompt iniziale...',
+    pipelineNamePlaceholder: 'mia-pipeline',
+  },
+
+  createSession: {
+    title: 'Nuova Sessione',
+    noTemplates: 'Nessun template disponibile',
+    workDirLabel: 'WorkDir:',
+    stallThreshold: 'Soglia Stall:',
+    permissionModeLabel: 'Modalità Permesso:',
+    createdSessions: 'Sessioni create',
+    errors: 'Errori',
+    workDirPlaceholder: '/home/utente/progetto',
+    sessionNamePlaceholder: 'mia-sessione',
+    commandPlaceholder: 'claude --print',
+    promptPlaceholder: 'Correggi il bug di login...',
+    bulkPromptPlaceholder: 'Applica a tutte le sessioni senza prompt personalizzato...',
+    namePlaceholder: 'nome',
+    overridePromptPlaceholder: 'Prompt override...',
+    workDirPlaceholder2: '/home/utente/progetto',
+  },
+
+  drawer: {
+    collapse: 'Comprimi',
+    signOut: 'Esci',
+  },
+
+  templateModal: {
+    namePlaceholder: 'es. scaffold React',
+    descriptionPlaceholder: 'A cosa serve questo template?',
+    workDirPlaceholder: '/home/utente/progetto',
+    promptPlaceholder: 'Primo messaggio da inviare a Claude Code',
+    commandPlaceholder: 'es. claude --model opus',
+  },
+
+  saveTemplate: {
+    title: 'Salva come Template',
+    namePlaceholder: 'Nome del mio template',
+    descriptionPlaceholder: 'A cosa serve questo template?',
+  },
+
+  sessionExpired: {
+    title: 'Sessione Scaduta',
+    apiKeyPlaceholder: 'Inserisci la tua API key',
+  },
+
+  approvalStatus: {
+    approved: 'Approvato',
+    rejected: 'Rifiutato',
+  },
+
+  costTable: {
+    model: 'Modello',
+    cacheHit: 'Cache Hit',
+  },
+
+  metricsOverview: {
+    operationalMetrics: 'Metriche Operative',
+    trailingAverage: 'Media sessioni trailing',
+    delivered: 'Consegnati',
+    failed: 'Falliti',
+    totalSent: 'Totale Inviati',
+  },
+
+  latencyPanel: {
+    title: 'Latenza',
+    latest: 'Ultimo',
+    avg: 'Media',
+  },
+
+  rateLimitForecast: {
+    estimatedRemaining: 'Sessioni Rimanenti Stimate',
+    bottleneck: 'Collo di Bottiglia',
+    notReported: 'Limiti di rate non segnalati dal provider attuale.',
+  },
+
+  liveStream: {
+    paused: 'IN PAUSA',
+    noEvents: 'Nessun evento',
+    streamHint: 'Gli eventi dell\'agente appariranno qui in tempo reale',
+    title: 'Stream Live',
+  },
+
+  keyboard: {
+    title: 'Scorciatoie Tastiera',
+  },
+
+  budgetBar: {
+    noLimit: 'Nessun limite impostato',
+  },
+
+  auditChain: {
+    latestExport: 'Metadati ultima esportazione',
+    chainBroken: 'Catena interrotta',
   },
 };

@@ -1,5 +1,6 @@
 import type { SessionLatency } from '../../types';
 import { Icon } from '../Icon';
+import { useT } from '../../i18n/context';
 
 interface LatencyPanelProps {
   latency: SessionLatency | null;
@@ -26,6 +27,7 @@ function barWidth(avg: number | null): string {
 }
 
 export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
+  const t = useT();
   if (loading) {
     return (
       <div className="flex items-center justify-center h-36 text-[var(--color-text-muted)] text-sm animate-pulse">
@@ -73,7 +75,7 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
     <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
       <div className="flex items-center gap-2 mb-4">
         <Icon name="Gauge" size={16} className="text-[var(--color-text-muted)]" />
-        <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Latency</h3>
+        <h3 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">{t('latencyPanel.title')}</h3>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -103,11 +105,11 @@ export function LatencyPanel({ latency, loading }: LatencyPanelProps) {
 
             <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
               <div>
-                <div className="text-[var(--color-text-muted)] mb-0.5">Latest</div>
+                <div className="text-[var(--color-text-muted)] mb-0.5">{t('latencyPanel.latest')}</div>
                 <div className="text-[var(--color-accent-cyan)]">{formatMs(item.latest)}</div>
               </div>
               <div>
-                <div className="text-[var(--color-text-muted)] mb-0.5">Avg</div>
+                <div className="text-[var(--color-text-muted)] mb-0.5">{t('latencyPanel.avg')}</div>
                 <div className="text-[var(--color-text-primary)]">{formatMs(item.avg)}</div>
               </div>
             </div>

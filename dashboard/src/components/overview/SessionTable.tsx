@@ -482,8 +482,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     return (
       <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">{t('sessions.board.wakingAgents')}</h3>
-        <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessions.board.wakingAgentsSubtitle')}</p>
+        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">{t('sessionTable.wakingAgents')}</h3>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessionTable.wakingAgentsDescription')}</p>
       </div>
     );
   }
@@ -526,14 +526,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     setSearchInput(e.target.value);
                     setPage(1);
                   }}
-                  placeholder="Search sessions…"
+                  placeholder={t('sessionTable.searchPlaceholder')}
                    className="min-h-[44px] w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                   aria-label={t("aria.searchSessions")}
                 />
               </label>
 
               <label className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                <span>Status</span>
+                <span>{t('sessionTable.status')}</span>
                 <select
                   value={statusFilter}
                   onChange={(e) => {
@@ -826,15 +826,15 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                       className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
                     />
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">{t('sessions.board.createdBy')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Name</th>
-                  <th scope="col" className="px-4 py-3 font-medium">WorkDir</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Age</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessions.board.lastActivity')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Permission</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Cost</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Actions</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.status')}</th>
+                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">{t('sessionTable.createdBy')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.name')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.workDir')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.age')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.lastActivity')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.permission')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.cost')}</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.actions')}</th>
                 </tr>
               </thead>
               <tbody className="sr-only">

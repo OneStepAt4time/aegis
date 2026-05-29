@@ -181,7 +181,7 @@ export function SessionHeader({
         <span>Created: {formatDate(session.createdAt)}</span>
         <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
         <span className="group inline-flex items-center gap-1 font-mono">
-          <span className="hidden sm:inline">ID:</span>
+          <span className="hidden sm:inline">{t('sessionDetail.idLabel')}</span>
           {truncateMiddle(session.id, 16)}
           <CopyButton value={session.id} label="session ID" size={16} />
         </span>

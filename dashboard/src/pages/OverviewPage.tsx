@@ -273,7 +273,7 @@ export default function OverviewPage() {
 
         {/* Efficiency Gauge — 1/3 width */}
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.efficiencyGauge")}>
-          <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Efficiency</h3>
+          <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">{t('overview.efficiency')}</h3>
           <EfficiencyGauge
             score={totalTokens > 0 && totalSessions > 0 ? Math.min(100, Math.round((totalTokens / totalSessions) / 100)) : 0}
             unit="tok/session"
@@ -285,7 +285,7 @@ export default function OverviewPage() {
       {/* Zone E: Model Distribution Bar */}
       {analytics && analytics.tokenUsageByModel.length > 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">{t('analytics.modelDistribution')}</h3>
+          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">{t('overview.modelDistribution')}</h3>
           <ModelDistributionBar
             segments={analytics.tokenUsageByModel.map((m) => ({
               model: m.model,

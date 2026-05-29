@@ -125,7 +125,7 @@ export function PauseControlBar({
                   value={pauseReason}
                   onChange={(e) => setPauseReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handlePause()}
-                  placeholder="e.g., security review needed"
+                  placeholder={t('sessionDetail.pauseReasonPlaceholder')}
                   className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-warning)]/50 focus-visible:outline-none"
                   autoFocus
                 />
@@ -207,7 +207,7 @@ export function PauseControlBar({
                 id="intervention-guidance"
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
-                placeholder="Provide instructions for the agent to follow after resuming..."
+                placeholder={t('sessionDetail.resumeInstructionsPlaceholder')}
                 className="w-full rounded-md border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-void-lighter)] focus:border-[var(--color-cta-bg)]/50 focus-visible:outline-none resize-y"
                 rows={3}
                 autoFocus

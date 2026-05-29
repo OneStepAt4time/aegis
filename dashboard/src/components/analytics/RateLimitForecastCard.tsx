@@ -67,7 +67,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
             aria-hidden="true"
           />
           <div>
-            <div className="text-xs text-[var(--color-text-muted)]">Estimated Sessions Remaining</div>
+            <div className="text-xs text-[var(--color-text-muted)]">{t('rateLimitForecast.estimatedRemaining')}</div>
             <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
               {formatRemaining(estimatedSessionsRemaining)}
             </div>
@@ -82,7 +82,7 @@ export function RateLimitForecastCard({ forecast }: RateLimitForecastCardProps) 
             aria-hidden="true"
           />
           <div>
-            <div className="text-xs text-[var(--color-text-muted)]">Bottleneck</div>
+            <div className="text-xs text-[var(--color-text-muted)]">{t('rateLimitForecast.bottleneck')}</div>
             <div className="text-sm font-medium text-[var(--color-text-primary)]">
               {bottleneckLabel}
             </div>

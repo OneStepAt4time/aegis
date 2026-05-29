@@ -144,7 +144,7 @@ export function DiffViewer({ entries, isLoading }: DiffViewerProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <File className="h-8 w-8 text-[var(--color-text-muted)] opacity-40" aria-hidden="true" />
-        <p className="mt-3 text-sm text-[var(--color-text-muted)]">No file changes detected in this session.</p>
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">{t('sessionDetail.noFileChanges')}</p>
         <p className="mt-1 text-xs text-[var(--color-text-muted)] opacity-60">
           Edit and Write operations will appear here as inline diffs.
         </p>

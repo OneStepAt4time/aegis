@@ -1,3 +1,5 @@
+import { useT } from '../../i18n/context';
+
 /**
  * TokenBreakdown — Colored token usage bars for session metrics.
  */
@@ -17,6 +19,7 @@ function formatTokens(n: number): string {
 }
 
 export function TokenBreakdown(props: TokenBreakdownProps) {
+  const t = useT();
   const inputTokens = props.inputTokens ?? 0;
   const outputTokens = props.outputTokens ?? 0;
   const cacheCreationTokens = props.cacheCreationTokens ?? 0;
@@ -63,7 +66,7 @@ export function TokenBreakdown(props: TokenBreakdownProps) {
         ))}
         {estimatedCostUsd != null && (
           <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[var(--color-text-muted)]">Cost</span>
+            <span className="text-[var(--color-text-muted)]">{t('sessionDetail.sessionCost')}</span>
             <span className="text-[var(--color-accent-cyan)] font-mono">
               ${estimatedCostUsd < 0.01 ? estimatedCostUsd.toFixed(4) : estimatedCostUsd.toFixed(3)}
             </span>

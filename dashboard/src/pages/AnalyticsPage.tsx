@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]" role="status" aria-busy="true">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-accent-cyan)]" />
-        <span className="ml-3 text-sm text-[var(--color-text-muted)]">{t('analytics.loadingAnalytics')}</span>
+        <span className="ml-3 text-sm text-[var(--color-text-muted)]">{t('analytics.loading')}</span>
       </div>
     );
   }
@@ -323,7 +323,7 @@ export default function AnalyticsPage() {
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('analytics.analyticsTitle')}</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('analytics.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             {t('analytics.analyticsSubtitle')}
           </p>
@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
           return (
             <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 px-4 py-3 text-sm text-[var(--color-warning-glow)]">
               <span aria-hidden="true">⚠</span>
-              <span><strong>{t('analytics.dataAggregationInProgress')}</strong> {t('analytics.dataAggregationDescription')}</span>
+              <span><strong>{t('analytics.dataAggregationInProgress')}</strong> Session count is available but chart data is still being computed. Charts will populate once the metrics cache completes processing.</span>
             </div>
           );
         }

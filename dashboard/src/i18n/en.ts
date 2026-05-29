@@ -33,12 +33,8 @@ export const en = {
     processed: '{n} processed',
     total: 'total',
     activityHeatmap: 'Activity Heatmap',
-    heatmapPending: 'Heatmap requires daily token breakdown — pending backend API',
-    loadingMetrics: 'Loading metrics…',
-    costPerDay: 'Cost / Day',
-    noCostData: 'No cost data available yet',
-    recentSessionsLabel: 'Recent Sessions',
-    newSessionShortcut: 'New Session (⌘N)',
+    efficiency: 'Efficiency',
+    modelDistribution: 'Model Distribution',
   },
   
   sessions: {
@@ -167,24 +163,8 @@ export const en = {
       settingsLink: 'Settings',
     },
     dismissBudgetAlert: 'Dismiss budget alert',
-    avgDaily: 'Avg Daily',
-    last7DaysAvg: 'Last 7 Days Avg',
-    projectedMonth: 'Projected Month',
-    daysPastRemaining: '{passed}d past, {remaining}d remaining',
-    costLabel: '{days}-Day Cost',
-    costLabelShort: 'Total Cost',
     usageTracking: 'Usage tracking, burn rate, and budget alerts',
-    dailySpendDays: 'Daily Spend ({count} days)',
-    costAnalyticsTitle: 'Cost Analytics',
-    costByModel: 'Cost by Model',
-    modelDetails: 'Model Details',
-    burnRatePerHour: '{rate}/hr burn rate',
-    sessionsRunningNoCost: 'Sessions are running but cost data is not yet available. Cost metrics populate once the metrics pipeline processes session data.',
-    costWillAppear: 'Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data.',
-    vsAvg: '{pct}% vs avg',
-    range7d: '7 Days',
-    range30d: '30 Days',
-    range90d: '90 Days',
+    avgDaily: 'Avg Daily',
   },
   
   audit: {
@@ -207,6 +187,9 @@ export const en = {
     integrityVerified: 'Integrity verified',
     integrityFailed: 'Integrity check failed',
     timestamp: 'Timestamp',
+    actorPlaceholder: 'e.g. admin-key',
+    actionPlaceholder: 'e.g. session.kill',
+    sessionPlaceholder: 'e.g. 11111111-1111-1111-1111-111111111111',
     actor: 'Actor',
     action: 'Action',
     session: 'Session',
@@ -223,29 +206,14 @@ export const en = {
     exportNdjson: 'Export NDJSON',
     verificationFailed: 'Verification failed',
     exportFailed: 'Failed to export audit log',
-    latestExportMetadata: 'Latest export metadata',
-    chainBroken: 'Chain broken',
     recordDetail: 'Record Detail',
     previousHash: 'Previous Hash',
-    fullRecordJson: 'Full Record (JSON)',
-    filters: 'Filters',
-    sessionIdLabel: 'Session ID',
-    fromLabel: 'From',
-    toLabel: 'To',
-    endpointMissing: 'Audit endpoint not available yet',
-    endpointMissingDescription: 'The /v1/audit endpoint has not been implemented on the server.',
-    failedLoad: 'Failed to load audit logs',
     auditTrail: 'Audit Trail',
-    auditTrailSubtitle: 'Query admin audit events, export CSV or NDJSON, and review chain-integrity metadata.',
-    verifyingChain: 'Verifying chain…',
-    chainVerified: 'Chain verified ({count} records)',
-    integrityCheckFailedError: 'Integrity check failed: {error}',
-    exportFiltersNote: 'CSV and NDJSON exports use the currently applied filters.',
-    chainVerificationFailed: 'Chain verification failed at line {line}.',
-    recordsCount: '{total} records',
-    recordsCount_one: '1 record',
-    pageOf: 'Page {page} of {totalPages}',
-    perPage: '{size} / page',
+    filters: 'Filters',
+    sessionId: 'Session ID',
+    endpointNotAvailable: 'Audit endpoint not available yet',
+    failedToLoad: 'Failed to load audit logs',
+    pageSize: 'Page size',
   },
   analytics: {
     title: 'Analytics',
@@ -269,23 +237,8 @@ export const en = {
     manualApprovals: 'Manual Approvals',
     heatmapLess: 'Less',
     heatmapMore: 'More',
-    analyticsTitle: 'Analytics',
-    analyticsSubtitle: 'Session volume, token usage, cost trends, and error rates',
-    modelDistribution: 'Model Distribution',
-    totalCostKpi: 'Total Cost',
-    totalTokensKpi: 'Total Tokens',
-    sessionsKpi: 'Sessions',
-    avgDurationKpi: 'Avg Duration',
-    errorRateKpi: 'Error Rate',
-    loadingAnalytics: 'Loading analytics...',
     dataAggregationInProgress: 'Data aggregation in progress.',
-    dataAggregationDescription: 'Session count is available but chart data is still being computed. Charts will populate once the metrics cache completes processing.',
-    noDataAvailable: 'No data available yet',
-    calculating: 'Calculating…',
-    tokens: 'tokens',
-    dailyCostChart: 'Daily Cost',
-    sessionsChart: 'Sessions',
-    avgDurationChart: 'Avg Duration',
+    modelDistribution: 'Model Distribution',
   },
 
   metrics: {
@@ -298,23 +251,8 @@ export const en = {
     emptyState: 'No session data found for the selected time range.',
     sessions: 'Sessions',
     tokenCost: 'Token Cost',
-    totalSessions: 'Total Sessions',
-    avgDuration: 'Avg Duration',
-    totalCost: 'Total Cost',
-    approvalRate: 'Approval Rate',
-    sessionsCostOverTime: 'Sessions & Cost Over Time',
-    tokenCostTrend: 'Token Cost Trend',
-    breakdownByKey: 'Breakdown by API Key',
-    keyName: 'Key Name',
-    messagesCol: 'Messages',
-    toolCallsCol: 'Tool Calls',
-    tokenCostCol: 'Token Cost',
-    anomalousSessions: 'Anomalous Sessions ({count})',
-    anomalyDescription: 'Sessions flagged for token cost exceeding p95 by 3x or more.',
-    exportCsv: 'Export CSV',
-    range7d: '7 Days',
-    range30d: '30 Days',
-    range90d: '90 Days',
+    messages: 'Messages',
+    toolCalls: 'Tool Calls',
   },
   
   authKeys: {
@@ -404,6 +342,8 @@ export const en = {
     title: 'Settings',
     subtitle: 'Dashboard preferences',
     saveErrorTitle: 'Settings could not be saved',
+    storageUnavailable: 'Settings storage unavailable',
+    onboarding: 'Onboarding',
     
     display: {
       title: 'Display',
@@ -595,6 +535,40 @@ export const en = {
     pendingQuestionContent: 'Claude is waiting for your answer. Reply below to continue.',
     pendingQuestionTitle: 'Claude needs an answer',
     pendingQuestionReply: 'Reply below to keep the session moving.',
+    // i18n sweep 4 — session component strings
+    noMessages: 'No messages yet',
+    noAuditEvents: 'No audit events for this session',
+    noFileChanges: 'No file changes detected in this session.',
+    noTimelineEvents: 'No timeline events yet',
+    timelineEventsHint: 'Events will appear as the session progresses',
+    filterLabel: 'Filter:',
+    noTokenData: 'No token data yet',
+    scanningPR: 'Scanning transcript for PR info…',
+    pullRequest: 'Pull Request',
+    noPRDetected: 'No pull request detected for this session.',
+    noPRHint: 'PR info will appear here when a PR is created via',
+    ciStatusHint: 'CI status and review comments require GitHub API integration (Phase 2).',
+    repository: 'Repository:',
+    noDriverClaimed: 'No driver claimed',
+    expiredRequest: 'This approval request has expired.',
+    toolApprovalRequired: 'Tool Approval Required',
+    noDescription: 'No description available.',
+    hideToolInput: 'Hide tool input',
+    showToolInput: 'Show tool input',
+    addApprovalReason: '▶ Add approval reason (optional)',
+    hideApprovalReason: '▼ Hide',
+    approvalReasonLabel: 'Approval reason (for audit log)',
+    rejectionReasonLabel: 'Rejection reason (optional, for audit log)',
+    confirmReject: 'Confirm Reject',
+    commandPlaceholder: 'Type a command...',
+    approveReasonPlaceholder: 'e.g., reviewed the command',
+    rejectReasonPlaceholder: 'e.g., unsafe command',
+    pauseReasonPlaceholder: 'e.g., security review needed',
+    resumeInstructionsPlaceholder: 'Provide instructions for the agent to follow after resuming...',
+    subscriberIdPlaceholder: 'Enter subscriber ID',
+    transferReasonPlaceholder: 'e.g., switching to mobile',
+    sessionCost: 'Cost',
+    idLabel: 'ID:',
   },
   
   newSession: {
@@ -602,6 +576,9 @@ export const en = {
     subtitle: 'Create a new Aegis session',
     workDir: 'Working Directory',
     workDirDescription: 'Absolute path where the session will run',
+    workDirPlaceholder: '/home/user/projects/myapp',
+    sessionNamePlaceholder: 'my-session',
+    commandPlaceholder: 'claude --print',
     sessionName: 'Session Name',
     optional: '(optional)',
     claudeCommand: 'Claude Command',
@@ -679,6 +656,7 @@ export const en = {
     hideToken: 'Hide token',
     signInWithSSO: 'Sign in with SSO',
     showToken: 'Show token',
+    brandName: 'Aegis',
   },
   
   modal: {
@@ -1073,6 +1051,23 @@ export const en = {
     newSessionShortcut: 'New Session (⌘N)',
 },
 
+
+  commandPalette: {
+    searchPlaceholder: 'Search sessions, navigate, run commandsu2026',
+  },
+
+  notificationSettings: {
+    botTokenPlaceholder: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+    chatIdPlaceholder: '-1001234567890',
+    bot: 'Bot',
+    chat: 'Chat',
+    connected: 'Connected',
+    connect: 'Connect',
+  },
+
+  authKeyForm: {
+    namePlaceholder: 'ops-primary',
+  },
   cliShortcuts: {
     title: 'CLI Shortcuts',
     viewOutput: 'View output',
@@ -1096,6 +1091,124 @@ export const en = {
     effortTitle: 'Effort',
   },
   
+
+  // i18n sweep 4 — new namespaces
+  sessionTable: {
+    wakingAgents: 'Waking Agents',
+    wakingAgentsDescription: 'Establishing neural link with active sessions...',
+    status: 'Status',
+    createdBy: 'Created by',
+    name: 'Name',
+    workDir: 'WorkDir',
+    age: 'Age',
+    lastActivity: 'Last Activity',
+    permission: 'Permission',
+    cost: 'Cost',
+    actions: 'Actions',
+    activity: 'Activity',
+    searchPlaceholder: 'Search sessions…',
+  },
+
+  newPipeline: {
+    title: 'New Pipeline',
+    workDir: 'Working Directory',
+    workDirPlaceholder: '/home/user/project',
+    namePlaceholder: 'name',
+    promptPlaceholder: 'Initial prompt...',
+    pipelineNamePlaceholder: 'my-pipeline',
+  },
+
+  createSession: {
+    title: 'New Session',
+    noTemplates: 'No templates available',
+    workDirLabel: 'WorkDir:',
+    stallThreshold: 'Stall Threshold:',
+    permissionModeLabel: 'Permission Mode:',
+    createdSessions: 'Created sessions',
+    errors: 'Errors',
+    workDirPlaceholder: '/home/user/project',
+    sessionNamePlaceholder: 'my-session',
+    commandPlaceholder: 'claude --print',
+    promptPlaceholder: 'Fix the login bug...',
+    bulkPromptPlaceholder: 'Apply to all sessions without a per-row prompt...',
+    namePlaceholder: 'name',
+    overridePromptPlaceholder: 'Override prompt...',
+    workDirPlaceholder2: '/home/user/project',
+  },
+
+  drawer: {
+    collapse: 'Collapse',
+    signOut: 'Sign out',
+  },
+
+  templateModal: {
+    namePlaceholder: 'e.g. React scaffold',
+    descriptionPlaceholder: 'What is this template for?',
+    workDirPlaceholder: '/home/user/project',
+    promptPlaceholder: 'First message to send Claude Code',
+    commandPlaceholder: 'e.g. claude --model opus',
+  },
+
+  saveTemplate: {
+    title: 'Save as Template',
+    namePlaceholder: 'My template name',
+    descriptionPlaceholder: 'What is this template for?',
+  },
+
+  sessionExpired: {
+    title: 'Session Expired',
+    apiKeyPlaceholder: 'Enter your API key',
+  },
+
+  approvalStatus: {
+    approved: 'Approved',
+    rejected: 'Rejected',
+  },
+
+  costTable: {
+    model: 'Model',
+    cacheHit: 'Cache Hit',
+  },
+
+  metricsOverview: {
+    operationalMetrics: 'Operational Metrics',
+    trailingAverage: 'Trailing session average',
+    delivered: 'Delivered',
+    failed: 'Failed',
+    totalSent: 'Total Sent',
+  },
+
+  latencyPanel: {
+    title: 'Latency',
+    latest: 'Latest',
+    avg: 'Avg',
+  },
+
+  rateLimitForecast: {
+    estimatedRemaining: 'Estimated Sessions Remaining',
+    bottleneck: 'Bottleneck',
+    notReported: 'Rate limits not reported by the current provider.',
+  },
+
+  liveStream: {
+    paused: 'PAUSED',
+    noEvents: 'No events yet',
+    streamHint: 'Agent events will stream here in real time',
+    title: 'Live Stream',
+  },
+
+  keyboard: {
+    title: 'Keyboard Shortcuts',
+  },
+
+  budgetBar: {
+    noLimit: 'No limit set',
+  },
+
+  auditChain: {
+    latestExport: 'Latest export metadata',
+    chainBroken: 'Chain broken',
+  },
 } as const;
 
 export type Messages = typeof en;

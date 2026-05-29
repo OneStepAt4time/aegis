@@ -21,6 +21,7 @@
  */
 
 import { Icon } from '../Icon';
+import { useT } from '../../i18n/context';
 
 export interface RateLimitWindow {
   /** Short label, e.g. "5h" / "7d" / "Opus" / "Sonnet" / "Cowork". */
@@ -54,6 +55,7 @@ function formatPercent(used: number, total: number): string {
 }
 
 export function RateLimitCard({ limits, forecast }: RateLimitCardProps) {
+  const t = useT();
   if (limits === null) {
     // Not a card — a single muted inline line that explains its own
     // absence. Keeps the Metrics tab compact on providers that don't
@@ -61,7 +63,7 @@ export function RateLimitCard({ limits, forecast }: RateLimitCardProps) {
     return (
       <div className="flex items-center gap-2 px-1 py-2 text-[11px] text-[var(--color-text-muted)]">
         <Icon name="Activity" size={12} />
-        <span>Rate limits not reported by the current provider.</span>
+        <span>{t('rateLimitForecast.notReported')}</span>
       </div>
     );
   }

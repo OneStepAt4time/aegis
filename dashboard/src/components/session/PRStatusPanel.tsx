@@ -7,6 +7,7 @@
  */
 
 import { useMemo } from 'react';
+import { useT } from '../../i18n/context';
 import { GitPullRequest, ExternalLink, GitBranch, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
 import type { ParsedEntry } from '../../types';
 
@@ -86,13 +87,14 @@ function CIStatusBadge({ status }: { status: 'pass' | 'fail' | 'pending' | 'unkn
 }
 
 export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
+  const t = useT();
   const prInfo = useMemo(() => parsePRFromTranscript(entries), [entries]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-6" role="status" aria-busy="true">
         <Loader2 className="h-4 w-4 animate-spin text-[var(--color-accent-cyan)]" />
-        <span className="ml-2 text-sm text-[var(--color-text-muted)]">Scanning transcript for PR info…</span>
+        <span className="ml-2 text-sm text-[var(--color-text-muted)]">{t('sessionDetail.scanningPR')}</span>
       </div>
     );
   }
@@ -103,10 +105,10 @@ export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
       <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-6">
         <div className="flex items-center gap-3 mb-3">
           <GitPullRequest className="h-5 w-5 text-[var(--color-text-muted)]" aria-hidden="true" />
-          <h3 className="text-sm font-medium text-[var(--color-text-primary)]">Pull Request</h3>
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)]">{t('sessionDetail.pullRequest')}</h3>
         </div>
         <p className="text-xs text-[var(--color-text-muted)]">
-          No pull request detected for this session. PR info will appear here when a PR is created via <code className="rounded bg-[var(--color-void-lighter)] px-1 py-0.5 font-mono text-[10px]">gh pr create</code>.
+          {t('sessionDetail.noPRDetected')} {t('sessionDetail.noPRHint')} <code className="rounded bg-[var(--color-void-lighter)] px-1 py-0.5 font-mono text-[10px]">gh pr create</code>.
         </p>
       </div>
     );
@@ -116,7 +118,7 @@ export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
     <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-6">
       <div className="flex items-center gap-3 mb-4">
         <GitPullRequest className="h-5 w-5 text-[var(--color-accent-cyan)]" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">Pull Request</h3>
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">{t('sessionDetail.pullRequest')}</h3>
         <CIStatusBadge status="unknown" />
       </div>
 
@@ -147,7 +149,7 @@ export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
         {/* Repo */}
         {prInfo.repo && (
           <div className="text-xs text-[var(--color-text-muted)]">
-            Repository: <span className="font-mono">{prInfo.repo}</span>
+            {t('sessionDetail.repository')} <span className="font-mono">{prInfo.repo}</span>
           </div>
         )}
       </div>
@@ -155,7 +157,7 @@ export function PRStatusPanel({ entries, isLoading }: PRStatusPanelProps) {
       {/* Phase 2 hint */}
       <div className="mt-4 border-t border-[var(--color-border-strong)] pt-3">
         <p className="text-[10px] text-[var(--color-text-muted)] opacity-60">
-          CI status and review comments require GitHub API integration (Phase 2).
+          {t('sessionDetail.ciStatusHint')}
         </p>
       </div>
     </div>

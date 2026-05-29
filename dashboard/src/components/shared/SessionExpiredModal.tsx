@@ -57,7 +57,7 @@ export function SessionExpiredModal() {
             <Lock className="h-5 w-5 text-[var(--color-warning)]" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Session Expired</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">{t('sessionExpired.title')}</h2>
             <p className="text-xs text-[var(--color-text-muted)]">Your session has timed out after 1 hour</p>
           </div>
         </div>
@@ -72,7 +72,7 @@ export function SessionExpiredModal() {
               type={showToken ? 'text' : 'password'}
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Enter your API key"
+              placeholder={t('sessionExpired.apiKeyPlaceholder')}
               className="min-h-[44px] w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 pr-12 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none"
               autoFocus
               autoComplete="off"
