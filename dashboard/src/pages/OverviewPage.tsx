@@ -193,7 +193,7 @@ export default function OverviewPage() {
           aria-label={t("aria.createNewSession")}
         >
           <Plus className="h-3.5 w-3.5" />
-          New Session
+          {t('newSession.title')}
         </button>
       </div>
 
@@ -202,9 +202,9 @@ export default function OverviewPage() {
 
       {/* Zone A: Heatmap Cards (4-column) — needs daily token breakdown from backend */}
       <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-        <h3 className="mb-3 text-sm font-medium text-[var(--color-text-muted)]">Activity Heatmap</h3>
+        <h3 className="mb-3 text-sm font-medium text-[var(--color-text-muted)]">{t('overview.activityHeatmap')}</h3>
         <div className="flex h-[60px] items-center justify-center text-xs text-[var(--color-text-muted)]">
-          Heatmap requires daily token breakdown — pending backend API
+          {t('overview.heatmapPending')}
         </div>
       </div>
 
@@ -218,7 +218,7 @@ export default function OverviewPage() {
       {analyticsLoading && (
         <div className="flex items-center justify-center py-4" role="status" aria-busy="true">
           <Loader2 className="h-4 w-4 animate-spin text-[var(--color-accent-cyan)]" />
-          <span className="ml-2 text-sm text-[var(--color-text-muted)]">Loading metrics…</span>
+          <span className="ml-2 text-sm text-[var(--color-text-muted)]">{t('overview.loadingMetrics')}</span>
         </div>
       )}
 
@@ -259,14 +259,14 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Cost/Day chart — 2/3 width */}
         <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.dailyCostChart")}>
-          <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">Cost / Day</h3>
+          <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">{t('overview.costPerDay')}</h3>
           {analytics && (analytics.costTrends ?? []).length > 0 ? (
             <Suspense fallback={<div className="h-[220px] animate-pulse rounded bg-[var(--color-void-lighter)]/20" />}>
               <OverviewCostChart data={analytics.costTrends} />
             </Suspense>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-sm text-[var(--color-text-muted)]">
-              No cost data available yet
+              {t('overview.noCostData')}
             </div>
           )}
         </section>
@@ -285,7 +285,7 @@ export default function OverviewPage() {
       {/* Zone E: Model Distribution Bar */}
       {analytics && analytics.tokenUsageByModel.length > 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">Model Distribution</h3>
+          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">{t('analytics.modelDistribution')}</h3>
           <ModelDistributionBar
             segments={analytics.tokenUsageByModel.map((m) => ({
               model: m.model,
@@ -298,7 +298,7 @@ export default function OverviewPage() {
 
       {/* Zone F: Keyboard Shortcuts Hint */}
       <div className="hidden sm:flex items-center justify-center gap-4 border-t border-[var(--color-border-strong)] pt-3 text-xs text-[var(--color-text-muted)]">
-        <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">N</kbd> new session</span>
+        <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">N</kbd> {t('overview.newSessionShortcut')}</span>
         <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">R</kbd> refresh</span>
         <span><kbd className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> back</span>
       </div>
@@ -311,7 +311,7 @@ export default function OverviewPage() {
           className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
           id="recent-sessions-heading"
         >
-          Recent Sessions
+          {t('overview.recentSessionsLabel')}
         </h3>
         <div className="flex items-center justify-between">
           <LastUpdatedIndicator relativeTime={relativeTime} isStale={isStale} />

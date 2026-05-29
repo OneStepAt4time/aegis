@@ -212,7 +212,7 @@ export default function CostPage() {
           <DollarSign className="h-6 w-6 text-[var(--color-accent-cyan)]" />
           <div>
             <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">Usage tracking, burn rate, and budget alerts</p>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('cost.usageTracking')}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -264,8 +264,8 @@ export default function CostPage() {
           icon={<DollarSign className="h-8 w-8" />}
           title={t("cost.noCostData")}
           description={hasSessions
-            ? 'Sessions are running but cost data is not yet available. Cost metrics populate once the metrics pipeline processes session data.'
-            : 'Cost metrics will appear once Aegis starts tracking usage. Start a session to begin collecting data.'
+            ? t('cost.sessionsRunningNoCost')
+            : t('cost.costWillAppear')
           }
         />
       </div>
@@ -280,7 +280,7 @@ export default function CostPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Cost & Billing</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Usage tracking, burn rate, and budget alerts
+            {t('cost.usageTracking')}
             {sseConnected && (
               <span className="ml-2 inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
@@ -295,7 +295,7 @@ export default function CostPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 text-xs text-[var(--color-text-muted)]">
-            {daysWithData > 7 ? `${daysWithData}-Day` : 'Total'} Cost
+            {daysWithData > 7 ? t('cost.costLabel', { days: daysWithData }) : t('cost.costLabelShort')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {formatCurrency(totalCost)}
@@ -303,7 +303,7 @@ export default function CostPage() {
         </div>
 
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <div className="mb-1 text-xs text-[var(--color-text-muted)]">Avg Daily</div>
+          <div className="mb-1 text-xs text-[var(--color-text-muted)]">{t('cost.avgDaily')}</div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {formatCurrency(avgDailyCost)}
           </div>
@@ -312,14 +312,14 @@ export default function CostPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <TrendingUp className="h-3 w-3" />
-            Last 7 Days Avg
+            {t('cost.last7DaysAvg')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {formatCurrency(last7Avg)}
           </div>
           {avgDailyCost > 0 && (
             <div className="mt-1 text-xs text-[var(--color-text-muted)]">
-              {last7Avg > avgDailyCost ? '+' : ''}{((last7Avg / avgDailyCost - 1) * 100).toFixed(1)}% vs avg
+              {t('cost.vsAvg', { pct: `${last7Avg > avgDailyCost ? '+' : ''}${((last7Avg / avgDailyCost - 1) * 100).toFixed(1)}` })}
             </div>
           )}
         </div>
@@ -327,13 +327,13 @@ export default function CostPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <Calendar className="h-3 w-3" />
-            Projected Month
+            {t('cost.projectedMonth')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {formatCurrency(projectedMonthCost)}
           </div>
           <div className="mt-1 text-xs text-[var(--color-text-muted)]">
-            {daysPassed}d past, {daysRemaining}d remaining
+            {t('cost.daysPastRemaining', { passed: daysPassed, remaining: daysRemaining })}
           </div>
         </div>
       </div>
@@ -342,7 +342,7 @@ export default function CostPage() {
       {dailyData.length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.dailySpendChart')}>
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-            Daily Spend ({dailyData.length} days)
+            {t('cost.dailySpendDays', { count: dailyData.length })}
           </h3>
           <div className="h-64 min-w-0">
             <ChartBar data={{
@@ -368,10 +368,10 @@ export default function CostPage() {
       <section aria-label={t('aria.costAnalytics')}>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
-            Cost Analytics
+            {t('cost.costAnalyticsTitle')}
             {costSummary?.burnRateUsdPerHour && costSummary.burnRateUsdPerHour > 0 && (
               <span className="ml-3 text-sm font-normal text-[var(--color-accent-cyan)]">
-                {formatCurrency(costSummary.burnRateUsdPerHour)}/hr burn rate
+                {t('cost.burnRatePerHour', { rate: formatCurrency(costSummary.burnRateUsdPerHour) })}
               </span>
             )}
           </h2>
@@ -396,7 +396,7 @@ export default function CostPage() {
           {/* Pie chart */}
           <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.costByModelChart')}>
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-              Cost by Model
+              {t('cost.costByModel')}
             </h3>
             <div className="h-64 min-w-0">
               <ChartPie data={{
@@ -412,7 +412,7 @@ export default function CostPage() {
           {/* Model list */}
           <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.modelDetails')}>
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-              Model Details
+              {t('cost.modelDetails')}
             </h3>
             <div className="space-y-3">
               {modelData.map((model) => {

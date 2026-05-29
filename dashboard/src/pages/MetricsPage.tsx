@@ -106,7 +106,7 @@ export default function MetricsPage() {
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Metrics</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('metrics.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Aggregated usage analytics across sessions
             {sseConnected && (
@@ -134,7 +134,7 @@ export default function MetricsPage() {
                   : 'bg-[var(--color-surface-strong)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
               }`}
             >
-              {r === '7d' ? '7 Days' : r === '30d' ? '30 Days' : '90 Days'}
+              {t(r === '7d' ? 'metrics.range7d' : r === '30d' ? 'metrics.range30d' : 'metrics.range90d')}
             </button>
           ))}
 
@@ -164,7 +164,7 @@ export default function MetricsPage() {
           className="flex min-h-[44px] items-center gap-1.5 rounded-md bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:text-[var(--color-text-muted)]"
         >
           <Download className="h-3.5 w-3.5" />
-          Export CSV
+          {t('metrics.exportCsv')}
         </button>
       </div>
 
@@ -191,7 +191,7 @@ export default function MetricsPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <BarChart3 className="h-3 w-3" />
-            Total Sessions
+            {t('metrics.totalSessions')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {(summary?.totalSessions ?? 0).toLocaleString()}
@@ -201,7 +201,7 @@ export default function MetricsPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <Clock className="h-3 w-3" />
-            Avg Duration
+            {t('metrics.avgDuration')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {summary ? formatDuration(summary.avgDurationSeconds) : '—'}
@@ -211,7 +211,7 @@ export default function MetricsPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <DollarSign className="h-3 w-3" />
-            Total Cost
+            {t('metrics.totalCost')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {summary ? formatCurrency(summary.totalTokenCostUsd) : '—'}
@@ -221,7 +221,7 @@ export default function MetricsPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
           <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <CheckCircle className="h-3 w-3" />
-            Approval Rate
+            {t('metrics.approvalRate')}
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
             {summary?.permissionApprovalRate != null ? `${summary.permissionApprovalRate}%` : '—'}
@@ -236,10 +236,10 @@ export default function MetricsPage() {
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[var(--color-warning)] mt-0.5" />
             <div>
               <h4 className="text-sm font-medium text-[var(--color-warning-glow)]">
-                Anomalous Sessions ({(data.anomalies ?? []).length})
+                {t('metrics.anomalousSessions', { count: (data.anomalies ?? []).length })}
               </h4>
               <p className="mt-1 text-xs text-[var(--color-warning)]/80">
-                Sessions flagged for token cost exceeding p95 by 3x or more.
+                {t('metrics.anomalyDescription')}
               </p>
               <div className="mt-2 space-y-1">
                 {(data.anomalies ?? []).map((a) => (
@@ -262,7 +262,7 @@ export default function MetricsPage() {
       {data && granularity !== 'key' && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-            Sessions &amp; Cost Over Time
+            {t('metrics.sessionsCostOverTime')}
           </h3>
           <div className="h-64 min-w-0">
             <ChartBar data={{
@@ -288,7 +288,7 @@ export default function MetricsPage() {
       {data && granularity !== 'key' && (data.timeSeries ?? []).length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-            Token Cost Trend
+            {t('metrics.tokenCostTrend')}
           </h3>
           <div className="h-48 min-w-0">
             <ChartLine data={{
@@ -315,17 +315,17 @@ export default function MetricsPage() {
       {data && (data.byKey ?? []).length > 0 && (
         <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
-            Breakdown by API Key
+            {t('metrics.breakdownByKey')}
           </h3>
           <div className="overflow-x-auto" tabIndex={0} aria-label={t("aria.metricsTable")}>
             <table className="w-full text-sm" aria-label={t("aria.metricsByKey")}>
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
-                  <th scope="col" className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">Key Name</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Sessions</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Messages</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Tool Calls</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">Token Cost</th>
+                  <th scope="col" className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.keyName')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.sessions')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.messagesCol')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.toolCallsCol')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.tokenCostCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -349,7 +349,7 @@ export default function MetricsPage() {
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-8 text-center">
           <BarChart3 className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" />
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            No session data found for the selected time range.
+            {t('metrics.emptyState')}
           </p>
         </div>
       )}

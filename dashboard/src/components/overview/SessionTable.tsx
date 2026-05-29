@@ -482,8 +482,8 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     return (
       <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">Waking Agents</h3>
-        <p className="mt-2 text-sm text-[var(--color-text-muted)]">Establishing neural link with active sessions...</p>
+        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">{t('sessions.board.wakingAgents')}</h3>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessions.board.wakingAgentsSubtitle')}</p>
       </div>
     );
   }
@@ -827,11 +827,11 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                     />
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">Created by</th>
+                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">{t('sessions.board.createdBy')}</th>
                   <th scope="col" className="px-4 py-3 font-medium">Name</th>
                   <th scope="col" className="px-4 py-3 font-medium">WorkDir</th>
                   <th scope="col" className="px-4 py-3 font-medium">Age</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Last Activity</th>
+                  <th scope="col" className="px-4 py-3 font-medium">{t('sessions.board.lastActivity')}</th>
                   <th scope="col" className="px-4 py-3 font-medium">Permission</th>
                   <th scope="col" className="px-4 py-3 font-medium">Cost</th>
                   <th scope="col" className="px-4 py-3 font-medium">Actions</th>
@@ -871,7 +871,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   aria-label={t("aria.prevPage")}
                   className="flex min-h-[44px] items-center gap-1 rounded-md border border-[var(--color-void-lighter)] px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <ChevronLeft className="h-4 w-4" /> Previous
+                  <ChevronLeft className="h-4 w-4" /> {t('sessions.board.previousPage')}
                 </button>
                 <button
                   type="button"
@@ -880,7 +880,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                   aria-label={t("aria.nextPage")}
                   className="flex min-h-[44px] items-center gap-1 rounded-md border border-[var(--color-void-lighter)] px-3 py-2 transition-colors hover:border-[var(--color-void-lighter)] hover:text-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-40"
                 >
-                  Next <ChevronRight className="h-4 w-4" />
+                  {t('sessions.board.nextPage')} <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
