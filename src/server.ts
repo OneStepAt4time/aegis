@@ -244,6 +244,21 @@ const GLOBAL_RATE_LIMIT_CONFIG = {
 
 app.register(fastifyRateLimit, GLOBAL_RATE_LIMIT_CONFIG);
 
+// #4435: Treat empty JSON body as {} — Fastify's default parser throws on
+// Content-Type: application/json with no body, breaking endpoints like
+// POST /v1/sessions/:id/fork that accept optional bodies.
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  if (typeof body === 'string' && body.trim().length === 0) {
+    return done(null, {});
+  }
+  try {
+    const json = JSON.parse(body as string);
+    done(null, json);
+  } catch (e: unknown) {
+    done(e as Error, undefined);
+  }
+});
+
 // #1108: Decorate request with authKeyId — type-safe alternative to unsafe cast
 app.decorateRequest('authKeyId', null as unknown as string);
 app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
