@@ -62,6 +62,8 @@ function buildCreateSessionSchema(ctx: RouteContext) {
   }).strict();
 }
 
+const metaSetSchema = z.record(z.string().min(1).max(64), z.string().max(256));
+
 const batchDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).max(100).optional(),
   status: z.enum([
@@ -698,6 +700,65 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   }));
+
+  // ── Issue #4484: Per-session metadata KV store ─────────────────────
+  const META_MAX_KEYS = 20;
+  const META_MAX_VALUE_LENGTH = 256;
+
+  /** Validate metadata input: max 20 keys, max 256 chars per value. */
+  function validateMetadata(metadata: Record<string, string>): string | null {
+    const keys = Object.keys(metadata);
+    if (keys.length === 0) return 'Metadata must contain at least one key';
+    if (keys.length > META_MAX_KEYS) return `Maximum ${META_MAX_KEYS} keys allowed`;
+    for (const [key, value] of Object.entries(metadata)) {
+      if (!key.trim()) return 'Metadata keys must be non-empty';
+      if (key.length > 64) return 'Metadata keys must be 64 characters or less';
+      if (value.length > META_MAX_VALUE_LENGTH) return `Metadata value for "${key}" exceeds ${META_MAX_VALUE_LENGTH} characters`;
+    }
+    return null;
+  }
+
+  // POST /v1/sessions/:id/meta — set metadata key/value pairs (merge)
+  registerWithLegacy(app, 'post', '/v1/sessions/:id/meta', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    const parsed = metaSetSchema.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'Invalid request body', details: parsed.error.issues });
+
+    const validationError = validateMetadata(parsed.data);
+    if (validationError) return reply.status(400).send({ error: validationError });
+
+    if (!session.metadata) session.metadata = {};
+    const currentCount = Object.keys(session.metadata ?? {}).length;
+    const newKeys = Object.keys(parsed.data).filter(k => !(k in (session.metadata ?? {})));
+    if (currentCount + newKeys.length > META_MAX_KEYS) {
+      return reply.status(400).send({ error: `Would exceed maximum ${META_MAX_KEYS} keys (currently ${currentCount})` });
+    }
+
+    Object.assign(session.metadata!, parsed.data);
+    return { metadata: session.metadata };
+  }));
+
+  // GET /v1/sessions/:id/meta — retrieve all metadata
+  registerWithLegacy(app, 'get', '/v1/sessions/:id/meta', withOwnership(sessions, async (_req: FastifyRequest, _reply: FastifyReply, session) => {
+    return { metadata: session.metadata ?? {} };
+  }));
+
+  // DELETE /v1/sessions/:id/meta/:key — remove a single metadata key
+  registerWithLegacy(app, 'delete', '/v1/sessions/:id/meta/:key', withOwnership(sessions, async (req: FastifyRequest, reply: FastifyReply, session) => {
+    const key = (req.params as { key: string }).key;
+    if (!key) return reply.status(400).send({ error: 'Metadata key is required' });
+
+    if (!session.metadata || !(key in session.metadata)) {
+      return reply.status(404).send({ error: `Metadata key "${key}" not found` });
+    }
+
+    delete session.metadata[key];
+    // Clean up empty metadata object
+    if (Object.keys(session.metadata).length === 0) {
+      session.metadata = undefined;
+    }
+    return { metadata: session.metadata ?? {} };
+  }));
+
   // ACP-063: POST /v1/sessions/:id/events/replay — Replay events from durable event store
   // NOTE: GET /v1/sessions/:id/events is handled by session-data.ts (SSE streaming)
   registerWithLegacy(app, 'post', '/v1/sessions/:id/events/replay', withSessionOwnership(ctx, async (req: FastifyRequest, reply: FastifyReply, session) => {

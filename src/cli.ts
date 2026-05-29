@@ -27,6 +27,7 @@ import { handleLogout } from './commands/logout.js';
 import { handleWhoami } from './commands/whoami.js';
 import { handleRun } from './commands/run.js';
 import { handleList } from './commands/list.js';
+import { handleMeta } from './commands/meta.js';
 import { handleUpdate } from './commands/update.js';
 import { handleRead } from './commands/read.js';
 import { handleKill } from './commands/kill.js';
@@ -349,6 +350,7 @@ function printHelp(io: CliIO): void {
     ag update --check       Only check, no update (exit 1 if available)
     ag update --yes         Skip confirmation prompt
     ag update --dry-run      Show what would happen without updating
+    ag meta <id> [--set key=val] [--delete key]  Per-session metadata KV store
 ${authBlock}  Flags:
     --json-logs           Emit structured JSON logs (default: quiet mode)
 
@@ -384,7 +386,7 @@ ${authBlock}  Flags:
 export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO = defaultCliIO): Promise<number> {
   // Issue #3796: Only show generic help if no subcommand is provided.
   // Subcommands like 'run' handle their own --help with command-specific flags.
-  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'update', 'version', 'setup'];
+  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'meta', 'update', 'version', 'setup'];
   const hasKnownCommand = argv.length > 0 && knownCommands.includes(argv[0]);
   if ((argv.includes('--help') || argv.includes('-h')) && !hasKnownCommand) {
     printHelp(io);
@@ -465,6 +467,9 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     return handleTail(argv.slice(1), io);
   }
 
+  if (argv[0] === 'meta') {
+    return handleMeta(argv.slice(1), io);
+  }
   if (argv[0] === 'update') {
     return handleUpdate(argv.slice(1), io);
   }
