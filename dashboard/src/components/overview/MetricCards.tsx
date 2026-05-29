@@ -20,6 +20,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { getHealth, getMetrics } from '../../api/client';
+import { useT } from '../../i18n/context';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling';
 import { useStore } from '../../store/useStore';
 import type { HealthResponse } from '../../types';
@@ -37,6 +38,7 @@ const FALLBACK_POLL_INTERVAL_MS = 10_000;
 const SSE_HEALTHY_POLL_INTERVAL_MS = 30_000;
 
 export default function MetricCards() {
+  const t = useT();
   const metrics = useStore((s) => s.metrics);
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseConnected = useStore((s) => s.sseConnected);
@@ -79,7 +81,7 @@ export default function MetricCards() {
   if (isLoading && !metrics && !health) {
     return (
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-6 text-sm text-[var(--color-text-muted)]">
-        Loading overview metrics...
+        {t('overview.loadingMetrics')}
       </div>
     );
   }
@@ -131,18 +133,18 @@ export default function MetricCards() {
           aria-live="polite"
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-3"
         >
-          <div className="text-xs text-[var(--color-text-muted)]">{loadError ?? 'Overview widgets are using the latest available data.'}</div>
+          <div className="text-xs text-[var(--color-text-muted)]">{loadError ?? t('overview.metricsUnavailable')}</div>
           {!sseConnected && sseError && <RealtimeBadge mode="polling" message={sseError} />}
         </div>
       )}
 
       {/* ── Header ─────────────────────── */}
-      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-1">Operational Metrics</h4>
+      <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-1">{t('overview.operationalMetrics')}</h4>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {/* ── Operational Metrics ──────────────────────────────── */}
       {completedSessions > 0 && (
         <MetricCard
-          label="Completed"
+          label={t('overview.completed')}
           value={completedSessions}
           icon={<CheckCircle2 className="h-4 w-4" />}
           color="green"
@@ -176,7 +178,7 @@ export default function MetricCards() {
           <RingGauge
             value={deliveryRate_ !== null ? Math.round(deliveryRate_) : 0}
             size={90}
-            label="Success"
+            label={t('overview.successLabel')}
             primaryColor={deliveryColor === 'green' ? 'var(--color-success)' : deliveryColor === 'red' ? 'var(--color-error)' : 'var(--color-warning)'}
           />
           <div className="flex-1 space-y-3 text-center sm:text-left">
@@ -184,26 +186,26 @@ export default function MetricCards() {
               <p className="text-2xl font-mono font-bold text-white">
                 {deliveryRate_ !== null ? `${deliveryRate_.toFixed(1)}%` : '—'}
               </p>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Trailing session average</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('overview.trailingAverage')}</p>
             </div>
             {(promptsDelivered > 0 || promptsFailed > 0) && (
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Delivered</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('overview.delivered')}</p>
                   </div>
                 )}
                 {promptsFailed > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Failed</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('overview.failed')}</p>
                   </div>
                 )}
                 {promptsSent > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Total Sent</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('overview.totalSent')}</p>
                   </div>
                 )}
               </div>
@@ -213,9 +215,9 @@ export default function MetricCards() {
       </div>
       {promptsDelivered > 0 && (
         <MetricCard
-          label="Prompts Delivered"
+          label={t('overview.promptsDelivered')}
           value={promptsDelivered}
-          subLabel={promptsSent > 0 ? `${promptsSent} sent total` : undefined}
+          subLabel={promptsSent > 0 ? t('overview.sentTotal', { n: promptsSent }) : undefined}
           icon={<Send className="h-4 w-4" />}
           color="green"
           className="col-span-1 lg:col-span-2"
@@ -223,7 +225,7 @@ export default function MetricCards() {
       )}
       {promptsFailed > 0 && (
         <MetricCard
-          label="Prompts Failed"
+          label={t('overview.promptsFailed')}
           value={promptsFailed}
           icon={<XCircle className="h-4 w-4" />}
           color="red"
@@ -234,17 +236,17 @@ export default function MetricCards() {
       {/* ── Webhooks ─────────────────────────────────────── */}
       {webhooksSent > 0 && (
         <MetricCard
-          label="Webhooks Sent"
+          label={t('overview.webhooksSent')}
           value={webhooksSent}
           icon={<Send className="h-4 w-4" />}
           color="green"
-          subLabel={webhooksFailed > 0 ? `${webhooksFailed} failed` : '0 failed'}
+          subLabel={webhooksFailed > 0 ? t('overview.failedCount', { n: webhooksFailed }) : t('overview.zeroFailed')}
           className="col-span-2"
         />
       )}
       {webhooksFailed > 0 && webhooksSent === 0 && (
         <MetricCard
-          label="Webhooks Failed"
+          label={t('overview.webhooksFailed')}
           value={webhooksFailed}
           icon={<XCircle className="h-4 w-4" />}
           color="red"
@@ -254,7 +256,7 @@ export default function MetricCards() {
       {/* ── Auto-Approvals ───────────────────────────────── */}
       {autoApprovals > 0 && (
         <MetricCard
-          label="Auto-Approvals"
+          label={t('overview.autoApprovals')}
           value={autoApprovals}
           icon={<ShieldCheck className="h-4 w-4" />}
           color="purple"
@@ -264,7 +266,7 @@ export default function MetricCards() {
       {/* ── Pipelines & Batches ──────────────────────────── */}
       {pipelinesCreated > 0 && (
         <MetricCard
-          label="Pipelines Created"
+          label={t('overview.pipelinesCreated')}
           value={pipelinesCreated}
           icon={<GitBranch className="h-4 w-4" />}
           color="purple"
@@ -272,7 +274,7 @@ export default function MetricCards() {
       )}
       {batchesCreated > 0 && (
         <MetricCard
-          label="Batches Created"
+          label={t('overview.batchesCreated')}
           value={batchesCreated}
           icon={<Layers3 className="h-4 w-4" />}
           color="purple"
@@ -282,7 +284,7 @@ export default function MetricCards() {
       {/* ── Screenshots ──────────────────────────────────── */}
       {screenshotsTaken > 0 && (
         <MetricCard
-          label="Screenshots"
+          label={t('overview.screenshots')}
           value={screenshotsTaken}
           icon={<Camera className="h-4 w-4" />}
         />
@@ -290,19 +292,19 @@ export default function MetricCards() {
 
       {/* ── Latency ──────────────────────────────────────── */}
       <MetricCard
-        label="Avg Hook Latency"
+        label={t('overview.avgHookLatency')}
         value={formatLatency(hookLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-1 lg:col-span-2"
       />
       <MetricCard
-        label="Avg Permission Latency"
+        label={t('overview.avgPermissionLatency')}
         value={formatLatency(permissionLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-1 lg:col-span-2"
       />
       <MetricCard
-        label="Avg Channel Latency"
+        label={t('overview.avgChannelLatency')}
         value={formatLatency(channelLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-2 lg:col-span-2"  />
@@ -310,7 +312,7 @@ export default function MetricCards() {
       {/* ── Removed Uptime ───────────────────────────────── */}      {/* ── Cost & Tokens (shown when API provides them) ── */}
       {totalEstimatedCostUsd > 0 && (
         <MetricCard
-          label="Total Est. Cost"
+          label={t('overview.totalEstCost')}
           value={`$${totalEstimatedCostUsd < 1 ? totalEstimatedCostUsd.toFixed(3) : totalEstimatedCostUsd.toFixed(2)}`}
           icon={<DollarSign className="h-4 w-4" />}
           color="amber"
@@ -319,7 +321,7 @@ export default function MetricCards() {
       )}
       {totalTokens > 0 && (
         <MetricCard
-          label="Total Tokens"
+          label={t('overview.totalTokens')}
           value={totalTokens >= 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(2)}M` : totalTokens >= 1_000 ? `${(totalTokens / 1_000).toFixed(1)}k` : totalTokens.toString()}
           icon={<Layers className="h-4 w-4" />}
           color="purple"

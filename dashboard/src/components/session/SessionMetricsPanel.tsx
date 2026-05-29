@@ -101,7 +101,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
   if (state.loading && !metrics) {
     return (
       <div className="flex items-center justify-center h-48 text-[var(--color-text-muted)] text-sm animate-pulse">
-        Loading metrics...
+        t('sessionDetail.loadingMetrics')
       </div>
     );
   }
@@ -143,16 +143,16 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
               {formatCost(tu.estimatedCostUsd)}
             </div>
             <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-              {totalTokens.toLocaleString()} tokens total
+              {t('sessionDetail.tokensTotal', { n: totalTokens.toLocaleString() })}
               {tu.estimatedCostUsd > 0.5 && (
                 <span className="ml-2 text-[var(--color-warning)]">
-                  · consider a cheaper model
+                  {t('sessionDetail.considerCheaperModel')}
                 </span>
               )}
             </div>
           </>
         ) : (
-          <div className="text-sm text-[var(--color-text-muted)]">No token data yet</div>
+          <div className="text-sm text-[var(--color-text-muted)]">{t('sessionDetail.noTokenData')}</div>
         )}
 
         {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1).
@@ -160,35 +160,35 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
              Model cell (issue 04.9) shows the parsed BYO model name. */}
         <div className="mt-4 pt-4 border-t border-[var(--color-void-lighter)] grid grid-cols-3 sm:grid-cols-6 gap-4">
           <BannerCell
-            label="Duration"
+            label={t('sessionDetail.duration')}
             value={metrics ? formatDuration(metrics.durationSec * 1000) : '—'}
             title={t('aria.elapsedSessionTime')}
           />
           <BannerCell
-            label="Messages"
+            label={t('sessionDetail.messages')}
             numericValue={counts.messages}
             animate={animate}
             title={`${counts.userMessages} user · ${counts.assistantMessages} assistant`}
           />
           <BannerCell
-            label="Tool calls"
+            label={t('sessionDetail.toolCalls')}
             numericValue={counts.toolCalls}
             animate={animate}
           />
           <BannerCell
-            label="Approvals"
+            label={t('sessionDetail.approvals')}
             numericValue={counts.approvals}
             animate={animate}
             title={t('aria.approvalsGranted')}
           />
           <BannerCell
-            label="Auto"
+            label={t('sessionDetail.auto')}
             numericValue={metrics?.autoApprovals ?? 0}
             animate={animate}
             title={t('aria.autoApprovals')}
           />
           <BannerCell
-            label="Model"
+            label={t('sessionDetail.model')}
             value={model ?? '—'}
             valueColor={model ? modelAccent(model) : undefined}
             title={model ? `Active model: ${model}` : 'Model not yet detected'}
@@ -252,7 +252,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           </table>
 
           <div className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-            Cost uses Anthropic list prices (sonnet tier by default). Actual cost may vary.
+            t('sessionDetail.costDisclaimer')
           </div>
         </div>
       )}

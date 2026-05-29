@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { useApprovalStore } from "../../store/useApprovalStore";
 import { useToastStore } from "../../store/useToastStore";
+import { useT } from '../../i18n/context';
 
 /**
  * ApprovalNotification — invisible component that watches for new
@@ -20,6 +21,7 @@ import { useToastStore } from "../../store/useToastStore";
  * Place this once in the app root or Layout.
  */
 export function ApprovalNotification() {
+  const t = useT();
   // Subscribe to the Map (stable reference) — NOT s.list() which creates new arrays
   const pending = useApprovalStore((s) => s.pending);
   const count = pending.size;
@@ -37,8 +39,8 @@ export function ApprovalNotification() {
           knownIds.current.add(approval.sessionId);
           addToast(
             "warning",
-            `Permission required: ${approval.sessionName}`,
-            "Click the session to review and approve",
+            t('sessionDetail.permissionRequiredToast', { name: approval.sessionName }),
+            t('sessionDetail.clickToReview'),
             { duration: 15_000 },
           );
         }

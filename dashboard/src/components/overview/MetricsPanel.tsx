@@ -9,6 +9,7 @@
 import { useCallback, useState } from 'react';
 import { Activity, Clock, Layers, Timer } from 'lucide-react';
 import { getHealth, getMetrics } from '../../api/client.js';
+import { useT } from '../../i18n/context';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling.js';
 import { useStore } from '../../store/useStore.js';
 import type { GlobalMetrics, HealthResponse } from '../../types';
@@ -67,6 +68,7 @@ function StatTile({ icon, label, value, color = 'text-[var(--color-cta-bg)]' }: 
 }
 
 export default function MetricsPanel() {
+  const t = useT();
   const latestActivity = useStore((s) => s.activities[0] ?? null);
   const sseConnected = useStore((s) => s.sseConnected);
   const [data, setData] = useState<MetricsData | null>(null);
@@ -139,25 +141,25 @@ export default function MetricsPanel() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile
           icon={<Activity className="h-4 w-4" />}
-          label="Active Sessions"
+          label={t('overview.activeSessions')}
           value={d.activeSessions}
           color="text-[var(--color-success)]"
         />
         <StatTile
           icon={<Layers className="h-4 w-4" />}
-          label="Total Sessions"
+          label={t('overview.totalSessions')}
           value={d.totalSessions}
           color="text-[var(--color-cta-bg)]"
         />
         <StatTile
           icon={<Timer className="h-4 w-4" />}
-          label="Avg Duration"
+          label={t('overview.avgDuration')}
           value={formatDuration(d.avgDurationSec)}
           color="text-[var(--color-warning)]"
         />
         <StatTile
           icon={<Clock className="h-4 w-4" />}
-          label="Uptime"
+          label={t('overview.uptime')}
           value={formatUptime(d.uptime)}
           color="text-[var(--color-accent-violet)]"
         />
