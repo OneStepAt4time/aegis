@@ -219,7 +219,6 @@ describe('handleList --json (#4457)', () => {
     const parsed = JSON.parse(jsonCall!);
     expect(parsed.sessions).toHaveLength(2);
   });
-});
 
   it('--status active filters out terminal statuses', async () => {
     const sessions = [
@@ -236,3 +235,6 @@ describe('handleList --json (#4457)', () => {
     expect(parsed.sessions).toHaveLength(1);
     expect(parsed.sessions[0].status).toBe('idle');
   });
+
+
+});
