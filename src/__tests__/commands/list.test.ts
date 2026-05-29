@@ -128,3 +128,113 @@ import { afterAll } from 'vitest';
 afterAll(() => {
   globalThis.fetch = originalFetch;
 });
+
+describe('handleList --json (#4457)', () => {
+  it('outputs structured { sessions, pagination } with --json', async () => {
+    const sessions = [
+      { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'idle', displayName: 'test-session' },
+    ];
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        sessions,
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+      }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.pagination).toEqual({ page: 1, limit: 50, total: 1, totalPages: 1 });
+  });
+
+  it('outputs empty sessions array with --json when no active sessions', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        sessions: [
+          { id: '11111111-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'killed', displayName: 'dead' },
+        ],
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+      }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.sessions).toHaveLength(0);
+  });
+
+  it('outputs JSON error when server returns error and --json is set', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      json: async () => ({ error: 'Invalid API key' }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json'], mockIO as any);
+
+    expect(exitCode).toBe(1);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.error).toBe('Invalid API key');
+  });
+
+  it('--json --all includes killed sessions in output', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        sessions: [
+          { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'idle', displayName: 'alive' },
+          { id: '11111111-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'killed', displayName: 'dead' },
+        ],
+        pagination: { page: 1, limit: 50, total: 2, totalPages: 1 },
+      }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json', '--all'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.sessions).toHaveLength(2);
+  });
+
+  it('--status active filters out terminal statuses', async () => {
+    const sessions = [
+      { id: 'a1', status: 'idle', displayName: 'alive' },
+      { id: 'b2', status: 'killed', displayName: 'dead' },
+    ];
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status:200, json: async () => ({ sessions, pagination: { page:1, limit:50, total:2, totalPages:1 } }) }) as any;
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--status', 'active', '--json'], mockIO as any);
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.sessions[0].status).toBe('idle');
+  });
+
+
+});
