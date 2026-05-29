@@ -1046,7 +1046,7 @@ export const it = {
 
 
   commandPalette: {
-    searchPlaceholder: 'Cerca sessioni, naviga, esegui comandiu2026',
+    searchPlaceholder: 'Cerca sessioni, naviga, esegui comandi…',
   },
 
   notificationSettings: {

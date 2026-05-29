@@ -1053,7 +1053,7 @@ export const en = {
 
 
   commandPalette: {
-    searchPlaceholder: 'Search sessions, navigate, run commandsu2026',
+    searchPlaceholder: 'Search sessions, navigate, run commands…',
   },
 
   notificationSettings: {
