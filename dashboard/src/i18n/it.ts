@@ -123,6 +123,12 @@ export const it = {
     title: 'Attività Live',
     subtitle: 'Flusso di audit in tempo reale e metriche operative.',
     empty: 'Nessuna attività',
+    sessionActivity: 'Attività Sessioni',
+    sessionsAcross: '{sessions} sessioni in {days} giorni attivi',
+    sessionCount: '{count} sessione',
+    sessionCount_plural: '{count} sessioni',
+    noActivity: 'Nessuna attività di sessione registrata',
+    retry: 'Riprova',
   },
 
   cost: {
@@ -506,6 +512,7 @@ export const it = {
     claudeCommand: 'Comando Claude',
     claudeCommandDefault: 'Predefinito: claude --print',
     initialPrompt: 'Prompt Iniziale',
+    promptPlaceholder: 'Cosa vuoi ottenere?',
     permissionMode: 'Modalità Permesso',
     permissionDefault: 'Predefinito (chiedi)',
     permissionBypass: 'Ignora Permessi',
