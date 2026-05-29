@@ -1,11 +1,12 @@
 /**
- * mcp/auth.ts — MCP tool authorization (RBAC) and error formatting.
+ * mcp/auth.ts — MCP tool authorization (RBAC), CC session tracking, and error formatting.
  *
  * Provides withAuth() wrapper for per-tool role enforcement,
- * role mapping, and structured MCP error envelopes.
+ * CC session ID correlation (#4455), role mapping, and structured MCP error envelopes.
  */
 
 import type { IAegisBackend } from '../services/interfaces.js';
+import { ccSessionRegistry, getCcSessionIdFromEnv } from '../services/cc-session-registry.js';
 
 // ── Error handling ──────────────────────────────────────────────────
 
@@ -63,6 +64,18 @@ export const TOOL_REQUIRED_ROLE: Record<string, string> = {
   create_pipeline: 'operator',
   state_set: 'operator',
   state_delete: 'operator',
+  acp_send_prompt: 'operator',
+  acp_respond_approval: 'operator',
+  acp_pause_session: 'operator',
+  acp_resume_session: 'operator',
+  acp_cancel_session: 'operator',
+  acp_claim_driver: 'operator',
+  acp_release_driver: 'operator',
+  acp_transfer_driver: 'operator',
+  acp_get_events: 'viewer',
+  acp_get_chat: 'viewer',
+  acp_get_timeline: 'viewer',
+  acp_get_terminal_debug: 'viewer',
   // admin — destructive, requires elevated access
   kill_session: 'admin',
 };
@@ -81,7 +94,22 @@ function formatAuthError(toolName: string, role: string, required: string): { co
   };
 }
 
-/** Wrap a tool handler with per-tool role authorization. */
+/**
+ * Record CC↔Aegis session mapping if CLAUDE_CODE_SESSION_ID is present.
+ * Issue #4455: CC v2.1.154 passes this env var to MCP subprocesses.
+ */
+function recordCcSessionMapping(args: Record<string, unknown>): void {
+  const ccSessionId = getCcSessionIdFromEnv();
+  if (!ccSessionId) return;
+
+  // Most session-scoped tools pass sessionId directly
+  const aegisSessionId = args.sessionId as string | undefined;
+  if (aegisSessionId && typeof aegisSessionId === 'string' && aegisSessionId.length > 0) {
+    ccSessionRegistry.record(ccSessionId, aegisSessionId);
+  }
+}
+
+/** Wrap a tool handler with per-tool role authorization and CC session tracking. */
 export function withAuth<TArgs>(
   toolName: string,
   handler: (args: TArgs) => Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }>,
@@ -93,6 +121,10 @@ export function withAuth<TArgs>(
     if (required && (ROLE_LEVEL[role] ?? 0) < (ROLE_LEVEL[required] ?? 0)) {
       return formatAuthError(toolName, role, required);
     }
+
+    // #4455: Record CC session ID correlation when available
+    recordCcSessionMapping(args as Record<string, unknown>);
+
     return handler(args);
   };
 }
