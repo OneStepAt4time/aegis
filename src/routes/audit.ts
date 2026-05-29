@@ -13,7 +13,7 @@ import {
   buildAuditChainMetadata,
 } from '../audit.js';
 import { diagnosticsBus } from '../diagnostics.js';
-import { computeAggregateMetrics, type GroupBy } from '../metrics.js';
+import { computeAggregateMetrics, type GroupBy } from '../metrics-aggregation.js';
 import { type RouteContext, requireRole, registerWithLegacy } from './context.js';
 
 const AUDIT_FORMATS = ['json', 'csv', 'ndjson'] as const;

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeAggregateMetrics, type SessionForAggregation } from '../metrics.js';
+import { computeAggregateMetrics, type SessionForAggregation } from '../metrics-aggregation.js';
 import type { AggregateMetricsByKey } from '../api-contracts.js';
 import type { SessionMetrics } from '../metrics.js';
 

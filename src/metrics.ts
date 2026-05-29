@@ -467,9 +467,5 @@ export class MetricsCollector {
 
 // ── Issue #2087: Aggregation helpers ────────────────────────────────
 // Extracted to metrics-aggregation.ts — re-export for backward compatibility.
-export {
-  computeAggregateMetrics,
-  type GroupBy,
-  type SessionForAggregation,
-  type KeyNameMap,
-} from './metrics-aggregation.js';
+// Re-export removed — import directly from metrics-aggregation.js to break circular dependency.
+// See: fix/4488-reapply-circular-dep-breaks
