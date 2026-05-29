@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import { useAuthStore } from '../store/useAuthStore';
@@ -27,8 +27,8 @@ describe('Tour and onboarding persistence', () => {
     sessionStorage.clear();
     useAuthStore.setState({
       token: 'test-token',
-      authMode: 'password' as const,
-      identity: { username: 'admin', role: 'admin' },
+      authMode: 'token' as const,
+      identity: { authenticated: true, userId: 'admin', role: 'admin', tenantId: '', createdAt: Date.now(), expiresAt: Date.now() + 3600000 },
       oidcAvailable: false,
       isAuthenticated: true,
       isVerifying: false,
