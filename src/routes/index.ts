@@ -14,7 +14,7 @@ export { registerTemplateRoutes } from './templates.js';
 export { registerPipelineRoutes } from './pipelines.js';
 export { registerAnalyticsRoutes } from './analytics.js';
 export { registerOidcAuthRoutes } from './oidc-auth.js';
-export { registerOpenApiSpec, registerOpenApiRoute } from './openapi.js';
+export { registerOpenApiSpec, registerOpenApiRoute } from './openapi/index.js';
 export { registerUsageRoutes } from './usage.js';
 export { registerCostRoutes } from './cost.js';
 export { registerControlActionRoutes } from './control-actions.js';
