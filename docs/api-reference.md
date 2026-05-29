@@ -1471,6 +1471,99 @@ curl http://localhost:9100/v1/sessions/abc123/children \
 
 ---
 
+### Session Metadata KV Store
+
+Per-session key-value metadata store. Use it to tag sessions with `pr_number`, `pipeline_status`, or any custom data.
+
+**Constraints:**
+- Max **20 keys** per session
+- Max **64 chars** per key, **256 chars** per value
+- `POST` merges (does not replace) existing metadata
+- Empty metadata objects are cleaned up automatically
+
+#### Set / Merge Metadata
+
+```
+POST /v1/sessions/:id/meta
+```
+
+Merges the provided key-value pairs into the session's metadata. Existing keys are overwritten; other keys are preserved.
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions/abc123/meta \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pr_number": "1234", "pipeline_status": "running"}'
+```
+
+**Response:**
+
+```json
+{
+  "pr_number": "1234",
+  "pipeline_status": "running"
+}
+```
+
+**Errors:**
+- `400` — key exceeds 64 chars, value exceeds 256 chars, or more than 20 keys
+- `404` — session not found
+
+---
+
+#### Get All Metadata
+
+```
+GET /v1/sessions/:id/meta
+```
+
+Returns all metadata for a session.
+
+```bash
+curl http://localhost:9100/v1/sessions/abc123/meta \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "pr_number": "1234",
+  "pipeline_status": "running"
+}
+```
+
+**Errors:**
+- `404` — session not found
+
+---
+
+#### Delete a Metadata Key
+
+```
+DELETE /v1/sessions/:id/meta/:key
+```
+
+Removes a single key from the session's metadata.
+
+```bash
+curl -X DELETE http://localhost:9100/v1/sessions/abc123/meta/pr_number \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "pipeline_status": "running"
+}
+```
+
+**Errors:**
+- `404` — session not found or key does not exist
+
+---
+
 ### Global Tool Definitions
 
 ```

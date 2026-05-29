@@ -49,6 +49,9 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `POST` | `/v1/sessions/{id}/session-reject` | Bearer | Reject session awaiting approval |
 | `POST` | `/v1/sessions/{id}/answer` | Bearer | Answer a pending question |
 | `POST` | `/v1/sessions/{id}/discover-commands` | Bearer | Discover available slash commands |
+| `POST` | `/v1/sessions/{id}/meta` | Bearer | Set/merge metadata key-value pairs |
+| `GET` | `/v1/sessions/{id}/meta` | Bearer | Get all session metadata |
+| `DELETE` | `/v1/sessions/{id}/meta/{key}` | Bearer | Delete a metadata key |
 
 ## ACP Control Actions
 
