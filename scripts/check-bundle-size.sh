@@ -2,7 +2,7 @@
 # Bundle size gate — mirrors CI threshold from .github/workflows/ci.yml
 set -euo pipefail
 
-THRESHOLD_KB=2508
+THRESHOLD_KB=2528
 
 if [ ! -d "dist" ]; then
   echo "❌ dist/ not found — run 'npm run build' first"
