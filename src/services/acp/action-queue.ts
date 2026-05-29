@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { AcpValidationError } from './session-service.js';
+import { AcpValidationError } from './errors.js';
 import type {
   AcpBackendMetadata,
   AcpBackendMetadataValue,

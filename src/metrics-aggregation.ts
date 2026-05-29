@@ -12,20 +12,13 @@ import type {
   AggregateMetricsAnomaly,
 } from './api-contracts.js';
 import type { SessionMetrics } from './metrics.js';
+import type { SessionForAggregation, KeyNameMap } from './metrics-types.js';
+export type { SessionForAggregation, KeyNameMap } from './metrics-types.js';
+export type { SessionMetrics } from './metrics.js';
 
 export type GroupBy = 'day' | 'hour' | 'key';
 
-/** Minimal session info needed for aggregation (decoupled from SessionManager). */
-export interface SessionForAggregation {
-  id: string;
-  createdAt: number;
-  ownerKeyId?: string;
-  /** Number of stall events detected for this session. */
-  stallCount?: number;
-}
 
-/** Map from API key ID to key name. */
-export type KeyNameMap = Map<string, string>;
 
 /**
  * Compute aggregated metrics over a time range from per-session data.
