@@ -213,7 +213,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{t('newSession.title')}</h2>
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{t('createSession.title')}</h2>
             <div className="flex rounded bg-[var(--color-void)] p-0.5">
               <button
                 type="button"
@@ -274,7 +274,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               ref={workDirRef}
               value={workDir}
               onChange={(e) => { setWorkDir(e.target.value); setWorkDirError(null); }}
-              placeholder="/home/user/project"
+              placeholder={t('createSession.workDirPlaceholder')}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
             />
             {workDirError && (
@@ -292,7 +292,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="my-session"
+              placeholder={t('createSession.sessionNamePlaceholder')}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
           </div>
@@ -307,7 +307,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               type="text"
               value={claudeCommand}
               onChange={(e) => setClaudeCommand(e.target.value)}
-              placeholder="claude --print"
+              placeholder={t('createSession.commandPlaceholder')}
               className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             />
           </div>
@@ -321,7 +321,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               id="modal-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Fix the login bug..."
+              placeholder={t('createSession.promptPlaceholder')}
               rows={3}
               className="w-full min-h-[88px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
             />
@@ -384,7 +384,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               id="modal-sharedPrompt"
               value={sharedPrompt}
               onChange={(e) => setSharedPrompt(e.target.value)}
-              placeholder="Apply to all sessions without a per-row prompt..."
+              placeholder={t('createSession.bulkPromptPlaceholder')}
               rows={2}
               className="w-full min-h-[56px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] resize-none"
             />
@@ -406,7 +406,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   type="text"
                   value={row.workDir}
                   onChange={(e) => updateBatchRow(i, 'workDir', e.target.value)}
-                  placeholder="/home/user/project"
+                  placeholder={t('createSession.workDirPlaceholder2')}
                   aria-label={`Batch row ${i + 1} working directory`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)] font-mono"
                 />
@@ -414,7 +414,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   type="text"
                   value={row.name}
                   onChange={(e) => updateBatchRow(i, 'name', e.target.value)}
-                  placeholder="name"
+                  placeholder={t('createSession.namePlaceholder')}
                   aria-label={`Batch row ${i + 1} session name`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
@@ -422,7 +422,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                   type="text"
                   value={row.prompt}
                   onChange={(e) => updateBatchRow(i, 'prompt', e.target.value)}
-                  placeholder="Override prompt..."
+                  placeholder={t('createSession.overridePromptPlaceholder')}
                   aria-label={`Batch row ${i + 1} prompt`}
                   className="min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
                 />
@@ -557,7 +557,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
             {templatesLoading ? (
               <div className="text-xs text-[var(--color-text-muted)] italic">{t('newSession.loadingTemplates')}</div>
             ) : templates.length === 0 ? (
-              <div className="text-xs text-[var(--color-text-muted)] italic">{t('newSession.noTemplatesAvailable')}</div>
+              <div className="text-xs text-[var(--color-text-muted)] italic">{t('createSession.noTemplates')}</div>
             ) : (
               <select
                 id="template-select"
@@ -565,10 +565,10 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
                 className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
               >
-                <option value="">{t('newSession.chooseTemplate')}</option>
-                {templates.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} {t.description ? `— ${t.description}` : ''}
+                <option value="">— Choose a template —</option>
+                {templates.map(tmpl => (
+                  <option key={tmpl.id} value={tmpl.id}>
+                    {tmpl.name} {tmpl.description ? `— ${tmpl.description}` : ''}
                   </option>
                 ))}
               </select>
@@ -583,21 +583,21 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           )}
 
           {/* Template summary */}
-          {selectedTemplateId && templates.find(t => t.id === selectedTemplateId) && (() => {
-            const t = templates.find(t => t.id === selectedTemplateId)!;
+          {selectedTemplateId && templates.find(tmpl => tmpl.id === selectedTemplateId) && (() => {
+            const tmpl = templates.find(tmpl => tmpl.id === selectedTemplateId)!;
             return (
               <div className="text-xs space-y-1 p-3 bg-[var(--color-void)] rounded border border-[var(--color-void-lighter)]">
                 <div className="text-[var(--color-text-muted)]">
-                  <strong>WorkDir:</strong> <span className="font-mono text-[var(--color-text-muted)]">{t.workDir}</span>
+                  <strong>{t('createSession.workDirLabel')}</strong> <span className="font-mono text-[var(--color-text-muted)]">{tmpl.workDir}</span>
                 </div>
-                {t.stallThresholdMs && (
+                {tmpl.stallThresholdMs && (
                   <div className="text-[var(--color-text-muted)]">
-                    <strong>Stall Threshold:</strong> <span className="text-[var(--color-text-muted)]">{t.stallThresholdMs}ms</span>
+                    <strong>{t('createSession.stallThreshold')}</strong> <span className="text-[var(--color-text-muted)]">{tmpl.stallThresholdMs}ms</span>
                   </div>
                 )}
-                {t.permissionMode && t.permissionMode !== 'default' && (
+                {tmpl.permissionMode && tmpl.permissionMode !== 'default' && (
                   <div className="text-[var(--color-text-muted)]">
-                    <strong>Permission Mode:</strong> <span className="text-[var(--color-text-muted)]">{t.permissionMode}</span>
+                    <strong>{t('createSession.permissionModeLabel')}</strong> <span className="text-[var(--color-text-muted)]">{tmpl.permissionMode}</span>
                   </div>
                 )}
               </div>
@@ -643,7 +643,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {batchResult.sessions.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('newSession.createdSessions')}</p>
+              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('createSession.createdSessions')}</p>
               <ul className="space-y-1">
                 {batchResult.sessions.map((s) => (
                   <li key={s.id}>
@@ -662,7 +662,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {batchResult.errors.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('newSession.errorsLabel')}</p>
+              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('createSession.errors')}</p>
               <ul className="space-y-1">
                 {batchResult.errors.map((err, i) => (
                   <li key={i} className="text-xs text-[var(--color-error)]">{err}</li>

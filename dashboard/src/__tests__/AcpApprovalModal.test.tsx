@@ -55,7 +55,7 @@ describe('AcpApprovalModal', () => {
 
   it('renders expired state with warning', () => {
     render(<AcpApprovalModal approval={expiredApproval} isExpired={true} countdown="expired" />);
-    expect(screen.getByText('Expired')).toBeDefined();
+    expect(screen.getByText('expired')).toBeDefined();
     expect(screen.getByRole('alert')).toBeDefined();
   });
 

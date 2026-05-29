@@ -372,16 +372,16 @@ export function VirtualizedSessionList({
               className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
             />
           </div>
-          <div className="px-2 py-3 font-medium" role="columnheader">Status</div>
-          <div className="hidden md:flex px-3 py-3 font-medium" role="columnheader">Created by</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Name</div>
-          <div className="flex px-3 py-3 font-medium" role="columnheader">WorkDir</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Age</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Last Activity</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Activity</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Permission</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Cost</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">Actions</div>
+          <div className="px-2 py-3 font-medium" role="columnheader">{t('sessionTable.status')}</div>
+          <div className="hidden md:flex px-3 py-3 font-medium" role="columnheader">{t('sessionTable.createdBy')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.name')}</div>
+          <div className="flex px-3 py-3 font-medium" role="columnheader">{t('sessionTable.workDir')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.age')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.lastActivity')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.activity')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.permission')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.cost')}</div>
+          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.actions')}</div>
         </div>
       )}
 

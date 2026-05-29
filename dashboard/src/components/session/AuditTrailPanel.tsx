@@ -93,7 +93,7 @@ export function AuditTrailPanel({ records, loading, error }: AuditTrailPanelProp
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <Shield className="h-10 w-10 text-[var(--color-text-muted)]" />
-        <p className="text-sm text-[var(--color-text-muted)]">No audit events for this session</p>
+        <p className="text-sm text-[var(--color-text-muted)]">{t('sessionDetail.noAuditEvents')}</p>
       </div>
     );
   }

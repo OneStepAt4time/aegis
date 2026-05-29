@@ -152,7 +152,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
             </div>
           </>
         ) : (
-          <div className="text-sm text-[var(--color-text-muted)]">No token data yet</div>
+          <div className="text-sm text-[var(--color-text-muted)]">{t('sessionDetail.noTokenData')}</div>
         )}
 
         {/* Condensed KPI banner — replaces the 6-card grid (epic 04.1).

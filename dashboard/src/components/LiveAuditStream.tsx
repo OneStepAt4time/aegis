@@ -22,6 +22,7 @@ import {
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType } from '../types';
 import { describeEvent } from './ActivityStream';
+import { useT } from '../i18n/context';
 
 // Semantic color tiers matching enterprise signal priority
 const EVENT_META: Record<GlobalSSEEventType, {
@@ -61,6 +62,7 @@ interface LiveAuditStreamProps {
 }
 
 export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps) {
+  const t = useT();
   const activities = useStore((s) => s.activities);
   const sseConnected = useStore((s) => s.sseConnected);
   const sessions = useStore((s) => s.sessions);
@@ -115,7 +117,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
               <Radio className="h-3 w-3" />LIVE
             </span>
           ) : (
-            <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-widest">PAUSED</span>
+            <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-widest">{t('liveStream.paused')}</span>
           )}
         </div>
       </div>
@@ -126,8 +128,8 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
           <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center">
             <Activity className="h-4 w-4 text-[var(--color-text-muted)]" />
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">No events yet</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Agent events will stream here in real time</p>
+          <p className="text-xs text-[var(--color-text-muted)]">{t('liveStream.noEvents')}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">{t('liveStream.streamHint')}</p>
         </div>
       )}
 

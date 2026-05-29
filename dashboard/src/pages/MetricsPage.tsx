@@ -323,9 +323,9 @@ export default function MetricsPage() {
                 <tr className="border-b border-[var(--color-border-strong)]">
                   <th scope="col" className="pb-2 text-left text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.keyName')}</th>
                   <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.sessions')}</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.messagesCol')}</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.toolCallsCol')}</th>
-                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.tokenCostCol')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.messages')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.toolCalls')}</th>
+                  <th scope="col" className="pb-2 text-right text-xs font-medium text-[var(--color-text-muted)]">{t('metrics.tokenCost')}</th>
                 </tr>
               </thead>
               <tbody>

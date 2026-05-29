@@ -170,7 +170,7 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
               Session <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>
-          <div className="w-20 hidden sm:block" role="columnheader">Model</div>
+          <div className="w-20 hidden sm:block" role="columnheader">{t('costTable.model')}</div>
           <div className="w-24 hidden md:block text-right" role="columnheader">
             <button type="button" onClick={() => handleSort('tokens')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t('aria.sortByTotalTokens')}>
               Tokens <ArrowUpDown className="h-3 w-3" />
@@ -186,7 +186,7 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
               Duration <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>
-          <div className="w-20 hidden lg:block text-right" role="columnheader">Cache Hit</div>
+          <div className="w-20 hidden lg:block text-right" role="columnheader">{t('costTable.cacheHit')}</div>
         </div>
 
         {/* Rows */}

@@ -5,6 +5,7 @@ import { formatSessionName } from '../../utils/formatSessionName';
  */
 
 import { useEffect, useState, useRef } from 'react';
+import { useT } from '../../i18n/context';
 import { getSessionMessages } from '../../api/client';
 import type { ParsedEntry } from '../../types';
 import type { SessionInfo } from '../../types';
@@ -35,6 +36,7 @@ function MessagePreview({ msg }: { msg: ParsedEntry }) {
 }
 
 export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPreviewCardProps) {
+  const t = useT();
   const [messages, setMessages] = useState<ParsedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -129,7 +131,7 @@ export function SessionPreviewCard({ session, anchorRef, onClose }: SessionPrevi
         {loading ? (
           <div className="py-4 text-center text-xs text-[var(--color-text-muted)]">Loading preview…</div>
         ) : messages.length === 0 ? (
-          <div className="py-4 text-center text-xs text-[var(--color-text-muted)]">No messages yet</div>
+          <div className="py-4 text-center text-xs text-[var(--color-text-muted)]">{t('sessionDetail.noMessages')}</div>
         ) : (
           messages.map((msg, i) => <MessagePreview key={i} msg={msg} />)
         )}

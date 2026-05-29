@@ -36,6 +36,7 @@ export interface AcpApprovalModalProps {
 }
 
 function ToolInputPreview({ input }: { input?: Record<string, unknown> }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
 
   if (!input || Object.keys(input).length === 0) return null;
@@ -54,7 +55,7 @@ function ToolInputPreview({ input }: { input?: Record<string, unknown> }) {
         aria-controls="tool-input-preview"
       >
         {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        {expanded ? 'Hide' : 'Show'} tool input
+        {expanded ? t('sessionDetail.hideToolInput') : t('sessionDetail.showToolInput')}
       </button>
       <pre
         id="tool-input-preview"
@@ -115,7 +116,7 @@ export function AcpApprovalModal({
           <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-warning)]" />
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-warning)]">
-              Tool Approval Required
+              {t('sessionDetail.toolApprovalRequired')}
             </div>
             <h2 className="mt-0.5 text-base font-semibold text-[var(--color-text-primary)]">
               {tool?.toolName ?? 'Unknown Tool'}
@@ -135,7 +136,7 @@ export function AcpApprovalModal({
                 TTL
               </div>
               <div className={`font-mono text-xs ${isExpired ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-primary)]'}`}>
-                {isExpired ? 'Expired' : countdown}
+                {isExpired ? t('sessionDetail.expired') : countdown}
               </div>
             </div>
           )}
@@ -144,7 +145,7 @@ export function AcpApprovalModal({
 
       {/* Description */}
       <p className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)]">
-        {tool?.description ?? 'No description available.'}
+        {tool?.description ?? t('sessionDetail.noDescription')}
       </p>
 
       {/* Tool input preview */}
@@ -154,7 +155,7 @@ export function AcpApprovalModal({
       {isExpired && (
         <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>This approval request has expired.</span>
+          <span>{t('sessionDetail.expiredRequest')}</span>
         </div>
       )}
 
@@ -184,7 +185,7 @@ export function AcpApprovalModal({
                 aria-label={t("aria.approveTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Approve
+                {t('sessionDetail.approve')}
               </button>
               <button
                 type="button"
@@ -194,7 +195,7 @@ export function AcpApprovalModal({
                 aria-label={t("aria.rejectTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
-                Reject
+                {t('sessionDetail.reject')}
               </button>
             </div>
 
@@ -205,14 +206,14 @@ export function AcpApprovalModal({
                 onClick={() => setShowApproveReason((prev) => !prev)}
                 className="self-start text-xs text-[var(--color-text-muted)] opacity-60 transition-opacity hover:opacity-100"
               >
-                {showApproveReason ? '▼ Hide' : '▶ Add approval reason (optional)'}
+                {showApproveReason ? t('sessionDetail.hideApprovalReason') : t('sessionDetail.addApprovalReason')}
               </button>
             )}
             {showApproveReason && (
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   <label htmlFor="approve-reason" className="mb-1 block text-xs text-[var(--color-text-muted)] opacity-60">
-                    Approval reason (for audit log)
+                    {t('sessionDetail.approvalReasonLabel')}
                   </label>
                   <input
                     id="approve-reason"
@@ -220,7 +221,7 @@ export function AcpApprovalModal({
                     value={approveReason}
                     onChange={(e) => setApproveReason(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleApprove()}
-                    placeholder="e.g., reviewed the command"
+                    placeholder={t('sessionDetail.approveReasonPlaceholder')}
                     className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-success)]/50 focus-visible:outline-none"
                     autoFocus
                   />
@@ -232,7 +233,7 @@ export function AcpApprovalModal({
             {showRejectReason && (
               <div className="flex flex-col gap-2">
                 <label htmlFor="reject-reason" className="text-xs text-[var(--color-text-muted)] opacity-60">
-                  Rejection reason (optional, for audit log)
+                  {t('sessionDetail.rejectionReasonLabel')}
                 </label>
                 <input
                   id="reject-reason"
@@ -240,7 +241,7 @@ export function AcpApprovalModal({
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleReject()}
-                  placeholder="e.g., unsafe command"
+                  placeholder={t('sessionDetail.rejectReasonPlaceholder')}
                   className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-danger)]/50 focus-visible:outline-none"
                   autoFocus
                 />
@@ -253,7 +254,7 @@ export function AcpApprovalModal({
                     aria-label={t("aria.confirmRejection")}
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
-                    Confirm Reject
+                    {t('sessionDetail.confirmReject')}
                   </button>
                   <button
                     type="button"
@@ -275,7 +276,7 @@ export function AcpApprovalModal({
             aria-label={t("aria.dismissExpired")}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}
-            Dismiss
+            {t('sessionDetail.dismiss')}
           </button>
         )}
       </div>

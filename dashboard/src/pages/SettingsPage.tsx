@@ -213,7 +213,7 @@ export default function SettingsPage() {
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 p-4 text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--color-warning)]" />
           <div>
-            <p className="font-medium text-[var(--color-text-primary)]">Settings storage unavailable</p>
+            <p className="font-medium text-[var(--color-text-primary)]">{t('settings.storageUnavailable')}</p>
             <p className="mt-1 text-[var(--color-text-muted)]">{loadError}. Changes will not persist after page reload.</p>
           </div>
         </div>
@@ -489,7 +489,7 @@ export default function SettingsPage() {
 
           {/* Onboarding */}
           <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5">
-            <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Onboarding</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.onboarding')}</h3>
             <p className="mb-3 text-xs text-[var(--color-text-muted)]">
               Restart the first-run walkthrough wizard.
             </p>

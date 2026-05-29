@@ -241,7 +241,7 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
     <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('audit.latestExportMetadata')}</p>
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('auditChain.latestExport')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             {result.filename} · {result.format.toUpperCase()}
           </p>
@@ -311,7 +311,7 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-3 py-2 text-xs">
         <ShieldAlert className="h-4 w-4 text-[var(--color-danger-glow)]" />
-        <span className="text-[var(--color-danger-glow)] font-medium">{t('audit.chainBroken')}</span>
+        <span className="text-[var(--color-danger-glow)] font-medium">{t('auditChain.chainBroken')}</span>
         {state.integrity.brokenAt !== undefined && (
           <span className="text-[var(--color-danger-glow)]">(at seq {state.integrity.brokenAt})</span>
         )}
@@ -750,7 +750,7 @@ export default function AuditPage() {
             <input
               id="audit-filter-actor"
               type="text"
-              placeholder="e.g. admin-key"
+              placeholder={t('audit.actorPlaceholder')}
               value={filters.actor}
               onChange={(event) => setFilters((current) => ({ ...current, actor: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
@@ -764,7 +764,7 @@ export default function AuditPage() {
               id="audit-filter-action"
               type="text"
               list="audit-action-suggestions"
-              placeholder="e.g. session.kill"
+              placeholder={t('audit.actionPlaceholder')}
               value={filters.action}
               onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
@@ -778,11 +778,11 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-session" className="text-xs text-[var(--color-text-muted)]">{t('audit.sessionIdLabel')}</label>
+            <label htmlFor="audit-filter-session" className="text-xs text-[var(--color-text-muted)]">{t('audit.sessionId')}</label>
             <input
               id="audit-filter-session"
               type="text"
-              placeholder="e.g. 11111111-1111-1111-1111-111111111111"
+              placeholder={t('audit.sessionPlaceholder')}
               value={filters.sessionId}
               onChange={(event) => setFilters((current) => ({ ...current, sessionId: event.target.value }))}
               onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
@@ -791,7 +791,7 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-from" className="text-xs text-[var(--color-text-muted)]">{t('audit.fromLabel')}</label>
+            <label htmlFor="audit-filter-from" className="text-xs text-[var(--color-text-muted)]">{t('audit.from')}</label>
             <input
               id="audit-filter-from"
               type="datetime-local"
@@ -844,7 +844,7 @@ export default function AuditPage() {
       {endpointMissing ? (
         <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
           <Shield className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-muted)]" />
-          <p className="font-medium text-[var(--color-text-muted)]">{t('audit.endpointMissing')}</p>
+          <p className="font-medium text-[var(--color-text-muted)]">{t('audit.endpointNotAvailable')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             {t('audit.endpointMissingDescription')}
           </p>
@@ -852,7 +852,7 @@ export default function AuditPage() {
       ) : error ? (
         <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-[var(--color-danger)]" />
-          <p className="font-medium text-[var(--color-danger)]">{t('audit.failedLoad')}</p>
+          <p className="font-medium text-[var(--color-danger)]">{t('audit.failedToLoad')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
           <button type="button"
             onClick={() => { void fetchData(); }}
@@ -915,7 +915,7 @@ export default function AuditPage() {
             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
               <span>{t(total === 1 ? 'audit.recordsCount_one' : 'audit.recordsCount', { total })}</span>
               <span className="text-[var(--color-text-muted)]">|</span>
-              <label htmlFor="audit-page-size" className="sr-only">Page size</label>
+              <label htmlFor="audit-page-size" className="sr-only">{t('audit.pageSize')}</label>
               <select
                 id="audit-page-size"
                 value={pageSize}

@@ -6,6 +6,7 @@
  */
 
 import { formatCurrency } from '../../utils/formatNumber';
+import { useT } from '../../i18n/context';
 
 export interface BudgetProgressBarProps {
   /** Current spend in USD. */
@@ -39,6 +40,7 @@ const SEVERITY_TEXT: Record<Severity, string> = {
 };
 
 export function BudgetProgressBar({ currentSpend, cap, label, period }: BudgetProgressBarProps) {
+  const t = useT();
   const isUnlimited = cap <= 0;
 
   if (isUnlimited) {
@@ -56,7 +58,7 @@ export function BudgetProgressBar({ currentSpend, cap, label, period }: BudgetPr
               {formatCurrency(currentSpend)} <span className="text-sm font-normal text-[var(--color-text-muted)]">/ {period}</span>
             </p>
           </div>
-          <span className="text-xs text-[var(--color-text-muted)]">No limit set</span>
+          <span className="text-xs text-[var(--color-text-muted)]">{t('budgetBar.noLimit')}</span>
         </div>
       </div>
     );

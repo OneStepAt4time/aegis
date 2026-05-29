@@ -177,7 +177,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
     <div className="flex flex-col h-full relative">
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-[var(--color-void-lighter)] bg-[var(--color-void)] shrink-0">
-        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Filter:</span>
+        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('sessionDetail.filterLabel')}</span>
         {(['thinking', 'tool_use', 'tool_result'] as const).map(key => (
           <button type="button"
             key={key}
@@ -210,7 +210,7 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
               className="opacity-20 scale-[2]"
               aria-hidden="true"
             />
-            <div className="text-sm">No messages yet</div>
+            <div className="text-sm">{t('sessionDetail.noMessages')}</div>
             <div className="text-xs opacity-60 font-mono">⌘↵ to send · /model · /bash</div>
             <div className="flex flex-wrap justify-center gap-2 mt-1">
               {['/model', '/bash', '/help', '/cost', '/status'].map((cmd) => (

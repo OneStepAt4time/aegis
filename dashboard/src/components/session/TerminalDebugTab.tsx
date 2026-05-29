@@ -234,7 +234,7 @@ export function TerminalDebugTab({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a command..."
+              placeholder={t('sessionDetail.commandPlaceholder')}
               className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none"
               disabled={!isConnected}
               autoFocus
