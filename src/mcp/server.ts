@@ -71,6 +71,41 @@ export function redirectConsoleLogToStderr(): void {
   };
 }
 
+/**
+ * Attach JSON-RPC error response handling to the stdio transport.
+ *
+ * The MCP SDK's StdioServerTransport silently drops invalid messages:
+ * parse errors and schema validation failures call onerror but never send
+ * a JSON-RPC error response back to the client, leaving MCP clients hanging.
+ *
+ * This handler intercepts transport errors, classifies them, and sends proper
+ * JSON-RPC error responses per the spec (-32700 Parse Error, -32600 Invalid Request).
+ */
+function attachStdioErrorHandler(transport: StdioServerTransport): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  transport.onerror = (error: Error) => {
+    const msg = error?.message ?? String(error);
+    let code: number;
+    let message: string;
+
+    if (msg.includes('Unexpected token') || msg.includes('JSON') || msg.includes('SyntaxError')) {
+      code = -32700;
+      message = 'Parse error';
+    } else {
+      code = -32600;
+      message = 'Invalid Request';
+    }
+
+    const response = {
+      jsonrpc: '2.0' as const,
+      error: { code, message },
+      id: null,
+    };
+    // Write directly to stdout — the transport is stdio-based
+    process.stdout.write(JSON.stringify(response) + '\n');
+  };
+}
+
 export async function startMcpServer(baseUrlOrPort: number | string, authToken?: string): Promise<void> {
   // Defense-in-depth: redirect console.log to stderr before connecting transport.
   // Prevents accidental non-protocol data from corrupting the MCP stdout channel.
@@ -78,6 +113,7 @@ export async function startMcpServer(baseUrlOrPort: number | string, authToken?:
 
   const server = createMcpServer(baseUrlOrPort, authToken);
   const transport = new StdioServerTransport();
+  attachStdioErrorHandler(transport);
   await server.connect(transport);
   // Server runs until stdin closes
 }
