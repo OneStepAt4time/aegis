@@ -71,7 +71,7 @@ export default function ActivityPage() {
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Live Activity</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('activity.title')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)] flex items-center gap-2">
             {t('activity.subtitle')}
             <LiveStatusIndicator />
@@ -83,11 +83,11 @@ export default function ActivityPage() {
       <section aria-label={t('aria.activityHeatmap')}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-[var(--color-text-muted)]">
-            Session Activity
+            {t('activity.sessionActivity')}
           </h2>
           {!heatmapLoading && heatmapData.length > 0 && (
             <span className="text-xs text-[var(--color-text-muted)]">
-              {totalSessions} sessions across {totalActiveDays} active days
+              {t('activity.sessionsAcross', { sessions: totalSessions, days: totalActiveDays })}
             </span>
           )}
         </div>
@@ -105,19 +105,19 @@ export default function ActivityPage() {
                 className="rounded-md border border-[var(--color-void-lighter)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]"
                 aria-label={t('aria.retryLoadingHeatmap')}
               >
-                Retry
+                {t('activity.retry')}
               </button>
             </div>
           ) : heatmapData.length > 0 ? (
             <HeatmapGrid
               data={heatmapData}
               color="cyan"
-              metricLabel="Sessions"
-              formatValue={(v) => `${v} session${v !== 1 ? 's' : ''}`}
+              metricLabel={t('activity.sessionActivity')}
+              formatValue={(v) => t(v !== 1 ? 'activity.sessionCount_plural' : 'activity.sessionCount', { count: v })}
             />
           ) : (
             <div className="flex h-20 items-center justify-center text-sm text-[var(--color-text-muted)]">
-              No session activity recorded yet
+              {t('activity.noActivity')}
             </div>
           )}
         </div>

@@ -121,6 +121,12 @@ export const en = {
     title: 'Live Activity',
     subtitle: 'Real-time audit stream and operational metrics.',
     empty: 'No activity yet',
+    sessionActivity: 'Session Activity',
+    sessionsAcross: '{sessions} sessions across {days} active days',
+    sessionCount: '{count} session',
+    sessionCount_plural: '{count} sessions',
+    noActivity: 'No session activity recorded yet',
+    retry: 'Retry',
   },
   
   cost: {
@@ -504,6 +510,7 @@ export const en = {
     claudeCommand: 'Claude Command',
     claudeCommandDefault: 'Default: claude --print',
     initialPrompt: 'Initial Prompt',
+    promptPlaceholder: 'What do you want to accomplish?',
     permissionMode: 'Permission Mode',
     permissionDefault: 'Default (prompt)',
     permissionBypass: 'Bypass Permissions',
