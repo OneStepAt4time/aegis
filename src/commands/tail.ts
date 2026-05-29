@@ -25,6 +25,22 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
   if (!(await requireServer(baseUrl, authToken, io))) return 1;
 
   const headers = buildHeaders(authToken);
+
+  // Pre-check: verify session exists and is not terminated before SSE connect
+  const checkRes = await fetch(`${baseUrl}/v1/sessions/${sessionId}`, {
+    headers: buildHeaders(authToken),
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (checkRes.ok) {
+    const session = await checkRes.json() as { status?: string };
+    const terminalStates = ['killed', 'completed', 'crashed', 'terminated'];
+    if (terminalStates.includes(session.status ?? '')) {
+      writeLine(io.stderr, `  ❌ Session ${sessionId.slice(0, 8)}… is ${session.status}. Use \`ag list\` to see active sessions.`);
+      return 1;
+    }
+  }
+  // If check fails (404, auth error), proceed to SSE — the SSE error handling will catch it
+
   headers['Accept'] = 'text/event-stream';
 
   writeLine(io.stdout, `  Tailing session ${sessionId.slice(0, 8)}… (Ctrl+C to stop)`);
@@ -89,7 +105,13 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
+    const errMsg = ((err as { error?: string }).error) || res.statusText;
+    // Translate implementation-detail errors into user-facing messages
+    if (errMsg.toLowerCase().includes('sse token') || errMsg.toLowerCase().includes('unauthorized')) {
+      writeLine(io.stderr, `  ❌ Session ${sessionId.slice(0, 8)}… not found or expired. Use \`ag list\` to see active sessions.`);
+    } else {
+      writeLine(io.stderr, `  ❌ ${errMsg}`);
+    }
     clearTimeout(maxDurationTimer);
     return 1;
   }
