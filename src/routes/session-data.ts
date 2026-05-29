@@ -12,7 +12,7 @@ import { runVerification } from '../verification.js';
 import { readNewEntries } from '../transcript.js';
 import { SSEWriter } from '../sse-writer.js';
 import type { SessionSSEEvent } from '../events.js';
-import {
+import { safeErrorMessage,
   type RouteContext,
   registerWithLegacy, requireRole, withOwnership, withValidation,
 } from './context.js';
@@ -57,7 +57,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
   // Session summary (Issue #35)
   registerWithLegacy(app, 'get', '/v1/sessions/:id/summary', withOwnership(sessions, async (_req, reply, session) => {
     try { return await sessions.getSummary(session.id); } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   }));
 
@@ -75,7 +75,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
       const sessionId = (req.params as { id: string }).id;
       return await sessions.readTranscript(sessionId, page, limit, roleFilter as 'user' | 'assistant' | 'system' | undefined);
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   }));
 
@@ -102,7 +102,7 @@ export function registerSessionDataRoutes(app: FastifyInstance, ctx: RouteContex
         roleFilter as 'user' | 'assistant' | 'system' | undefined,
       );
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   }));
 

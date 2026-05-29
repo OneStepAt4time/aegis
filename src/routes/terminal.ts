@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import {
+import { safeErrorMessage,
   type RouteContext,
   registerWithLegacy,
   withSessionOwnership,
@@ -110,7 +110,7 @@ export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy
       if (message.includes('not active')) {
         return reply.status(503).send({ error: 'ACP runtime is not active for this session', code: 'RUNTIME_UNAVAILABLE' });
       }
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -129,7 +129,7 @@ export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy
       return { ok: true };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -148,7 +148,7 @@ export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy
       return { ok: true };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -167,7 +167,7 @@ export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy
       return result;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -188,7 +188,7 @@ export function registerTerminalRoutes(app: Parameters<typeof registerWithLegacy
       return { ok: true };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 }

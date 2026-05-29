@@ -23,7 +23,7 @@ import {
   approveToolSchema,
   rejectToolSchema,
 } from '../validation.js';
-import {
+import { safeErrorMessage,
   type RouteContext,
   registerWithLegacy,
   withSessionOwnership,
@@ -159,7 +159,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
 
       return buildResult(session.id, session.status, session.lastActivity, record);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -200,7 +200,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
 
       return buildResult(session.id, session.status, session.lastActivity, record);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -236,7 +236,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
 
       return buildResult(session.id, session.status, session.lastActivity, record);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -257,7 +257,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       if (audit) void audit.log(resolveRequestAuditActor(auth, req, 'api-key'), 'session.cancel', `Session cancelled: ${session.id}`, session.id, scope.tenantId);
       return { ok: true };
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -275,7 +275,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       }
       return serializeRecord(record);
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }));
 
@@ -297,7 +297,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       ctx.eventBus.emit(session.id, { event: 'approval_resolved', sessionId: session.id, timestamp: new Date().toISOString(), data: { action: 'approved', approvalId: parsed.data.approvalId } });
       return result;
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
@@ -319,7 +319,7 @@ export function registerControlActionRoutes(app: Parameters<typeof registerWithL
       ctx.eventBus.emit(session.id, { event: 'approval_resolved', sessionId: session.id, timestamp: new Date().toISOString(), data: { action: 'rejected', approvalId: parsed.data.approvalId } });
       return result;
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   }, 'send'));
 
