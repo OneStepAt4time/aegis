@@ -5,6 +5,7 @@
  * Issue #3566: SSE endpoints require short-lived sse_ tokens.
  * The CLI first obtains an SSE token via POST /v1/auth/sse-token, then connects.
  * Issue #3672: Support prefix matching for session IDs via resolveSessionId.
+ * Issue #4461: Check session status before SSE connect; improve error messages.
  *
  * Uses SIGINT on Unix and a readline keypress fallback on Windows for Ctrl+C.
  * Includes a 30-minute max-duration safeguard so the process never hangs forever.
@@ -54,10 +55,27 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
   const resolvedId = await resolveSessionId(sessionId, baseUrl, headers, io);
   if (!resolvedId) return 1;
 
+  // Issue #4461: Check session status before attempting SSE connection.
+  // If the session is in a terminal state, show a clear message instead of
+  // a confusing auth error.
+  const statusRes = await fetch(`${baseUrl}/v1/sessions/${resolvedId}/status`, {
+    headers,
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (statusRes.ok) {
+    const statusBody = await statusRes.json() as { status?: string };
+    const status = statusBody.status;
+    const terminalStates = ['killed', 'error', 'completed', 'failed', 'closed', 'crashed'];
+    if (status && terminalStates.includes(status)) {
+      writeLine(io.stderr, `  ❌ Session is ${status}. Use \`ag list\` to see active sessions.`);
+      return 1;
+    }
+  }
+
   // Issue #3566: Obtain SSE token before connecting to the event stream.
   const sseToken = await obtainSSEToken(baseUrl, authToken);
   if (!sseToken) {
-    writeLine(io.stderr, '  ❌ Failed to obtain SSE token. Check your auth credentials.');
+    writeLine(io.stderr, '  ❌ Authentication failed — run `ag init` to refresh credentials.');
     return 1;
   }
 
@@ -126,7 +144,12 @@ export async function handleTail(args: string[], io: CliIO): Promise<number> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    writeLine(io.stderr, `  ❌ ${((err as { error?: string }).error) || res.statusText}`);
+    const errMsg = ((err as { error?: string }).error) || res.statusText;
+      if (res.status === 401) {
+        writeLine(io.stderr, '  ❌ Authentication failed — run `ag init` to refresh credentials.');
+      } else {
+        writeLine(io.stderr, `  ❌ ${errMsg}`);
+      }
     clearTimeout(maxDurationTimer);
     return 1;
   }

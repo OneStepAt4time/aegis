@@ -1,6 +1,7 @@
 /**
  * Regression tests for #3512 — ag tail SIGINT handler unreliable on Windows.
  * Updated for #3566 — SSE token acquisition before connecting to events stream.
+ * Updated for #4461 — session status check before SSE connect.
  *
  * Verifies:
  * 1. On Windows (platform() === 'win32'), readline keypress listener is used as fallback
@@ -9,6 +10,7 @@
  * 4. Cleanup happens correctly on abort (SIGINT, keypress, or timeout)
  * 5. Missing session ID returns error
  * 6. #3566: SSE token is obtained before connecting to event stream
+ * 7. #4461: Terminated sessions are caught before SSE connect
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -44,23 +46,37 @@ function makeIO() {
   };
 }
 
+const SESSION_ID = 'a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5';
+
 /**
- * #3566: Create a mock fetch that handles the two-step SSE flow:
- * 1st call: POST /v1/auth/sse-token → { token: 'sse_test_token' }
- * 2nd call: GET /v1/sessions/:id/events → SSE stream
+ * Create a mock fetch that handles the three-step SSE flow (#4461 + #3566):
+ * 1st call: GET /v1/sessions/:id/status → { status: 'running' }
+ * 2nd call: POST /v1/auth/sse-token → { token: 'sse_test_token' }
+ * 3rd call: GET /v1/sessions/:id/events → streamResponse
  */
 function createSSEMockFetch(streamResponse: { ok: boolean; body?: ReadableStream; json?: () => Promise<any> }) {
-  let callCount = 0;
-  return vi.fn(async (url: string, opts?: any) => {
-    callCount++;
-    // First call: SSE token endpoint
-    if (callCount === 1 && typeof url === 'string' && url.includes('/sse-token')) {
+  
+  return vi.fn(async (url: string | RequestInfo, _opts?: any) => {
+    const urlStr = typeof url === 'string' ? url : String(url);
+    
+
+    // Status check
+    if (urlStr.includes('/status')) {
+      return {
+        ok: true,
+        json: async () => ({ status: 'running' }),
+      };
+    }
+
+    // SSE token endpoint
+    if (urlStr.includes('/sse-token')) {
       return {
         ok: true,
         json: async () => ({ token: 'sse_test_token' }),
       };
     }
-    // Second call: events stream
+
+    // Events stream
     return streamResponse;
   });
 }
@@ -88,7 +104,6 @@ describe('tail SIGINT handling (#3512)', () => {
   it('uses readline keypress on Windows (win32)', async () => {
     mockPlatform.mockReturnValue('win32');
 
-    // Create a fake SSE response that completes immediately
     const fakeStream = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
@@ -107,7 +122,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+      const exitCode = await handleTail([SESSION_ID], io);
 
       expect(readline.emitKeypressEvents).toHaveBeenCalledWith(process.stdin);
       expect(exitCode).toBe(0);
@@ -137,7 +152,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+      const exitCode = await handleTail([SESSION_ID], io);
 
       expect(readline.emitKeypressEvents).not.toHaveBeenCalled();
       expect(exitCode).toBe(0);
@@ -147,33 +162,50 @@ describe('tail SIGINT handling (#3512)', () => {
   });
 
   it('handles SSE token fetch failure', async () => {
-    // SSE token endpoint returns failure
-    const mockFetch = vi.fn(async () => ({
-      ok: false,
-      status: 401,
-      statusText: 'Unauthorized',
-      json: async () => ({ error: 'Invalid token' }),
-    }));
+    // Status check succeeds, but SSE token endpoint returns failure
+    
+    const mockFetch = vi.fn(async (url: string | RequestInfo) => {
+      const urlStr = typeof url === 'string' ? url : String(url);
+      
+
+      // Status check succeeds
+      if (urlStr.includes('/status')) {
+        return { ok: true, json: async () => ({ status: 'running' }) };
+      }
+
+      // Everything else (sse-token) fails
+      return {
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({ error: 'Invalid token' }),
+      };
+    });
 
     const originalGlobalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch as any;
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+      const exitCode = await handleTail([SESSION_ID], io);
       expect(exitCode).toBe(1);
-      expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('SSE token'));
+      expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Authentication failed'));
     } finally {
       globalThis.fetch = originalGlobalFetch;
     }
   });
 
   it('handles events stream returning non-OK response', async () => {
-    // First call succeeds (SSE token), second fails (stream)
-    let callCount = 0;
-    const mockFetch = vi.fn(async () => {
-      callCount++;
-      if (callCount === 1) {
+    // 1st: status check ok, 2nd: SSE token ok, 3rd: events stream 404
+    
+    const mockFetch = vi.fn(async (url: string | RequestInfo) => {
+      const urlStr = typeof url === 'string' ? url : String(url);
+      
+
+      if (urlStr.includes('/status')) {
+        return { ok: true, json: async () => ({ status: 'running' }) };
+      }
+      if (urlStr.includes('/sse-token')) {
         return { ok: true, json: async () => ({ token: 'sse_test_token' }) };
       }
       return {
@@ -189,7 +221,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+      const exitCode = await handleTail([SESSION_ID], io);
       expect(exitCode).toBe(1);
       expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Session not found'));
     } finally {
@@ -217,7 +249,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
     try {
       const io = makeIO();
-      const exitCode = await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+      const exitCode = await handleTail([SESSION_ID], io);
       expect(exitCode).toBe(0);
       // Should have printed the assistant message
       expect(writeLine).toHaveBeenCalledWith(io.stdout, expect.stringContaining('🤖 hello'));
@@ -227,7 +259,6 @@ describe('tail SIGINT handling (#3512)', () => {
   });
 
   it('registers SIGINT handler on both platforms', async () => {
-    // Test that SIGINT is registered on both platforms
     for (const plat of ['linux', 'win32']) {
       mockPlatform.mockReturnValue(plat);
       vi.clearAllMocks();
@@ -252,7 +283,7 @@ describe('tail SIGINT handling (#3512)', () => {
 
       try {
         const io = makeIO();
-        await handleTail(['a9e04f5e-ba93-4ec7-b0d6-76648b4a33e5'], io);
+        await handleTail([SESSION_ID], io);
         expect(onceSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
         expect(removeListenerSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
       } finally {
@@ -260,6 +291,34 @@ describe('tail SIGINT handling (#3512)', () => {
         onceSpy.mockRestore();
         removeListenerSpy.mockRestore();
       }
+    }
+  });
+
+  it('catches terminated session before SSE connect (#4461)', async () => {
+    // Status check returns a terminal state
+    const mockFetch = vi.fn(async (url: string | RequestInfo) => {
+      const urlStr = typeof url === 'string' ? url : String(url);
+      if (urlStr.includes('/status')) {
+        return { ok: true, json: async () => ({ status: 'completed' }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const originalGlobalFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as any;
+
+    try {
+      const io = makeIO();
+      const exitCode = await handleTail([SESSION_ID], io);
+      expect(exitCode).toBe(1);
+      expect(writeLine).toHaveBeenCalledWith(io.stderr, expect.stringContaining('Session is completed'));
+      // Should NOT have called SSE token or events endpoints
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        expect.stringContaining('/sse-token'),
+        expect.anything(),
+      );
+    } finally {
+      globalThis.fetch = originalGlobalFetch;
     }
   });
 });
