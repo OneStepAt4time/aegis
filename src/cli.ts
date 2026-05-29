@@ -28,6 +28,7 @@ import { handleWhoami } from './commands/whoami.js';
 import { handleRun } from './commands/run.js';
 import { handleList } from './commands/list.js';
 import { handleMeta } from './commands/meta.js';
+import { handleSend } from './commands/send.js';
 import { handleUpdate } from './commands/update.js';
 import { handleRead } from './commands/read.js';
 import { handleKill } from './commands/kill.js';
@@ -342,6 +343,7 @@ function printHelp(io: CliIO): void {
     ag list --status active  Filter by status
     ag read <id>            Read session output
     ag tail <id>            Follow session output in real-time
+    ag send <id> "msg"      Send message to a running session
     ag kill <id>            Terminate a session
     ag status               Show server health + session summary
 
@@ -444,6 +446,10 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
 
   if (argv[0] === 'read') {
     return handleRead(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'send') {
+    return handleSend(argv.slice(1), io);
   }
 
   if (argv[0] === 'kill') {
