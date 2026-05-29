@@ -65,8 +65,12 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   const body = await res.json() as { sessions?: any[]; data?: any[]; pagination?: any };
   let sessions = body.sessions ?? body.data ?? [];
 
-  // #3731: Filter terminal statuses unless --all
-  if (!showAll) {
+  // #3731 / #4459: Filter terminal statuses.
+  // --status active explicitly requests "not terminal" behavior and should
+  // take precedence over --all. Otherwise --all shows terminal statuses.
+  if (statusActiveFilter) {
+    sessions = sessions.filter(s => !TERMINAL_STATUSES.has(s.status));
+  } else if (!showAll) {
     sessions = sessions.filter(s => !TERMINAL_STATUSES.has(s.status));
   }
 
