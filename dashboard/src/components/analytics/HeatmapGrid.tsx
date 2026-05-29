@@ -13,6 +13,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { tokens } from '../../design/tokens.js';
+import { useT } from '../../i18n/context';
 
 export interface HeatmapDataPoint {
   date: string; // YYYY-MM-DD
@@ -98,6 +99,7 @@ export function HeatmapGrid({
   className = '',
 }: HeatmapGridProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const t = useT();
   const scale = COLOR_SCALES[color];
 
   // Build date → value lookup
@@ -263,7 +265,7 @@ export function HeatmapGrid({
 
       {/* Legend */}
       <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-[var(--color-text-muted)]">
-        <span>Less</span>
+        <span>{t('analytics.heatmapLess')}</span>
         {([0, 1, 2, 3, 4] as const).map((level) => (
           <div
             key={level}
@@ -275,7 +277,7 @@ export function HeatmapGrid({
             }}
           />
         ))}
-        <span>More</span>
+        <span>{t('analytics.heatmapMore')}</span>
       </div>
     </div>
   );

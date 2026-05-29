@@ -40,7 +40,7 @@ export const AgentFilter: FC<AgentFilterProps> = ({ value, onChange, className =
         className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--color-cta-bg)] transition-colors"
         aria-label={t('aria.filterByAgentType')}
       >
-        <option value="">All Agents</option>
+        <option value="">{t('sessions.allAgents')}</option>
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}

@@ -393,7 +393,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-[var(--color-text-muted)] px-1">
             <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
-            <span>Name</span>
+            <span>{t('newSession.nameLabel')}</span>
             <span>Prompt (override)</span>
             <span />
           </div>

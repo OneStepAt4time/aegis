@@ -86,7 +86,7 @@ export default function LoginPage() {
             className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-cta-bg)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-cta-bg)]"
           >
             <LogIn className="h-4 w-4" />
-            <span>Sign in with SSO</span>
+            <span>{t('login.signInWithSSO')}</span>
           </button>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
