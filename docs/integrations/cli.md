@@ -333,6 +333,7 @@ Check for and apply Aegis updates. Auto-detects install method (npm global vs di
 ```bash
 ag update                  # Check and install latest version
 ag update --check         # Check only, don't install
+ag update --dry-run       # Check availability, show what would change, exit (no install)
 ag update --yes           # Skip confirmation prompt
 ```
 
@@ -348,6 +349,7 @@ ag update --yes           # Skip confirmation prompt
 | Flag | Description |
 |------|------------|
 | `--check` | Check for updates without installing |
+| `--dry-run` | Check availability and show what would change, without installing. Exit code 1 if update available, 0 if up-to-date |
 | `--yes` / `-y` | Skip confirmation prompt |
 
 **Exit codes:**
@@ -356,6 +358,26 @@ ag update --yes           # Skip confirmation prompt
 |------|----------|
 | `0` | Success (updated or already up-to-date) |
 | `1` | Error (network failure, SHA mismatch, no platform asset) |
+
+### `ag meta` — Session Metadata
+
+View and manage per-session key-value metadata. Tag sessions with PR numbers, pipeline status, or any custom data.
+
+```bash
+ag meta <session-id>                          # show all metadata
+ag meta <session-id> --set pr_number=1234      # set a key
+ag meta <session-id> --set k1=v1 k2=v2        # set multiple keys
+ag meta <session-id> --delete pr_number        # remove a key
+```
+
+**Constraints:** Max 20 keys per session, 64 chars per key, 256 chars per value.
+
+**Flags:**
+
+| Flag | Description |
+|------|------------|
+| `--set key=value` | Set one or more key-value pairs (merges with existing) |
+| `--delete key` | Remove a single key |
 
 ### `ag login` — Authenticate via OIDC
 
@@ -504,6 +526,7 @@ ag status [id]         Server health or session details (prefix match)
 ag tail <id>           Follow session events in real-time (prefix match)
 ag create "brief"      Create + send
 ag update              Self-update to latest version
+ag meta <id>           View/manage session metadata
 ag login               Authenticate via OIDC
 ag logout              Remove stored credentials
 ag whoami              Show current identity
