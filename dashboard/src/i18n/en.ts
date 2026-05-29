@@ -47,6 +47,8 @@ export const en = {
     avgDurationChart: 'Avg Duration Over Time',
     noDataAvailable: 'No data available yet',
     calculating: 'Calculating…',
+    noCostData: 'No cost data available',
+    newSessionShortcut: 'New Session (⌘N)',
   },
   
   sessions: {
@@ -286,6 +288,8 @@ export const en = {
     avgDurationChart: 'Avg Duration Over Time',
     noDataAvailable: 'No data available yet',
     calculating: 'Calculating…',
+    noCostData: 'No cost data available',
+    newSessionShortcut: 'New Session (⌘N)',
   },
 
   metrics: {

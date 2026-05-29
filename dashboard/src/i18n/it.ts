@@ -49,6 +49,8 @@ export const it = {
     avgDurationChart: 'Durata Media nel Tempo',
     noDataAvailable: 'Nessun dato disponibile',
     calculating: 'Calcolo…',
+    noCostData: 'Nessun dato sui costi disponibile',
+    newSessionShortcut: 'Nuova Sessione (⌘N)',
   },
 
   sessions: {
@@ -289,6 +291,8 @@ export const it = {
     avgDurationChart: 'Durata Media nel Tempo',
     noDataAvailable: 'Nessun dato disponibile',
     calculating: 'Calcolo…',
+    noCostData: 'Nessun dato disponibile',
+    newSessionShortcut: 'Nuova sessione (⌘N)',
   },
 
   metrics: {
