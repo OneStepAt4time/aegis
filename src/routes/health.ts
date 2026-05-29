@@ -146,7 +146,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
       }
       return reply.status(200).send(result);
     } catch (e: unknown) {
-      return reply.status(502).send({ error: `Alert delivery failed: ${e instanceof Error ? e.message : String(e)}` });
+      return reply.status(502).send({ error: 'Alert delivery failed' });
     }
   });
 

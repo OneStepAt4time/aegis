@@ -215,7 +215,7 @@ describe('Driver Control Routes (app.inject)', () => {
         payload: {},
       });
       expect(res.statusCode).toBe(500);
-      expect(res.json().error).toBe('Internal failure');
+      expect(res.json().error).toBe('Internal server error');
     });
   });
 
@@ -281,7 +281,7 @@ describe('Driver Control Routes (app.inject)', () => {
         payload: {},
       });
       expect(res.statusCode).toBe(500);
-      expect(res.json().error).toBe('Release failed');
+      expect(res.json().error).toBe('Internal server error');
     });
   });
 
@@ -351,7 +351,7 @@ describe('Driver Control Routes (app.inject)', () => {
         payload: { targetSubscriberId: 'sub-2' },
       });
       expect(res.statusCode).toBe(500);
-      expect(res.json().error).toBe('Transfer error');
+      expect(res.json().error).toBe('Internal server error');
     });
   });
 
