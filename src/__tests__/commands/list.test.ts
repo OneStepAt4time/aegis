@@ -220,3 +220,19 @@ describe('handleList --json (#4457)', () => {
     expect(parsed.sessions).toHaveLength(2);
   });
 });
+
+  it('--status active filters out terminal statuses', async () => {
+    const sessions = [
+      { id: 'a1', status: 'idle', displayName: 'alive' },
+      { id: 'b2', status: 'killed', displayName: 'dead' },
+    ];
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status:200, json: async () => ({ sessions, pagination: { page:1, limit:50, total:2, totalPages:1 } }) }) as any;
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--status', 'active', '--json'], mockIO as any);
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonCall = calls.find((l: string) => l && l.startsWith('{'));
+    const parsed = JSON.parse(jsonCall!);
+    expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.sessions[0].status).toBe('idle');
+  });
