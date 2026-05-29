@@ -467,7 +467,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (acpBackend && ctx.config.acpEnabled) {
       let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
       try {
-        acpResult = await acpBackend.createSession({
+        acpResult = await acpBackend.createSessionAsync({
           tenantId: req.tenantId ?? SYSTEM_TENANT,
           ownerKeyId: req.authKeyId ?? 'master',
           cwd: safeWorkDir,
@@ -478,15 +478,15 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         });
       } catch (e) {
         const auditLogger = getAuditLogger();
-        if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP runtime failed to start for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
+        if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP session record creation failed for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
         const acpErr = e instanceof Error ? e.message : String(e);
-        return reply.status(500).send({ error: 'ACP runtime failed to start — check claude CLI availability and ACP configuration', details: acpErr });
+        return reply.status(500).send({ error: 'Session creation failed', details: acpErr });
       }
       try {
         session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
         // Issue #3135: Sync ACP session status to local session state
         // The ACP backend tracks agent status independently; mirror it here.
-        const acpToUIState: Record<string, import('../session.js').UIState> = { idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
+        const acpToUIState: Record<string, import('../session.js').UIState> = { initializing: 'pending', idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
         const mappedStatus = acpToUIState[acpResult.session.status];
         if (mappedStatus) {
           session.status = mappedStatus;
@@ -564,7 +564,12 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       });
     }
 
-    return reply.status(201).send({ ...redactSession(session as unknown as Record<string, unknown>), promptDelivery });
+    // Issue #4456: Session may still be initializing when ACP async handshake is in progress
+    return reply.status(201).send({
+      ...redactSession(session as unknown as Record<string, unknown>),
+      promptDelivery,
+      ...(session.status === 'pending' ? { status: 'starting', message: 'Session is initializing — the agent runtime is starting in the background' } : {}),
+    });
   }
   registerWithLegacy(app, 'post', '/v1/sessions', {
     config: {

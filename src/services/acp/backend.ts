@@ -309,6 +309,30 @@ export class AcpBackend {
   }
 
   /**
+   * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
+   * Returns immediately with the durable session record while the child process
+   * spawn + initialize + session/new handshake runs in the background.
+   *
+   * Use this for HTTP endpoints where synchronous handshake causes client timeouts
+   * (e.g., POST /v1/sessions hanging for 2+ minutes).
+   */
+  async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
+    const session = await this.sessionService.createSession(toCreateSessionInput(input));
+    const backendRunId = this.backendRunIdProvider();
+
+    // Fire-and-forget the handshake — caller gets the session record immediately.
+    // On success, session transitions to agent_ready. On failure, transitions to error.
+    this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId)
+      .catch((err) => {
+        log.error(
+          { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
+        );
+      });
+
+    return { session, initializeResult: {}, backendRunId };
+  }
+
+  /**
    * Resume an existing ACP session by spawning a fresh child process and calling session/resume.
    * Requires an existing acpAgentSessionId on the session record.
    */
@@ -708,6 +732,42 @@ export class AcpBackend {
     } catch (error) {
       await this.failStartup(session.id, runtime.scope, runtime, started);
       throw error;
+    }
+  }
+
+  /**
+   * Issue #4456: Run the startNewRuntime handshake in the background.
+   * Extracted from startNewRuntime to allow fire-and-forget startup.
+   */
+  private async startNewRuntimeBackground(
+    session: AcpSessionRecord,
+    cwd: string,
+    mcpServers: AcpJsonObject | undefined,
+    systemPrompt: string | undefined,
+    backendRunId: string
+  ): Promise<void> {
+    const runtime = this.createRuntime(session, cwd, backendRunId);
+    let started = false;
+    try {
+      const initializeResult = await this.startAndInitialize(runtime);
+      started = true;
+      const response = await runtime.client.request<AcpBackendSessionResult>(
+        'session/new',
+        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers, systemPrompt)
+      );
+      const attachment = attachmentFromResult(response.result, backendRunId);
+      const attached = await this.sessionService.attachAgentSession(
+        session.id,
+        runtime.scope,
+        attachment
+      );
+      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
+        type: 'agent_ready',
+      });
+      runtime.agentCapabilities = initializeResult.agentCapabilities;
+      this.runtimes.set(session.id, runtime);
+    } catch (error) {
+      await this.failStartup(session.id, runtime.scope, runtime, started);
     }
   }
 
