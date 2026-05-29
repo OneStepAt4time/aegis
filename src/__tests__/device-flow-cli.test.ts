@@ -216,7 +216,7 @@ describe('ag logout', () => {
 
     const io = createMockIO();
     const code = await handleLogout([], io);
-    expect(code).toBe(1);
+    expect(code).toBe(0);
     expect(io.getStdout()).toContain('Not logged in');
   });
 
