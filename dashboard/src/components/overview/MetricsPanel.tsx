@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from 'react';
 import { Activity, Clock, Layers, Timer } from 'lucide-react';
+import { useT } from '../../i18n/context';
 import { getHealth, getMetrics } from '../../api/client.js';
 import { useSseAwarePolling } from '../../hooks/useSseAwarePolling.js';
 import { useStore } from '../../store/useStore.js';
@@ -68,6 +69,7 @@ function StatTile({ icon, label, value, color = 'text-[var(--color-cta-bg)]' }: 
 
 export default function MetricsPanel() {
   const latestActivity = useStore((s) => s.activities[0] ?? null);
+  const t = useT();
   const sseConnected = useStore((s) => s.sseConnected);
   const [data, setData] = useState<MetricsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,31 +135,31 @@ export default function MetricsPanel() {
     <div className="space-y-1.5">
       {isUnavailable && (
         <p className="text-xs text-[var(--color-text-muted)]">
-          Metrics endpoint unavailable — showing placeholder values.
+          {t('metricsPanel.unavailable')}
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile
           icon={<Activity className="h-4 w-4" />}
-          label="Active Sessions"
+          label={t('metricsPanel.activeSessions')}
           value={d.activeSessions}
           color="text-[var(--color-success)]"
         />
         <StatTile
           icon={<Layers className="h-4 w-4" />}
-          label="Total Sessions"
+          label={t('metricsPanel.totalSessions')}
           value={d.totalSessions}
           color="text-[var(--color-cta-bg)]"
         />
         <StatTile
           icon={<Timer className="h-4 w-4" />}
-          label="Avg Duration"
+          label={t('metricsPanel.avgDuration')}
           value={formatDuration(d.avgDurationSec)}
           color="text-[var(--color-warning)]"
         />
         <StatTile
           icon={<Clock className="h-4 w-4" />}
-          label="Uptime"
+          label={t('metricsPanel.uptime')}
           value={formatUptime(d.uptime)}
           color="text-[var(--color-accent-violet)]"
         />

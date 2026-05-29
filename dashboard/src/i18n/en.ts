@@ -1275,6 +1275,62 @@ export const en = {
     latestExport: 'Latest export metadata',
     chainBroken: 'Chain broken',
   },
+
+  metricCards: {
+    completed: 'Completed',
+    failedSessions: 'Failed Sessions',
+    viewErrorLogs: 'View Error Logs',
+    deliveryRate: 'Delivery Rate',
+    success: 'Success',
+    promptsDelivered: 'Prompts Delivered',
+    sentTotal: '{count} sent total',
+    promptsFailed: 'Prompts Failed',
+    webhooksSent: 'Webhooks Sent',
+    webhooksFailed: 'Webhooks Failed',
+    autoApprovals: 'Auto-Approvals',
+    pipelinesCreated: 'Pipelines Created',
+    batchesCreated: 'Batches Created',
+    screenshots: 'Screenshots',
+    avgHookLatency: 'Avg Hook Latency',
+    avgPermissionLatency: 'Avg Permission Latency',
+    avgChannelLatency: 'Avg Channel Latency',
+    totalEstCost: 'Total Est. Cost',
+    totalTokens: 'Total Tokens',
+    failedCount: '{count} failed',
+  },
+
+  metricsPanel: {
+    activeSessions: 'Active Sessions',
+    totalSessions: 'Total Sessions',
+    avgDuration: 'Avg Duration',
+    uptime: 'Uptime',
+    unavailable: 'Metrics endpoint unavailable — showing placeholder values.',
+  },
+
+  sessionMetrics: {
+    duration: 'Duration',
+    messages: 'Messages',
+    toolCalls: 'Tool calls',
+    approvals: 'Approvals',
+    auto: 'Auto',
+    model: 'Model',
+  },
+
+  approval: {
+    permissionRequired: 'Permission required: {name}',
+    clickToReview: 'Click the session to review and approve',
+    pendingCount: '{count} pending approval{count, plural, one {} other {s}}',
+    sessionsAwaiting: '{count} session{count, plural, one {} other {s}} awaiting approval',
+  },
+
+  templateOptions: {
+    default: 'Default (prompt)',
+    bypassPermissions: 'Bypass Permissions',
+    planMode: 'Plan Mode',
+    acceptEdits: 'Accept Edits',
+    dontAsk: "Don't Ask",
+    autoAccept: 'Auto-accept',
+  },
 } as const;
 
 export type Messages = typeof en;

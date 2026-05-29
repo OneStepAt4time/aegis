@@ -144,7 +144,7 @@ export default function MetricCards() {
       {/* ── Operational Metrics ──────────────────────────────── */}
       {completedSessions > 0 && (
         <MetricCard
-          label="Completed"
+          label={t('metricCards.completed')}
           value={completedSessions}
           icon={<CheckCircle2 className="h-4 w-4" />}
           color="green"
@@ -154,7 +154,7 @@ export default function MetricCards() {
         <div className="card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col gap-2">
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
             <AlertTriangle className="h-4 w-4 text-[var(--color-danger)]" />
-            Failed Sessions
+            {t('metricCards.failedSessions')}
           </div>
           <p className="font-mono text-2xl text-[var(--color-danger)] font-bold">{failedSessions}</p>
           <NavLink
@@ -162,7 +162,7 @@ export default function MetricCards() {
             className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-danger)] hover:text-[var(--color-danger-glow)] transition-colors"
           >
             <ExternalLink className="h-3 w-3" />
-            View Error Logs
+            {t('metricCards.viewErrorLogs')}
           </NavLink>
         </div>
       )}
@@ -172,13 +172,13 @@ export default function MetricCards() {
       <div className="col-span-2 lg:col-span-4 card-glass card-glass-interactive animate-bento-reveal p-4 sm:p-5 flex flex-col">
         <div className="mb-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
           <Zap className="h-4 w-4" />
-          Delivery Rate
+          {t('metricCards.deliveryRate')}
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 flex-1">
           <RingGauge
             value={deliveryRate_ !== null ? Math.round(deliveryRate_) : 0}
             size={90}
-            label="Success"
+            label={t('metricCards.success')}
             primaryColor={deliveryColor === 'green' ? 'var(--color-success)' : deliveryColor === 'red' ? 'var(--color-error)' : 'var(--color-warning)'}
           />
           <div className="flex-1 space-y-3 text-center sm:text-left">
@@ -215,9 +215,9 @@ export default function MetricCards() {
       </div>
       {promptsDelivered > 0 && (
         <MetricCard
-          label="Prompts Delivered"
+          label={t('metricCards.promptsDelivered')}
           value={promptsDelivered}
-          subLabel={promptsSent > 0 ? `${promptsSent} sent total` : undefined}
+          subLabel={promptsSent > 0 ? t('metricCards.sentTotal', { count: promptsSent }) : undefined}
           icon={<Send className="h-4 w-4" />}
           color="green"
           className="col-span-1 lg:col-span-2"
@@ -225,7 +225,7 @@ export default function MetricCards() {
       )}
       {promptsFailed > 0 && (
         <MetricCard
-          label="Prompts Failed"
+          label={t('metricCards.promptsFailed')}
           value={promptsFailed}
           icon={<XCircle className="h-4 w-4" />}
           color="red"
@@ -236,17 +236,17 @@ export default function MetricCards() {
       {/* ── Webhooks ─────────────────────────────────────── */}
       {webhooksSent > 0 && (
         <MetricCard
-          label="Webhooks Sent"
+          label={t('metricCards.webhooksSent')}
           value={webhooksSent}
           icon={<Send className="h-4 w-4" />}
           color="green"
-          subLabel={webhooksFailed > 0 ? `${webhooksFailed} failed` : '0 failed'}
+          subLabel={t('metricCards.failedCount', { count: webhooksFailed })}
           className="col-span-2"
         />
       )}
       {webhooksFailed > 0 && webhooksSent === 0 && (
         <MetricCard
-          label="Webhooks Failed"
+          label={t('metricCards.webhooksFailed')}
           value={webhooksFailed}
           icon={<XCircle className="h-4 w-4" />}
           color="red"
@@ -256,7 +256,7 @@ export default function MetricCards() {
       {/* ── Auto-Approvals ───────────────────────────────── */}
       {autoApprovals > 0 && (
         <MetricCard
-          label="Auto-Approvals"
+          label={t('metricCards.autoApprovals')}
           value={autoApprovals}
           icon={<ShieldCheck className="h-4 w-4" />}
           color="purple"
@@ -266,7 +266,7 @@ export default function MetricCards() {
       {/* ── Pipelines & Batches ──────────────────────────── */}
       {pipelinesCreated > 0 && (
         <MetricCard
-          label="Pipelines Created"
+          label={t('metricCards.pipelinesCreated')}
           value={pipelinesCreated}
           icon={<GitBranch className="h-4 w-4" />}
           color="purple"
@@ -274,7 +274,7 @@ export default function MetricCards() {
       )}
       {batchesCreated > 0 && (
         <MetricCard
-          label="Batches Created"
+          label={t('metricCards.batchesCreated')}
           value={batchesCreated}
           icon={<Layers3 className="h-4 w-4" />}
           color="purple"
@@ -284,7 +284,7 @@ export default function MetricCards() {
       {/* ── Screenshots ──────────────────────────────────── */}
       {screenshotsTaken > 0 && (
         <MetricCard
-          label="Screenshots"
+          label={t('metricCards.screenshots')}
           value={screenshotsTaken}
           icon={<Camera className="h-4 w-4" />}
         />
@@ -292,19 +292,19 @@ export default function MetricCards() {
 
       {/* ── Latency ──────────────────────────────────────── */}
       <MetricCard
-        label="Avg Hook Latency"
+        label={t('metricCards.avgHookLatency')}
         value={formatLatency(hookLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-1 lg:col-span-2"
       />
       <MetricCard
-        label="Avg Permission Latency"
+        label={t('metricCards.avgPermissionLatency')}
         value={formatLatency(permissionLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-1 lg:col-span-2"
       />
       <MetricCard
-        label="Avg Channel Latency"
+        label={t('metricCards.avgChannelLatency')}
         value={formatLatency(channelLatency)}
         icon={<Clock className="h-4 w-4" />}
         className="col-span-2 lg:col-span-2"  />
@@ -312,7 +312,7 @@ export default function MetricCards() {
       {/* ── Removed Uptime ───────────────────────────────── */}      {/* ── Cost & Tokens (shown when API provides them) ── */}
       {totalEstimatedCostUsd > 0 && (
         <MetricCard
-          label="Total Est. Cost"
+          label={t('metricCards.totalEstCost')}
           value={`$${totalEstimatedCostUsd < 1 ? totalEstimatedCostUsd.toFixed(3) : totalEstimatedCostUsd.toFixed(2)}`}
           icon={<DollarSign className="h-4 w-4" />}
           color="amber"
@@ -321,7 +321,7 @@ export default function MetricCards() {
       )}
       {totalTokens > 0 && (
         <MetricCard
-          label="Total Tokens"
+          label={t('metricCards.totalTokens')}
           value={totalTokens >= 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(2)}M` : totalTokens >= 1_000 ? `${(totalTokens / 1_000).toFixed(1)}k` : totalTokens.toString()}
           icon={<Layers className="h-4 w-4" />}
           color="purple"

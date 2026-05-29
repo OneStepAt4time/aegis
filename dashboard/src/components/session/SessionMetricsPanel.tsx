@@ -160,35 +160,35 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
              Model cell (issue 04.9) shows the parsed BYO model name. */}
         <div className="mt-4 pt-4 border-t border-[var(--color-void-lighter)] grid grid-cols-3 sm:grid-cols-6 gap-4">
           <BannerCell
-            label="Duration"
+            label={t('sessionMetrics.duration')}
             value={metrics ? formatDuration(metrics.durationSec * 1000) : '—'}
             title={t('aria.elapsedSessionTime')}
           />
           <BannerCell
-            label="Messages"
+            label={t('sessionMetrics.messages')}
             numericValue={counts.messages}
             animate={animate}
             title={`${counts.userMessages} user · ${counts.assistantMessages} assistant`}
           />
           <BannerCell
-            label="Tool calls"
+            label={t('sessionMetrics.toolCalls')}
             numericValue={counts.toolCalls}
             animate={animate}
           />
           <BannerCell
-            label="Approvals"
+            label={t('sessionMetrics.approvals')}
             numericValue={counts.approvals}
             animate={animate}
             title={t('aria.approvalsGranted')}
           />
           <BannerCell
-            label="Auto"
+            label={t('sessionMetrics.auto')}
             numericValue={metrics?.autoApprovals ?? 0}
             animate={animate}
             title={t('aria.autoApprovals')}
           />
           <BannerCell
-            label="Model"
+            label={t('sessionMetrics.model')}
             value={model ?? '—'}
             valueColor={model ? modelAccent(model) : undefined}
             title={model ? `Active model: ${model}` : 'Model not yet detected'}
