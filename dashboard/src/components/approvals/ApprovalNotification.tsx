@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { useApprovalStore } from "../../store/useApprovalStore";
 import { useToastStore } from "../../store/useToastStore";
+import { useT } from "../../i18n/context";
 
 /**
  * ApprovalNotification — invisible component that watches for new
@@ -20,6 +21,7 @@ import { useToastStore } from "../../store/useToastStore";
  * Place this once in the app root or Layout.
  */
 export function ApprovalNotification() {
+  const t = useT();
   // Subscribe to the Map (stable reference) — NOT s.list() which creates new arrays
   const pending = useApprovalStore((s) => s.pending);
   const count = pending.size;
@@ -37,8 +39,8 @@ export function ApprovalNotification() {
           knownIds.current.add(approval.sessionId);
           addToast(
             "warning",
-            `Permission required: ${approval.sessionName}`,
-            "Click the session to review and approve",
+            t('approval.permissionRequired', { name: approval.sessionName }),
+            t('approval.clickToReview'),
             { duration: 15_000 },
           );
         }
@@ -61,6 +63,7 @@ export function ApprovalNotification() {
  * Place in the header toolbar.
  */
 export function ApprovalBadge() {
+  const t = useT();
   // Subscribe to pending Map size (primitive, no re-render loop)
   const count = useApprovalStore((s) => s.pending.size);
 
@@ -69,8 +72,8 @@ export function ApprovalBadge() {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full bg-[var(--color-warning)]/20 border border-[var(--color-warning)]/30 px-2 py-0.5 text-xs font-bold text-[var(--color-warning-glow)] cursor-pointer"
-      aria-label={`${count} pending approval${count > 1 ? "s" : ""}`}
-      title={`${count} session${count > 1 ? "s" : ""} awaiting approval`}
+      aria-label={t('approval.pendingCount', { count })}
+      title={t('approval.sessionsAwaiting', { count })}
     >
       <AlertTriangle className="h-3 w-3" />
       {count}

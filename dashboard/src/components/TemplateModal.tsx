@@ -11,12 +11,12 @@ import { useToastStore } from '../store/useToastStore';
 import { useT } from '../i18n/context';
 
 const PERMISSION_MODES = [
-  { value: '', label: 'Default (prompt)' },
-  { value: 'bypassPermissions', label: 'Bypass Permissions' },
-  { value: 'plan', label: 'Plan Mode' },
-  { value: 'acceptEdits', label: 'Accept Edits' },
-  { value: 'dontAsk', label: "Don't Ask" },
-  { value: 'auto', label: 'Auto-accept' },
+  { value: '', labelKey: 'templateOptions.default' },
+  { value: 'bypassPermissions', labelKey: 'templateOptions.bypassPermissions' },
+  { value: 'plan', labelKey: 'templateOptions.planMode' },
+  { value: 'acceptEdits', labelKey: 'templateOptions.acceptEdits' },
+  { value: 'dontAsk', labelKey: 'templateOptions.dontAsk' },
+  { value: 'auto', labelKey: 'templateOptions.autoAccept' },
 ] as const;
 
 interface TemplateModalProps {
@@ -271,7 +271,7 @@ export default function TemplateModal({ open, onClose, template, onSaved }: Temp
             >
               {PERMISSION_MODES.map((mode) => (
                 <option key={mode.value} value={mode.value}>
-                  {mode.label}
+                  {t(mode.labelKey)}
                 </option>
               ))}
             </select>

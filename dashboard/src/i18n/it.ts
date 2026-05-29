@@ -1269,4 +1269,60 @@ export const it = {
     latestExport: 'Metadati ultima esportazione',
     chainBroken: 'Catena interrotta',
   },
+
+  metricCards: {
+    completed: 'Completate',
+    failedSessions: 'Sessioni Fallite',
+    viewErrorLogs: 'Vedi Log Errori',
+    deliveryRate: 'Tasso di Consegna',
+    success: 'Successo',
+    promptsDelivered: 'Prompt Consegnati',
+    sentTotal: '{count} inviati totali',
+    promptsFailed: 'Prompt Falliti',
+    webhooksSent: 'Webhook Inviati',
+    webhooksFailed: 'Webhook Falliti',
+    autoApprovals: 'Auto-Approvazioni',
+    pipelinesCreated: 'Pipeline Create',
+    batchesCreated: 'Batch Creati',
+    screenshots: 'Screenshot',
+    avgHookLatency: 'Latenza Media Hook',
+    avgPermissionLatency: 'Latenza Media Permesso',
+    avgChannelLatency: 'Latenza Media Canale',
+    totalEstCost: 'Costo Stimato Totale',
+    totalTokens: 'Token Totali',
+    failedCount: '{count} falliti',
+  },
+
+  metricsPanel: {
+    activeSessions: 'Sessioni Attive',
+    totalSessions: 'Sessioni Totali',
+    avgDuration: 'Durata Media',
+    uptime: 'Uptime',
+    unavailable: 'Endpoint metriche non disponibile — valori segnaposto.',
+  },
+
+  sessionMetrics: {
+    duration: 'Durata',
+    messages: 'Messaggi',
+    toolCalls: 'Chiamate Strumento',
+    approvals: 'Approvazioni',
+    auto: 'Auto',
+    model: 'Modello',
+  },
+
+  approval: {
+    permissionRequired: 'Permesso richiesto: {name}',
+    clickToReview: 'Clicca sulla sessione per rivedere e approvare',
+    pendingCount: '{count} approvazione in attesa',
+    sessionsAwaiting: '{count} session{count, plural, one {} other {i}} in attesa di approvazione',
+  },
+
+  templateOptions: {
+    default: 'Predefinito (prompt)',
+    bypassPermissions: 'Ignora Permessi',
+    planMode: 'Modalità Piano',
+    acceptEdits: 'Accetta Modifiche',
+    dontAsk: "Non Chiedere",
+    autoAccept: 'Auto-accetta',
+  },
 };
