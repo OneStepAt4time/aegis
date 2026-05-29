@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useT } from '../../i18n/context';
 
 const AUTO_APPROVE_MODES = new Set([
   'bypassPermissions',
@@ -24,6 +25,7 @@ export function ApprovalBanner({
   onApprove,
   onReject,
 }: ApprovalBannerProps) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -89,11 +91,11 @@ export function ApprovalBanner({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          aria-label="Toggle approval details"
+          aria-label={t("aria.toggleApprovalDetails")}
           className={`mt-3 w-full cursor-pointer text-left font-mono text-sm text-[var(--color-text-primary)] hover:text-white transition-colors ${
             expanded ? 'break-words max-h-48 overflow-y-auto' : 'truncate'
           }`}
-          title={expanded ? 'Collapse prompt' : 'Expand prompt'}
+          title={expanded ? t('aria.collapsePrompt') : t('aria.expandPrompt')}
         >
           {prompt}
         </button>

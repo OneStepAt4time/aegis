@@ -80,7 +80,7 @@ export default function ActivityPage() {
       </div>
 
       {/* Activity Heatmap */}
-      <section aria-label="Activity heatmap">
+      <section aria-label={t("aria.activityHeatmap")}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-[var(--color-text-muted)]">
             Session Activity
@@ -103,7 +103,7 @@ export default function ActivityPage() {
                 type="button"
                 onClick={() => { setHeatmapLoading(true); void fetchHeatmapData(); }}
                 className="rounded-md border border-[var(--color-void-lighter)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)]"
-                aria-label="Retry loading heatmap"
+                aria-label={t("aria.retryLoadingHeatmap")}
               >
                 Retry
               </button>

@@ -22,6 +22,7 @@ import {
   AGENT_COLORS,
   CHART_RGB,
 } from '../../utils/chartTheme';
+import { useT } from '../../i18n/context';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -66,6 +67,7 @@ function getAgentColor(agent: string): string {
 }
 
 export function AgentContributionsPanel({ data, loading = false, className = '' }: AgentContributionsPanelProps) {
+  const t = useT();
   const contributions = data ?? MOCK_DATA;
 
   const totalCommits = contributions.reduce((s, a) => s + a.commits, 0);
@@ -77,7 +79,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Agent contributions loading"
+        aria-label={t("aria.agentContributionsLoading")}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Agent Contributions
@@ -93,7 +95,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Agent contributions"
+        aria-label={t("aria.agentContributions")}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Agent Contributions
@@ -171,7 +173,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-      aria-label="Agent contributions panel"
+      aria-label={t("aria.agentContributionsPanel")}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

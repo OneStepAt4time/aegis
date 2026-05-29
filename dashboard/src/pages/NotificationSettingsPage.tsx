@@ -274,7 +274,7 @@ export default function NotificationSettingsPage() {
                     placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
                     disabled={isConnected}
                     autoComplete="off"
-                    aria-label="Telegram bot token"
+                    aria-label={t("aria.telegramBotToken")}
                     className="min-h-[44px] w-full rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 pr-10 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent-cyan)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <button
@@ -282,7 +282,7 @@ export default function NotificationSettingsPage() {
                     onClick={() => setShowToken((v) => !v)}
                     disabled={isConnected}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label={showToken ? 'Hide token' : 'Show token'}
+                    aria-label={showToken ? t('login.hideToken') : t('login.showToken')}
                   >
                     {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -314,7 +314,7 @@ export default function NotificationSettingsPage() {
                   placeholder="-1001234567890"
                   disabled={isConnected}
                   autoComplete="off"
-                  aria-label="Telegram chat ID"
+                  aria-label={t("aria.telegramChatId")}
                   className="min-h-[44px] w-full rounded border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-colors focus:border-[var(--color-accent-cyan)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>

@@ -114,6 +114,7 @@ function ApproveButton({
   currentAction: string | null;
   onApprove: (e: React.MouseEvent, id: string) => void;
 }) {
+  const t = useT();
   if (!needsApproval(session)) return null;
   return (
     <button
@@ -122,7 +123,7 @@ function ApproveButton({
       disabled={currentAction === 'approve'}
       aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-success)]/15 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
-      title="Approve"
+      title={t("aria.approveAction")}
     >
       <Play className="h-3 w-3" />
     </button>
@@ -138,6 +139,7 @@ function RejectButton({
   currentAction: string | null;
   onReject: (e: React.MouseEvent, id: string) => void;
 }) {
+  const t = useT();
   if (!needsApproval(session)) return null;
   return (
     <button
@@ -146,7 +148,7 @@ function RejectButton({
       disabled={currentAction === 'reject'}
       aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
-      title="Reject"
+      title={t("aria.rejectAction")}
     >
       <XCircle className="h-3 w-3" />
     </button>
@@ -160,6 +162,7 @@ function VirtualizedRow(props: {
   index: number;
   style: CSSProperties;
 } & SessionRowExtraProps): ReactElement {
+  const t = useT();
   const { ariaAttributes, index, style, items, onToggleSelect, onApprove, onReject, onInterrupt, onKill, onToggleGroup } = props;
   const item = items[index];
 
@@ -282,7 +285,7 @@ function VirtualizedRow(props: {
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
-          title="Interrupt"
+          title={t("aria.interruptAction")}
         >
           <Ban className="h-3.5 w-3.5" />
         </button>
@@ -291,7 +294,7 @@ function VirtualizedRow(props: {
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
-          title="Kill"
+          title={t("aria.killAction")}
         >
           <XCircle className="h-3.5 w-3.5" />
         </button>
