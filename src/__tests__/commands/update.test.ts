@@ -180,6 +180,36 @@ describe('handleUpdate', () => {
     expect(err).toContain('Failed to check for updates');
   });
 
+
+  it('exits 1 with --dry-run when update is available without making changes', async () => {
+    const { handleUpdate } = await updateModule();
+    mockFetchRelease('v0.7.0');
+
+    const { execFileSync } = await import('node:child_process');
+    (execFileSync as any).mockImplementation(() => '');
+
+    const code = await handleUpdate(['--dry-run'], mockIO);
+    expect(code).toBe(1);
+
+    const out = getStdout().join('');
+    expect(out).toContain('dry-run');
+    expect(out).toContain('no changes made');
+
+    // Verify npm update was NOT called
+    const npmCalls = (execFileSync as any).mock.calls.filter(
+      (c: any[]) => c[0] === 'npm' && c[1]?.[0] === 'update'
+    );
+    expect(npmCalls).toHaveLength(0);
+  });
+
+  it('exits 0 with --dry-run when already up-to-date', async () => {
+    const { handleUpdate } = await updateModule();
+    mockFetchRelease('v0.6.7');
+
+    const code = await handleUpdate(['--dry-run'], mockIO);
+    expect(code).toBe(0);
+  });
+
   it('handles --yes flag to skip confirmation (npm path)', async () => {
     const { handleUpdate } = await updateModule();
     mockFetchRelease('v0.7.0');
