@@ -51,6 +51,8 @@ export const it = {
     calculating: 'Calcolo…',
     costPerDay: 'Costo al giorno',
     heatmapPending: 'Caricamento heatmap…',
+    noCostData: 'Nessun dato sui costi',
+    newSessionShortcut: 'Nuova Sessione (⌘N)',
     loadingMetrics: 'Caricamento metriche…',
   },
 

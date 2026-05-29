@@ -50,8 +50,9 @@ export const en = {
     costPerDay: 'Cost per Day',
     heatmapPending: 'Loading heatmap…',
     loadingMetrics: 'Loading metrics…',
+    noCostData: 'No cost data yet',
+    newSessionShortcut: 'New Session (⌘N)',
   },
-  
   sessions: {
     title: 'Sessions',
     subtitle: 'Monitor active agents and browse session history.',
