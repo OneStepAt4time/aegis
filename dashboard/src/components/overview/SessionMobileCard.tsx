@@ -6,7 +6,6 @@ import { formatSessionName } from '../../utils/formatSessionName';
  */
 
 import { memo } from 'react';
-import { useT } from '../../i18n/context';
 import { Link } from 'react-router-dom';
 import {
   Ban,
@@ -18,6 +17,7 @@ import StatusDot from './StatusDot';
 import type { SessionRowProps } from './sessionTableUtils';
 import { areSessionRowPropsEqual, needsApproval, truncateDir } from './sessionTableUtils';
 import { formatTimeAgo } from '../../utils/format';
+import { useT } from '../../i18n/context';
 
 export const SessionMobileCard = memo(function SessionMobileCard({
   session,
@@ -70,7 +70,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
                 disabled={currentAction === 'approve'}
                 aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-success)]/15 p-2 text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
-                title={t("aria.approveAction")}
+                title={t('aria.approve')}
               >
                 <Play className="h-4 w-4" />
               </button>
@@ -80,7 +80,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
                 disabled={currentAction === 'reject'}
                 aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 p-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
-                title={t("aria.rejectAction")}
+                title={t('aria.reject')}
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -91,7 +91,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
             aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-[var(--color-warning)] transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
-            title={t("aria.interruptAction")}
+            title={t('aria.interrupt')}
           >
             <Ban className="h-4 w-4" />
           </button>
@@ -100,7 +100,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             disabled={currentAction === 'kill'}
             aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 p-2 text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
-            title={t("aria.killAction")}
+            title={t('aria.kill')}
           >
             <XCircle className="h-4 w-4" />
           </button>

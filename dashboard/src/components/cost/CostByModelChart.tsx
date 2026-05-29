@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
+import { useT } from '../../i18n/context';
 import {
   MODEL_COLORS as THEME_MODEL_COLORS,
   CHART_RGB,
@@ -45,13 +46,14 @@ const MOCK_DATA: CostByModelDataPoint[] = [
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 export function CostByModelChart({ data, loading = false, className = '' }: CostByModelChartProps) {
+  const t = useT();
   const chartData = data ?? MOCK_DATA;
 
   if (loading) {
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Cost by model chart loading"
+        aria-label={t('aria.costByModelChartLoading')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Cost by Model
@@ -67,7 +69,7 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Cost by model chart"
+        aria-label={t('aria.costByModelChart')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Cost by Model
@@ -154,7 +156,7 @@ export function CostByModelChart({ data, loading = false, className = '' }: Cost
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-      aria-label="Cost by model chart"
+      aria-label={t('aria.costByModelChart')}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

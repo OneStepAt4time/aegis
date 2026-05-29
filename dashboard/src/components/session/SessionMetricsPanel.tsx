@@ -162,7 +162,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           <BannerCell
             label="Duration"
             value={metrics ? formatDuration(metrics.durationSec * 1000) : '—'}
-            title={t("aria.elapsedSessionTime")}
+            title={t('aria.elapsedSessionTime')}
           />
           <BannerCell
             label="Messages"
@@ -179,13 +179,13 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
             label="Approvals"
             numericValue={counts.approvals}
             animate={animate}
-            title={t("aria.approvalsGranted")}
+            title={t('aria.approvalsGranted')}
           />
           <BannerCell
             label="Auto"
             numericValue={metrics?.autoApprovals ?? 0}
             animate={animate}
-            title={t("aria.autoApprovals")}
+            title={t('aria.autoApprovals')}
           />
           <BannerCell
             label="Model"

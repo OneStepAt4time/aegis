@@ -255,7 +255,7 @@ export function FirstRunTour({ onComplete }: FirstRunTourProps) {
               onClick={handleSkip}
               className="absolute top-4 right-4 p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-dark)] transition-colors"
               aria-label={t("aria.skipTour")}
-              title={t("aria.pressEscToSkip")}
+              title={t('aria.pressEscToSkip')}
             >
               <X className="h-5 w-5" />
             </button>

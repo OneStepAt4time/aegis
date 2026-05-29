@@ -72,7 +72,7 @@ export function Header({
               type="button"
               onClick={openNewSession}
               aria-label={t("aria.newSessionCmd")}
-              title={t("aria.newSessionCmd")}
+              title={t('aria.newSessionShortcut')}
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)] transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -82,7 +82,7 @@ export function Header({
               type="button"
               onClick={() => onPaletteOpenChange(true)}
               className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
-              aria-label={t("aria.openCommandPalette")}
+              aria-label={t('aria.openCommandPalette')}
             >
               <Search className="h-3 w-3" />
               <span className="hidden sm:inline">Search…</span>
@@ -94,8 +94,8 @@ export function Header({
                 type="button"
                 onClick={toggleTheme}
                 className="inline-flex h-11 w-11 items-center justify-center rounded p-2 sm:p-2.5 min-h-[44px] min-w-[44px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]"
-                aria-label={resolvedTheme === 'dark' ? t('aria.switchToLightMode') : t('aria.switchToDarkMode')}
-                title={resolvedTheme === 'dark' ? t('aria.switchToLightMode') : t('aria.switchToDarkMode')}
+                aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>

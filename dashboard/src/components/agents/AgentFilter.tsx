@@ -7,6 +7,7 @@
 
 import type { FC, ChangeEvent } from "react";
 import { getAgentFilterOptions, getAgentMeta } from "./agent-registry";
+import { useT } from '../../i18n/context';
 
 export interface AgentFilterProps {
   /** Currently selected runnerName (undefined = all). */
@@ -18,6 +19,7 @@ export interface AgentFilterProps {
 
 export const AgentFilter: FC<AgentFilterProps> = ({ value, onChange, className = "" }) => {
   const options = getAgentFilterOptions();
+  const t = useT();
 
   const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value;
@@ -36,7 +38,7 @@ export const AgentFilter: FC<AgentFilterProps> = ({ value, onChange, className =
         value={value ?? ""}
         onChange={handleChange}
         className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-void)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none focus:ring-1 focus:ring-[var(--color-cta-bg)] transition-colors"
-        aria-label="Filter sessions by agent type"
+        aria-label={t('aria.filterByAgentType')}
       >
         <option value="">All Agents</option>
         {options.map((opt) => (

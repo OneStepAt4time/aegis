@@ -4,6 +4,7 @@
 
 import { motion } from 'framer-motion';
 import type { TabId } from './types';
+import { useT } from '../../i18n/context';
 
 interface TabConfig {
   id: TabId;
@@ -17,8 +18,9 @@ interface TabBarProps {
 }
 
 export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
+  const t = useT();
   return (
-    <div className="relative flex gap-2 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="Session detail tabs">
+    <div className="relative flex gap-2 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label={t('aria.sessionDetailTabs')}>
       {tabs.map((tab) => (
         <button type="button"
           key={tab.id}

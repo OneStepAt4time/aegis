@@ -20,6 +20,7 @@ import { Line } from 'react-chartjs-2';
 import { formatCurrency } from '../../utils/formatNumber';
 import { formatDateShort } from '../../utils/formatDate';
 import { CHART_RGB } from '../../utils/chartTheme';
+import { useT } from '../../i18n/context';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
@@ -49,13 +50,14 @@ function generateMockData(days: number): BurnRateDataPoint[] {
 }
 
 export function BurnRateChart({ data, loading = false, className = '' }: BurnRateChartProps) {
+  const t = useT();
   const chartData = data ?? generateMockData(30);
 
   if (loading) {
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Burn rate chart loading"
+        aria-label={t('aria.burnRateChartLoading')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Session Burn Rate
@@ -71,7 +73,7 @@ export function BurnRateChart({ data, loading = false, className = '' }: BurnRat
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label="Burn rate chart"
+        aria-label={t('aria.burnRateChart')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Session Burn Rate
@@ -164,7 +166,7 @@ export function BurnRateChart({ data, loading = false, className = '' }: BurnRat
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-      aria-label="Session burn rate chart"
+      aria-label={t('aria.sessionBurnRateChart')}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

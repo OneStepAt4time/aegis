@@ -17,8 +17,8 @@ interface ApprovalBannerProps {
 }
 
 export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) {
-  const t = useT();
   const addToast = useToastStore((s) => s.addToast);
+  const t = useT();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [resolved, setResolved] = useState<'approved' | 'rejected' | null>(null);
@@ -71,7 +71,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
     <div
       className="flex flex-col gap-3 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
-      aria-label={t("aria.sessionAwaitingApproval")}
+      aria-label={t('aria.sessionAwaitingApproval')}
     >
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4 text-[var(--color-warning)]" aria-hidden="true" />

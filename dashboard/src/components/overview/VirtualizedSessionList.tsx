@@ -123,7 +123,7 @@ function ApproveButton({
       disabled={currentAction === 'approve'}
       aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-success)]/15 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
-      title={t("aria.approveAction")}
+      title={t('aria.approve')}
     >
       <Play className="h-3 w-3" />
     </button>
@@ -148,7 +148,7 @@ function RejectButton({
       disabled={currentAction === 'reject'}
       aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
-      title={t("aria.rejectAction")}
+      title={t('aria.reject')}
     >
       <XCircle className="h-3 w-3" />
     </button>
@@ -285,7 +285,7 @@ function VirtualizedRow(props: {
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
-          title={t("aria.interruptAction")}
+          title={t('aria.interrupt')}
         >
           <Ban className="h-3.5 w-3.5" />
         </button>
@@ -294,7 +294,7 @@ function VirtualizedRow(props: {
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
-          title={t("aria.killAction")}
+          title={t('aria.kill')}
         >
           <XCircle className="h-3.5 w-3.5" />
         </button>
