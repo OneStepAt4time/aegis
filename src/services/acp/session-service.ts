@@ -9,6 +9,8 @@ import type {
   AcpStartInterventionInput,
 } from './pause-intervention.js';
 import { transitionAcpSessionStatus } from './state-machine.js';
+import { AcpDurableIdentityError, AcpValidationError } from './errors.js';
+export { AcpDurableIdentityError, AcpValidationError } from './errors.js';
 import type {
   AcpAgentSessionAttachment,
   AcpBackendMetadata,
@@ -73,19 +75,7 @@ export class AcpSessionNotFoundError extends Error {
   }
 }
 
-export class AcpDurableIdentityError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AcpDurableIdentityError';
-  }
-}
 
-export class AcpValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AcpValidationError';
-  }
-}
 
 export class AcpSessionService {
   private readonly idProvider: () => string;

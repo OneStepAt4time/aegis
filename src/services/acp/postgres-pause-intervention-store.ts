@@ -1,7 +1,7 @@
 import { Pool, type QueryResultRow } from 'pg';
 
 import type { ServiceHealth } from '../../container.js';
-import { AcpDurableIdentityError, AcpValidationError } from './session-service.js';
+import { AcpDurableIdentityError, AcpValidationError } from './errors.js';
 import type { AcpSessionScope } from './types.js';
 import {
   normalizeAcpPauseInterventionMetadata,

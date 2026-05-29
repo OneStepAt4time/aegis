@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeAggregateMetrics, type SessionForAggregation } from '../metrics-aggregation.js';
 import type { AggregateMetricsByKey } from '../api-contracts.js';
-import type { SessionMetrics } from '../metrics.js';
+import type { SessionMetrics } from '../metrics-aggregation.js';
 
 function makeSession(overrides: Partial<SessionForAggregation> & { id: string }): SessionForAggregation {
   return {

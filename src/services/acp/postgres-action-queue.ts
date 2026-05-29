@@ -1,6 +1,7 @@
 import { Pool, type QueryResultRow } from 'pg';
 
-import { AcpDurableIdentityError, AcpValidationError, validateAcpControlActionInput } from './session-service.js';
+import { AcpDurableIdentityError, AcpValidationError } from './errors.js';
+import { validateAcpControlActionInput } from './session-service.js';
 import type { AcpControlActionInput, AcpControlActionType, AcpSessionScope } from './types.js';
 import {
   normalizeAcpActionMetadata,

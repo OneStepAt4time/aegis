@@ -3,11 +3,8 @@ import path from 'node:path';
 
 import { logger } from '../../logger.js';
 import type { ServiceHealth } from '../../container.js';
-import {
-  AcpDurableIdentityError,
-  AcpValidationError,
-  validateAcpControlActionInput,
-} from './session-service.js';
+import { AcpDurableIdentityError, AcpValidationError } from './errors.js';
+import { validateAcpControlActionInput } from './session-service.js';
 import {
   normalizeAcpActionMetadata,
   type AcpActionMetadata,
