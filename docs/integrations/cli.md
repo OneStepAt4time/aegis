@@ -251,7 +251,7 @@ ag read abc12345 --page 2      # Paginate
 ag read a9e0                   # Prefix match (8+ chars)
 ```
 
-**Prefix matching:** `ag read`, `ag kill`, `ag tail`, and `ag status <id>` accept truncated session IDs (8+ characters). If the prefix is unique, it resolves automatically. If ambiguous or missing, an error is shown.
+**Prefix matching:** `ag read`, `ag kill`, `ag send`, `ag tail`, and `ag status <id>` accept truncated session IDs (8+ characters). If the prefix is unique, it resolves automatically. If ambiguous or missing, an error is shown.
 
 **Flags:**
 
@@ -270,6 +270,19 @@ ag kill 5070c990    # Prefix match
 ```
 
 Sends `DELETE /v1/sessions/:id` and confirms termination. Sessions in terminal states (`killed`, `completed`, `crashed`) return `404`.
+
+### `ag send <id> "message"` — Send Message to Running Session
+
+Inject a message into a running session without killing or restarting it. Supports prefix matching.
+
+```bash
+ag send abc12345 "use the other approach instead"
+ag send 5070c990 "check auth flow before continuing"
+```
+
+Wraps `POST /v1/sessions/:id/send`. Reports delivery status: ✅ delivered, ✅ queued, or ⚠️ unconfirmed.
+
+**RBAC:** Requires `operator` or `admin` role.
 
 ### `ag status [id]` — Server Health or Session Status
 
