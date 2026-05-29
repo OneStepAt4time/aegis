@@ -121,6 +121,108 @@ describe('handleList', () => {
     const allTip = calls.filter((l: string) => l && l.includes('--all'));
     expect(allTip.length).toBe(0);
   });
+
+  // #4457: --json should output full API envelope (sessions + pagination)
+  it('--json outputs full API envelope with sessions and pagination', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        sessions: [
+          { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'idle', displayName: 'test-session' },
+        ],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonOutput = calls.find((l: string) => l && l.startsWith('{'));
+    expect(jsonOutput).toBeDefined();
+    const parsed = JSON.parse(jsonOutput!);
+    expect(parsed).toHaveProperty('sessions');
+    expect(parsed).toHaveProperty('pagination');
+    expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.pagination).toEqual({ page: 1, limit: 20, total: 1, totalPages: 1 });
+  });
+
+  it('--json with empty sessions outputs envelope with empty array', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        sessions: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      }),
+    }) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--json'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    const jsonOutput = calls.find((l: string) => l && l.startsWith('{'));
+    expect(jsonOutput).toBeDefined();
+    const parsed = JSON.parse(jsonOutput!);
+    expect(parsed.sessions).toEqual([]);
+    expect(parsed.pagination).toEqual({ page: 1, limit: 20, total: 0, totalPages: 0 });
+    // Should NOT output human-readable "No sessions found" text
+    const humanText = calls.find((l: string) => l && l.includes('No sessions'));
+    expect(humanText).toBeUndefined();
+  });
+
+  // #4459: --status active should map to non-terminal states
+  it('--status active shows idle and running sessions but not killed', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(makeFetchResponse([
+      { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'idle', displayName: 'idle-session' },
+      { id: 'bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'running', displayName: 'running-session' },
+      { id: '11111111-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'killed', displayName: 'dead-session' },
+      { id: '22222222-bbbb-cccc-dddd-eeeeeeeeeeee', status: 'completed', displayName: 'done-session' },
+    ])) as any;
+
+    const { handleList } = await importList();
+    const exitCode = await handleList(['--status', 'active'], mockIO as any);
+
+    expect(exitCode).toBe(0);
+    const calls = mockWriteLine.mock.calls.map((c: any[]) => c[1]);
+    // Should include idle and running sessions
+    const idleLines = calls.filter((l: string) => l && l.includes('idle-session'));
+    const runningLines = calls.filter((l: string) => l && l.includes('running-session'));
+    expect(idleLines.length).toBe(1);
+    expect(runningLines.length).toBe(1);
+    // Should NOT include killed/completed
+    const deadLines = calls.filter((l: string) => l && (l.includes('dead-session') || l.includes('done-session')));
+    expect(deadLines.length).toBe(0);
+    // Should NOT send status=active to server
+    const fetchUrl = (globalThis.fetch as any).mock.calls[0][0] as string;
+    expect(fetchUrl).not.toContain('status=active');
+  });
+
+  it('--status active fetches all sessions (no server-side filter)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(makeFetchResponse([])) as any;
+
+    const { handleList } = await importList();
+    await handleList(['--status', 'active'], mockIO as any);
+
+    const fetchUrl = (globalThis.fetch as any).mock.calls[0][0] as string;
+    // Should not have any status param in URL
+    expect(fetchUrl).not.toContain('status=');
+  });
+
+  it('--status idle still passes exact status to server', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(makeFetchResponse([])) as any;
+
+    const { handleList } = await importList();
+    await handleList(['--status', 'idle'], mockIO as any);
+
+    const fetchUrl = (globalThis.fetch as any).mock.calls[0][0] as string;
+    expect(fetchUrl).toContain('status=idle');
+  });
 });
 
 // Restore fetch after all tests

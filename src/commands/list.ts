@@ -24,9 +24,25 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   let jsonOutput = false;
   let showAll = false;
 
+  // #4459: Map human-friendly status aliases to actual ACP session states
+  const STATUS_ALIASES: Record<string, string[]> = {
+    active: ['idle', 'running', 'awaiting_approval', 'paused', 'intervention'],
+    alive: ['idle', 'running', 'awaiting_approval', 'paused', 'intervention'],
+  };
+
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--status' && args[i + 1]) {
-      params.set('status', args[++i]!);
+      const statusValue = args[++i]!;
+      const alias = STATUS_ALIASES[statusValue.toLowerCase()];
+      if (alias) {
+        // Don't send status filter to server; filter client-side after fetching all
+        // (server only supports exact status match, not multi-status)
+        params.delete('status');
+        // Store alias for later filtering — use a custom param
+        params.set('_statusAlias', statusValue.toLowerCase());
+      } else {
+        params.set('status', statusValue);
+      }
     } else if (args[i] === '--cwd' && args[i + 1]) {
       params.set('project', args[i + 1]!);
       i++;
@@ -39,6 +55,10 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
     }
   }
 
+  // #4459: Extract and strip internal alias param before building URL
+  const statusAlias = params.get('_statusAlias');
+  if (statusAlias) params.delete('_statusAlias');
+
   const url = `${baseUrl}/v1/sessions${params.toString() ? '?' + params : ''}`;
   const res = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
 
@@ -48,17 +68,23 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  const body = await res.json() as { sessions?: any[]; data?: any[] };
+  const body = await res.json() as { sessions?: any[]; data?: any[]; pagination?: any };
   let sessions = body.sessions ?? body.data ?? [];
 
+  // #4459: Apply status alias filter (active/alive → non-terminal states)
+  if (statusAlias && STATUS_ALIASES[statusAlias]) {
+    const allowed = new Set(STATUS_ALIASES[statusAlias]);
+    sessions = sessions.filter(s => allowed.has(s.status));
+  }
+
   // #3731: Filter terminal statuses unless --all
-  if (!showAll) {
+  if (!showAll && !statusAlias) {
     sessions = sessions.filter(s => !TERMINAL_STATUSES.has(s.status));
   }
 
   if (jsonOutput) {
-    // Machine-readable JSON output — include full IDs
-    writeLine(io.stdout, JSON.stringify(sessions, null, 2));
+    // Machine-readable JSON output — return full API envelope for programmatic use (#4457)
+    writeLine(io.stdout, JSON.stringify({ sessions, pagination: body.pagination ?? null }, null, 2));
     return 0;
   }
 
