@@ -45,6 +45,7 @@ import type { AcpPauseInterventionStore } from '../services/acp/pause-interventi
 import type { AcpBackend } from '../services/acp/backend.js';
 import type { AcpEventStore } from '../services/acp/event-store.js';
 import type { AcpTerminalBridge } from '../services/acp/terminal-bridge.js';
+import { ccSessionRegistry } from '../services/cc-session-registry.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
 /** All shared service instances that route modules need. */
@@ -378,6 +379,12 @@ export function addActionHints(
     if (telegramTopicId !== null) {
       result.telegramTopicId = telegramTopicId;
     }
+  }
+
+  // #4455: Attach CC session ID if this Aegis session has been correlated
+  const ccSessionId = ccSessionRegistry.getCcSessionId(session.id);
+  if (ccSessionId) {
+    result.ccSessionId = ccSessionId;
   }
 
   return result;
