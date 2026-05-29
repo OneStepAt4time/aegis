@@ -202,6 +202,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ACP SDK bump** — @agentclientprotocol/claude-agent-acp 0.35.0 → 0.37.0 ([#4173](https://github.com/OneStepAt4time/aegis/pull/4173))
 - **Post-merge auto-rebuild hook** — dist/ auto-rebuilds and server restarts on develop merge ([#4125](https://github.com/OneStepAt4time/aegis/pull/4125))
 
+### Fixed
+
+- **Dashboard i18n aria-labels** — replace 50+ hardcoded English aria-labels/titles with i18n keys across 31 files ([#4441](https://github.com/OneStepAt4time/aegis/pull/4441))
+- **TranscriptBubble flaky timestamp test** — stabilize timestamp test with relative time ([#4442](https://github.com/OneStepAt4time/aegis/pull/4442))
+- **Onboarding tour persistence** — persist dismissed state so tour never reappears on page load ([#4438](https://github.com/OneStepAt4time/aegis/pull/4438))
+- **PermissionPromptSheet i18n + Escape UX** — i18n keys + Escape key clarity for permission prompts ([#4430](https://github.com/OneStepAt4time/aegis/pull/4430))
+
 ---
 
 
