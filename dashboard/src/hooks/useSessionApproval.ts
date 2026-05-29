@@ -8,7 +8,7 @@
  * TODO: Subscribe to SSE events for real-time approval.requested/approval.responded.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { AcpApprovalRequest } from '../types/acp-approval';
 import {  approveTool,
   rejectTool,
@@ -71,34 +71,34 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
     refresh();
   }, [refresh]);
 
-  const remainingMs = useMemo(
-    () => clampRemaining(pendingApproval?.expiresAt),
-    [pendingApproval?.expiresAt],
-  );
+  // TTL countdown — only trigger re-render when formatted countdown string changes.
+  // remainingMs tracks the live value via state, updated alongside countdown.
+  const [countdown, setCountdown] = useState<string | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
-  // TTL countdown tick — use separate counter to avoid recreating callbacks every second
-  const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (remainingMs === null || remainingMs <= 0) return;
-    const timer = window.setInterval(() => {
-      setTick((prev) => prev + 1);
-    }, 1000);
+    const initial = clampRemaining(pendingApproval?.expiresAt);
+    if (initial === null || initial <= 0) {
+      setCountdown(null);
+      setRemainingMs(initial);
+      setIsExpired(initial !== null && initial <= 0);
+      return;
+    }
+
+    const update = () => {
+      const ms = clampRemaining(pendingApproval?.expiresAt);
+      if (ms === null) return;
+      const next = formatCountdown(ms);
+      setCountdown((prev) => (prev !== next ? next : prev));
+      setRemainingMs(ms);
+      if (ms <= 0) setIsExpired(true);
+    };
+
+    update();
+    const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
-  }, [remainingMs]);
-
-  // Recompute remaining on each tick
-  const liveRemainingMs = useMemo(
-    () => clampRemaining(pendingApproval?.expiresAt),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pendingApproval?.expiresAt, tick],
-  );
-
-  const countdown = useMemo(
-    () => liveRemainingMs !== null ? formatCountdown(liveRemainingMs) : null,
-    [liveRemainingMs],
-  );
-
-  const isExpired = liveRemainingMs !== null && liveRemainingMs <= 0;
+  }, [pendingApproval?.expiresAt]);
 
   const approve = useCallback(async (reason?: string) => {
     if (!sessionId || !pendingApproval) return;
