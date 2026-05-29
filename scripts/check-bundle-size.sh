@@ -9,7 +9,7 @@ if [ ! -d "dist" ]; then
   exit 1
 fi
 
-SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" ! -path "*/dashboard/*" -exec du -ck {} + | tail -1 | awk '{print $1}')
+SERVER_SIZE=$(find dist/ -name "*.js" ! -path "*/__tests__/*" ! -path "*/dashboard/*" -exec du --apparent-size -ck {} + | tail -1 | awk '{print $1}')
 SERVER_SIZE_KB=$((SERVER_SIZE))
 
 echo "Bundle size: ${SERVER_SIZE_KB}KB (threshold: ${THRESHOLD_KB}KB)"
