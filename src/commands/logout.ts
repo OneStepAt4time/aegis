@@ -86,11 +86,11 @@ export async function handleLogout(args: string[], io: CliIO, fetchFn: typeof fe
     const entries = Object.entries(store);
     if (entries.length === 0) {
       if (jsonOutput) {
-        writeLine(io.stdout, JSON.stringify({ error: 'Not logged in', code: 'NOT_LOGGED_IN' }));
+        writeLine(io.stdout, JSON.stringify({ message: 'Not logged in', code: 'NOT_LOGGED_IN' }));
       } else {
         writeLine(io.stdout, '  Not logged in.');
       }
-      return 1;
+      return 0;
     }
     if (entries.length === 1) {
       serverOrigin = entries[0]![0];
@@ -114,11 +114,11 @@ export async function handleLogout(args: string[], io: CliIO, fetchFn: typeof fe
   const auth = store[serverOrigin];
   if (!auth) {
     if (jsonOutput) {
-      writeLine(io.stdout, JSON.stringify({ error: 'Not logged in to this server', server: serverOrigin }));
+      writeLine(io.stdout, JSON.stringify({ message: 'Not logged in to this server', server: serverOrigin }));
     } else {
       writeLine(io.stdout, `  Not logged in to ${serverOrigin}.`);
     }
-    return 1;
+    return 0;
   }
 
   // Attempt revocation at IdP
