@@ -80,7 +80,7 @@ async function main() {
 
   // Dynamic import of compiled JS (must run after tsc)
   const { generateOpenApiDocument } = await import('../dist/openapi.js');
-  const { registerOpenApiSpec } = await import('../dist/routes/openapi.js');
+  const { registerOpenApiSpec } = await import('../dist/routes/openapi/index.js');
 
   // Register all endpoint descriptors then generate the document
   registerOpenApiSpec();
