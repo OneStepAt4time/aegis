@@ -1,6 +1,6 @@
 # Aegis Competitive Threat Matrix
 
-> **Last updated:** 2026-05-15 | **Source:** Issues #3013, #3014, #3016, #3003, #3004, #3216, #3236 + ECC analysis (Orpheus) + deep competitive research (Scribe)
+> **Last updated:** 2026-05-29 | **Source:** Issues #3013, #3014, #3016, #3003, #3004, #3216, #3236 + ECC analysis (Orpheus) + deep competitive research (Scribe)
 > **Audience:** Leadership (Ema, Boss) for strategic planning
 
 ---
@@ -32,6 +32,7 @@ The Claude Code orchestration space is **crowded and moving fast**. 10+ competit
 | #11 | **Roo Code** | ~~30K~~ 💀 | ⬛ DEAD | — | — | — | — | — | — | Shut down May 15, 2026. IDE-first tool killed by platform shift. |
 | #12 | **Cline** | 61K | 🟡 MEDIUM | VS Code ext + Kanban + CLI | 1+ (Kanban workers) | UI only | ✅ SDK (`@cline/sdk`) | 🟢 Kanban board | SSO, 3-tier RBAC, OTel, prompt storage (Enterprise) |
 | — | **ccusage-dashboard** | 1 | 🟢 ADJACENT | Self-hosted | N/A (analytics) | N/A | ❌ | 9-panel React | ❌ |
+| #13 | **Multica** | 30.7K | 🟠 HIGH | `multica setup` | 11+ CLI runtimes | Email + in-app | ✅ full CRUD | ✅ Next.js + Electron | ⚠️ workspace roles |
 | — | **Aegis** | ~200 | — | `npx + ag run` (2 cmds) | 1 (Claude Code) | 4 | ✅ 34 MCP tools | ✅ Full React | ✅ OIDC/RBAC |
 
 ---
@@ -66,7 +67,9 @@ No single competitor has ALL of these. This is the enterprise wedge:
 | **Chat platform breadth** | Missing entire Asian market (WeChat, QQ, DingTalk) | cc-connect (11 platforms) | P1 |
 | **Natural language scheduling** | Dev productivity killer feature | cc-connect | P2 |
 | **Project memory** | Adoption — users want persistent context across sessions | Verdent AI, Ruflo | P1 |
-| **Parallel agent execution** | Adoption — every prosumer competitor has it | Verdent AI, cc-connect, Ruflo | P0 |
+| **Multi-runtime support** (11+ CLIs) | Existential — Multica auto-detects 11+ CLIs | Multica, cc-connect | P0 |
+| **Parallel agent execution** | Adoption — every prosumer competitor has it | Verdent AI, cc-connect, Ruflo, Multica | P0 |
+| **Task board (Kanban)** | Users expect issue tracking, not just sessions | Multica, Cline | P0 |
 | **Self-learning memory** | Agents improve over time | Ruflo | P2 |
 | **Multi-language docs** | International adoption blocked | OMC (6 languages), cc-connect (5) | P2 |
 
@@ -113,6 +116,18 @@ This is the tagline. Ruflo and OMC are developer tools. Aegis is **enterprise mi
 - **Task decomposition:** Kanban shows parent-child tasks with real-time parallel execution. Aegis has no equivalent — but this is Phase 4 scope (Session Groups / Workflow View).
 - **What we beat them on:** Web-first (any OS), RBAC + audit, multi-tenant, PWA, open source (MIT), persistent named agents.
 - **What we should NOT copy:** Conversation-first UI (our users want data/control), Mac-only, consumer pricing, ephemeral workers, AI-generated dashboards.
+
+## Market Pulse — 2026-05-29
+
+**Multica (30.7K ⭐, MIT, Go+Next.js+PostgreSQL):** Full-stack multi-agent task management platform — "Linear for AI agents." Key features: Kanban board, agent profiles, squads, skills marketplace, autopilots (scheduled automations), webhook delivery tracking, 11+ CLI runtime auto-detection (claude, codex, copilot, gemini, cursor, kimi, kiro, etc.), Docker Compose + Cloud SaaS, Electron desktop app, workspace-scoped RBAC.
+- **What they beat us on:** Task management depth, multi-runtime breadth, desktop UX, skills compounding, community scale (30.7K stars in ~4 months).
+- **What we beat them on:** MCP integration, cost analytics, hash-chained audit, OIDC/SSO, Prometheus/OTel, Kubernetes/Helm, multi-channel notifications (Telegram/Slack/Discord), solo-dev zero-config, ACP depth.
+- **Existential threat:** If Multica normalizes "use any CLI agent," being Claude-only becomes a liability. Their skills marketplace compounds value — every solution becomes reusable across agents.
+- **Action:** Don't try to match feature-for-feature. Lean into depth (MCP, audit, cost tracking, enterprise governance). Close CLI self-update and webhook delivery tracking gaps.
+
+**CC v2.1.154 Dynamic Workflows:** Claude Code now has native multi-agent orchestration ("tens to hundreds of agents in the background") via `/workflows`. Also: background sessions with attach/detach, `! <command>` shell dispatch, Opus 4.8 with high effort default.
+- **Impact on Aegis:** CC is building orchestration natively. Aegis must differentiate on what CC won't have: RBAC, audit trails, approval gates, cost enforcement, multi-user access, REST API for external consumers.
+- **See also:** `docs/competitive-intel/cc-v2.1.153-156.md`
 
 ## Market Pulse — 2026-05-12
 
