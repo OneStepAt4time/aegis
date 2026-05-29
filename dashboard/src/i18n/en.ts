@@ -958,6 +958,8 @@ export const en = {
     filterByPipelineStatus: 'Filter by status',
     sortBy: 'Sort by',
     copySessionId: 'Copy session ID',
+    ccSessionId: 'Claude Code session',
+    copyCcSessionId: 'Copy CC session ID',
     activeSessions: 'Active sessions',
     allSessions: 'All sessions',
     checkingAuth: 'Checking authentication',

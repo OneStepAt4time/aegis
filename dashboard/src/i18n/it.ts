@@ -951,6 +951,8 @@ export const it = {
     filterByPipelineStatus: 'Filtra per stato',
     sortBy: 'Ordina per',
     copySessionId: 'Copia ID sessione',
+    ccSessionId: 'Sessione Claude Code',
+    copyCcSessionId: 'Copia ID sessione CC',
     activeSessions: 'Sessioni attive',
     allSessions: 'Tutte le sessioni',
     checkingAuth: 'Verifica autenticazione',
