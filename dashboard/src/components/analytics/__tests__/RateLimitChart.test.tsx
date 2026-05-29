@@ -12,9 +12,10 @@ vi.mock('../../../utils/chartTheme', () => ({
   CHART_RGB: { cyan: '6,182,212', warning: '245,158,11', danger: '239,68,68' },
 }));
 
-vi.mock('../../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 const sampleData: RateLimitKeyUsage[] = [
   {

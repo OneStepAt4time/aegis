@@ -32,9 +32,10 @@ vi.mock('../../components/shared/Skeleton', () => ({
   SkeletonTable: () => <div data-testid="skeleton">Loading skeleton</div>,
 }));
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 import SessionsPage from '../SessionsPage';
 

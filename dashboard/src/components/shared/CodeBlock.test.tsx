@@ -5,9 +5,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CodeBlock, RenderWithCodeBlocks } from './CodeBlock';
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 Object.assign(navigator, {
   clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -32,7 +33,7 @@ describe('CodeBlock', () => {
 
   it('copy button has aria-label', () => {
     render(<CodeBlock code="test" language="bash" />);
-    expect(screen.getByLabelText('aria.copyCode')).not.toBeNull();
+    expect(screen.getByLabelText('Copy code')).not.toBeNull();
   });
 
   it('highlights keywords using CSS class', () => {

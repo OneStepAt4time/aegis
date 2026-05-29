@@ -23,9 +23,10 @@ vi.mock('../../api/client.js', () => ({
   }),
 }));
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 vi.mock('./RealtimeBadge.js', () => ({
   default: () => <span data-testid="realtime-badge">RT</span>,

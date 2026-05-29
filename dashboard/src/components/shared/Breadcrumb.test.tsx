@@ -6,9 +6,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Breadcrumb from './Breadcrumb';
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 function renderWithPath(path: string) {
   return render(
@@ -41,7 +42,7 @@ describe('Breadcrumb', () => {
   it('has nav with aria-label', () => {
     renderWithPath('/audit');
     const nav = screen.getByRole('navigation');
-    expect(nav.getAttribute('aria-label')).toBe('aria.breadcrumb');
+    expect(nav.getAttribute('aria-label')).toBe('Breadcrumb');
   });
 
   it('last crumb is plain text (no link)', () => {

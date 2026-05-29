@@ -11,9 +11,10 @@ vi.mock('../../api/client', () => ({
 }));
 
 // Mock i18n
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 // Mock child components that make their own API calls
 vi.mock('../../components/overview/MetricCards', () => ({
