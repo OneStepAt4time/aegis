@@ -3,9 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { AuditTrailPanel } from '../AuditTrailPanel';
 import type { AuditRecord } from '../../../types';
 
-vi.mock('../../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 const mockRecords: AuditRecord[] = [
   {
@@ -114,6 +115,6 @@ describe('AuditTrailPanel', () => {
     render(
       <AuditTrailPanel records={mockRecords} loading={false} error={null} />
     );
-    expect(screen.getByRole('list').getAttribute('aria-label')).toBe('aria.auditTrail');
+    expect(screen.getByRole('list').getAttribute('aria-label')).toBe('Audit trail');
   });
 });

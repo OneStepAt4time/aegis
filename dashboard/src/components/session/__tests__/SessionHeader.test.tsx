@@ -8,9 +8,10 @@ import type { SessionInfo, SessionHealth } from '../../../types';
 
 // ── Mocks ──────────────────────────────────────────────────
 
-vi.mock('../../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 vi.mock('lucide-react', () => ({
   GitFork: (props: any) => <svg data-testid="icon-gitfork" {...props} />,
@@ -190,7 +191,7 @@ describe('SessionHeader', () => {
 
   it('renders overflow menu button', () => {
     render(<SessionHeader session={baseSession} health={baseHealth} />);
-    expect(screen.getByLabelText('aria.moreActions')).not.toBeNull();
+    expect(screen.getByLabelText('More session actions')).not.toBeNull();
   });
 
   it('overflow menu opens and shows Save as Template when handler provided', () => {
@@ -202,7 +203,7 @@ describe('SessionHeader', () => {
         onSaveTemplate={onSaveTemplate}
       />,
     );
-    fireEvent.click(screen.getByLabelText('aria.moreActions'));
+    fireEvent.click(screen.getByLabelText('More session actions'));
     expect(screen.getByText('Save as Template')).not.toBeNull();
   });
 
@@ -215,7 +216,7 @@ describe('SessionHeader', () => {
         onFork={onFork}
       />,
     );
-    fireEvent.click(screen.getByLabelText('aria.moreActions'));
+    fireEvent.click(screen.getByLabelText('More session actions'));
     expect(screen.getByText('Fork')).not.toBeNull();
   });
 
@@ -228,7 +229,7 @@ describe('SessionHeader', () => {
         onKill={onKill}
       />,
     );
-    fireEvent.click(screen.getByLabelText('aria.moreActions'));
+    fireEvent.click(screen.getByLabelText('More session actions'));
     expect(screen.getByText('Kill Session')).not.toBeNull();
   });
 

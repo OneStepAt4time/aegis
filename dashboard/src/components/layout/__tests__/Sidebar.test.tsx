@@ -9,9 +9,10 @@ vi.mock('../../store/useAuthStore.js', () => ({
   }),
 }));
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 vi.mock('../shared/ServerHealthIndicator.tsx', () => ({
   ServerHealthDot: () => <div data-testid="health-dot">Health</div>,

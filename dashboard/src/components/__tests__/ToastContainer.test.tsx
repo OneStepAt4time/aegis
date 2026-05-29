@@ -24,9 +24,10 @@ vi.mock('../../store/useToastStore', () => ({
     }),
 }));
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 vi.mock('lucide-react', () => ({
   X: (props: any) => <svg data-testid="icon-x" {...props} />,
@@ -104,7 +105,7 @@ describe('ToastContainer', () => {
   it('dismiss button calls removeToast with toast id', () => {
     mockToasts = [{ id: 't1', type: 'success', title: 'Dismiss me' }];
     render(<ToastContainer />);
-    const dismissBtn = screen.getByLabelText('aria.dismiss');
+    const dismissBtn = screen.getByLabelText('Dismiss');
     fireEvent.click(dismissBtn);
     expect(mockRemoveToast).toHaveBeenCalledWith('t1');
   });
@@ -115,7 +116,7 @@ describe('ToastContainer', () => {
       { id: 't2', type: 'error', title: 'Second' },
     ];
     render(<ToastContainer />);
-    fireEvent.click(screen.getByLabelText('aria.dismissAll'));
+    fireEvent.click(screen.getByLabelText('Dismiss all notifications'));
     expect(mockRemoveToast).toHaveBeenCalledTimes(2);
     expect(mockRemoveToast).toHaveBeenCalledWith('t1');
     expect(mockRemoveToast).toHaveBeenCalledWith('t2');
@@ -133,7 +134,7 @@ describe('ToastContainer', () => {
     const undoFn = vi.fn();
     mockToasts = [{ id: 't1', type: 'undo', title: 'Deleted', undoAction: undoFn }];
     render(<ToastContainer />);
-    const undoBtn = screen.getByLabelText('aria.undo');
+    const undoBtn = screen.getByLabelText('Undo');
     expect(undoBtn).not.toBeNull();
   });
 
@@ -141,14 +142,14 @@ describe('ToastContainer', () => {
     const undoFn = vi.fn();
     mockToasts = [{ id: 't1', type: 'undo', title: 'Deleted', undoAction: undoFn }];
     render(<ToastContainer />);
-    fireEvent.click(screen.getByLabelText('aria.undo'));
+    fireEvent.click(screen.getByLabelText('Undo'));
     expect(undoFn).toHaveBeenCalledOnce();
     expect(mockRemoveToast).toHaveBeenCalledWith('t1');
   });
 
   it('no undo button when undoAction is absent', () => {
     mockToasts = [{ id: 't1', type: 'info', title: 'No undo' }];
-    expect(screen.queryByLabelText('aria.undo')).toBeNull();
+    expect(screen.queryByLabelText('Undo')).toBeNull();
   });
 
   it('progress bar starts at 100% width', () => {

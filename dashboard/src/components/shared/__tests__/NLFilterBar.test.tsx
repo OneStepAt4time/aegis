@@ -8,9 +8,10 @@ vi.mock('../../Icon', () => ({
   ),
 }));
 
-vi.mock('../../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 describe('parseNLQuery', () => {
   it('parses status keywords', () => {
@@ -133,12 +134,12 @@ describe('NLFilterBar', () => {
 
   it('renders with placeholder', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    expect(screen.getByLabelText('aria.naturalLanguageFilter')).toBeDefined();
+    expect(screen.getByLabelText('Natural language filter')).toBeDefined();
   });
 
   it('commits filter on Enter', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onFilter).toHaveBeenCalledWith(
@@ -151,7 +152,7 @@ describe('NLFilterBar', () => {
 
   it('commits filter on comma', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: ',' });
     expect(onFilter).toHaveBeenCalled();
@@ -159,7 +160,7 @@ describe('NLFilterBar', () => {
 
   it('does not commit filter on blur (removed auto-commit)', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'today' } });
     fireEvent.blur(input);
     expect(onFilter).not.toHaveBeenCalled();
@@ -167,14 +168,14 @@ describe('NLFilterBar', () => {
 
   it('does not commit on blur when input is empty', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.blur(input);
     expect(onFilter).not.toHaveBeenCalled();
   });
 
   it('displays chips after commit', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByText('status: active')).toBeDefined();
@@ -182,7 +183,7 @@ describe('NLFilterBar', () => {
 
   it('removes chip on chip button click', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     // Find remove button for the chip
@@ -193,7 +194,7 @@ describe('NLFilterBar', () => {
 
   it('removes last chip on Backspace with empty input', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     // Now input is empty, backspace should remove last chip
@@ -203,30 +204,30 @@ describe('NLFilterBar', () => {
 
   it('shows clear all button when chips exist', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(screen.getByLabelText('aria.clearAllFilters')).toBeDefined();
+    expect(screen.getByLabelText('Clear all filters')).toBeDefined();
   });
 
   it('clears all chips on clear button click', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    fireEvent.click(screen.getByLabelText('aria.clearAllFilters'));
+    fireEvent.click(screen.getByLabelText('Clear all filters'));
     expect(onFilter).toHaveBeenCalledWith([], '');
   });
 
   it('uses custom placeholder', () => {
     render(<NLFilterBar onFilter={onFilter} placeholder="Custom placeholder" />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     expect(input.getAttribute('placeholder')).toBe('Custom placeholder');
   });
 
   it('switches placeholder to "Add filter…" after first chip', () => {
     render(<NLFilterBar onFilter={onFilter} />);
-    const input = screen.getByLabelText('aria.naturalLanguageFilter');
+    const input = screen.getByLabelText('Natural language filter');
     fireEvent.change(input, { target: { value: 'active' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(input.getAttribute('placeholder')).toBe('Add filter…');

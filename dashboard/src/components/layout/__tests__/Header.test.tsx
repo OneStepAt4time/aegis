@@ -11,9 +11,10 @@ vi.mock('../../store/useDrawerStore.js', () => ({
   useDrawerStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ openNewSession: vi.fn() }),
 }));
 
-vi.mock('../../i18n/context', () => ({
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../i18n/context', async () => {
+  const { testT } = await import('../../../__tests__/i18n-test-helper');
+  return { useT: () => testT };
+});
 
 vi.mock('../shared/Breadcrumb.tsx', () => ({
   default: () => <nav data-testid="breadcrumb">Breadcrumb</nav>,
