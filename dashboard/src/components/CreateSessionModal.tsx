@@ -121,7 +121,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
     const validRows = batchRows.filter((r) => r.workDir.trim());
     if (validRows.length === 0) {
-      setError('At least one working directory is required');
+      setError(t('newSession.atLeastOneWorkDir'));
       return;
     }
 
@@ -159,7 +159,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
     setError(null);
 
     if (!workDir.trim()) {
-      setError('Working directory is required');
+      setError(t('newSession.workDirRequired'));
       return;
     }
 
@@ -213,7 +213,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-[var(--color-void-lighter)]">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">New Session</h2>
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{t('newSession.title')}</h2>
             <div className="flex rounded bg-[var(--color-void)] p-0.5">
               <button
                 type="button"
@@ -224,7 +224,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
-                Single
+                {t('newSession.single')}
               </button>
               <button
                 type="button"
@@ -235,7 +235,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
               >
-                Batch
+                {t('newSession.batch')}
               </button>
               {templates.length > 0 && (
                 <button
@@ -247,7 +247,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                       : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                   }`}
                 >
-                  Template
+                  {t('newSession.templateTab')}
                 </button>
               )}
             </div>
@@ -266,7 +266,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Work Dir */}
           <div>
             <label htmlFor="modal-workDir" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Working Directory <span className="text-[var(--color-error)]">*</span>
+              {t('newSession.workDir')} <span className="text-[var(--color-error)]">*</span>
             </label>
             <input
               id="modal-workDir"
@@ -285,7 +285,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Name */}
           <div>
             <label htmlFor="modal-name" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Session Name
+              {t('newSession.sessionName')}
             </label>
             <input
               id="modal-name"
@@ -300,7 +300,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Claude Command */}
           <div>
             <label htmlFor="modal-claudeCommand" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
+              {t('newSession.claudeCommand')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
             </label>
             <input
               id="modal-claudeCommand"
@@ -315,7 +315,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Prompt */}
           <div>
             <label htmlFor="modal-prompt" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Initial Prompt
+              {t('newSession.initialPrompt')}
             </label>
             <textarea
               id="modal-prompt"
@@ -330,7 +330,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Permission mode */}
           <div>
             <label htmlFor="modal-permissionMode" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Permission Mode
+              {t('newSession.permissionMode')}
             </label>
             <select
               id="modal-permissionMode"
@@ -358,7 +358,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onClick={handleClose}
               className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors"
             >
-              Cancel
+              {t('newSession.cancel')}
             </button>
             <button
               type="submit"
@@ -366,7 +366,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg-hover)] text-[var(--color-cta-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
-              Create Session
+              {t('newSession.createSession')}
             </button>
           </div>
         </form>
@@ -378,7 +378,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Shared prompt */}
           <div>
             <label htmlFor="modal-sharedPrompt" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Shared Prompt
+              {t('newSession.sharedPrompt')}
             </label>
             <textarea
               id="modal-sharedPrompt"
@@ -392,9 +392,9 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-[var(--color-text-muted)] px-1">
-            <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
+            <span>{t('newSession.batchWorkDir')} <span className="text-[var(--color-error)]">*</span></span>
             <span>{t('newSession.nameLabel')}</span>
-            <span>Prompt (override)</span>
+            <span>{t('newSession.promptOverride')}</span>
             <span />
           </div>
 
@@ -447,18 +447,18 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add session ({10 - batchRows.length} remaining)
+              {t('newSession.addSession', { count: 10 - batchRows.length })}
             </button>
           ) : (
             <p className="text-xs text-[var(--color-text-muted)]">
-              Maximum 10 sessions per batch. Create additional batches as needed.
+              {t('newSession.maxBatchReached')}
             </p>
           )}
 
           {/* Permission mode */}
           <div>
             <label htmlFor="modal-permissionMode" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Permission Mode
+              {t('newSession.permissionMode')}
             </label>
             <select
               id="modal-permissionMode"
@@ -486,7 +486,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               onClick={handleClose}
               className="min-h-[44px] px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors"
             >
-              Cancel
+              {t('newSession.cancel')}
             </button>
             <button
               type="submit"
@@ -494,7 +494,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg-hover)] text-[var(--color-cta-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
-              Create {batchRows.filter((r) => r.workDir.trim()).length} Session(s)
+              {t('newSession.createCount', { count: batchRows.filter((r) => r.workDir.trim()).length })}
             </button>
           </div>
         </form>
@@ -508,7 +508,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           const template = templates.find(t => t.id === selectedTemplateId);
           if (!template) {
-            setError('Please select a template');
+            setError(t('newSession.pleaseSelectTemplate'));
             return;
           }
 
@@ -552,12 +552,12 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           {/* Template selection */}
           <div>
             <label htmlFor="template-select" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-              Select Template
+              {t('newSession.selectTemplate')}
             </label>
             {templatesLoading ? (
-              <div className="text-xs text-[var(--color-text-muted)] italic">Loading templates…</div>
+              <div className="text-xs text-[var(--color-text-muted)] italic">{t('newSession.loadingTemplates')}</div>
             ) : templates.length === 0 ? (
-              <div className="text-xs text-[var(--color-text-muted)] italic">No templates available</div>
+              <div className="text-xs text-[var(--color-text-muted)] italic">{t('newSession.noTemplatesAvailable')}</div>
             ) : (
               <select
                 id="template-select"
@@ -565,7 +565,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
                 className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
               >
-                <option value="">— Choose a template —</option>
+                <option value="">{t('newSession.chooseTemplate')}</option>
                 {templates.map(t => (
                   <option key={t.id} value={t.id}>
                     {t.name} {t.description ? `— ${t.description}` : ''}
@@ -619,7 +619,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
               className="min-h-[44px] flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium rounded bg-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg-hover)] text-[var(--color-cta-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && <Loader2 className="h-3 w-3 animate-spin" />}
-              Create from Template
+              {t('newSession.createFromTemplate')}
             </button>
           </div>
         </form>
@@ -631,19 +631,19 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
           <div className="flex items-center gap-3">
             {batchResult.created > 0 && (
               <span className="text-xs font-medium text-[var(--color-success-glow)] bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 rounded px-3 py-1.5">
-                {batchResult.created} created
+                {batchResult.created} {t('newSession.batchCreated')}
               </span>
             )}
             {batchResult.failed > 0 && (
               <span className="text-xs font-medium text-[var(--color-error)] bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 rounded px-3 py-1.5">
-                {batchResult.failed} failed
+                {batchResult.failed} {t('newSession.batchFailed')}
               </span>
             )}
           </div>
 
           {batchResult.sessions.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--color-text-muted)]">Created sessions</p>
+              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('newSession.createdSessions')}</p>
               <ul className="space-y-1">
                 {batchResult.sessions.map((s) => (
                   <li key={s.id}>
@@ -662,7 +662,7 @@ export default function CreateSessionModal({ open, onClose }: CreateSessionModal
 
           {batchResult.errors.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[var(--color-text-muted)]">Errors</p>
+              <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('newSession.errorsLabel')}</p>
               <ul className="space-y-1">
                 {batchResult.errors.map((err, i) => (
                   <li key={i} className="text-xs text-[var(--color-error)]">{err}</li>

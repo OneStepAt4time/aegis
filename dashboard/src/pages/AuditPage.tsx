@@ -241,7 +241,7 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
     <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">Latest export metadata</p>
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('audit.latestExportMetadata')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
             {result.filename} · {result.format.toUpperCase()}
           </p>
@@ -271,7 +271,7 @@ function ExportMetadataCard({ result }: { result: AuditExportResult }) {
 
       {result.integrity && result.integrity.brokenAt !== undefined ? (
         <p className="mt-3 text-xs text-[var(--color-danger-glow)]">
-          Chain verification failed at line {result.integrity.brokenAt}.
+          {t('audit.chainVerificationFailed', { line: result.integrity.brokenAt })}
         </p>
       ) : null}
     </div>
@@ -288,11 +288,12 @@ interface IntegrityState {
 }
 
 function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
+  const t = useT();
   if (state.error) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-xs">
         <ShieldAlert className="h-4 w-4 text-[var(--color-warning)]" />
-        <span className="text-[var(--color-warning-glow)]">Integrity check failed: {state.error}</span>
+        <span className="text-[var(--color-warning-glow)]">{t('audit.integrityCheckFailedError', { error: state.error })}</span>
       </div>
     );
   }
@@ -301,7 +302,7 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 px-3 py-2 text-xs text-[var(--color-text-muted)]">
         <RefreshCw className="h-4 w-4 animate-spin" />
-        <span>Verifying chain…</span>
+        <span>{t('audit.verifyingChain')}</span>
       </div>
     );
   }
@@ -310,7 +311,7 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-3 py-2 text-xs">
         <ShieldAlert className="h-4 w-4 text-[var(--color-danger-glow)]" />
-        <span className="text-[var(--color-danger-glow)] font-medium">Chain broken</span>
+        <span className="text-[var(--color-danger-glow)] font-medium">{t('audit.chainBroken')}</span>
         {state.integrity.brokenAt !== undefined && (
           <span className="text-[var(--color-danger-glow)]">(at seq {state.integrity.brokenAt})</span>
         )}
@@ -323,7 +324,7 @@ function ChainIntegrityBadge({ state }: { state: IntegrityState }) {
       <div className="flex items-center gap-2 rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success)]/10 px-3 py-2 text-xs">
         <CheckCircle2 className="h-4 w-4 text-[var(--color-success-glow)]" />
         <span className="text-[var(--color-success-glow)] font-medium">
-          Chain verified ({state.chain.count} records)
+          {t('audit.chainVerified', { count: state.chain.count })}
         </span>
       </div>
     );
@@ -380,7 +381,7 @@ function DetailDrawer({
           <div className="flex items-center justify-between border-b border-[var(--color-void-lighter)] px-6 py-4">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-[var(--color-accent-cyan)]" />
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Record Detail</h3>
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{t('audit.recordDetail')}</h3>
             </div>
             <button type="button"
               onClick={onClose}
@@ -404,7 +405,7 @@ function DetailDrawer({
             {/* Hash fields with copy */}
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Hash</p>
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.hash')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('hash', record.hash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -418,7 +419,7 @@ function DetailDrawer({
 
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Previous Hash</p>
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.previousHash')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('prevHash', record.prevHash); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -433,7 +434,7 @@ function DetailDrawer({
             {/* Full record JSON */}
             <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Full Record (JSON)</p>
+                <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.fullRecordJson')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
@@ -683,9 +684,9 @@ export default function AuditPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Audit Trail</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('audit.auditTrail')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Query admin audit events, export CSV or NDJSON, and review chain-integrity metadata.
+            {t('audit.auditTrailSubtitle')}
           </p>
         </div>
 
@@ -703,7 +704,7 @@ export default function AuditPage() {
             title={page !== 1 ? 'Live tail only works on page 1' : undefined}
           >
             {liveTail ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-            {liveTail ? 'LIVE' : 'Follow'}
+            {liveTail ? t('audit.live') : t('audit.follow')}
           </button>
           <button type="button"
             onClick={() => { void fetchData(); }}
@@ -711,7 +712,7 @@ export default function AuditPage() {
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('common.refresh')}
           </button>
           <button type="button"
             onClick={() => { void handleExport('csv'); }}
@@ -740,12 +741,12 @@ export default function AuditPage() {
       <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <Filter className="h-4 w-4 text-[var(--color-text-muted)]" />
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">Filters</span>
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">{t('audit.filters')}</span>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-actor" className="text-xs text-[var(--color-text-muted)]">Actor</label>
+            <label htmlFor="audit-filter-actor" className="text-xs text-[var(--color-text-muted)]">{t('audit.actor')}</label>
             <input
               id="audit-filter-actor"
               type="text"
@@ -758,7 +759,7 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-action" className="text-xs text-[var(--color-text-muted)]">Action</label>
+            <label htmlFor="audit-filter-action" className="text-xs text-[var(--color-text-muted)]">{t('audit.action')}</label>
             <input
               id="audit-filter-action"
               type="text"
@@ -777,7 +778,7 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-session" className="text-xs text-[var(--color-text-muted)]">Session ID</label>
+            <label htmlFor="audit-filter-session" className="text-xs text-[var(--color-text-muted)]">{t('audit.sessionIdLabel')}</label>
             <input
               id="audit-filter-session"
               type="text"
@@ -790,7 +791,7 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-from" className="text-xs text-[var(--color-text-muted)]">From</label>
+            <label htmlFor="audit-filter-from" className="text-xs text-[var(--color-text-muted)]">{t('audit.fromLabel')}</label>
             <input
               id="audit-filter-from"
               type="datetime-local"
@@ -801,7 +802,7 @@ export default function AuditPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-filter-to" className="text-xs text-[var(--color-text-muted)]">To</label>
+            <label htmlFor="audit-filter-to" className="text-xs text-[var(--color-text-muted)]">{t('audit.toLabel')}</label>
             <input
               id="audit-filter-to"
               type="datetime-local"
@@ -826,7 +827,7 @@ export default function AuditPage() {
             Clear
           </button>
           <p className="text-xs text-[var(--color-text-muted)]">
-            CSV and NDJSON exports use the currently applied filters.
+            {t('audit.exportFiltersNote')}
           </p>
         </div>
 
@@ -843,15 +844,15 @@ export default function AuditPage() {
       {endpointMissing ? (
         <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-12 text-center">
           <Shield className="mx-auto mb-3 h-10 w-10 text-[var(--color-text-muted)]" />
-          <p className="font-medium text-[var(--color-text-muted)]">Audit endpoint not available yet</p>
+          <p className="font-medium text-[var(--color-text-muted)]">{t('audit.endpointMissing')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            The /v1/audit endpoint has not been implemented on the server.
+            {t('audit.endpointMissingDescription')}
           </p>
         </div>
       ) : error ? (
         <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 p-12 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-[var(--color-danger)]" />
-          <p className="font-medium text-[var(--color-danger)]">Failed to load audit logs</p>
+          <p className="font-medium text-[var(--color-danger)]">{t('audit.failedLoad')}</p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
           <button type="button"
             onClick={() => { void fetchData(); }}
@@ -912,7 +913,7 @@ export default function AuditPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-              <span>{total} record{total !== 1 ? 's' : ''}</span>
+              <span>{t(total === 1 ? 'audit.recordsCount_one' : 'audit.recordsCount', { total })}</span>
               <span className="text-[var(--color-text-muted)]">|</span>
               <label htmlFor="audit-page-size" className="sr-only">Page size</label>
               <select
@@ -926,14 +927,14 @@ export default function AuditPage() {
                 className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-cyan)]/50 focus-visible:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>{size} / page</option>
+                  <option key={size} value={size}>{t('audit.perPage', { size })}</option>
                 ))}
               </select>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-[var(--color-text-muted)]">
-                Page {page} of {totalPages}
+                {t('audit.pageOf', { page, totalPages })}
               </span>
               <button type="button"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}

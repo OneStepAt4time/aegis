@@ -126,8 +126,8 @@ export function NewSessionDrawer() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
               <div>
-                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">New Session</h2>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Create a new Aegis agent session</p>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('newSession.title')}</h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('newSession.subtitle')}</p>
               </div>
               <button
                 type="button"
@@ -144,7 +144,7 @@ export function NewSessionDrawer() {
               {/* Work Directory */}
               <div>
                 <label htmlFor="drawer-workDir" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Working Directory <span className="text-[var(--color-danger)]">*</span>
+                  {t('newSession.workDir')} <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   ref={firstInputRef}
@@ -156,7 +156,7 @@ export function NewSessionDrawer() {
                   required
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">Absolute path where the session will run</p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.workDirDescription')}</p>
                 {workDirError && (
                   <p className="mt-1 text-xs text-[var(--color-error)]">{workDirError}</p>
                 )}
@@ -165,7 +165,7 @@ export function NewSessionDrawer() {
               {/* Session Name */}
               <div>
                 <label htmlFor="drawer-name" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Session Name <span className="text-[var(--color-text-muted)]">(optional)</span>
+                  {t('newSession.sessionName')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
                 </label>
                 <input
                   id="drawer-name"
@@ -180,7 +180,7 @@ export function NewSessionDrawer() {
               {/* Claude Command */}
               <div>
                 <label htmlFor="drawer-claudeCommand" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Claude Command <span className="text-[var(--color-text-muted)]">(optional)</span>
+                  {t('newSession.claudeCommand')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
                 </label>
                 <input
                   id="drawer-claudeCommand"
@@ -190,13 +190,13 @@ export function NewSessionDrawer() {
                   placeholder="claude --print"
                   className="w-full rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
                 />
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">Default: claude --print</p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('newSession.claudeCommandDefault')}</p>
               </div>
 
               {/* Initial Prompt */}
               <div>
                 <label htmlFor="drawer-prompt" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Initial Prompt <span className="text-[var(--color-text-muted)]">(optional)</span>
+                  {t('newSession.initialPrompt')} <span className="text-[var(--color-text-muted)]">{t('newSession.optional')}</span>
                 </label>
                 <textarea
                   id="drawer-prompt"
@@ -211,7 +211,7 @@ export function NewSessionDrawer() {
               {/* Permission Mode */}
               <div>
                 <label htmlFor="drawer-permissionMode" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                  Permission Mode
+                  {t('newSession.permissionMode')}
                 </label>
                 <select
                   id="drawer-permissionMode"
@@ -228,7 +228,7 @@ export function NewSessionDrawer() {
               {templates.length > 0 && (
                 <div>
                   <label htmlFor="drawer-template-select" className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
-                    Quick fill from template
+                    {t('newSession.startFromTemplate')}
                   </label>
                   <select
                     id="drawer-template-select"
@@ -264,14 +264,14 @@ export function NewSessionDrawer() {
                   className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-[var(--color-void)] transition-opacity"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  {loading ? 'Creating…' : 'Create Session'}
+                  {loading ? t('newSession.creating') : t('newSession.createSession')}
                 </button>
                 <button
                   type="button"
                   onClick={closeNewSession}
                   className="px-4 py-2.5 text-sm font-medium rounded border border-[var(--color-void-lighter)] text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
                 >
-                  Cancel
+                  {t('newSession.cancel')}
                 </button>
               </div>
             </form>

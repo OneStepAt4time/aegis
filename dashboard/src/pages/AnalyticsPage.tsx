@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]" role="status" aria-busy="true">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-accent-cyan)]" />
-        <span className="ml-3 text-sm text-[var(--color-text-muted)]">Loading analytics...</span>
+        <span className="ml-3 text-sm text-[var(--color-text-muted)]">{t('analytics.loadingAnalytics')}</span>
       </div>
     );
   }
@@ -159,11 +159,11 @@ export default function AnalyticsPage() {
       ? ((analytics.errorRates.failedSessions / totalSessions) * 100).toFixed(1)
       : '0';
     return [
-      { id: 'cost', label: 'Total Cost', value: formatCurrency(cost), color: 'cost', subtitle: (analytics.costTrends ?? []).length > 1 ? t('analytics.last14Days') : undefined },
-      { id: 'tokens', label: 'Total Tokens', value: formatTokenCount(tokens), color: 'input', subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined },
-      { id: 'sessions', label: 'Sessions', value: String(totalSessions), color: 'neutral' },
-      { id: 'duration', label: 'Avg Duration', value: formatDuration(avgDur), color: 'time' },
-      { id: 'errors', label: 'Error Rate', value: `${errorRate}%`, color: parseFloat(errorRate) > 5 ? 'cost' : 'efficiency', trend: parseFloat(errorRate) > 5 ? 'up' : 'flat' },
+      { id: 'cost', label: t('analytics.totalCostKpi'), value: formatCurrency(cost), color: 'cost', subtitle: (analytics.costTrends ?? []).length > 1 ? t('analytics.last14Days') : undefined },
+      { id: 'tokens', label: t('analytics.totalTokensKpi'), value: formatTokenCount(tokens), color: 'input', subtitle: tokens > 0 ? `${formatTokenCount(tokens)} processed` : undefined },
+      { id: 'sessions', label: t('analytics.sessionsKpi'), value: String(totalSessions), color: 'neutral' },
+      { id: 'duration', label: t('analytics.avgDurationKpi'), value: formatDuration(avgDur), color: 'time' },
+      { id: 'errors', label: t('analytics.errorRateKpi'), value: `${errorRate}%`, color: parseFloat(errorRate) > 5 ? 'cost' : 'efficiency', trend: parseFloat(errorRate) > 5 ? 'up' : 'flat' },
     ];
   }
 
@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
   const sessionVolumeData = {
     labels: (data.sessionVolume ?? []).map((d) => d.date),
     datasets: [{
-      label: 'Sessions',
+      label: t('analytics.sessionsChart'),
       data: (data.sessionVolume ?? []).map((d) => d.created),
       borderColor: `rgba(${CHART_RGB.cyan}, 1)`,
       backgroundColor: `rgba(${CHART_RGB.cyan}, 1)`,
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
   const costTrendsData = {
     labels: (data.costTrends ?? []).map((d) => d.date),
     datasets: [{
-      label: 'Daily Cost',
+      label: t('analytics.dailyCostChart'),
       data: (data.costTrends ?? []).map((d) => d.cost),
       backgroundColor: `rgba(${CHART_RGB.cyan}, 0.7)`,
       borderRadius: 4,
@@ -278,7 +278,7 @@ export default function AnalyticsPage() {
   const durationData = {
     labels: (data.durationTrends ?? []).map((d) => d.date),
     datasets: [{
-      label: 'Avg Duration',
+      label: t('analytics.avgDurationChart'),
       data: (data.durationTrends ?? []).map((d) => d.avgDurationSec),
       borderColor: `rgba(${CHART_RGB.purple}, 1)`,
       backgroundColor: `rgba(${CHART_RGB.purple}, 1)`,
@@ -323,9 +323,9 @@ export default function AnalyticsPage() {
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-[var(--color-accent-cyan)]" />
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Analytics</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('analytics.analyticsTitle')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Session volume, token usage, cost trends, and error rates
+            {t('analytics.analyticsSubtitle')}
           </p>
         </div>
       </div>
@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
           return (
             <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-lg border border-[var(--color-warning)]/20 bg-[var(--color-warning)]/5 px-4 py-3 text-sm text-[var(--color-warning-glow)]">
               <span aria-hidden="true">⚠</span>
-              <span><strong>Data aggregation in progress.</strong> Session count is available but chart data is still being computed. Charts will populate once the metrics cache completes processing.</span>
+              <span><strong>{t('analytics.dataAggregationInProgress')}</strong> {t('analytics.dataAggregationDescription')}</span>
             </div>
           );
         }
@@ -349,7 +349,7 @@ export default function AnalyticsPage() {
 
       {(data.tokenUsageByModel ?? []).length > 0 && (
         <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">Model Distribution</h3>
+          <h3 className="mb-3 text-sm font-medium text-[var(--color-text-primary)]">{t('analytics.modelDistribution')}</h3>
           <ModelDistributionBar
             segments={(data.tokenUsageByModel ?? []).map((m) => ({
               model: m.model,
@@ -363,8 +363,8 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label={t("analytics.totalSessions")} value={String(data.errorRates.totalSessions)} />
         <SummaryCard label={t("analytics.totalCost")} value={formatCurrency(totalCost)} />
-        <SummaryCard label={t("analytics.totalTokens")} value={data.errorRates.totalSessions > 0 && totalTokens === 0 ? 'Calculating…' : formatTokenCount(totalTokens)} />
-        <SummaryCard label={t("analytics.avgDuration")} value={data.errorRates.totalSessions > 0 && avgDuration === 0 ? 'Calculating…' : formatDuration(avgDuration)} />
+        <SummaryCard label={t("analytics.totalTokens")} value={data.errorRates.totalSessions > 0 && totalTokens === 0 ? t('analytics.calculating') : formatTokenCount(totalTokens)} />
+        <SummaryCard label={t("analytics.avgDuration")} value={data.errorRates.totalSessions > 0 && avgDuration === 0 ? t('analytics.calculating') : formatDuration(avgDuration)} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -472,9 +472,10 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 function EmptyChart() {
+  const t = useT();
   return (
     <div className="flex h-[200px] items-center justify-center text-sm text-[var(--color-text-muted)]">
-      No data available yet
+      {t('analytics.noDataAvailable')}
     </div>
   );
 }
