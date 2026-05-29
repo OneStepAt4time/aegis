@@ -7,7 +7,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import {
+import { safeErrorMessage,
   type RouteContext,
   requireSessionOwnership,
 } from './context.js';
@@ -45,7 +45,7 @@ export function registerSessionApprovalRoutes(
 
       return { ok: true, status: updated.status, approvedBy: updated.approvedBy, approvedAt: updated.approvedAt };
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   };
 
@@ -78,7 +78,7 @@ export function registerSessionApprovalRoutes(
 
       return { ok: true, status: 'killed' };
     } catch (e: unknown) {
-      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(500).send({ error: safeErrorMessage(e, 500) });
     }
   };
 

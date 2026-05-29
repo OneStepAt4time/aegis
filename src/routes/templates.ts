@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import * as templateStore from '../template-store.js';
 import type { RouteContext } from './context.js';
-import { registerWithLegacy, withValidation, requireRole } from './context.js';
+import { safeErrorMessage, registerWithLegacy, withValidation, requireRole } from './context.js';
 
 // #1393: claudeCommand must not contain shell metacharacters
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9_./@:= -]+$/;
@@ -92,7 +92,7 @@ export function registerTemplateRoutes(
         });
         return reply.status(201).send(template);
       } catch (e: unknown) {
-        return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to create template' });
+        return reply.status(500).send({ error: safeErrorMessage(e, 500) });
       }
     }),
   });
@@ -116,7 +116,7 @@ export function registerTemplateRoutes(
         if (!template) return reply.status(404).send({ error: 'Template not found' });
         return template;
       } catch (e: unknown) {
-        return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to get template' });
+        return reply.status(500).send({ error: safeErrorMessage(e, 500) });
       }
     },
   });
@@ -132,7 +132,7 @@ export function registerTemplateRoutes(
         if (!template) return reply.status(404).send({ error: 'Template not found' });
         return template;
       } catch (e: unknown) {
-        return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to update template' });
+        return reply.status(500).send({ error: safeErrorMessage(e, 500) });
       }
     }),
   });
@@ -147,7 +147,7 @@ export function registerTemplateRoutes(
         if (!deleted) return reply.status(404).send({ error: 'Template not found' });
         return { ok: true };
       } catch (e: unknown) {
-        return reply.status(500).send({ error: e instanceof Error ? e.message : 'Failed to delete template' });
+        return reply.status(500).send({ error: safeErrorMessage(e, 500) });
       }
     },
   });

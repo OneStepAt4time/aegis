@@ -8,7 +8,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import {
+import { safeErrorMessage,
   type RouteContext,
   registerWithLegacy,
   requirePermission,
@@ -60,7 +60,7 @@ export function registerQuickApproveRejectRoutes(app: FastifyInstance, ctx: Rout
 
       return reply.send({ ok: true });
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   };
 
@@ -99,7 +99,7 @@ export function registerQuickApproveRejectRoutes(app: FastifyInstance, ctx: Rout
 
       return reply.send({ ok: true });
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   };
 

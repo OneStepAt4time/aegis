@@ -526,6 +526,21 @@ export function withValidation<T>(
   };
 }
 
+
+/**
+ * Sanitize an error for HTTP response bodies.
+ * Internal error details (stack traces, internal paths, variable names)
+ * must never reach API consumers. Returns a generic message for 5xx errors,
+ * and the original message for 4xx errors (which are client-facing).
+ */
+export function safeErrorMessage(e: unknown, statusCode: number): string {
+  if (statusCode >= 500) {
+    // Never leak internal error details to clients on 5xx
+    return 'Internal server error';
+  }
+  return e instanceof Error ? e.message : String(e);
+}
+
 /**
  * Wrap an ownership check around a session route handler. Validates that
  * the caller owns the session identified by `req.params.id`, then passes

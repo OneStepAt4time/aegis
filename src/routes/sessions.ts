@@ -19,7 +19,7 @@ import {
   resolveRequestAuditActor,
   getRequestRole,
   addActionHints,
-  redactSession,
+  redactSession, safeErrorMessage,
   makePayload,
   registerWithLegacy, withOwnership, withSessionOwnership, withValidation,
 } from './context.js';
@@ -480,7 +480,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         const auditLogger = getAuditLogger();
         if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP session record creation failed for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
         const acpErr = e instanceof Error ? e.message : String(e);
-        return reply.status(500).send({ error: 'Session creation failed', details: acpErr });
+        return reply.status(500).send({ error: 'Session creation failed' });
       }
       try {
         session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
@@ -695,7 +695,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
       return health;
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      return reply.status(404).send({ error: safeErrorMessage(e, 404) });
     }
   }));
   // ACP-063: POST /v1/sessions/:id/events/replay — Replay events from durable event store
@@ -727,7 +727,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      return reply.status(500).send({ error: 'Failed to query event store', details: msg });
+      return reply.status(500).send({ error: 'Failed to query event store' });
     }
   }));
 
