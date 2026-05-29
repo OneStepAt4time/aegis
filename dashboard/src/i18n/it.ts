@@ -40,6 +40,7 @@ export const it = {
     costPerDay: 'Costo / Giorno',
     noCostData: 'Nessun dato sui costi ancora disponibile',
     recentSessionsLabel: 'Sessioni Recenti',
+    newSessionShortcut: 'Nuova Sessione (⌘N)',
   },
 
   sessions: {
