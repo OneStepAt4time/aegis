@@ -228,7 +228,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
 
       <div className="grid gap-3 md:grid-cols-2">
         <StatusCard
-          label="Claude CLI"
+          label={t("homeStatus.claudeCliLabel")}
           icon={<Bot className="h-4 w-4" />}
           {...claudeCard}
           actionButton={claudeCard.tone === 'red' ? {
@@ -240,7 +240,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
           } : undefined}
         />
         <StatusCard
-          label="Active sessions"
+          label={t("homeStatus.activeSessionsLabel")}
           icon={<Activity className="h-4 w-4" />}
           {...activeSessionsCard}
         />
@@ -250,9 +250,9 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
         <div className="rounded-xl border border-[var(--color-accent-cyan)]/20 bg-[var(--color-accent-cyan)]/5 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Create your first session</h3>
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('homeStatus.createFirstSessionTitle')}</h3>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Aegis is healthy. Start a Claude Code session in a working directory to unlock live activity and session controls.
+                {t('homeStatus.createFirstSessionDescription')}
               </p>
             </div>
             <button
