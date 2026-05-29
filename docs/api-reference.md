@@ -4226,14 +4226,49 @@ curl http://localhost:9100/v1/webhooks/dead-letter \
 GET /v1/hooks/:id/deliveries
 ```
 
-Returns delivery history for a specific webhook.
+Returns delivery history for a specific webhook, including per-attempt latency and status.
 
 ```bash
 curl http://localhost:9100/v1/hooks/hook-abc123/deliveries \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Array of delivery records with timestamps and status codes.
+**Response:**
+
+```json
+{
+  "deliveries": [
+    {
+      "id": "del-abc123",
+      "timestamp": "2026-05-29T20:00:00.000Z",
+      "status": "success",
+      "statusCode": 200,
+      "durationMs": 42,
+      "attemptCount": 1
+    },
+    {
+      "id": "del-def456",
+      "timestamp": "2026-05-29T19:55:00.000Z",
+      "status": "failed",
+      "statusCode": 503,
+      "durationMs": 5003,
+      "attemptCount": 3
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique delivery attempt ID |
+| `timestamp` | string | ISO 8601 timestamp of the attempt |
+| `status` | string | `"success"` or `"failed"` |
+| `statusCode` | number \| null | HTTP status code from the webhook endpoint |
+| `durationMs` | number | Latency of the delivery attempt in milliseconds |
+| `attemptCount` | number | Retry attempt number (1 = first attempt) |
+
+**Error responses:**
+- `404` — No webhook channel configured, or endpoint ID not found
 
 ---
 
