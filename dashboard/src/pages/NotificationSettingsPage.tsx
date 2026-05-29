@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useToastStore } from '../store/useToastStore';
 import { useT } from '../i18n/context';
+import { WebhookDeliveryHistory } from '../components/webhooks/WebhookDeliveryHistory';
 import { ConfirmDestructive } from '../components/shared/ConfirmDestructive';
 import type {
   TelegramConnectionState,
@@ -418,6 +419,11 @@ export default function NotificationSettingsPage() {
               </li>
             </ol>
           </section>
+
+          {/* Webhook Delivery History — #4486 */}
+          <div className="mt-8">
+            <WebhookDeliveryHistory />
+          </div>
         </>
       )}
     </div>
