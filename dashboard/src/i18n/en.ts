@@ -47,6 +47,9 @@ export const en = {
     avgDurationChart: 'Avg Duration Over Time',
     noDataAvailable: 'No data available yet',
     calculating: 'Calculating…',
+    costPerDay: 'Cost per Day',
+    heatmapPending: 'Loading heatmap…',
+    loadingMetrics: 'Loading metrics…',
   },
   
   sessions: {
@@ -250,6 +253,10 @@ export const en = {
     endpointNotAvailable: 'Audit endpoint not available yet',
     failedToLoad: 'Failed to load audit logs',
     pageSize: 'Page size',
+    endpointMissingDescription: 'The audit API endpoint is not configured.',
+    exportFiltersNote: 'Export includes currently applied filters.',
+    fullRecordJson: 'Full Record JSON',
+    verifyingChain: 'Verifying chain integrity…',
   },
   analytics: {
     title: 'Analytics',
@@ -942,6 +949,8 @@ export const en = {
     sessionControls: 'Session controls',
     closeControlRail: 'Close control rail',
     holdToKill: 'Hold to kill session',
+    interrupt: 'Interrupt session',
+    kill: 'Kill session',
     moreActions: 'More session actions',
     toolApprovalRequired: 'Tool approval required',
     approveTool: 'Approve tool',

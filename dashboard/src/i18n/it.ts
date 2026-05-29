@@ -49,6 +49,9 @@ export const it = {
     avgDurationChart: 'Durata Media nel Tempo',
     noDataAvailable: 'Nessun dato disponibile',
     calculating: 'Calcolo…',
+    costPerDay: 'Costo al giorno',
+    heatmapPending: 'Caricamento heatmap…',
+    loadingMetrics: 'Caricamento metriche…',
   },
 
   sessions: {
@@ -252,6 +255,10 @@ export const it = {
     endpointNotAvailable: 'Endpoint audit non ancora disponibile',
     failedToLoad: 'Caricamento log audit fallito',
     pageSize: 'Dimensione pagina',
+    endpointMissingDescription: "L'endpoint di audit non è ancora configurato.",
+    exportFiltersNote: "L'esportazione include i filtri attualmente applicati.",
+    fullRecordJson: 'Record JSON completo',
+    verifyingChain: 'Verifica integrità catena…',
   },
 
   analytics: {
@@ -937,6 +944,8 @@ export const it = {
     sessionControls: 'Controlli sessione',
     closeControlRail: 'Chiudi pannello controlli',
     holdToKill: 'Tieni premuto per terminare la sessione',
+    interrupt: 'Interrompi sessione',
+    kill: 'Termina sessione',
     moreActions: 'Altre azioni sessione',
     toolApprovalRequired: 'Approvazione strumento richiesta',
     approveTool: 'Approva strumento',
