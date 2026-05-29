@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useT } from '../../i18n/context';
 import type { ParsedEntry } from '../../types';
 import { RenderWithCodeBlocks } from '../shared/CodeBlock';
 import { CopyButton } from '../shared/CopyButton';
@@ -46,6 +47,7 @@ function getRoleColor(role: string, contentType: string): string {
 }
 
 export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptBubbleProps) {
+  const t = useT();
   const [showRelativeTime, setShowRelativeTime] = useState(false);
   const [collapsed, setCollapsed] = useState(
     entry.contentType === 'tool_use' || 
@@ -126,7 +128,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
               e.stopPropagation();
               setCollapsed(!collapsed);
             }}
-            aria-label="Collapse transcript entry"
+            aria-label={t("aria.collapseTranscriptEntry")}
             className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors py-1"
           >
             <Icon 
@@ -177,7 +179,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 e.stopPropagation();
                 setCollapsed(!collapsed);
               }}
-              aria-label="Collapse transcript entry"
+              aria-label={t("aria.collapseTranscriptEntry")}
             className={`w-full text-left rounded-lg overflow-hidden border transition-colors ${
                 isFailed
                   ? 'border-[var(--color-danger)]/40 bg-[var(--color-void)]'
@@ -267,8 +269,8 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyMessage();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
-              aria-label="Copy message"
-              title="Copy message"
+              aria-label={t("aria.copyMessage")}
+              title={t("aria.copyMessage")}
             >
               <Icon name="Copy" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />
             </button>
@@ -279,8 +281,8 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyUpToHere();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
-              aria-label="Copy transcript up to here"
-              title="Copy transcript up to here"
+              aria-label={t("aria.copyTranscriptUpToHere")}
+              title={t("aria.copyTranscriptUpToHere")}
             >
               <Icon name="FileText" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />
             </button>
@@ -291,8 +293,8 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                 copyPermalink();
               }}
               className="p-1 rounded hover:bg-[var(--color-void)]/10 transition-colors"
-              aria-label="Copy permalink"
-              title="Copy permalink"
+              aria-label={t("aria.copyPermalink")}
+              title={t("aria.copyPermalink")}
             >
               <Icon name="Link" size={16} className={isUser ? 'text-[var(--color-void)]' : 'text-[var(--color-text-muted)]'} />
             </button>

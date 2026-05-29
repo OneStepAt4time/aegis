@@ -776,6 +776,85 @@ export const en = {
     activeSessions: 'Active sessions',
     allSessions: 'All sessions',
     checkingAuth: 'Checking authentication',
+
+    // Transcript
+    collapseTranscriptEntry: 'Collapse transcript entry',
+    copyMessage: 'Copy message',
+    copyTranscriptUpToHere: 'Copy transcript up to here',
+    copyPermalink: 'Copy permalink',
+    scrollToBottom: 'Scroll to bottom',
+
+    // Session actions (title attrs)
+    approveAction: 'Approve',
+    rejectAction: 'Reject',
+    interruptAction: 'Interrupt',
+    killAction: 'Kill',
+
+    // Routine details
+    cronSchedule: 'Cron schedule',
+    nextRun: 'Next run',
+    runNow: 'Run now',
+    deleteAction: 'Delete',
+    activeRoutine: 'Active',
+    pausedRoutine: 'Paused',
+    pauseRoutine: 'Pause routine',
+    resumeRoutine: 'Resume routine',
+    pauseAction: 'Pause',
+    resumeAction: 'Resume',
+
+    // Activity
+    activityHeatmap: 'Activity heatmap',
+    retryLoadingHeatmap: 'Retry loading heatmap',
+
+    // Cost page
+    timeRangeSelector: 'Time range selector',
+    dailySpendChart: 'Daily spend chart',
+    costAnalytics: 'Cost analytics',
+    costByModelChart: 'Cost by model chart',
+    modelDetails: 'Model details',
+
+    // Sessions page
+    sessionBoardView: 'Session board view',
+
+    // Settings
+    resetAllSettings: 'Reset all settings to defaults',
+
+    // Notification settings
+    telegramBotToken: 'Telegram bot token',
+    telegramChatId: 'Telegram chat ID',
+
+    // Approval banners
+    toggleApprovalDetails: 'Toggle approval details',
+    collapsePrompt: 'Collapse prompt',
+    expandPrompt: 'Expand prompt',
+    sessionAwaitingApproval: 'Session awaiting approval',
+
+    // Session metrics
+    elapsedSessionTime: 'Elapsed session time',
+    approvalsGranted: 'Approvals granted during this session',
+    autoApprovals: 'Auto-approvals (server-counted)',
+
+    // Cost components
+    tokenBreakdownChartLoading: 'Token breakdown chart loading',
+    tokenBreakdownChart: 'Token breakdown chart',
+    sessionCostBreakdownTable: 'Session cost breakdown table',
+    sortBySessionName: 'Sort by session name',
+    sortByTotalTokens: 'Sort by total tokens',
+    sortByCost: 'Sort by cost',
+    sortByDuration: 'Sort by duration',
+
+    // Analytics
+    agentContributionsLoading: 'Agent contributions loading',
+    agentContributions: 'Agent contributions',
+    agentContributionsPanel: 'Agent contributions panel',
+
+    // Header
+    openCommandPalette: 'Open command palette',
+    switchToLightMode: 'Switch to light mode',
+    switchToDarkMode: 'Switch to dark mode',
+
+    // Tour
+    pressEscToSkip: 'Press Esc to skip',
   },
 
   cliShortcuts: {

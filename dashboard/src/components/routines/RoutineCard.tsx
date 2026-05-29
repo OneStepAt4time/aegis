@@ -75,19 +75,19 @@ export default function RoutineCard({
                   : 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
                 }
               `}
-              aria-label={isActive ? 'Active' : 'Paused'}
+              aria-label={isActive ? t('aria.activeRoutine') : t('aria.pausedRoutine')}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[var(--color-success)]' : 'bg-[var(--color-warning)]'}`} />
               {isActive ? 'Active' : 'Paused'}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
-            <span className="flex items-center gap-1" title="Cron schedule">
+            <span className="flex items-center gap-1" title={t("aria.cronSchedule")}>
               <Repeat className="w-3 h-3" />
               <code className="font-mono text-[11px]">{routine.cronSchedule}</code>
             </span>
             {isActive && (
-              <span className="flex items-center gap-1" title="Next run">
+              <span className="flex items-center gap-1" title={t("aria.nextRun")}>
                 <Clock className="w-3 h-3" />
                 {nextRunLabel}
               </span>
@@ -106,8 +106,8 @@ export default function RoutineCard({
                 : 'text-[var(--color-success)] hover:bg-[var(--color-success)]/10'
               }
             `}
-            aria-label={isActive ? 'Pause routine' : 'Resume routine'}
-            title={isActive ? 'Pause' : 'Resume'}
+            aria-label={isActive ? t('aria.pauseRoutine') : t('aria.resumeRoutine')}
+            title={isActive ? t('aria.pauseAction') : t('aria.resumeAction')}
           >
             {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
@@ -115,7 +115,7 @@ export default function RoutineCard({
             onClick={() => onTriggerNow?.(routine.id)}
             className="p-1.5 rounded text-[var(--color-cta-bg)] hover:bg-[var(--color-cta-bg)]/10 transition-colors"
             aria-label={t("aria.triggerRoutine")}
-            title="Run now"
+            title={t("aria.runNow")}
           >
             <Zap className="w-4 h-4" />
           </button>
@@ -123,7 +123,7 @@ export default function RoutineCard({
             onClick={() => onDelete?.(routine.id)}
             className="p-1.5 rounded text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
             aria-label={t("aria.deleteRoutine")}
-            title="Delete"
+            title={t("aria.deleteAction")}
           >
             <Trash2 className="w-4 h-4" />
           </button>

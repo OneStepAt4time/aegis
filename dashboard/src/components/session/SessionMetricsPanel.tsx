@@ -27,6 +27,7 @@ import { AnimatedNumber } from '../shared/AnimatedNumber';
 import { TimelineSparkline } from './TimelineSparkline';
 import { RateLimitCard } from './RateLimitCard';
 import { modelAccent } from '../../design/modelAccents';
+import { useT } from '../../i18n/context';
 
 // Issue 04.8: rate-limit card sits behind a feature flag until a
 // provider adapter starts forwarding `x-ratelimit-*` headers. Off
@@ -87,6 +88,7 @@ function BannerCell({ label, numericValue, value, valueColor, title, animate }: 
 }
 
 export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
+  const t = useT();
   const { state, counts } = useSessionEvents(sessionId);
   const metrics = state.metrics;
   const reducedMotion = useReducedMotion() ?? false;
@@ -160,7 +162,7 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
           <BannerCell
             label="Duration"
             value={metrics ? formatDuration(metrics.durationSec * 1000) : '—'}
-            title="Elapsed session time"
+            title={t("aria.elapsedSessionTime")}
           />
           <BannerCell
             label="Messages"
@@ -177,13 +179,13 @@ export function SessionMetricsPanel({ sessionId }: SessionMetricsPanelProps) {
             label="Approvals"
             numericValue={counts.approvals}
             animate={animate}
-            title="Approvals granted during this session"
+            title={t("aria.approvalsGranted")}
           />
           <BannerCell
             label="Auto"
             numericValue={metrics?.autoApprovals ?? 0}
             animate={animate}
-            title="Auto-approvals (server-counted)"
+            title={t("aria.autoApprovals")}
           />
           <BannerCell
             label="Model"

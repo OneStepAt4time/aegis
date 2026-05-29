@@ -9,6 +9,7 @@ import { useState, useCallback } from 'react';
 import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 import { quickApprove, quickReject } from '../../api/client';
 import { useToastStore } from '../../store/useToastStore';
+import { useT } from '../../i18n/context';
 
 interface ApprovalBannerProps {
   sessionId: string;
@@ -16,6 +17,7 @@ interface ApprovalBannerProps {
 }
 
 export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) {
+  const t = useT();
   const addToast = useToastStore((s) => s.addToast);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -69,7 +71,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
     <div
       className="flex flex-col gap-3 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
-      aria-label="Session awaiting approval"
+      aria-label={t("aria.sessionAwaitingApproval")}
     >
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4 text-[var(--color-warning)]" aria-hidden="true" />

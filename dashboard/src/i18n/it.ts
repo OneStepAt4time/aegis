@@ -768,6 +768,85 @@ export const it = {
     activeSessions: 'Sessioni attive',
     allSessions: 'Tutte le sessioni',
     checkingAuth: 'Verifica autenticazione',
+
+    // Transcript
+    collapseTranscriptEntry: 'Comprimi voce trascrizione',
+    copyMessage: 'Copia messaggio',
+    copyTranscriptUpToHere: 'Copia trascrizione fino a qui',
+    copyPermalink: 'Copia permalink',
+    scrollToBottom: 'Scorri in fondo',
+
+    // Session actions (title attrs)
+    approveAction: 'Approva',
+    rejectAction: 'Rifiuta',
+    interruptAction: 'Interrompi',
+    killAction: 'Termina',
+
+    // Routine details
+    cronSchedule: 'Pianificazione cron',
+    nextRun: 'Prossima esecuzione',
+    runNow: 'Esegui ora',
+    deleteAction: 'Elimina',
+    activeRoutine: 'Attiva',
+    pausedRoutine: 'In pausa',
+    pauseRoutine: 'Metti in pausa la routine',
+    resumeRoutine: 'Riprendi la routine',
+    pauseAction: 'Pausa',
+    resumeAction: 'Riprendi',
+
+    // Activity
+    activityHeatmap: 'Mappa di attività',
+    retryLoadingHeatmap: 'Riprova caricamento mappa',
+
+    // Cost page
+    timeRangeSelector: 'Selettore intervallo temporale',
+    dailySpendChart: 'Grafico spesa giornaliera',
+    costAnalytics: 'Analisi costi',
+    costByModelChart: 'Grafico costi per modello',
+    modelDetails: 'Dettagli modello',
+
+    // Sessions page
+    sessionBoardView: 'Vista bacheca sessioni',
+
+    // Settings
+    resetAllSettings: 'Ripristina tutte le impostazioni',
+
+    // Notification settings
+    telegramBotToken: 'Token bot Telegram',
+    telegramChatId: 'ID chat Telegram',
+
+    // Approval banners
+    toggleApprovalDetails: 'Mostra/nascondi dettagli approvazione',
+    collapsePrompt: 'Comprimi prompt',
+    expandPrompt: 'Espandi prompt',
+    sessionAwaitingApproval: 'Sessione in attesa di approvazione',
+
+    // Session metrics
+    elapsedSessionTime: 'Tempo sessione trascorso',
+    approvalsGranted: 'Approvazioni concesse in questa sessione',
+    autoApprovals: 'Auto-approvazioni (conteggio server)',
+
+    // Cost components
+    tokenBreakdownChartLoading: 'Caricamento grafico breakdown token',
+    tokenBreakdownChart: 'Grafico breakdown token',
+    sessionCostBreakdownTable: 'Tabella breakdown costi sessione',
+    sortBySessionName: 'Ordina per nome sessione',
+    sortByTotalTokens: 'Ordina per token totali',
+    sortByCost: 'Ordina per costo',
+    sortByDuration: 'Ordina per durata',
+
+    // Analytics
+    agentContributionsLoading: 'Caricamento contributi agenti',
+    agentContributions: 'Contributi agenti',
+    agentContributionsPanel: 'Pannello contributi agenti',
+
+    // Header
+    openCommandPalette: 'Apri palette comandi',
+    switchToLightMode: 'Passa alla modalità chiara',
+    switchToDarkMode: 'Passa alla modalità scura',
+
+    // Tour
+    pressEscToSkip: 'Premi Esc per saltare',
   },
 
   cliShortcuts: {
