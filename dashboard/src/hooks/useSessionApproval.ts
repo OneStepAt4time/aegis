@@ -8,7 +8,7 @@
  * TODO: Subscribe to SSE events for real-time approval.requested/approval.responded.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { AcpApprovalRequest } from '../types/acp-approval';
 import {  approveTool,
   rejectTool,
@@ -71,19 +71,18 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
     refresh();
   }, [refresh]);
 
-  const remainingMs = useMemo(
-    () => clampRemaining(pendingApproval?.expiresAt),
-    [pendingApproval?.expiresAt],
-  );
-
-  // TTL countdown — only trigger re-render when formatted countdown string changes
+  // TTL countdown — only trigger re-render when formatted countdown string changes.
+  // remainingMs tracks the live value via state, updated alongside countdown.
   const [countdown, setCountdown] = useState<string | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    if (remainingMs === null || remainingMs <= 0) {
+    const initial = clampRemaining(pendingApproval?.expiresAt);
+    if (initial === null || initial <= 0) {
       setCountdown(null);
-      setIsExpired(remainingMs !== null && remainingMs <= 0);
+      setRemainingMs(initial);
+      setIsExpired(initial !== null && initial <= 0);
       return;
     }
 
@@ -92,18 +91,14 @@ export function useSessionApproval(sessionId: string | undefined): UseSessionApp
       if (ms === null) return;
       const next = formatCountdown(ms);
       setCountdown((prev) => (prev !== next ? next : prev));
+      setRemainingMs(ms);
       if (ms <= 0) setIsExpired(true);
     };
 
     update();
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
-  }, [remainingMs, pendingApproval?.expiresAt]);
-
-  const liveRemainingMs = useMemo(
-    () => clampRemaining(pendingApproval?.expiresAt),
-    [pendingApproval?.expiresAt, countdown],
-  );
+  }, [pendingApproval?.expiresAt]);
 
   const approve = useCallback(async (reason?: string) => {
     if (!sessionId || !pendingApproval) return;

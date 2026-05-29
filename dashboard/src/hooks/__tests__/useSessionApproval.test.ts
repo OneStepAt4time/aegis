@@ -226,4 +226,76 @@ describe('useSessionApproval', () => {
 
     expect(result.current.error).toBe('Failed to reject tool');
   });
+
+  it('does not re-render when countdown text has not changed', async () => {
+    const now = Date.now();
+    const expiresAt = new Date(now + 90_000).toISOString();
+    const mockApproval = {
+      approvalId: 'appr-ttl',
+      toolName: 'Bash',
+      sessionId: 'sess-1',
+      requestedAt: new Date(now).toISOString(),
+      expiresAt,
+    };
+    mockGetPending.mockResolvedValue(mockApproval);
+
+    const { useSessionApproval } = await import('../useSessionApproval');
+
+    vi.useFakeTimers({ shouldAdvanceTime: false, now: new Date(now) });
+
+    const { result } = renderHook(() => useSessionApproval('sess-1'));
+
+    // Flush the initial fetch
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pendingApproval).toBeTruthy();
+    const initialCountdown = result.current.countdown;
+    expect(initialCountdown).toBe('1:30');
+
+    // Advance 500ms — still same formatted second, setCountdown guard prevents re-render
+    act(() => { vi.advanceTimersByTime(500); });
+    expect(result.current.countdown).toBe(initialCountdown);
+
+    // Advance to the full second — countdown should tick to "1:29"
+    act(() => { vi.advanceTimersByTime(500); });
+    expect(result.current.countdown).toBe('1:29');
+
+    vi.useRealTimers();
+  });
+
+  it('updates remainingMs on each tick', async () => {
+    const now = Date.now();
+    const expiresAt = new Date(now + 5000).toISOString();
+    const mockApproval = {
+      approvalId: 'appr-ms',
+      toolName: 'Bash',
+      sessionId: 'sess-1',
+      requestedAt: new Date(now).toISOString(),
+      expiresAt,
+    };
+    mockGetPending.mockResolvedValue(mockApproval);
+
+    const { useSessionApproval } = await import('../useSessionApproval');
+
+    vi.useFakeTimers({ shouldAdvanceTime: false, now: new Date(now) });
+
+    const { result } = renderHook(() => useSessionApproval('sess-1'));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pendingApproval).toBeTruthy();
+    const initialMs = result.current.remainingMs;
+    expect(initialMs).not.toBeNull();
+    expect(initialMs!).toBeGreaterThan(0);
+
+    // After 1 second, remainingMs should decrease
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(result.current.remainingMs).toBeLessThan(initialMs!);
+
+    vi.useRealTimers();
+  });
 });
