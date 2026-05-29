@@ -280,4 +280,67 @@ describe('Issue #2144: Webhook delivery tracking', () => {
       expect(log[0].status).toBe('success');
     });
   });
+
+  describe('durationMs tracking (Issue #4486)', () => {
+    it('should record durationMs on successful delivery', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const channel = new WebhookChannel({
+        endpoints: [{ url: 'https://example.com/hook' }],
+      });
+
+      await channel.onSessionCreated!(makePayload());
+
+      const log = channel.getDeliveryLog();
+      expect(log[0].durationMs).toBeDefined();
+      expect(log[0].durationMs).toBeGreaterThanOrEqual(0);
+      expect(typeof log[0].durationMs).toBe('number');
+    });
+
+    it('should record durationMs on failed delivery', async () => {
+      vi.useFakeTimers();
+      mockFetch.mockResolvedValue({ ok: false, status: 500 });
+
+      const channel = new WebhookChannel({
+        endpoints: [{ url: 'https://example.com/hook' }],
+      });
+
+      const deliveryPromise = channel.onSessionCreated!(makePayload());
+      for (let i = 0; i < 40; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await deliveryPromise;
+
+      const log = channel.getDeliveryLog();
+      expect(log[0].durationMs).toBeDefined();
+      expect(log[0].status).toBe('failed');
+
+      vi.useRealTimers();
+    });
+
+    it('should record durationMs per retry attempt', async () => {
+      vi.useFakeTimers();
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const channel = new WebhookChannel({
+        endpoints: [{ url: 'https://example.com/hook' }],
+      });
+
+      const deliveryPromise = channel.onSessionCreated!(makePayload());
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await deliveryPromise;
+
+      const log = channel.getDeliveryLog();
+      expect(log).toHaveLength(2);
+      expect(log[0].durationMs).toBeDefined();
+      expect(log[1].durationMs).toBeDefined();
+
+      vi.useRealTimers();
+    });
+  });
+
 });

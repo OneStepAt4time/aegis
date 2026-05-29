@@ -61,6 +61,8 @@ export interface WebhookDeliveryAttempt {
   error: string | null;
   timestamp: string;
   attemptNumber: number;
+  /** Delivery latency in milliseconds (Issue #4486). */
+  durationMs?: number;
 }
 
 export class WebhookChannel implements Channel {
@@ -217,6 +219,7 @@ export class WebhookChannel implements Channel {
     const deliveryId = crypto.randomUUID();
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const attemptStart = Date.now();
       try {
         // DNS rebinding protection: resolve and validate IP before each fetch.
         // Skip for literal IPs (already validated at config time).
@@ -239,6 +242,7 @@ export class WebhookChannel implements Channel {
             id: deliveryId, endpointUrl: ep.url, event,
             status: 'failed', responseCode: null, error: lastError,
             timestamp: new Date().toISOString(), attemptNumber: attempt,
+            durationMs: Date.now() - attemptStart,
           });
           if (attempt < maxRetries) {
             const delay = WebhookChannel.backoff(attempt);
@@ -269,6 +273,7 @@ export class WebhookChannel implements Channel {
             id: deliveryId, endpointUrl: ep.url, event,
             status: 'success', responseCode: res.status, error: null,
             timestamp: new Date().toISOString(), attemptNumber: attempt,
+            durationMs: Date.now() - attemptStart,
           });
           return;
         }
@@ -279,6 +284,7 @@ export class WebhookChannel implements Channel {
           id: deliveryId, endpointUrl: ep.url, event,
           status: 'failed', responseCode: res.status, error: lastError,
           timestamp: new Date().toISOString(), attemptNumber: attempt,
+            durationMs: Date.now() - attemptStart,
         });
 
         // Issue #2144: Retry on 429 (rate limit) or 5xx (server error)
@@ -302,6 +308,7 @@ export class WebhookChannel implements Channel {
           id: deliveryId, endpointUrl: ep.url, event,
           status: 'failed', responseCode: null, error: lastError,
           timestamp: new Date().toISOString(), attemptNumber: attempt,
+            durationMs: Date.now() - attemptStart,
         });
         if (attempt < maxRetries) {
           const delay = WebhookChannel.backoff(attempt);

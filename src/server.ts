@@ -525,8 +525,17 @@ registerHookRoutes(app, { sessions: ctx.sessions, eventBus, metrics: ctx.metrics
     if (!ep) {
       return reply.status(404).send({ error: `Endpoint not found: ${id}` });
     }
-    const deliveries = wh.getDeliveryLog(ep.url);
-    return reply.send(deliveries);
+    const rawDeliveries = wh.getDeliveryLog(ep.url);
+    // Map to public contract: statusCode (not responseCode), attemptCount (not attemptNumber)
+    const deliveries = rawDeliveries.map(d => ({
+      id: d.id,
+      timestamp: d.timestamp,
+      status: d.status,
+      statusCode: d.responseCode,
+      durationMs: d.durationMs ?? 0,
+      attemptCount: d.attemptNumber,
+    }));
+    return reply.send({ deliveries });
   });
 
   // Initialize pipeline manager (Issue #36, #1424, #1938)
