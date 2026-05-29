@@ -191,7 +191,7 @@ export default function ActivityStream({
               onChange={(e) => setFilterSession(e.target.value || null)}
               className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             >
-              <option value="">All sessions</option>
+              <option value="">{t('activity.allSessions')}</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {formatSessionName(s.displayName, s.id.slice(0, 8))}
@@ -205,7 +205,7 @@ export default function ActivityStream({
               onChange={(e) => setFilterType((e.target.value || null) as GlobalSSEEventType | null)}
               className="min-h-[44px] text-xs bg-[var(--color-void)] border border-[var(--color-void-lighter)] rounded px-2 py-2 text-[var(--color-text-muted)] focus-visible:outline-none focus:border-[var(--color-cta-bg)]"
             >
-              <option value="">All types</option>
+              <option value="">{t('activity.allTypes')}</option>
               {Object.entries(EVENT_META).map(([key, meta]) => (
                 <option key={key} value={key}>{meta.label}</option>
               ))}

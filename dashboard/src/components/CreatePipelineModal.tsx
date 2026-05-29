@@ -152,8 +152,8 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
           {/* Step column headers */}
           <div className="grid grid-cols-[1fr_120px_1fr_44px] gap-2 text-xs font-medium text-[var(--color-text-muted)] px-1">
             <span>Working Directory <span className="text-[var(--color-error)]">*</span></span>
-            <span>Name</span>
-            <span>Prompt</span>
+            <span>{t('pipelines.stepNameLabel')}</span>
+            <span>{t('pipelines.stepPromptLabel')}</span>
             <span />
           </div>
 

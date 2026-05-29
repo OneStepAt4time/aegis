@@ -43,6 +43,7 @@ export const it = {
     tabAll: 'Tutte',
     empty: 'Nessuna sessione trovata',
     createFirst: 'Crea la tua prima sessione per iniziare',
+    allAgents: 'Tutti gli agent',
     board: {
       loading: 'Caricamento sessioni…',
       loadError: 'Caricamento fallito',
@@ -117,6 +118,8 @@ export const it = {
     statusLabel: 'Stato',
     sessionLabel: 'Sessione',
     createdLabel: 'Creata',
+    stepNameLabel: 'Nome',
+    stepPromptLabel: 'Prompt'
   },
 
   activity: {
@@ -129,6 +132,8 @@ export const it = {
     sessionCount_plural: '{count} sessioni',
     noActivity: 'Nessuna attività di sessione registrata',
     retry: 'Riprova',
+    allSessions: 'Tutte le sessioni',
+    allTypes: 'Tutti i tipi',
   },
 
   cost: {
@@ -211,6 +216,8 @@ export const it = {
     autoApprovalRate: 'Tasso di Auto-Approvazione',
     permissionPrompts: 'Richieste di Permesso',
     manualApprovals: 'Approvazioni Manuali',
+    heatmapLess: 'Meno',
+    heatmapMore: 'Più',
   },
 
   metrics: {
@@ -304,6 +311,8 @@ export const it = {
     useSessionToast: 'Sessione creata dal modello',
     createdLabel: 'Creato',
     promptLabel: 'Prompt:',
+    stepNameLabel: 'Nome',
+    stepPromptLabel: 'Prompt',
   },
 
   settings: {
@@ -513,6 +522,7 @@ export const it = {
     claudeCommandDefault: 'Predefinito: claude --print',
     initialPrompt: 'Prompt Iniziale',
     promptPlaceholder: 'Cosa vuoi ottenere?',
+    nameLabel: 'Nome',
     permissionMode: 'Modalità Permesso',
     permissionDefault: 'Predefinito (chiedi)',
     permissionBypass: 'Ignora Permessi',
@@ -556,6 +566,7 @@ export const it = {
     tokenLabel: 'Token API',
     tokenPlaceholder: 'Token API',
     signInButton: 'Accedi',
+    signInWithSSO: 'Accedi con SSO',
     verifying: 'Verifica in corso...',
     invalidToken: 'Token API non valido',
     hideToken: 'Nascondi token',
@@ -577,6 +588,8 @@ export const it = {
     success: 'Successo',
     noData: 'Nessun dato disponibile',
     retry: 'Riprova',
+    allSessions: 'Tutte le sessioni',
+    allTypes: 'Tutti i tipi',
     refresh: 'Aggiorna',
     search: 'Cerca',
     filter: 'Filtra',

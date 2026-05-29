@@ -41,6 +41,7 @@ export const en = {
     tabAll: 'All',
     empty: 'No sessions found',
     createFirst: 'Create your first session to get started',
+    allAgents: 'All Agents',
     board: {
       loading: 'Loading sessions…',
       loadError: 'Failed to load',
@@ -115,6 +116,8 @@ export const en = {
     statusLabel: 'Status',
     sessionLabel: 'Session',
     createdLabel: 'Created',
+    stepNameLabel: 'Name',
+    stepPromptLabel: 'Prompt',
   },
   
   activity: {
@@ -127,6 +130,8 @@ export const en = {
     sessionCount_plural: '{count} sessions',
     noActivity: 'No session activity recorded yet',
     retry: 'Retry',
+    allSessions: 'All sessions',
+    allTypes: 'All types',
   },
   
   cost: {
@@ -208,6 +213,8 @@ export const en = {
     autoApprovalRate: 'Auto-Approval Rate',
     permissionPrompts: 'Permission Prompts',
     manualApprovals: 'Manual Approvals',
+    heatmapLess: 'Less',
+    heatmapMore: 'More'
   },
 
   metrics: {
@@ -300,6 +307,8 @@ export const en = {
     duplicateErrorToast: 'Failed to duplicate template',
     useSessionToast: 'Session created from template',
     createdLabel: 'Created',
+    stepNameLabel: 'Name',
+    stepPromptLabel: 'Prompt',
     promptLabel: 'Prompt:',
   },
   
@@ -511,6 +520,7 @@ export const en = {
     claudeCommandDefault: 'Default: claude --print',
     initialPrompt: 'Initial Prompt',
     promptPlaceholder: 'What do you want to accomplish?',
+    nameLabel: 'Name',
     permissionMode: 'Permission Mode',
     permissionDefault: 'Default (prompt)',
     permissionBypass: 'Bypass Permissions',
@@ -557,6 +567,7 @@ export const en = {
     verifying: 'Verifying...',
     invalidToken: 'Invalid API token',
     hideToken: 'Hide token',
+    signInWithSSO: 'Sign in with SSO',
     showToken: 'Show token',
   },
   
@@ -575,6 +586,8 @@ export const en = {
     success: 'Success',
     noData: 'No data available',
     retry: 'Retry',
+    allSessions: 'All sessions',
+    allTypes: 'All types',
     refresh: 'Refresh',
     search: 'Search',
     filter: 'Filter',

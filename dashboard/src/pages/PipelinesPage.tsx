@@ -167,20 +167,20 @@ export default function PipelinesPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
         >
-          <option value="all">All</option>
-          <option value="running">Running</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="pending">Pending</option>
+          <option value="all">{t('pipelines.filterAll')}</option>
+          <option value="running">{t('pipelines.filterRunning')}</option>
+          <option value="completed">{t('pipelines.filterCompleted')}</option>
+          <option value="failed">{t('pipelines.filterFailed')}</option>
+          <option value="pending">{t('pipelines.filterPending')}</option>
         </select>
         <select aria-label={t("pipelines.sortBy")}
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'name'|'createdAt'|'status')}
           className="min-h-[44px] px-3 py-2 text-sm rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] text-[var(--color-text-primary)] focus-visible:outline-none focus:border-[var(--color-accent-cyan)]"
         >
-          <option value="createdAt">Date</option>
-          <option value="name">Name</option>
-          <option value="status">Status</option>
+          <option value="createdAt">{t('pipelines.sortDate')}</option>
+          <option value="name">{t('pipelines.sortName')}</option>
+          <option value="status">{t('pipelines.sortStatus')}</option>
         </select>
         <button type="button"
           onClick={() => setSortAsc(!sortAsc)}
