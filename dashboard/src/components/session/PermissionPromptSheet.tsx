@@ -72,20 +72,20 @@ export function PermissionPromptSheet({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-warning)]">
-            Permission required
+            {t('sessionDetail.permissionRequired')}
           </div>
           <h2 className="mt-1 text-base font-semibold text-[var(--color-text-primary)]">
-            Review before continuing
+            {t('sessionDetail.reviewBeforeContinue')}
           </h2>
         </div>
 
         {remainingMs !== null && (
           <div className="rounded-full border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-1 text-right">
             <div className="text-[10px] uppercase tracking-wider text-[var(--color-warning)]">
-              TTL
+              {t('sessionDetail.ttl')}
             </div>
             <div className="font-mono text-sm text-[var(--color-text-primary)]">
-              {remainingMs > 0 ? formatCountdown(remainingMs) : 'expired'}
+              {remainingMs > 0 ? formatCountdown(remainingMs) : t('sessionDetail.expired')}
             </div>
           </div>
         )}
@@ -101,28 +101,28 @@ export function PermissionPromptSheet({
           onClick={onApprove}
           className="min-h-[48px] rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)]"
         >
-          Approve
+          {t('sessionDetail.approve')}
         </button>
         <button
           type="button"
           onClick={onReject}
           className="min-h-[48px] rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)]"
         >
-          Reject
+          {t('sessionDetail.reject')}
         </button>
         <button
           type="button"
           onClick={onEscape}
           className="min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
         >
-          Escape
+          {t('sessionDetail.escape')}
         </button>
         <button
           type="button"
           onClick={onKill}
           className="min-h-[48px] rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)]/20 px-4 py-3 text-sm font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg)]/35"
         >
-          Kill
+          {t('sessionDetail.killLabel')}
         </button>
       </div>
     </div>

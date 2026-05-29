@@ -463,6 +463,12 @@ export const en = {
     forkFailed: 'Fork failed',
     approveFailed: 'Failed to approve permission',
     rejectFailed: 'Failed to reject permission',
+    permissionRequired: 'Permission required',
+    reviewBeforeContinue: 'Review before continuing',
+    ttl: 'TTL',
+    expired: 'expired',
+    approve: 'Approve',
+    reject: 'Reject',
     interruptFailed: 'Interrupt failed',
     // Session action aria-labels
     sessionSlashCommand: 'Slash command',
