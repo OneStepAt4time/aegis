@@ -25,10 +25,17 @@ export async function handleList(args: string[], io: CliIO): Promise<number> {
   let fullIds = false;
   let jsonOutput = false;
   let showAll = false;
+  // When true, user requested logical "active" which means "not terminal"
+  let statusActiveFilter = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--status' && args[i + 1]) {
-      params.set('status', args[++i]!);
+      const v = args[++i]!;
+      if (v.toLowerCase() === 'active') {
+        statusActiveFilter = true;
+      } else {
+        params.set('status', v);
+      }
     } else if (args[i] === '--cwd' && args[i + 1]) {
       params.set('project', args[i + 1]!);
       i++;
