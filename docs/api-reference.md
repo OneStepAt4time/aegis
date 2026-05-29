@@ -826,7 +826,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `attempts` | number | Number of delivery attempts |
 | `status` | string | Delivery status: `delivered` or `failed` |
 
-> **Synchronous delivery:** The server blocks until the agent acknowledges the prompt. `promptDelivery.status` is `delivered` or `failed` immediately in the response — no polling needed.
+> **Async session creation:** The server creates the session record and returns immediately, without waiting for the agent handshake to complete. The response will include `status: 'pending'` while the agent is booting. Once the handshake succeeds, the session transitions to `idle` (or `agent_ready`). If the handshake fails, the session transitions to `runtime_failed`. Use SSE or polling on `GET /v1/sessions/:id/status` to detect when the session is ready.
 >
 > **ACP disabled:** When ACP is disabled, `delivered` is `false` with no agent process spawned. The response includes a `warning` field. Enable via `AEGIS_ACP_ENABLED=true` or `"acpEnabled": true` in config.
 
@@ -863,11 +863,12 @@ curl http://localhost:9100/v1/sessions/abc123 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Session object with `actionHints` for current interactive state, `latestActivityText` for live agent activity, and `telegramTopicId` when a Telegram topic is linked.
+**Response:** Session object with `actionHints` for current interactive state, `latestActivityText` for live agent activity, `ccSessionId` when correlated with a Claude Code session, and `telegramTopicId` when a Telegram topic is linked.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `latestActivityText` | string | Human-readable description of current agent activity (e.g. `"Running: npm test"`, `"Editing: server.ts"`, `"Idle"`, `"Waiting for input"`, `"Compacting context"`). Updated in real-time from CC hook events. |
+| `ccSessionId` | string | Claude Code session ID correlated with this Aegis session via the `CLAUDE_CODE_SESSION_ID` environment variable. Only present when the CC→Aegis mapping has been established through MCP tool usage. |
 
 **Errors:**
 
@@ -1093,7 +1094,7 @@ curl http://localhost:9100/v1/sessions/abc123/read \
 }
 ```
 
-> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `awaiting_approval`, `killed`, `completed`, `crashed`, `unknown`.
+> **Session status values:** `idle`, `working`, `compacting`, `context_warning`, `waiting_for_input`, `permission_prompt`, `plan_mode`, `ask_question`, `bash_approval`, `settings`, `error`, `rate_limit`, `pending`, `awaiting_approval`, `killed`, `completed`, `crashed`, `runtime_failed`, `unknown`.
 >
 > **Terminal states:** `killed` (session was stopped via API or rejected during approval), `completed` (session finished normally), `crashed` (session terminated unexpectedly). Terminal sessions return 404 on kill attempts and are retained for audit.
 >
