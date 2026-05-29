@@ -400,8 +400,8 @@ ag logout --json          # Machine-readable output
 
 | Code | Meaning |
 |------|----------|
-| `0` | Success — credentials removed |
-| `1` | Error (no credentials found, revocation failed) |
+| `0` | Success — credentials removed (or already logged out) |
+| `1` | Error — multiple servers found, use `--server` or `--all` |
 
 ### `ag whoami` — Show Current Identity
 
