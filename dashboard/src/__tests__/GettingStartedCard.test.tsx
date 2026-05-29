@@ -23,7 +23,7 @@ describe('GettingStartedCard', () => {
   it('renders when totalSessions < 3', () => {
     render(<GettingStartedCard totalSessions={0} onCreateSession={vi.fn()} />);
     expect(screen.getByText('Welcome to Aegis')).toBeTruthy();
-    expect(screen.getByText('Create First Session')).toBeTruthy();
+    expect(screen.getByText('Create your first session')).toBeTruthy();
   });
 
   it('does not render when totalSessions >= 3', () => {
@@ -39,7 +39,7 @@ describe('GettingStartedCard', () => {
   it('calls onCreateSession when CTA is clicked', () => {
     const onCreate = vi.fn();
     render(<GettingStartedCard totalSessions={0} onCreateSession={onCreate} />);
-    fireEvent.click(screen.getByText('Create First Session'));
+    fireEvent.click(screen.getByText('Create your first session'));
     expect(onCreate).toHaveBeenCalledOnce();
   });
 

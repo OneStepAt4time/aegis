@@ -649,6 +649,7 @@ export const en = {
     connectTitle: 'Connect Your Environment',
     connectDescription: 'Run the CLI init command to connect your Claude Code sessions to Aegis. Copy the snippet below and paste it into your terminal.',
     sessionsRunning: 'Sessions Running!',
+    sessionsActive_plural: 'You have {count} active sessions.',
     sessionsRealtime: 'Head to the Sessions page to monitor them in real-time.',
     createFirstSessionTitle: 'Create Your First Session',
     createFirstSessionDescription: 'Once connected, create a new Claude Code session from the dashboard. Aegis will handle permissions, audit logging, and real-time monitoring automatically.',
