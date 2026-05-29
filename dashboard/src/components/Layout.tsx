@@ -29,6 +29,7 @@ import { Header } from './layout/Header';
 import { useLayoutSSE } from './layout/useLayoutSSE';
 import { useVersionCheck } from './layout/useVersionCheck';
 import { MOBILE_SIDEBAR_QUERY } from './layout/types';
+import { useT } from '../i18n/context';
 
 function isMobileSidebarViewport(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
@@ -36,6 +37,7 @@ function isMobileSidebarViewport(): boolean {
 }
 
 export default function Layout() {
+  const t = useT();
   const token = useStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
@@ -211,7 +213,7 @@ export default function Layout() {
           <button
             type="button"
             className="hidden md:inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            title="Keyboard shortcuts"
+            title={t('aria.keyboardShortcuts')}
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true }))}
           >
             <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1.5 text-[var(--color-text-primary)]">?</kbd>

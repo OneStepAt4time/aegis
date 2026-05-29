@@ -12,10 +12,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Terminal, Copy, Check, ArrowRight, Zap } from 'lucide-react';
 import { copyToClipboard } from '../../utils/clipboard';
+import { useT } from '../../i18n/context';
 
 const CLI_COMMAND = 'ag run "hello world"';
 
 export default function WelcomeScreen() {
+  const t = useT();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -52,7 +54,7 @@ export default function WelcomeScreen() {
           type="button"
           onClick={() => navigate('/settings/notifications')}
           className="min-h-[48px] inline-flex items-center gap-2.5 rounded-xl bg-[var(--color-accent-cyan)] px-8 py-3 text-base font-semibold text-[var(--color-void)] shadow-lg shadow-[var(--color-accent-cyan)]/20 transition-all hover:shadow-xl hover:shadow-[var(--color-accent-cyan)]/30 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-void)]"
-          aria-label="Connect Telegram to approve sessions from your phone"
+          aria-label={t('aria.connectTelegram')}
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
           Connect Telegram

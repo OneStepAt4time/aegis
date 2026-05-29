@@ -62,7 +62,7 @@ const TIME_RANGES: Array<{ value: TimeRange; label: string }> = [
 function TimeRangePicker({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
   const t = useT();
   return (
-    <div className="inline-flex rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)]" role="group" aria-label={t("aria.timeRangeSelector")}>
+    <div className="inline-flex rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface)]" role="group" aria-label={t('aria.timeRangeSelector')}>
       {TIME_RANGES.map((range) => (
         <button
           key={range.value}
@@ -340,7 +340,7 @@ export default function CostPage() {
 
       {/* Daily spend chart */}
       {dailyData.length > 0 && (
-        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.dailySpendChart")}>
+        <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.dailySpendChart')}>
           <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
             Daily Spend ({dailyData.length} days)
           </h3>
@@ -365,7 +365,7 @@ export default function CostPage() {
       )}
 
       {/* ── Cost Analytics Panels (#3273) ── */} // token-ok
-      <section aria-label={t("aria.costAnalytics")}>
+      <section aria-label={t('aria.costAnalytics')}>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-[var(--color-text-primary)]">
             Cost Analytics
@@ -394,7 +394,7 @@ export default function CostPage() {
       {modelData.length > 0 && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Pie chart */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.costByModelChart")}>
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.costByModelChart')}>
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Cost by Model
             </h3>
@@ -410,7 +410,7 @@ export default function CostPage() {
           </section>
 
           {/* Model list */}
-          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.modelDetails")}>
+          <section className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t('aria.modelDetails')}>
             <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
               Model Details
             </h3>

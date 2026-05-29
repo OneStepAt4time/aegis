@@ -45,7 +45,7 @@ export default function GettingStartedCard({ totalSessions, onCreateSession }: G
   return (
     <div
       role="complementary"
-      aria-label="Getting started"
+      aria-label={t('aria.gettingStarted')}
       className="relative rounded-xl border border-[var(--color-accent-cyan)]/20 bg-gradient-to-br from-[var(--color-accent-cyan)]/5 to-[var(--color-surface-strong)] p-5 sm:p-6"
     >
       {/* Dismiss button */}

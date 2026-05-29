@@ -91,11 +91,11 @@ export function ApprovalBanner({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          aria-label={t("aria.toggleApprovalDetails")}
+          aria-label={t('aria.toggleApprovalDetails')}
           className={`mt-3 w-full cursor-pointer text-left font-mono text-sm text-[var(--color-text-primary)] hover:text-white transition-colors ${
             expanded ? 'break-words max-h-48 overflow-y-auto' : 'truncate'
           }`}
-          title={expanded ? t('aria.collapsePrompt') : t('aria.expandPrompt')}
+          title={expanded ? 'Collapse prompt' : 'Expand prompt'}
         >
           {prompt}
         </button>

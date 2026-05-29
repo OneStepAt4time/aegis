@@ -18,11 +18,11 @@ import {
 import { Bar } from 'react-chartjs-2';
 import { formatCompact } from '../../utils/formatNumber';
 import { GitBranch, GitCommit, GitPullRequest, Users } from 'lucide-react';
+import { useT } from '../../i18n/context';
 import {
   AGENT_COLORS,
   CHART_RGB,
 } from '../../utils/chartTheme';
-import { useT } from '../../i18n/context';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -79,7 +79,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label={t("aria.agentContributionsLoading")}
+        aria-label={t('aria.agentContributionsLoading')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Agent Contributions
@@ -95,7 +95,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label={t("aria.agentContributions")}
+        aria-label={t('aria.agentContributions')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Agent Contributions
@@ -173,7 +173,7 @@ export function AgentContributionsPanel({ data, loading = false, className = '' 
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-      aria-label={t("aria.agentContributionsPanel")}
+      aria-label={t('aria.agentContributionsPanel')}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

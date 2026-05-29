@@ -203,7 +203,7 @@ export default function SettingsPage() {
           type="button"
           onClick={resetToDefaults}
           className="shrink-0 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-void-lighter)] transition-colors"
-          aria-label={t("aria.resetAllSettings")}
+          aria-label={t('aria.resetSettings')}
         >
           Reset to defaults
         </button>

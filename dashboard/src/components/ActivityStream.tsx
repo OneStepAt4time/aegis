@@ -20,6 +20,7 @@ import {
 import { useStore } from '../store/useStore';
 import type { GlobalSSEEventType, GlobalSSEEvent } from '../types';
 import RealtimeBadge from './overview/RealtimeBadge';
+import { useT } from '../i18n/context';
 
 interface ActivityStreamProps {
   title?: string;
@@ -138,6 +139,7 @@ export default function ActivityStream({
   maxItems,
   emptyMessage,
 }: ActivityStreamProps) {
+  const t = useT();
   const activities = useStore((s) => s.activities);
   const sseConnected = useStore((s) => s.sseConnected);
   const sseError = useStore((s) => s.sseError);
@@ -212,7 +214,7 @@ export default function ActivityStream({
             {/* Clear filters */}
             {(filterSession || filterType) && (
               <button type="button"
-                aria-label="Clear filters"
+                aria-label={t('aria.clearFilters')}
                 onClick={() => { setFilterSession(null); setFilterType(null); }}
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
               >

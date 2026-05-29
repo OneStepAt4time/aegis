@@ -890,7 +890,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
       <ConfirmDialog
         open={confirmKill !== null}
-        title="Kill Sessions"
+        title={t('aria.killSessions')}
         message={confirmKillMessage}
         confirmLabel="Kill"
         variant="danger"

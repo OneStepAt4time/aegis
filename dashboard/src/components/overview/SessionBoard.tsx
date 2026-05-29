@@ -309,7 +309,7 @@ export function SessionBoard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16" role="status" aria-busy="true" aria-label="Loading session board">
+      <div className="flex items-center justify-center py-16" role="status" aria-busy="true" aria-label={t('aria.loadingSessionBoard')}>
         <Loader2 className="h-6 w-6 animate-spin text-[var(--color-text-muted)]" />
         <span className="ml-2 text-sm text-[var(--color-text-muted)]">{t('sessions.board.loading')}</span>
       </div>
@@ -344,7 +344,7 @@ export function SessionBoard() {
       <div
         className="flex flex-col sm:flex-row sm:gap-4 sm:overflow-x-auto pb-4"
         role="region"
-        aria-label="Session board"
+        aria-label={t('aria.sessionBoard')}
         tabIndex={0}
       >
         {BOARD_COLUMNS.map((col) => (
@@ -358,7 +358,7 @@ export function SessionBoard() {
 
         {/* Other column (only if there are sessions in it) */}
         {columns.hasOther && (
-          <div className="w-full sm:w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label="Other sessions">
+          <div className="w-full sm:w-[280px] shrink-0 flex flex-col gap-2" role="region" aria-label={t('aria.otherSessions')}>
             <div className="flex items-center gap-2 px-1">
               <div className="h-2 w-2 rounded-full bg-[var(--color-text-muted)]/50" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">

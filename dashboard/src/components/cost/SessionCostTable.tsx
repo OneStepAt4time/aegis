@@ -160,29 +160,29 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
       <div
         className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-void)]/50"
         role="table"
-        aria-label={t("aria.sessionCostBreakdownTable")}
+        aria-label={t('aria.sessionCostBreakdownTable')}
         tabIndex={0}
       >
         {/* Header row */}
         <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-void-lighter)]" role="row">
           <div className="flex-1 min-w-[120px]" role="columnheader">
-            <button type="button" onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors" aria-label={t("aria.sortBySessionName")}>
+            <button type="button" onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors" aria-label={t('aria.sortBySessionName')}>
               Session <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>
           <div className="w-20 hidden sm:block" role="columnheader">Model</div>
           <div className="w-24 hidden md:block text-right" role="columnheader">
-            <button type="button" onClick={() => handleSort('tokens')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t("aria.sortByTotalTokens")}>
+            <button type="button" onClick={() => handleSort('tokens')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t('aria.sortByTotalTokens')}>
               Tokens <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>
           <div className="w-20 text-right" role="columnheader">
-            <button type="button" onClick={() => handleSort('cost')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t("aria.sortByCost")}>
+            <button type="button" onClick={() => handleSort('cost')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t('aria.sortByCost')}>
               Cost <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>
           <div className="w-20 hidden md:block text-right" role="columnheader">
-            <button type="button" onClick={() => handleSort('duration')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t("aria.sortByDuration")}>
+            <button type="button" onClick={() => handleSort('duration')} className="inline-flex items-center gap-1 ml-auto hover:text-[var(--color-text-primary)] transition-colors" aria-label={t('aria.sortByDuration')}>
               Duration <ArrowUpDown className="h-3 w-3" />
             </button>
           </div>

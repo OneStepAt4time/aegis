@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { getHealth } from '../../api/health';
 import { useDrawerStore } from '../../store/useDrawerStore';
+import { useT } from '../../i18n/context';
 
 const TOTAL_STEPS = 4;
 
@@ -165,6 +166,7 @@ function ConnectStep({ health, loading }: { health: HealthState | null; loading:
 /** Step 3 — First Session (health-aware) */
 function FirstSessionStep({ health, onCreateSession }: { health: HealthState | null; onCreateSession: () => void }) {
   const hasActive = (health?.activeSessions ?? 0) > 0;
+  const t = useT();
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -197,7 +199,7 @@ function FirstSessionStep({ health, onCreateSession }: { health: HealthState | n
             type="button"
             onClick={onCreateSession}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2.5 text-sm font-bold text-[var(--color-void-dark)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
-            aria-label="Create your first session"
+            aria-label={t('aria.createFirstSession')}
           >
             <Plus className="h-4 w-4" />
             Create Your First Session
@@ -282,6 +284,7 @@ interface OnboardingWizardProps {
 }
 
 export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
+  const t = useT();
   const [currentStep, setCurrentStep] = useState(1);
   const [health, setHealth] = useState<HealthState | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -397,7 +400,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-void-dark)] p-6"
       role="region"
-      aria-label="Onboarding wizard"
+      aria-label={t('aria.onboardingWizard')}
       aria-live="polite"
     >
       {/* Screen reader announcement */}
@@ -410,7 +413,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         type="button"
         onClick={handleSkip}
         className="absolute right-4 top-4 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)]"
-        aria-label="Skip onboarding"
+        aria-label={t('aria.skipOnboarding')}
       >
         <X className="h-5 w-5" />
       </button>
@@ -434,7 +437,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             onClick={handleBack}
             disabled={currentStep === 1}
             className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:text-[var(--color-text-muted)] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-cyan)]"
-            aria-label="Go to previous step"
+            aria-label={t('aria.goToPreviousStep')}
           >
             <ChevronLeft className="h-4 w-4" />
             Back

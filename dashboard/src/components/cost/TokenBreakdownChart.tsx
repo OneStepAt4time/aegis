@@ -70,7 +70,7 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label={t("aria.tokenBreakdownChartLoading")}
+        aria-label={t('aria.tokenBreakdownChartLoading')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Token Breakdown
@@ -86,7 +86,7 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
     return (
       <section
         className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-        aria-label={t("aria.tokenBreakdownChart")}
+        aria-label={t('aria.tokenBreakdownChart')}
       >
         <h3 className="mb-4 text-lg font-medium text-[var(--color-text-primary)]">
           Token Breakdown
@@ -179,7 +179,7 @@ export function TokenBreakdownChart({ data, loading = false, className = '' }: T
   return (
     <section
       className={`rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5 ${className}`}
-      aria-label={t("aria.tokenBreakdownChart")}
+      aria-label={t('aria.tokenBreakdownChart')}
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-[var(--color-text-primary)]">

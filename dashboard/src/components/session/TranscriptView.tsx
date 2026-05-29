@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useT } from '../../i18n/context';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageSquare } from 'lucide-react';
 import type { ParsedEntry } from '../../types';
 import { useSessionEventsStore, selectSession } from '../../store/useSessionEventsStore';
 import { TranscriptBubble } from './TranscriptBubble';
+import { useT } from '../../i18n/context';
 
 interface TranscriptViewProps {
   sessionId: string;
@@ -266,9 +266,9 @@ export function TranscriptView({ sessionId }: TranscriptViewProps) {
       {showScrollBtn && (
         <button type="button"
           onClick={scrollToBottom}
-          aria-label={t("aria.scrollToBottom")}
+          aria-label={t('aria.scrollToBottom')}
           className="absolute bottom-4 right-4 bg-[var(--color-void-lighter)] hover:bg-[var(--color-surface-hover)] text-[var(--color-cta-bg)] rounded-full w-10 h-10 flex items-center justify-center shadow-lg border border-[var(--color-void-lighter)] transition-colors z-10"
-          title={t("aria.scrollToBottom")}
+          title={t('aria.scrollToBottom')}
         >
           ↓
         </button>

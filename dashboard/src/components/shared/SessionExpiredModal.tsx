@@ -10,8 +10,10 @@ import { useState } from 'react';
 import { Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useSessionExpiryGuard } from '../../hooks/useSessionExpiryGuard';
+import { useT } from '../../i18n/context';
 
 export function SessionExpiredModal() {
+  const t = useT();
   const { isExpired } = useSessionExpiryGuard();
   const login = useAuthStore((s) => s.login);
   const [token, setToken] = useState('');
@@ -47,7 +49,7 @@ export function SessionExpiredModal() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label="Session expired"
+      aria-label={t('aria.sessionExpired')}
     >
       <div className="mx-4 w-full max-w-sm rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
@@ -75,7 +77,7 @@ export function SessionExpiredModal() {
               autoFocus
               autoComplete="off"
               disabled={isSubmitting}
-              aria-label="API key"
+              aria-label={t('aria.apiKey')}
             />
             <button
               type="button"

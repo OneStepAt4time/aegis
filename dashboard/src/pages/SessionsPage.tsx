@@ -80,7 +80,7 @@ export default function SessionsPage() {
           <SessionTable />
         </div>
       ) : tab === 'board' ? (
-        <div id="tab-panel-board" role="tabpanel" aria-label={translate("aria.sessionBoardView")}>
+        <div id="tab-panel-board" role="tabpanel" aria-label={translate('aria.sessionBoardView')}>
           <Suspense fallback={<SkeletonTable rows={6} />}><SessionBoard /></Suspense>
         </div>
       ) : (
