@@ -1000,7 +1000,7 @@ export const it = {
     refreshSessions: 'Aggiorna cronologia sessioni',
     applyFilters: 'Applica filtri',
     clearFilters: 'Cancella filtri',
-    viewAuditDetail: "Vedi dettaglio audit: {action}',
+    viewAuditDetail: 'Vedi dettaglio audit: {action}',
     closeDetailDrawer: 'Chiudi pannello dettaglio',
     exportCsv: 'Esporta CSV',
     exportNdjson: 'Esporta NDJSON',
