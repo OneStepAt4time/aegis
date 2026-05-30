@@ -17,15 +17,9 @@ export interface TelegramChannelConfig {
   verbose?: boolean;
 }
 
-export interface SessionTopic {
-  sessionId: string;
-  topicId: number;
-  displayName: string;
-  endedAt: number | null;
-  cleanupScheduledAt: number | null;
-  cleanupRetries: number;
-  deleting: boolean;
-}
+// Re-exported from session-topic-types.ts for backward compatibility.
+export type { SessionTopic } from './session-topic-types.js';
+import type { SessionTopic } from './session-topic-types.js';
 
 export interface SessionProgress {
   totalMessages: number;
