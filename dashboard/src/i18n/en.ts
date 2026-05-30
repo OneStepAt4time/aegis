@@ -1371,7 +1371,25 @@ export const en = {
     newKeyLabel: 'New metadata key',
     newValueLabel: 'New metadata value',
     countHint: '{count}/{max} keys used',
-  },} as const;
+  },,
+
+  inbox: {
+    title: 'Inbox',
+    markAllRead: 'Mark all read',
+    archiveAllRead: 'Archive read',
+    markRead: 'Mark as read',
+    archive: 'Archive',
+    loading: 'Loading inbox...',
+    empty: 'No notifications yet.',
+    'empty.unread': 'No unread notifications.',
+    'empty.archived': 'No archived notifications.',
+    filters: 'Inbox filters',
+    'filter.all': 'All',
+    'filter.unread': 'Unread',
+    'filter.archived': 'Archived',
+    itemList: 'Notification list',
+  }
+} as const;
 
 export type Messages = typeof en;
 export type MessageKey = string;

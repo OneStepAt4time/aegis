@@ -17,3 +17,4 @@ export * from './audit';
 export * from './users';
 export * from './session-history';
 export * from './claude';
+export * from './inbox';
