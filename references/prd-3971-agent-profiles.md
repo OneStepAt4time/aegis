@@ -230,3 +230,26 @@ This prevents DoS via agent spam, audit log flooding, and name squatting from co
 
 - **v1** (2026-05-30): Initial PRD by Athena + Scribe
 - **v2** (2026-05-30): Themis audit incorporated — permission ceiling empty rejection, name validation at model layer, env denylist at write time, agent chaining session-level check, rate limiting. V1 scope cuts applied (visibility, skills API, routing rules, workspaceId).
+
+
+## 12. Aegis Agents ≠ Claude Code Agents
+
+**Aegis Agent Profiles are orchestration-layer concepts.** They define identity, config, permissions, and routing at the control plane level.
+
+**Claude Code's `--agent` flag is a CC-internal concept.** It controls CC's own behavior within a session.
+
+Aegis does NOT pass the `--agent` flag to CC when spawning sessions. The mapping is:
+
+| Concept | Scope | What it controls |
+|---------|-------|------------------|
+| Aegis Agent Profile | Control plane | Model, instructions, MCP, skills, permissions, routing |
+| CC `--agent` flag | CC session | CC's internal agent behavior |
+
+When Aegis dispatches a task to an agent:
+1. Aegis resolves the agent profile (model, instructions, MCP config, etc.)
+2. Aegis applies this config to the CC session spawn (env vars, system prompt, MCP servers)
+3. CC runs with its own defaults — Aegis does not override CC's agent identity
+
+This separation is intentional. Aegis is middleware — it configures and orchestrates, but it does not impersonate CC's internal agent concept.
+
+- **v3** (2026-05-30): Added Aegis agents ≠ CC agents clarification (Section 12).
