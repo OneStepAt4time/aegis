@@ -194,6 +194,7 @@ vi.mock('../store/useStore', () => ({
       sseConnected: false,
       sseError: null,
       token: null,
+      activities: [],
       setSseConnected: vi.fn(),
       setSseError: vi.fn(),
       addActivity: vi.fn(),
@@ -225,6 +226,10 @@ vi.mock('../store/useSidebarStore.js', () => ({
 vi.mock('../store/useDrawerStore', () => ({
   useDrawerStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({ openNewSession: vi.fn() }),
+}));
+
+vi.mock('../hooks/useInboxFromActivity', () => ({
+  useInboxFromActivity: () => {},
 }));
 
 vi.mock('../hooks/useTheme', () => ({
