@@ -166,6 +166,27 @@ A compact summary of all Aegis API endpoints. For detailed documentation, exampl
 | `PUT` | `/v1/templates/{id}` | Bearer | Update template |
 | `DELETE` | `/v1/templates/{id}` | Bearer | Delete template |
 
+## Agents
+
+| Method | Path | Auth | Summary |
+|--------|------|------|---------|
+| `POST` | `/v1/agents` | Bearer | Create agent identity |
+| `GET` | `/v1/agents` | Bearer | List agents |
+| `GET` | `/v1/agents/{id}` | Bearer | Get agent |
+| `PATCH` | `/v1/agents/{id}` | Bearer | Update agent |
+| `DELETE` | `/v1/agents/{id}` | Bearer | Deactivate agent (soft delete) |
+
+## Agent Profiles
+
+| Method | Path | Auth | Summary |
+|--------|------|------|---------|
+| `POST` | `/v1/agent-profiles` | Bearer | Create agent profile |
+| `GET` | `/v1/agent-profiles` | Bearer | List agent profiles |
+| `GET` | `/v1/agent-profiles/{id}` | Bearer | Get agent profile |
+| `PATCH` | `/v1/agent-profiles/{id}` | Bearer | Update agent profile |
+| `DELETE` | `/v1/agent-profiles/{id}` | Bearer | Archive agent profile |
+| `POST` | `/v1/agent-profiles/{id}/restore` | Bearer | Restore archived profile |
+
 ## Pipelines
 
 | Method | Path | Auth | Summary |

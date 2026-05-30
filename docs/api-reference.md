@@ -793,6 +793,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
 | `parentId` | string (UUID) | no | Set parent session — child appears in parent's `/children` |
 | `memoryKeys` | string[] | no | Pre-load memory entries into session (max 50) |
+| `agentId` | string (UUID) | no | Bind session to an agent — inherits agent identity, profile config, and constraints (see [Agents](#11-agents)) |
 | `effort` | string | no | Reasoning effort level: `low`, `medium`, or `high`. Passed to the CC session via `--effort` flag. |
 | `systemPrompt` | string | no | Per-session custom system prompt passed via ACP `_meta.systemPrompt` (max 100k chars; ACP only) |
 
@@ -4005,7 +4006,451 @@ curl -X DELETE http://localhost:9100/v1/templates/tpl-abc123 \
 
 ---
 
-## 11. Memory Bridge
+## 11. Agents
+
+Agents are first-class configuration entities that define reusable session templates with identity, permissions, constraints, and runtime configuration.
+
+The model has two layers:
+
+- **Agent** (identity layer) — permissions, constraints, runner type, ownership. Defined by [ADR-0024](adr/0024-agent-identity-model.md).
+- **Agent Profile** (configuration layer) — model routing, MCP config, prompt customization, lifecycle. Defined by PRD #3971.
+
+Each Agent can have one Agent Profile that configures how it runs. Sessions can reference an agent via `agentId` to inherit its configuration.
+
+### List Agents
+
+```
+GET /v1/agents
+```
+
+Lists all active agents owned by the authenticated API key. Deactivated agents are excluded.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/agents \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** Array of agent objects.
+
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "code-reviewer",
+    "description": "Reviews PRs for bugs and style",
+    "runnerType": "claude-code",
+    "role": "operator",
+    "permissions": ["session:create", "session:send", "session:read"],
+    "constraints": {
+      "maxConcurrentSessions": 3,
+      "maxTokensPerSession": null,
+      "allowedModels": [],
+      "deniedTools": []
+    },
+    "ownerKeyId": "key-abc123",
+    "status": "active",
+    "createdAt": 1717017600000,
+    "updatedAt": 1717017600000,
+    "lastActiveAt": null,
+    "metadata": {}
+  }
+]
+```
+
+---
+
+### Create Agent
+
+```
+POST /v1/agents
+```
+
+Creates a new agent identity. The agent's permissions are validated as a subset of the creating API key's permissions.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/agents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "code-reviewer",
+    "description": "Reviews PRs for bugs and style",
+    "runnerType": "claude-code",
+    "permissions": ["session:create", "session:send", "session:read"],
+    "constraints": {
+      "maxConcurrentSessions": 3
+    }
+  }'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | **yes** | Agent name. Must match `^[a-zA-Z0-9_-]{1,64}$` |
+| `description` | string | no | Optional description of the agent's purpose |
+| `runnerType` | string | **yes** | Runner type (e.g. `claude-code`, `codex`, `gemini-cli`) |
+| `permissions` | string[] | no | Permission subset of creating key's permissions (defaults to key's role permissions) |
+| `constraints` | object | no | Resource constraints (see below) |
+
+**Constraints object:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `maxConcurrentSessions` | number \| null | `null` | Max simultaneous sessions (null = unlimited) |
+| `maxTokensPerSession` | number \| null | `null` | Token budget per session (null = unlimited) |
+| `allowedModels` | string[] | `[]` | Model allowlist (empty = all allowed) |
+| `deniedTools` | string[] | `[]` | Tool denylist |
+
+**Response (`201 Created`):** Agent object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 400 | Invalid name (must match `^[a-zA-Z0-9_-]{1,64}$`) |
+| 403 | Requested permissions exceed creating key's permissions |
+
+---
+
+### Get Agent
+
+```
+GET /v1/agents/:id
+```
+
+Returns details for a specific agent.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/agents/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** Agent object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Agent not found or not owned by this key |
+
+---
+
+### Update Agent
+
+```
+PATCH /v1/agents/:id
+```
+
+Updates an agent's identity fields. Cannot change `runnerType` or `ownerKeyId`.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X PATCH http://localhost:9100/v1/agents/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "senior-reviewer",
+    "constraints": {
+      "maxConcurrentSessions": 5,
+      "allowedModels": ["claude-sonnet-4-20250514"]
+    }
+  }'
+```
+
+**Request body:** All fields optional.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | no | New name (must match `^[a-zA-Z0-9_-]{1,64}$`) |
+| `description` | string | no | Updated description |
+| `permissions` | string[] | no | Updated permissions (still must be ⊆ owner key) |
+| `constraints` | object | no | Updated constraints (partial merge) |
+
+**Response:** Updated agent object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 400 | Invalid name format |
+| 403 | Updated permissions exceed owner key's permissions |
+| 404 | Agent not found |
+
+---
+
+### Deactivate Agent
+
+```
+DELETE /v1/agents/:id
+```
+
+Soft-deletes an agent. The agent is marked as `deactivated` but retains its data for audit. Existing sessions using this agent continue running.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X DELETE http://localhost:9100/v1/agents/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (`200 OK`):** Deactivated agent object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Agent not found |
+
+---
+
+## Agent Profiles
+
+Agent Profiles add a configuration layer on top of Agent identities. While an Agent defines *who* it is (permissions, constraints), a Profile defines *what it uses* (model, MCP, prompt, env).
+
+### List Agent Profiles
+
+```
+GET /v1/agent-profiles
+```
+
+Lists all active agent profiles. Archived profiles are excluded.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/agent-profiles \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** Array of agent profile objects.
+
+---
+
+### Create Agent Profile
+
+```
+POST /v1/agent-profiles
+```
+
+Creates a configuration profile for an agent. The profile references an existing Agent identity via `agentId`.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/agent-profiles \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "code-reviewer",
+    "description": "PR review specialist",
+    "model": "claude-sonnet-4-20250514",
+    "thinkingLevel": "medium",
+    "maxConcurrentTasks": 2,
+    "instructions": "Always check for security issues first.",
+    "customEnv": [{"key": "REPO_ROOT", "value": "/home/user/repos"}],
+    "mcpConfig": {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "***"}
+      }
+    }
+  }'
+```
+
+**Request body:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agentId` | string (UUID) | **yes** | Reference to an existing Agent identity |
+| `name` | string | **yes** | Profile name. Must match `^[a-zA-Z0-9_-]{1,64}$` |
+| `description` | string | no | Profile description |
+| `avatarUrl` | string | no | Avatar URL for display |
+| `runtimeMode` | string | no | `claude-code` (default) or `daemon` |
+| `runtimeConfig` | object | no | Runtime-specific settings |
+| `model` | string | no | Model override (null = tool default) |
+| `thinkingLevel` | string | no | `none`, `low`, `medium`, `high` |
+| `maxConcurrentTasks` | number | no | Max parallel tasks (default: 1) |
+| `instructions` | string | no | Custom system prompt additions |
+| `customEnv` | object[] | no | Environment variables `[{key, value}]`. Validated against env denylist. |
+| `customArgs` | string[] | no | Extra CLI arguments |
+| `mcpConfig` | object | no | MCP server definitions. Validated against MCP allowlist. |
+
+**Response (`201 Created`):** Agent profile object with computed `configHash`.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 400 | Invalid name, env denylist violation, or MCP allowlist violation |
+| 404 | Referenced `agentId` not found |
+
+---
+
+### Get Agent Profile
+
+```
+GET /v1/agent-profiles/:id
+```
+
+Returns a specific agent profile.
+
+| Role | Required |
+|------|----------|
+| admin, operator, viewer | Yes |
+
+```bash
+curl http://localhost:9100/v1/agent-profiles/prof-abc123 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:** Agent profile object.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Profile not found |
+
+---
+
+### Update Agent Profile
+
+```
+PATCH /v1/agent-profiles/:id
+```
+
+Updates a profile's configuration. Env and MCP validation applies on every write.
+
+| Role | Required |
+|------|----------|
+| admin, operator | Yes |
+
+```bash
+curl -X PATCH http://localhost:9100/v1/agent-profiles/prof-abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-opus-4-20250514",
+    "thinkingLevel": "high",
+    "instructions": "Focus on architecture review. Security first."
+  }'
+```
+
+**Request body:** All fields optional (partial merge).
+
+**Response:** Updated agent profile object with new `configHash`.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 400 | Invalid name, env denylist violation, or MCP allowlist violation |
+| 404 | Profile not found |
+
+---
+
+### Archive Agent Profile
+
+```
+DELETE /v1/agent-profiles/:id
+```
+
+Archives a profile (soft delete). Existing sessions using this profile continue running.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X DELETE http://localhost:9100/v1/agent-profiles/prof-abc123 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (`200 OK`):** Archived profile object with `archivedAt` timestamp.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Profile not found |
+
+---
+
+### Restore Agent Profile
+
+```
+POST /v1/agent-profiles/:id/restore
+```
+
+Restores a previously archived profile.
+
+| Role | Required |
+|------|----------|
+| admin | Yes |
+
+```bash
+curl -X POST http://localhost:9100/v1/agent-profiles/prof-abc123/restore \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (`200 OK`):** Restored profile object with `archivedAt: null`.
+
+**Errors:**
+
+| Status | Condition |
+|--------|----------|
+| 404 | Profile not found or not archived |
+
+---
+
+### Binding Agents to Sessions
+
+When creating a session with an agent, the agent's identity and profile are applied automatically:
+
+```bash
+curl -X POST http://localhost:9100/v1/sessions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "prompt": "Review the latest PR"
+  }'
+```
+
+When `agentId` is provided:
+1. Agent must exist and be active
+2. Agent's permissions are validated as a subset of the session creator's permissions
+3. If a profile exists, its configuration (model, MCP, env, instructions) is applied to the session
+4. Agent constraints (max concurrent sessions, allowed models) are enforced
+
+**Error:** `403 PERMISSION_CEILING_EMPTY` — the intersection of the agent's permissions and the creator's permissions is empty.
+
+---
+
+## 12. Memory Bridge
 
 Key-value memory store for cross-session context sharing.
 
@@ -4152,7 +4597,7 @@ curl "http://localhost:9100/v1/memories?scope=project" \
 
 ---
 
-## 12. Webhooks
+## 13. Webhooks
 
 Claude Code hook receiver and webhook delivery inspection.
 
@@ -4272,7 +4717,7 @@ curl http://localhost:9100/v1/hooks/hook-abc123/deliveries \
 
 ---
 
-## 13. Events (SSE Stream)
+## 14. Events (SSE Stream)
 
 > **⚠️ Auth required:** SSE endpoints do not accept regular Bearer tokens. You must first obtain an SSE token via `POST /v1/auth/sse-token`, then pass it either as a query parameter (`?token=<sse-token>`) or as a Bearer header (`Authorization: Bearer sse_...`). Using a regular API key returns `401 Unauthorized — SSE token required for event streams`.
 
