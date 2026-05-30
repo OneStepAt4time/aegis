@@ -1,5 +1,9 @@
 # Aegis Multi-Agent Architecture — How We're Building the Bridge to 28+ AI Coding Agents
 
+> **⚠️ HOLD — Do not publish until #3180 (Multi-Agent Support) merges to develop.**
+> This draft describes architecture that is approved (ADR-0032) but not yet implemented.
+> Blocked on #3971 (Agent Profiles). Orpheus to polish for distribution.
+
 *Technical deep-dive into how Aegis orchestrates multiple AI coding agents through a single control plane. For developers evaluating orchestration tools.*
 
 ---
