@@ -224,13 +224,23 @@ Agent permissions (from #3971) flow to the runner:
 - Runner cannot perform actions outside the agent's permission scope
 - If agent owner's key is revoked mid-session, next API call fails hard (per #3971 security model)
 
-### 7.4 Environment Variable Isolation
+### 7.4 Environment Variable Isheritance
 
 Agent `custom_env` passes to runner subprocess. Security rules:
 - No overriding Aegis internal env vars (`AEGIS_*`)
 - No access to other agents' env vars
 - Secrets in env vars are NOT logged (redacted in transcript)
 - `PATH` cannot be overridden per-agent (use `command` config for custom binary path)
+
+**Required env vars per runner:**
+
+| Runner | Required env vars | Source |
+|--------|------------------|--------|
+| `claude-code` | `CLAUDE_CODE_SESSION_ID`, `CLAUDECODE=1` | CC v2.1.154 — passed to MCP stdio servers |
+| `codex` | TBD — verify if Codex app-server expects similar vars | Needs testing |
+| `gemini-cli` | TBD — verify if Gemini CLI expects similar vars | Needs testing |
+
+**Important:** `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` (CC v2.1.83) strips Anthropic/cloud credentials from subprocess environments. Aegis must NOT set this var unless explicitly requested — it would break MCP server auth.
 
 ### 7.5 Dirty Shutdown Safety
 
@@ -332,6 +342,23 @@ Not in scope for this issue, but the architecture supports:
 | Bridge pattern | 🔲 Future | N/A (is a bridge) | N/A (is a bridge) |
 
 **Our moat:** depth (control plane with RBAC, audit, MCP, dashboard) > breadth (more runners). Three runners covering 90% of the market + middleware depth.
+
+## 13. Claude Code Upstream Compatibility
+
+> Scanned CC CHANGELOG v2.1.145 → v2.1.158 (2026-05-30). Full analysis: `references/cc-upstream-impact-analysis.md`
+
+**Key finding: CC now has its own `agent` concept (v2.1.157).**
+- `claude agents` honors `agent` field from `settings.json` with `--agent <name>` override
+- This is CC's internal agent system (skills + prompts + model selection)
+- **Aegis agents ≠ CC agents.** Aegis agents define runner type + permissions + constraints. CC agents define skills + prompts within a CC session.
+- When Aegis spawns CC with an agent profile, it should NOT pass `--agent` to CC. The Aegis agent config (model, instructions, env) maps to CC flags directly.
+
+**Other upstream changes affecting Aegis:**
+- `CLAUDE_CODE_SESSION_ID` now required in env for MCP stdio servers (see Section 7.4)
+- `SessionStart` hooks now support `reloadSkills` and `sessionTitle` return fields
+- New `MessageDisplay` hook event — may need Aegis hook bridge support
+- `disallowed-tools` in skill frontmatter — CC handles internally, no Aegis change needed
+- `CLAUDE_PROJECT_DIR` now passed to MCP stdio servers — Aegis should set this in spawn env
 
 ## Reference
 
