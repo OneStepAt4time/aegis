@@ -146,7 +146,7 @@ export interface AgentProfile {
   /** Tool-specific runtime settings. */
   runtimeConfig: Record<string, unknown>;
   /** Bound runtime ID (optional — links to a registered runtime). */
-  runtimeId: string | null;
+  runnerName: string;
 
   // ── Execution settings ──
   /** Model override (null = tool default). */
@@ -196,7 +196,7 @@ export interface CreateAgentProfilePayload {
   avatarUrl?: string;
   runtimeMode?: AgentRuntimeMode;
   runtimeConfig?: Record<string, unknown>;
-  runtimeId?: string;
+  runnerName?: string;
   model?: string;
   thinkingLevel?: ThinkingLevel;
   maxConcurrentTasks?: number;
@@ -213,7 +213,7 @@ export interface UpdateAgentProfilePayload {
   avatarUrl?: string | null;
   runtimeMode?: AgentRuntimeMode;
   runtimeConfig?: Record<string, unknown>;
-  runtimeId?: string | null;
+  runnerName?: string;
   model?: string | null;
   thinkingLevel?: ThinkingLevel | null;
   maxConcurrentTasks?: number;
@@ -233,7 +233,7 @@ export interface SerializedAgentProfile {
   avatarUrl: string | null;
   runtimeMode: string;
   runtimeConfig: Record<string, unknown>;
-  runtimeId: string | null;
+  runnerName: string;
   model: string | null;
   thinkingLevel: string | null;
   maxConcurrentTasks: number;
