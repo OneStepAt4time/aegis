@@ -8,6 +8,9 @@
 
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { Mutex } from 'async-mutex';
 import { logger } from '../../logger.js';
 import { ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, ENV_NAME_RE, hasControlChars, ENV_VALUE_MAX_BYTES } from '../../validation.js';
 import type {
@@ -75,7 +78,7 @@ function computeConfigHash(profile: Omit<AgentProfile, 'configHash' | 'updatedAt
     name: profile.name,
     runtimeMode: profile.runtimeMode,
     runtimeConfig: profile.runtimeConfig,
-    runtimeId: profile.runtimeId,
+    runnerName: profile.runnerName,
     model: profile.model,
     thinkingLevel: profile.thinkingLevel,
     maxConcurrentTasks: profile.maxConcurrentTasks,
@@ -97,6 +100,7 @@ export class AgentProfileManager {
   private store: AgentStore;
   private profiles = new Map<string, AgentProfile>();
   private loaded = false;
+  private readonly writeMutex = new Mutex();
 
   constructor(store: AgentStore) {
     this.store = store;
@@ -152,7 +156,7 @@ export class AgentProfileManager {
       avatarUrl: payload.avatarUrl ?? null,
       runtimeMode: payload.runtimeMode ?? 'claude-code',
       runtimeConfig: payload.runtimeConfig ?? {},
-      runtimeId: payload.runtimeId ?? null,
+      runnerName: payload.runnerName ?? 'claude-code',
       model: payload.model ?? null,
       thinkingLevel: payload.thinkingLevel ?? null,
       maxConcurrentTasks: payload.maxConcurrentTasks ?? 1,
@@ -229,7 +233,7 @@ export class AgentProfileManager {
     if (payload.avatarUrl !== undefined) profile.avatarUrl = payload.avatarUrl;
     if (payload.runtimeMode !== undefined) profile.runtimeMode = payload.runtimeMode;
     if (payload.runtimeConfig !== undefined) profile.runtimeConfig = payload.runtimeConfig;
-    if (payload.runtimeId !== undefined) profile.runtimeId = payload.runtimeId;
+    if (payload.runnerName !== undefined) profile.runnerName = payload.runnerName;
     if (payload.model !== undefined) profile.model = payload.model;
     if (payload.thinkingLevel !== undefined) profile.thinkingLevel = payload.thinkingLevel;
     if (payload.maxConcurrentTasks !== undefined) profile.maxConcurrentTasks = payload.maxConcurrentTasks;
@@ -298,7 +302,7 @@ function serializeProfile(p: AgentProfile): SerializedAgentProfile {
     avatarUrl: p.avatarUrl,
     runtimeMode: p.runtimeMode,
     runtimeConfig: { ...p.runtimeConfig },
-    runtimeId: p.runtimeId,
+    runnerName: p.runnerName,
     model: p.model,
     thinkingLevel: p.thinkingLevel,
     maxConcurrentTasks: p.maxConcurrentTasks,
@@ -325,7 +329,7 @@ function deserializeProfile(s: SerializedAgentProfile): AgentProfile {
     avatarUrl: s.avatarUrl,
     runtimeMode: (s.runtimeMode as AgentProfile['runtimeMode']) ?? 'claude-code',
     runtimeConfig: { ...s.runtimeConfig },
-    runtimeId: s.runtimeId,
+    runnerName: s.runnerName,
     model: s.model,
     thinkingLevel: s.thinkingLevel as AgentProfile['thinkingLevel'],
     maxConcurrentTasks: s.maxConcurrentTasks,

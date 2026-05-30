@@ -37,7 +37,7 @@ describe('AgentProfileManager', () => {
     expect(profile.workspaceId).toBeNull();
     expect(profile.name).toBe('test-agent');
     expect(profile.description).toBeNull();
-    expect(profile.runtimeMode).toBe('claude-code');
+    expect(profile.runnerName).toBe('claude-code');
     expect(profile.maxConcurrentTasks).toBe(1);
     expect(profile.archivedAt).toBeNull();
     expect(profile.configHash).toBeDefined();
@@ -51,7 +51,7 @@ describe('AgentProfileManager', () => {
       name: 'full-agent',
       description: 'A test agent',
       avatarUrl: 'https://example.com/avatar.png',
-      runtimeMode: 'daemon',
+      runnerName: 'daemon',
       model: 'claude-sonnet-4-20250514',
       thinkingLevel: 'high',
       maxConcurrentTasks: 5,
@@ -65,7 +65,7 @@ describe('AgentProfileManager', () => {
     expect(profile.workspaceId).toBe('ws-1');
     expect(profile.description).toBe('A test agent');
     expect(profile.avatarUrl).toBe('https://example.com/avatar.png');
-    expect(profile.runtimeMode).toBe('daemon');
+    expect(profile.runnerName).toBe('daemon');
     expect(profile.model).toBe('claude-sonnet-4-20250514');
     expect(profile.thinkingLevel).toBe('high');
     expect(profile.maxConcurrentTasks).toBe(5);
