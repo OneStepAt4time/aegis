@@ -339,7 +339,8 @@ describe('AgentProfileManager', () => {
       const created = await manager.create(null, 'key-1', { name: 'persistent-hash' });
       const originalHash = created.configHash;
 
-      const manager2 = new AgentProfileManager(dataDir);
+      const store2 = new JsonAgentStore(dataDir);
+      const manager2 = new AgentProfileManager(store2);
       await manager2.load();
 
       const fetched = manager2.get(created.id);
