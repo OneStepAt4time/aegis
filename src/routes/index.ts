@@ -22,3 +22,4 @@ export { registerDriverRoutes } from './driver-controls.js';
 export { registerTerminalRoutes } from './terminal.js';
 export type { RouteContext } from './context.js';
 export { registerQuickApproveRejectRoutes } from './quick-approve-reject.js';
+export { registerAgentProfileRoutes } from './agent-profiles.js';

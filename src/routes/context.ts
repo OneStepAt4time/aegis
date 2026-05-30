@@ -45,6 +45,7 @@ import type { AcpPauseInterventionStore } from '../services/acp/pause-interventi
 import type { AcpBackend } from '../services/acp/backend.js';
 import type { AcpEventStore } from '../services/acp/event-store.js';
 import type { AcpTerminalBridge } from '../services/acp/terminal-bridge.js';
+import type { AgentProfileManager } from '../services/agents/AgentProfileManager.js';
 import { ccSessionRegistry } from '../services/cc-session-registry.js';
 export type IdRequest = FastifyRequest<IdParams>;
 
@@ -87,6 +88,8 @@ export interface RouteContext {
   eventStore?: AcpEventStore;
   /** ACP terminal bridge (optional — wired when ACP backend is configured). */
   terminalBridge?: AcpTerminalBridge;
+  /** Issue #3971: Agent profile CRUD manager. */
+  agentProfileManager?: AgentProfileManager;
 }
 
 export function getRequestRole(auth: AuthManager, req: FastifyRequest): ApiKeyRole {

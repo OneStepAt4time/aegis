@@ -560,7 +560,7 @@ new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
 
   // ── Register routes (extracted to boot/boot-routes.ts, #4243) ──────
   ctx.toolRegistry = new ToolRegistry();
-  const { routeCtx, serverState } = registerRoutes(app, ctx, {
+  const { routeCtx, serverState } = await registerRoutes(app, ctx, {
     eventBus,
     channels,
     metricsCache,

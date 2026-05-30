@@ -32,11 +32,13 @@ import {
   registerControlActionRoutes,
   registerDriverRoutes,
   registerTerminalRoutes,
+  registerAgentProfileRoutes,
   registerOpenApiSpec,
   registerOpenApiRoute,
   type RouteContext,
 } from '../routes/index.js';
 import { registerDeviceAuthRoutes } from '../routes/device-auth.js';
+import { AgentProfileManager } from '../services/agents/AgentProfileManager.js';
 import { registerBudgetRoutes } from '../budgets/routes.js';
 import { validateWorkDir } from '../validation.js';
 import type { BudgetStore } from '../budgets/store.js';
@@ -61,11 +63,11 @@ export interface RouteDeps {
  * Returns the constructed RouteContext and serverState for caller use
  * (quota sweep timer, drain flag on shutdown).
  */
-export function registerRoutes(
+export async function registerRoutes(
   app: FastifyInstance,
   ctx: AppContext,
   deps: RouteDeps,
-): { routeCtx: RouteContext; serverState: { draining: boolean } } {
+): Promise<{ routeCtx: RouteContext; serverState: { draining: boolean } }> {
   const { eventBus, channels, metricsCache, budgetStore, budgetEvaluator, requestKeyMap: reqKeyMap } = deps;
 
   // Validate workDir — delegates to validation.ts (Issue #435)
@@ -137,6 +139,11 @@ export function registerRoutes(
   registerControlActionRoutes(app, routeCtx);
   registerDriverRoutes(app, routeCtx);
   registerTerminalRoutes(app, routeCtx);
+  // Issue #3971: Agent profiles CRUD
+  const agentProfileManager = new AgentProfileManager(ctx.config.stateDir);
+  await agentProfileManager.load();
+  routeCtx.agentProfileManager = agentProfileManager;
+  registerAgentProfileRoutes(app, routeCtx);
 
   // OpenAPI spec registration and route (issue #1909)
   registerOpenApiSpec();
