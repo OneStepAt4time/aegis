@@ -17,7 +17,7 @@
  */
 
 import type { SessionInfo, SessionState } from '../../session-types.js';
-import type { PipelineState, PipelineConfig } from '../../pipeline.js';
+import type { PipelineState, PipelineConfig } from '../../pipeline-types.js';
 import type { LifecycleService, ServiceHealth } from '../../container.js';
 
 /** Serializable representation of a SessionInfo (Set<string> → string[], no Buffers). */

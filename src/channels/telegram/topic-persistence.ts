@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 
 import { StructuredLogger } from '../../logger.js';
-import type { SessionTopic } from './types.js';
+import type { SessionTopic } from './session-topic-types.js';
 
 const log = new StructuredLogger();
 
