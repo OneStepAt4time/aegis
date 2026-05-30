@@ -1,0 +1,388 @@
+/**
+ * AgentProfileManager — Issue #3971
+ *
+ * CRUD operations for agent profiles. File-based storage consistent
+ * with Aegis solo-dev patterns (see AgentManager).
+ *
+ * Profiles are workspace-scoped and support soft-delete via archive/restore.
+ * v1: visibility removed from API, workspaceId nullable (ADR-0029 single-tenant).
+ *
+ * Security (Themis audit):
+ *   - Name validation at model layer (SAFE_NAME_RE)
+ *   - Env denylist validated at write time
+ *   - configHash for key rotation race protection
+ */
+
+import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { logger } from '../../logger.js';
+import { ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, ENV_NAME_RE, hasControlChars, ENV_VALUE_MAX_BYTES } from '../../validation.js';
+import type {
+  AgentProfile,
+  CreateAgentProfilePayload,
+  EnvVar,
+  SerializedAgentProfile,
+  UpdateAgentProfilePayload,
+} from './types.js';
+import { SAFE_NAME_RE } from './types.js';
+
+
+
+function cloneProfile(p: AgentProfile): AgentProfile {
+  return {
+    ...p,
+    runtimeConfig: { ...p.runtimeConfig },
+    customEnv: [...p.customEnv],
+    customArgs: [...p.customArgs],
+    mcpConfig: { ...p.mcpConfig },
+  };
+}
+// ── Env validation (reuses denylist from validation.ts) ─────────
+
+const DENY_SET = new Set(ENV_DENYLIST);
+const DANGEROUS_PREFIXES = [...ENV_DANGEROUS_PREFIXES];
+
+function validateEnvVars(envVars: EnvVar[]): void {
+  for (const { key, value } of envVars) {
+    // Check dangerous prefixes (case-insensitive)
+    const matchedPrefix = DANGEROUS_PREFIXES.find(p => key.toLowerCase().startsWith(p));
+    if (matchedPrefix) {
+      throw new AgentProfileEnvError(key, `cannot override dangerous prefix "${matchedPrefix}"`);
+    }
+    // Name format
+    if (!ENV_NAME_RE.test(key)) {
+      throw new AgentProfileEnvError(key, `name must match ${ENV_NAME_RE.source}`);
+    }
+    // Denylist
+    if (DENY_SET.has(key)) {
+      throw new AgentProfileEnvError(key, 'denylisted');
+    }
+    // Value hardening
+    if (/[\r\n]/.test(value)) {
+      throw new AgentProfileEnvError(key, 'value contains CR/LF');
+    }
+    if (hasControlChars(value)) {
+      throw new AgentProfileEnvError(key, 'value contains control characters');
+    }
+    if (Buffer.byteLength(value, 'utf-8') > ENV_VALUE_MAX_BYTES) {
+      throw new AgentProfileEnvError(key, `value exceeds ${ENV_VALUE_MAX_BYTES} byte limit`);
+    }
+  }
+}
+
+// ── Config hash ────────────────────────────────────────────────
+
+function computeConfigHash(profile: Omit<AgentProfile, 'configHash' | 'updatedAt'>): string {
+  // Hash the core config fields — excludes timestamps and the hash itself
+  const hashInput = JSON.stringify({
+    id: profile.id,
+    agentId: profile.agentId,
+    workspaceId: profile.workspaceId,
+    name: profile.name,
+    runtimeMode: profile.runtimeMode,
+    runtimeConfig: profile.runtimeConfig,
+    runtimeId: profile.runtimeId,
+    model: profile.model,
+    thinkingLevel: profile.thinkingLevel,
+    maxConcurrentTasks: profile.maxConcurrentTasks,
+    instructions: profile.instructions,
+    customEnv: profile.customEnv,
+    customArgs: profile.customArgs,
+    mcpConfig: profile.mcpConfig,
+    ownerKeyId: profile.ownerKeyId,
+  });
+  return createHash('sha256').update(hashInput).digest('hex');
+}
+
+export interface ListProfilesOptions {
+  /** Include archived profiles (default: false). */
+  includeArchived?: boolean;
+}
+
+export class AgentProfileManager {
+  private filePath: string;
+  private profiles = new Map<string, AgentProfile>();
+  private loaded = false;
+
+  constructor(dataDir: string) {
+    this.filePath = `${dataDir}/agent-profiles.json`;
+  }
+
+  // ── Lifecycle ────────────────────────────────────────────────────
+
+  async load(): Promise<void> {
+    try {
+      const raw = await readFile(this.filePath, 'utf8');
+      const data = JSON.parse(raw) as { profiles: SerializedAgentProfile[] };
+      this.profiles.clear();
+      for (const s of data.profiles) {
+        this.profiles.set(s.id, deserializeProfile(s));
+      }
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      this.profiles.clear();
+    }
+    this.loaded = true;
+    logger.info({
+      component: 'agent-profiles',
+      operation: 'loaded',
+      attributes: { count: this.profiles.size },
+    });
+  }
+
+  private async persist(): Promise<void> {
+    const data = { profiles: [...this.profiles.values()].map(serializeProfile) };
+    await mkdir(dirname(this.filePath), { recursive: true });
+    await writeFile(this.filePath, JSON.stringify(data, null, 2));
+  }
+
+  // ── CRUD ─────────────────────────────────────────────────────────
+
+  async create(
+    workspaceId: string | null,
+    ownerKeyId: string,
+    payload: CreateAgentProfilePayload,
+  ): Promise<AgentProfile> {
+    if (!this.loaded) throw new Error('AgentProfileManager not loaded');
+
+    // Name validation (Themis finding #2: model layer)
+    if (!SAFE_NAME_RE.test(payload.name)) {
+      throw new AgentProfileNameError(payload.name);
+    }
+
+    // Env validation (Themis finding #3: write time)
+    if (payload.customEnv?.length) {
+      validateEnvVars(payload.customEnv);
+    }
+
+    const now = Date.now();
+    const profileBase: Omit<AgentProfile, 'configHash' | 'updatedAt'> = {
+      id: randomUUID(),
+      agentId: payload.agentId ?? randomUUID(),
+      workspaceId: workspaceId ?? null,
+      name: payload.name,
+      description: payload.description ?? null,
+      avatarUrl: payload.avatarUrl ?? null,
+      runtimeMode: payload.runtimeMode ?? 'claude-code',
+      runtimeConfig: payload.runtimeConfig ?? {},
+      runtimeId: payload.runtimeId ?? null,
+      model: payload.model ?? null,
+      thinkingLevel: payload.thinkingLevel ?? null,
+      maxConcurrentTasks: payload.maxConcurrentTasks ?? 1,
+      instructions: payload.instructions ?? null,
+      customEnv: payload.customEnv ?? [],
+      customArgs: payload.customArgs ?? [],
+      mcpConfig: payload.mcpConfig ?? {},
+      ownerKeyId,
+      archivedAt: null,
+      archivedBy: null,
+      createdAt: now,
+    };
+
+    const configHash = computeConfigHash(profileBase);
+    const profile: AgentProfile = {
+      ...profileBase,
+      updatedAt: now,
+      configHash,
+    };
+
+    this.profiles.set(profile.id, profile);
+    await this.persist();
+
+    logger.info({
+      component: 'agent-profiles',
+      operation: 'created',
+      attributes: { profileId: profile.id, name: profile.name, agentId: profile.agentId },
+    });
+
+    return cloneProfile(profile);
+  }
+
+  get(profileId: string): AgentProfile | undefined {
+    const p = this.profiles.get(profileId);
+    return p ? cloneProfile(p) : undefined;
+  }
+
+  /**
+   * List profiles, excluding archived by default.
+   * v1: no visibility filtering (single-tenant).
+   */
+  list(opts?: ListProfilesOptions): AgentProfile[] {
+    let result = [...this.profiles.values()];
+
+    if (!opts?.includeArchived) {
+      result = result.filter(p => p.archivedAt === null);
+    }
+
+    return result.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async update(
+    profileId: string,
+    payload: UpdateAgentProfilePayload,
+  ): Promise<AgentProfile> {
+    const profile = this.profiles.get(profileId);
+    if (!profile) throw new AgentProfileNotFoundError(profileId);
+    if (profile.archivedAt !== null) {
+      throw new AgentProfileArchivedError(profileId);
+    }
+
+    // Name validation (Themis finding #2: model layer)
+    if (payload.name !== undefined && !SAFE_NAME_RE.test(payload.name)) {
+      throw new AgentProfileNameError(payload.name);
+    }
+
+    // Env validation (Themis finding #3: write time)
+    if (payload.customEnv?.length) {
+      validateEnvVars(payload.customEnv);
+    }
+
+    if (payload.name !== undefined) profile.name = payload.name;
+    if (payload.description !== undefined) profile.description = payload.description;
+    if (payload.avatarUrl !== undefined) profile.avatarUrl = payload.avatarUrl;
+    if (payload.runtimeMode !== undefined) profile.runtimeMode = payload.runtimeMode;
+    if (payload.runtimeConfig !== undefined) profile.runtimeConfig = payload.runtimeConfig;
+    if (payload.runtimeId !== undefined) profile.runtimeId = payload.runtimeId;
+    if (payload.model !== undefined) profile.model = payload.model;
+    if (payload.thinkingLevel !== undefined) profile.thinkingLevel = payload.thinkingLevel;
+    if (payload.maxConcurrentTasks !== undefined) profile.maxConcurrentTasks = payload.maxConcurrentTasks;
+    if (payload.instructions !== undefined) profile.instructions = payload.instructions;
+    if (payload.customEnv !== undefined) profile.customEnv = payload.customEnv;
+    if (payload.customArgs !== undefined) profile.customArgs = payload.customArgs;
+    if (payload.mcpConfig !== undefined) profile.mcpConfig = payload.mcpConfig;
+
+    profile.updatedAt = Date.now();
+    // Recompute config hash on any update
+    const { configHash: _old, updatedAt: _ts, ...base } = profile;
+    profile.configHash = computeConfigHash(base as Omit<AgentProfile, 'configHash' | 'updatedAt'>);
+
+    await this.persist();
+    return cloneProfile(profile);
+  }
+
+  async archive(profileId: string, archivedByKeyId: string): Promise<AgentProfile> {
+    const profile = this.profiles.get(profileId);
+    if (!profile) throw new AgentProfileNotFoundError(profileId);
+    if (profile.archivedAt !== null) return cloneProfile(profile); // idempotent
+
+    profile.archivedAt = Date.now();
+    profile.archivedBy = archivedByKeyId;
+    profile.updatedAt = Date.now();
+    await this.persist();
+
+    logger.info({
+      component: 'agent-profiles',
+      operation: 'archived',
+      attributes: { profileId },
+    });
+
+    return cloneProfile(profile);
+  }
+
+  async restore(profileId: string): Promise<AgentProfile> {
+    const profile = this.profiles.get(profileId);
+    if (!profile) throw new AgentProfileNotFoundError(profileId);
+    if (profile.archivedAt === null) return cloneProfile(profile); // idempotent
+
+    profile.archivedAt = null;
+    profile.archivedBy = null;
+    profile.updatedAt = Date.now();
+    await this.persist();
+
+    logger.info({
+      component: 'agent-profiles',
+      operation: 'restored',
+      attributes: { profileId },
+    });
+
+    return cloneProfile(profile);
+  }
+}
+
+// ── Serialization ──────────────────────────────────────────────
+
+function serializeProfile(p: AgentProfile): SerializedAgentProfile {
+  return {
+    id: p.id,
+    agentId: p.agentId,
+    workspaceId: p.workspaceId,
+    name: p.name,
+    description: p.description,
+    avatarUrl: p.avatarUrl,
+    runtimeMode: p.runtimeMode,
+    runtimeConfig: { ...p.runtimeConfig },
+    runtimeId: p.runtimeId,
+    model: p.model,
+    thinkingLevel: p.thinkingLevel,
+    maxConcurrentTasks: p.maxConcurrentTasks,
+    instructions: p.instructions,
+    customEnv: [...p.customEnv],
+    customArgs: [...p.customArgs],
+    mcpConfig: { ...p.mcpConfig },
+    ownerKeyId: p.ownerKeyId,
+    archivedAt: p.archivedAt,
+    archivedBy: p.archivedBy,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+    configHash: p.configHash,
+  };
+}
+
+function deserializeProfile(s: SerializedAgentProfile): AgentProfile {
+  return {
+    id: s.id,
+    agentId: s.agentId ?? s.id, // backward compat: old data without agentId
+    workspaceId: s.workspaceId,
+    name: s.name,
+    description: s.description,
+    avatarUrl: s.avatarUrl,
+    runtimeMode: (s.runtimeMode as AgentProfile['runtimeMode']) ?? 'claude-code',
+    runtimeConfig: { ...s.runtimeConfig },
+    runtimeId: s.runtimeId,
+    model: s.model,
+    thinkingLevel: s.thinkingLevel as AgentProfile['thinkingLevel'],
+    maxConcurrentTasks: s.maxConcurrentTasks,
+    instructions: s.instructions,
+    customEnv: [...s.customEnv],
+    customArgs: [...s.customArgs],
+    mcpConfig: { ...s.mcpConfig },
+    ownerKeyId: s.ownerKeyId,
+    archivedAt: s.archivedAt,
+    archivedBy: s.archivedBy,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+    configHash: s.configHash ?? '', // backward compat
+  };
+}
+
+// ── Errors ─────────────────────────────────────────────────────
+
+export class AgentProfileNotFoundError extends Error {
+  constructor(profileId: string) {
+    super(`Agent profile not found: ${profileId}`);
+    this.name = 'AgentProfileNotFoundError';
+  }
+}
+
+export class AgentProfileArchivedError extends Error {
+  constructor(profileId: string) {
+    super(`Agent profile is archived: ${profileId}`);
+    this.name = 'AgentProfileArchivedError';
+  }
+}
+
+export class AgentProfileNameError extends Error {
+  constructor(name: string) {
+    super(`Invalid agent name: "${name}" — must match ${SAFE_NAME_RE.source}`);
+    this.name = 'AgentProfileNameError';
+  }
+}
+
+export class AgentProfileEnvError extends Error {
+  constructor(key: string, reason: string) {
+    super(`Forbidden env var: "${key}" — ${reason}`);
+    this.name = 'AgentProfileEnvError';
+  }
+}
