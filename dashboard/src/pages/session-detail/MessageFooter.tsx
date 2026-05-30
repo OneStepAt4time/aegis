@@ -138,6 +138,7 @@ export function MessageFooter({
           disabled={slashSending || !h.alive}
           className={buttonClass}
           title={t('sessionDetail.sessionInsertSlashCommandInput')}
+          aria-label={t('sessionDetail.sessionInsertSlashCommandInput')}
         >
           {t('sessionDetail.insertSlash')}
         </button>
@@ -148,6 +149,7 @@ export function MessageFooter({
           disabled={slashSending || !h.alive}
           className={accentButtonClass}
           title={t('sessionDetail.sessionSendSlashCommand')}
+          aria-label={t('sessionDetail.sessionSendSlashCommand')}
         >
           {slashSending ? t('sessionDetail.sendingSlash') : t('sessionDetail.runSlash')}
         </button>
@@ -159,6 +161,7 @@ export function MessageFooter({
             disabled={capturingScreenshot || !h.alive}
             className={buttonClass}
             title={t('sessionDetail.sessionCaptureScreenshot')}
+            aria-label={t('sessionDetail.slashPanelCaptureScreenshot')}
           >
             {capturingScreenshot ? t('sessionDetail.capturing') : t('sessionDetail.screenshot')}
           </button>
@@ -281,6 +284,7 @@ export function MessageFooter({
               type="button"
               className="text-[var(--color-accent-cyan)] hover:underline"
               onClick={() => { setMsgInput('/help'); getVisibleMessageInput()?.focus(); }}
+              aria-label={t('sessionDetail.quickCommand', { command: '/help' })}
             >
               /help
             </button>{' '}·{' '}
@@ -288,6 +292,7 @@ export function MessageFooter({
               type="button"
               className="text-[var(--color-accent-cyan)] hover:underline"
               onClick={() => { setMsgInput('/status'); getVisibleMessageInput()?.focus(); }}
+              aria-label={t('sessionDetail.quickCommand', { command: '/status' })}
             >
               /status
             </button>{' '}·{' '}
@@ -295,6 +300,7 @@ export function MessageFooter({
               type="button"
               className="text-[var(--color-accent-cyan)] hover:underline"
               onClick={() => { setMsgInput('/cost'); getVisibleMessageInput()?.focus(); }}
+              aria-label={t('sessionDetail.quickCommand', { command: '/cost' })}
             >
               /cost
             </button>

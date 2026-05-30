@@ -55,8 +55,8 @@ test.describe('Session History Page', () => {
     await expect(page.getByLabel(/owner key id/i)).toBeVisible();
     await expect(page.getByLabel(/status/i)).toBeVisible();
     await expect(page.getByLabel(/search/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /^apply$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^clear$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /apply filters/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /clear filters/i })).toBeVisible();
   });
 
   test('renders date range filter', async ({ page }) => {

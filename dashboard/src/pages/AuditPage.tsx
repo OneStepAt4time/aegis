@@ -408,6 +408,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.hash')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('hash', record.hash); }}
+                  aria-label={t('aria.copyHash')}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
@@ -422,6 +423,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.previousHash')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('prevHash', record.prevHash); }}
+                  aria-label={t('aria.copyPrevHash')}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
@@ -437,6 +439,7 @@ function DetailDrawer({
                 <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{t('audit.fullRecordJson')}</p>
                 <button type="button"
                   onClick={() => { void handleCopy('json', JSON.stringify(record, null, 2)); }}
+                  aria-label={t('aria.copyJson')}
                   className="flex min-h-[44px] items-center gap-1 rounded px-2 py-0.5 text-xs text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/10 transition-colors"
                 >
                   <Copy className="h-3 w-3" />
@@ -708,6 +711,7 @@ export default function AuditPage() {
           </button>
           <button type="button"
             onClick={() => { void fetchData(); }}
+            aria-label={t("aria.refreshAudit")}
             disabled={loading}
             className="flex min-h-[44px] items-center gap-1.5 rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-2 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:opacity-50"
           >
@@ -816,12 +820,14 @@ export default function AuditPage() {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button"
             onClick={applyFilters}
+            aria-label={t("aria.applyFilters")}
             className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             Apply
           </button>
           <button type="button"
             onClick={clearFilters}
+            aria-label={t("aria.clearFilters")}
             className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)]"
           >
             Clear
@@ -856,6 +862,7 @@ export default function AuditPage() {
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{error}</p>
           <button type="button"
             onClick={() => { void fetchData(); }}
+        aria-label={t("aria.refreshAudit")}
             className="mt-4 rounded border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-4 py-2 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20"
           >
             Retry
@@ -905,6 +912,7 @@ export default function AuditPage() {
                     record={record}
                     index={index}
                     onClick={() => setSelectedRecord(record)}
+                    aria-label={t("aria.viewAuditDetail", { action: record.action })}
                   />
                 ))}
               </tbody>

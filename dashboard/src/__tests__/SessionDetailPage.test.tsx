@@ -115,7 +115,7 @@ describe('SessionDetailPage quick actions', () => {
     fireEvent.change(screen.getByLabelText('Common slash command'), {
       target: { value: '/config' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Insert Slash' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Insert selected slash command into the message input' }));
 
     expect((screen.getAllByPlaceholderText('Send a message to Claude…')[0] as HTMLInputElement).value).toBe('/config');
   });
@@ -126,7 +126,7 @@ describe('SessionDetailPage quick actions', () => {
     fireEvent.change(screen.getByLabelText('Common slash command'), {
       target: { value: '/compact' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Slash' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send selected slash command immediately' }));
 
     await waitFor(() => {
       expect(mockSendCommand).toHaveBeenCalledWith('session-1', '/compact');

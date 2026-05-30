@@ -591,8 +591,10 @@ export const en = {
     // Session action aria-labels
     sessionSlashCommand: 'Slash command',
     sessionCaptureScreenshot: 'Capture screenshot',
+    slashPanelCaptureScreenshot: 'Capture screenshot (slash panel)',
     sessionSendEscape: 'Send Escape to session',
     sessionInterruptCtrlC: 'Interrupt session with Ctrl+C',
+    quickCommand: 'Insert {command} command',
     sessionSendMessage: 'Send message',
     sessionSendMessageCmd: 'Send message (⌘↵)',
     sessionInsertSlashCommand: 'Insert slash command',
@@ -998,6 +1000,14 @@ export const en = {
 
     // Pages
     auditRecordDetail: 'Audit record detail',
+    copyHash: 'Copy hash',
+    copyPrevHash: 'Copy previous hash',
+    copyJson: 'Copy JSON',
+    refreshAudit: 'Refresh audit log',
+    refreshSessions: 'Refresh session history',
+    applyFilters: 'Apply filters',
+    clearFilters: 'Clear filters',
+    viewAuditDetail: 'View audit detail: {action}',
     closeDetailDrawer: 'Close detail drawer',
     exportCsv: 'Export CSV',
     exportNdjson: 'Export NDJSON',
@@ -1110,7 +1120,6 @@ export const en = {
     loadingSessionBoard: 'Loading session board',
     sessionBoard: 'Session board',
     otherSessions: 'Other sessions',
-    clearFilters: 'Clear filters',
     activeClaudeSessions: 'Active Claude Code sessions',
     sessionExpired: 'Session expired',
     apiKey: 'API key',

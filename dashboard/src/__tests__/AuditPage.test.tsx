@@ -165,7 +165,7 @@ describe('AuditPage', () => {
     fireEvent.change(screen.getByLabelText('Session ID'), { target: { value: '22222222-2222-2222-2222-222222222222' } });
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T10:15' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-04-17T10:45' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
 
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -191,7 +191,7 @@ describe('AuditPage', () => {
 
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-04-17T11:00' } });
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-04-17T10:00' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
 
     expect(screen.getByText('From must be earlier than or equal to To.')).toBeDefined();
     // No additional fetch — count stays at 2
@@ -265,7 +265,7 @@ describe('AuditPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'admin-key' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
 
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -374,7 +374,7 @@ describe('AuditPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'session.kill' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     await waitFor(() => {
       expect(mockFetchAuditLogs).toHaveBeenLastCalledWith(expect.objectContaining({
         action: 'session.kill',
