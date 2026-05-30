@@ -1,38 +1,105 @@
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
   AcpChildProcess,
   type AcpChildProcessExitEvent,
   type AcpChildProcessOptions,
-  type AcpChildProcessShutdownOptions,
 } from './child-process.js';
 import {
   AcpJsonRpcClient,
   type AcpJsonObject,
   type AcpJsonRpcClientOptions,
-  type AcpJsonRpcId,
   type AcpJsonRpcInboundRequest,
-  type AcpJsonRpcNotification,
-  type AcpJsonRpcRequestOptions,
-  type AcpJsonRpcResponseError,
-  type AcpJsonRpcSuccess,
   type AcpJsonValue,
 } from './json-rpc-client.js';
-import type { AcpActionMetadata, AcpActionRecord } from './action-queue.js';
-import { extractResultText, validatePromptOutput } from './content-validation.js';
+import type { AcpActionRecord } from './action-queue.js';
+import { validatePromptOutput } from './content-validation.js';
 import type {
-  AcpAgentSessionAttachment,
-  AcpBackendMetadata,
-  AcpBackendMetadataValue,
-  AcpCreateSessionInput,
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionTransitionEvent,
   PromptValidationWarning,
 } from './types.js';
+
+// Re-export types from extracted modules for backward compatibility
+export type {
+  AcpBackendClient,
+  AcpBackendSessionService,
+  AcpBackendCreateSessionInput,
+  AcpBackendScopedRuntimeInput,
+  AcpBackendResumeSessionInput,
+  AcpBackendLoadSessionInput,
+  AcpBackendCancelSessionInput,
+  AcpBackendShutdownSessionInput,
+  AcpBackendRestartSessionInput,
+  AcpBackendAdoptRuntimeInput,
+  AcpBackendClientFactoryContext,
+  AcpBackendInitializeResult,
+  AcpBackendSessionResult,
+  AcpBackendStartResult,
+  AcpBackendCancelResult,
+  AcpBackendShutdownResult,
+  AcpBackendRestartResult,
+  AcpBackendDispatchActionResult,
+  AcpBackendApprovalInput,
+  AcpBackendApprovalResult,
+  AcpPendingApproval,
+  AcpBackendClaimDriverInput,
+  AcpBackendReleaseDriverInput,
+  AcpBackendTransferDriverInput,
+  AcpBackendDriverResult,
+  AcpBackendParticipantsResult,
+  AcpBackendRuntimeExitEvent,
+  AcpBackendRestartBackoffContext,
+  AcpBackendRestartBackoffEvent,
+  AcpBackendOptions,
+  AcpBackendRuntime,
+} from './acp-backend-types.js';
+
+export { AcpBackendLifecycleError, AcpBackendRuntimeUnavailableError } from './acp-backend-errors.js';
+export { hasLoadSessionCapability } from './acp-backend-utils.js';
+
+import { AcpBackendLifecycleError, AcpBackendRuntimeUnavailableError } from './acp-backend-errors.js';
+import type {
+  AcpBackendClient,
+  AcpBackendSessionService,
+  AcpBackendClientFactoryContext,
+  AcpBackendCreateSessionInput,
+  AcpBackendResumeSessionInput,
+  AcpBackendLoadSessionInput,
+  AcpBackendCancelSessionInput,
+  AcpBackendShutdownSessionInput,
+  AcpBackendRestartSessionInput,
+  AcpBackendAdoptRuntimeInput,
+  AcpBackendInitializeResult,
+  AcpBackendSessionResult,
+  AcpBackendStartResult,
+  AcpBackendCancelResult,
+  AcpBackendShutdownResult,
+  AcpBackendRestartResult,
+  AcpBackendDispatchActionResult,
+  AcpBackendApprovalInput,
+  AcpBackendApprovalResult,
+  AcpPendingApproval,
+  AcpBackendClaimDriverInput,
+  AcpBackendReleaseDriverInput,
+  AcpBackendTransferDriverInput,
+  AcpBackendDriverResult,
+  AcpBackendParticipantsResult,
+  AcpBackendOptions,
+  AcpBackendRuntime,
+} from './acp-backend-types.js';
+import {
+  scopeFromInput,
+  toCreateSessionInput,
+  attachmentFromResult,
+  isNonEmptyString,
+  requireActionMetadataString,
+  primitiveResultMetadata,
+  assertNeverAction,
+  isActiveStatus,
+  readPackageVersion,
+} from './acp-backend-utils.js';
 
 import { StructuredLogger } from '../../logger.js';
 
@@ -42,228 +109,6 @@ const DEFAULT_PROTOCOL_VERSION = 1;
 const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
 const ACP_PROMPT_ACK_TIMEOUT_MS = 5_000;
 const PACKAGE_VERSION = readPackageVersion();
-
-export interface AcpBackendClient {
-  start(): Promise<void>;
-  request<T = AcpJsonValue>(
-    method: string,
-    params?: AcpJsonValue,
-    options?: AcpJsonRpcRequestOptions
-  ): Promise<AcpJsonRpcSuccess<T>>;
-  notify(method: string, params?: AcpJsonValue): Promise<void>;
-  respond(id: AcpJsonRpcId, result: AcpJsonValue): Promise<void>;
-  respondWithError(id: AcpJsonRpcId, error: AcpJsonRpcResponseError): Promise<void>;
-  shutdown(options?: AcpChildProcessShutdownOptions): Promise<AcpChildProcessExitEvent>;
-  onNotification(listener: (notification: AcpJsonRpcNotification) => void): () => void;
-  onRequest(listener: (request: AcpJsonRpcInboundRequest) => void): () => void;
-  onExit(listener: (exit: AcpChildProcessExitEvent) => void): () => void;
-  onError(listener: (error: Error) => void): () => void;
-}
-
-export interface AcpBackendSessionService {
-  createSession(input: AcpCreateSessionInput): Promise<AcpSessionRecord>;
-  getSession(sessionId: string, scope: AcpSessionScope): Promise<AcpSessionRecord>;
-  attachAgentSession(
-    sessionId: string,
-    scope: AcpSessionScope,
-    attachment: AcpAgentSessionAttachment
-  ): Promise<AcpSessionRecord>;
-  transition(
-    sessionId: string,
-    scope: AcpSessionScope,
-    event: AcpSessionTransitionEvent
-  ): Promise<AcpSessionRecord>;
-  recordBackendRestart(
-    sessionId: string,
-    scope: AcpSessionScope,
-    backendRunId?: string
-  ): Promise<AcpSessionRecord>;
-}
-
-export interface AcpBackendCreateSessionInput extends AcpCreateSessionInput {
-  cwd: string;
-  mcpServers?: AcpJsonObject;
-}
-
-export interface AcpBackendScopedRuntimeInput extends AcpSessionScope {
-  sessionId: string;
-}
-
-export interface AcpBackendResumeSessionInput extends AcpBackendScopedRuntimeInput {
-  cwd: string;
-}
-
-export interface AcpBackendLoadSessionInput extends AcpBackendScopedRuntimeInput {
-  cwd: string;
-  mcpServers?: AcpJsonObject;
-}
-
-export type AcpBackendCancelSessionInput = AcpBackendScopedRuntimeInput;
-
-export type AcpBackendShutdownSessionInput = AcpBackendScopedRuntimeInput;
-
-export interface AcpBackendRestartSessionInput extends AcpBackendScopedRuntimeInput {
-  cwd: string;
-  reason: string;
-}
-
-export interface AcpBackendAdoptRuntimeInput extends AcpBackendScopedRuntimeInput {
-  backendRunId: string;
-  client: AcpBackendClient;
-}
-
-export interface AcpBackendClientFactoryContext extends AcpSessionScope {
-  durableSessionId: string;
-  backendRunId: string;
-  cwd: string;
-}
-
-export interface AcpBackendInitializeResult {
-  agentCapabilities?: AcpJsonValue;
-  agentInfo?: AcpJsonValue;
-  authMethods?: AcpJsonValue;
-}
-
-export interface AcpBackendSessionResult {
-  sessionId: string;
-  claudeSessionId?: string;
-}
-
-export interface AcpBackendStartResult {
-  session: AcpSessionRecord;
-  initializeResult: AcpBackendInitializeResult;
-  backendRunId: string;
-}
-
-export interface AcpBackendCancelResult {
-  session: AcpSessionRecord;
-  cancelResult: AcpJsonValue;
-}
-
-export interface AcpBackendShutdownResult {
-  session: AcpSessionRecord;
-  exit?: AcpChildProcessExitEvent;
-}
-
-export interface AcpBackendRestartResult extends AcpBackendStartResult {
-  backoffDelayMs: number;
-}
-
-export interface AcpBackendDispatchActionResult {
-  resultMetadata?: AcpActionMetadata;
-}
-
-export interface AcpBackendApprovalInput extends AcpBackendScopedRuntimeInput {
-  approvalId: string;
-}
-
-export interface AcpBackendApprovalResult {
-  sessionId: string;
-  approvalId: string;
-  action: 'approved' | 'rejected';
-  timestamp: string;
-}
-
-export interface AcpPendingApproval {
-  approvalId: string;
-  sessionId: string;
-  tool: {
-    toolName: string;
-    description: string;
-    input?: Record<string, unknown>;
-  };
-  requestedAt: string;
-  expiresAt?: string;
-}
-
-export interface AcpBackendClaimDriverInput extends AcpBackendScopedRuntimeInput {
-  holderId: string;
-  ttlMs?: number;
-}
-
-export interface AcpBackendReleaseDriverInput extends AcpBackendScopedRuntimeInput {
-  holderId: string;
-}
-
-export interface AcpBackendTransferDriverInput extends AcpBackendScopedRuntimeInput {
-  targetSubscriberId: string;
-  reason?: string;
-}
-
-export interface AcpBackendDriverResult {
-  sessionId: string;
-  holderId: string | null;
-  role: 'driver' | 'observer';
-  fence?: number;
-  ttlMs?: number;
-}
-
-export interface AcpBackendParticipantsResult {
-  sessionId: string;
-  driver: { subscriberId: string; role: 'driver'; metadata?: Record<string, unknown> } | null;
-  observers: { subscriberId: string; role: 'observer'; metadata?: Record<string, unknown> }[];
-  activeCount: number;
-}
-
-export interface AcpBackendRuntimeExitEvent {
-  sessionId: string;
-  backendRunId: string;
-  exit: AcpChildProcessExitEvent;
-}
-
-export interface AcpBackendRestartBackoffContext {
-  sessionId: string;
-  backendRunId: string;
-  attempt: number;
-  reason: string;
-}
-
-export interface AcpBackendRestartBackoffEvent extends AcpBackendRestartBackoffContext {
-  delayMs: number;
-}
-
-export interface AcpBackendOptions {
-  /** Issue #3897: Emit validation_warning transitions for monitoring (default: false). */
-  emitValidationWarnings?: boolean;
-  sessionService: AcpBackendSessionService;
-  clientFactory?: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
-  backendRunIdProvider?: () => string;
-  clientInfo?: AcpJsonObject;
-  clientCapabilities?: AcpJsonObject;
-  childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
-  jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
-  onRawNotification?: (notification: AcpJsonRpcNotification, context: { sessionId: string } & AcpSessionScope) => void;
-  onRawRequest?: (request: AcpJsonRpcInboundRequest) => void;
-  onRuntimeExit?: (event: AcpBackendRuntimeExitEvent) => void;
-  restartBackoff?: (context: AcpBackendRestartBackoffContext) => number;
-  /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
-  strictValidation?: boolean;
-  onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
-}
-
-interface AcpBackendRuntime {
-  sessionId: string;
-  scope: AcpSessionScope;
-  backendRunId: string;
-  client: AcpBackendClient;
-  disposers: (() => void)[];
-  cleanupPromise?: Promise<AcpBackendShutdownResult>;
-  agentCapabilities?: AcpJsonValue;
-}
-
-export class AcpBackendLifecycleError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AcpBackendLifecycleError';
-  }
-}
-
-export class AcpBackendRuntimeUnavailableError extends AcpBackendLifecycleError {
-  constructor(sessionId: string) {
-    super(`ACP runtime is not active for session: ${sessionId}`);
-    this.name = 'AcpBackendRuntimeUnavailableError';
-  }
-}
 
 export class AcpBackend {
   private readonly sessionService: AcpBackendSessionService;
@@ -1170,9 +1015,6 @@ export function createDefaultAcpBackendClient(
     ...options.childProcessOptions,
     cwd: context.cwd,
   });
-  // Issue #3135: Forward ACP child process stderr for debugging.
-  // Without this, errors from claude-agent-acp (API key issues, crashes)
-  // are silently discarded, making diagnosis impossible.
   child.on('stderr', (event) => {
     const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
     if (text) {
@@ -1185,122 +1027,4 @@ export function createDefaultAcpBackendClient(
     idNamespace:
       options.jsonRpcClientOptions?.idNamespace ?? `aegis-acp-${context.durableSessionId}`,
   });
-}
-
-function scopeFromInput(input: AcpSessionScope): AcpSessionScope {
-  return { tenantId: input.tenantId, ownerKeyId: input.ownerKeyId };
-}
-
-function toCreateSessionInput(input: AcpBackendCreateSessionInput): AcpCreateSessionInput {
-  return {
-    tenantId: input.tenantId,
-    ownerKeyId: input.ownerKeyId,
-    parentSessionId: input.parentSessionId,
-    rootSessionId: input.rootSessionId,
-    correlationId: input.correlationId,
-    resumeFromSessionId: input.resumeFromSessionId,
-    backendMetadata: input.backendMetadata,
-  };
-}
-
-function attachmentFromResult(
-  result: AcpBackendSessionResult,
-  backendRunId: string
-): AcpAgentSessionAttachment {
-  if (!isNonEmptyString(result.sessionId)) {
-    throw new AcpBackendLifecycleError('ACP session lifecycle response omitted sessionId');
-  }
-  return {
-    acpAgentSessionId: result.sessionId,
-    ...(isNonEmptyString(result.claudeSessionId)
-      ? { claudeSessionId: result.claudeSessionId }
-      : {}),
-    backendRunId,
-  };
-}
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '';
-}
-
-function requireActionMetadataString(action: AcpActionRecord, key: string, label: string): string {
-  const value = optionalActionMetadataString(action, key);
-  if (value === undefined) {
-    throw new AcpBackendLifecycleError(
-      `ACP ${action.actionType} action ${action.actionId} requires ${label}`
-    );
-  }
-  return value;
-}
-
-function optionalActionMetadataString(action: AcpActionRecord, key: string): string | undefined {
-  const value = action.metadata?.[key];
-  if (value === undefined) return undefined;
-  if (!isNonEmptyString(value)) {
-    throw new AcpBackendLifecycleError(
-      `ACP ${action.actionType} action ${action.actionId} metadata.${key} must be a non-empty string`
-    );
-  }
-  return value;
-}
-
-
-/** Issue #3853: Post-response content validation for hallucination signatures */
-
-
-
-
-function primitiveResultMetadata(result: AcpJsonValue): AcpBackendMetadata {
-  const metadata: AcpBackendMetadata = {};
-  if (!isJsonObject(result)) return metadata;
-  for (const [key, value] of Object.entries(result)) {
-    if (isBackendMetadataValue(value)) {
-      metadata[key] = value;
-    }
-  }
-  return metadata;
-}
-
-function isJsonObject(value: AcpJsonValue): value is AcpJsonObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isBackendMetadataValue(value: AcpJsonValue): value is AcpBackendMetadataValue {
-  return (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  );
-}
-
-function assertNeverAction(value: never): never {
-  throw new Error(`Unhandled ACP action type: ${value}`);
-}
-
-function isActiveStatus(status: AcpSessionRecord['status']): boolean {
-  return (
-    status === 'initializing' ||
-    status === 'idle' ||
-    status === 'running' ||
-    status === 'paused' ||
-    status === 'intervening'
-  );
-}
-
-function readPackageVersion(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  const pkg: unknown = JSON.parse(readFileSync(join(currentDir, '../../../package.json'), 'utf8'));
-  if (typeof pkg !== 'object' || pkg === null || !('version' in pkg)) {
-    return '0.0.0';
-  }
-  return typeof pkg.version === 'string' ? pkg.version : '0.0.0';
-}
-
-export function hasLoadSessionCapability(initializeResult: AcpBackendInitializeResult): boolean {
-  const capabilities = initializeResult.agentCapabilities;
-  if (typeof capabilities !== 'object' || capabilities === null || Array.isArray(capabilities)) {
-    return false;
-  }
-  return (capabilities as Record<string, unknown>).loadSession === true;
 }
