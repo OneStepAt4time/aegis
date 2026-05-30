@@ -18,6 +18,7 @@ import { useInboxStore } from '../store/useInboxStore';
 import { useT } from '../i18n/context';
 import { fetchInbox, markInboxItemRead, markAllInboxRead, archiveInboxItem, archiveAllInboxRead } from '../api/inbox';
 import type { InboxItemType } from '../types/inbox';
+import { logger } from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 
 const TYPE_CONFIG: Record<InboxItemType, { icon: typeof CheckCircle2; accentVar: string }> = {
@@ -66,28 +67,28 @@ export function InboxPage() {
     try {
       await markInboxItemRead(id);
       markRead(id);
-    } catch { /* optimistic update kept */ }
+    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
   }, [markRead]);
 
   const handleMarkAllRead = useCallback(async () => {
     try {
       await markAllInboxRead();
       markAllRead();
-    } catch { /* optimistic update kept */ }
+    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
   }, [markAllRead]);
 
   const handleArchive = useCallback(async (id: string) => {
     try {
       await archiveInboxItem(id);
       archiveItem(id);
-    } catch { /* optimistic update kept */ }
+    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
   }, [archiveItem]);
 
   const handleArchiveAllRead = useCallback(async () => {
     try {
       await archiveAllInboxRead();
       archiveAllRead();
-    } catch { /* optimistic update kept */ }
+    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
   }, [archiveAllRead]);
 
   const handleItemClick = useCallback((item: typeof items[number]) => {
@@ -130,15 +131,17 @@ export function InboxPage() {
               <span className="hidden sm:inline">{t('inbox.markAllRead')}</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => void handleArchiveAllRead()}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-            aria-label={t('inbox.archiveAllRead')}
-          >
-            <Archive className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t('inbox.archiveAllRead')}</span>
-          </button>
+{items.some((i) => i.readAt && !i.archivedAt) && (
+            <button
+              type="button"
+              onClick={() => void handleArchiveAllRead()}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+              aria-label={t('inbox.archiveAllRead')}
+            >
+              <Archive className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">{t('inbox.archiveAllRead')}</span>
+            </button>
+          )}
         </div>
       </div>
 

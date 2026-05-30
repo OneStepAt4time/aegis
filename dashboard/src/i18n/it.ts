@@ -1369,7 +1369,6 @@ export const it = {
     newValueLabel: 'Nuovo valore metadato',
     countHint: '{count}/{max} chiavi utilizzate',
   },
-,
 
   inbox: {
     title: 'Posta in arrivo',

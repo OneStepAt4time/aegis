@@ -1371,7 +1371,7 @@ export const en = {
     newKeyLabel: 'New metadata key',
     newValueLabel: 'New metadata value',
     countHint: '{count}/{max} keys used',
-  },,
+  },
 
   inbox: {
     title: 'Inbox',
