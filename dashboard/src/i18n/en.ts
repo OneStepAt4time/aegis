@@ -1119,7 +1119,6 @@ export const en = {
     loadingSessionBoard: 'Loading session board',
     sessionBoard: 'Session board',
     otherSessions: 'Other sessions',
-    clearFilters: 'Clear filters',
     activeClaudeSessions: 'Active Claude Code sessions',
     sessionExpired: 'Session expired',
     apiKey: 'API key',

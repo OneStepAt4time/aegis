@@ -76,8 +76,8 @@ test.describe('Audit Trail Page', () => {
     await expect(page.getByLabel(/session id/i)).toBeVisible();
     await expect(page.getByLabel(/^from$/i)).toBeVisible();
     await expect(page.getByLabel(/^to$/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /^apply$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^clear$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /apply filters/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /clear filters/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /export csv/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /export ndjson/i })).toBeVisible();
   });

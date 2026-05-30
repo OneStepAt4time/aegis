@@ -1113,7 +1113,6 @@ export const it = {
     loadingSessionBoard: 'Caricamento bacheca sessioni',
     sessionBoard: 'Bacheca sessioni',
     otherSessions: 'Altre sessioni',
-    clearFilters: 'Cancella filtri',
     activeClaudeSessions: 'Sessioni Claude Code attive',
     sessionExpired: 'Sessione scaduta',
     apiKey: 'Chiave API',
