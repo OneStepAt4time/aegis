@@ -14,7 +14,20 @@ import { ServerHealthDot } from '../shared/ServerHealthIndicator';
 import { ShieldWordmark } from '../brand/ShieldLogo';
 import { useAuthStore } from '../../store/useAuthStore.js';
 import { useSidebarStore } from '../../store/useSidebarStore.js';
+
 import { useT } from '../../i18n/context';
+import { useInboxStore } from '../../store/useInboxStore';
+
+function InboxBadge() {
+  const unreadCount = useInboxStore((s) => s.unreadCount);
+  if (unreadCount === 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[var(--color-cta-bg)] px-1.5 text-[10px] font-bold text-[var(--color-void)]">
+      {unreadCount}
+    </span>
+  );
+}
+
 import { NAV_GROUPS } from './types';
 
 interface SidebarProps {
@@ -101,6 +114,8 @@ export function Sidebar({
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!isCollapsed && <span className="truncate">{label}</span>}
+                {!isCollapsed && to === '/inbox' && <InboxBadge />}
+
               </NavLink>
             ))}
           </div>

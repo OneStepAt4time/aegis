@@ -1369,4 +1369,21 @@ export const it = {
     newValueLabel: 'Nuovo valore metadato',
     countHint: '{count}/{max} chiavi utilizzate',
   },
+
+  inbox: {
+    title: 'Posta in arrivo',
+    markAllRead: 'Segna tutto come letto',
+    archiveAllRead: 'Archivia letti',
+    markRead: 'Segna come letto',
+    archive: 'Archivia',
+    loading: 'Caricamento...',
+    empty: 'Nessuna notifica.',
+    'empty.unread': 'Nessuna notifica non letta.',
+    'empty.archived': 'Nessuna notifica archiviata.',
+    filters: 'Filtri posta',
+    'filter.all': 'Tutte',
+    'filter.unread': 'Non lette',
+    'filter.archived': 'Archiviate',
+    itemList: 'Lista notifiche',
+  }
 };

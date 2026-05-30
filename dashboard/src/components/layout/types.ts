@@ -16,6 +16,7 @@ import {
   Terminal,
   Radio,
   MessageCircle,
+  Inbox,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -48,6 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/cost', label: 'Cost', icon: DollarSign },
       { to: '/analytics', label: 'Analytics', icon: BarChart3 },
       { to: '/activity', label: 'Activity', icon: Radio },
+      { to: '/inbox', label: 'Inbox', icon: Inbox },
     ],
   },
   {
