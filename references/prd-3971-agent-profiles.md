@@ -143,6 +143,31 @@ When a task is assigned to an agent:
 7. Sets `custom_env` and `custom_args` on the spawned process (denylist re-checked at read time)
 8. Enforces `max_concurrent_tasks` — reject dispatch if at capacity
 
+
+### 6.1 CC Spawn Environment (required CC runner settings)
+
+When the CC runner is spawned, Aegis MUST set the following environment variables and CLI flags to ensure correct MCP integration, worktree context, and permission boundaries.
+
+| Env / Arg | Value | Purpose |
+|-----------|-------|---------|
+| `CLAUDE_CODE_SESSION_ID` | Aegis session ID (string) | Identifies the running session for MCP servers and in-session tooling to associate state with the control-plane session. REQUIRED.
+| `CLAUDECODE` | `1` | Signals to CC and in-session tools that they are operating inside a managed Aegis session. REQUIRED.
+| `CLAUDE_PROJECT_DIR` | Agent worktree path (absolute) | Directs CC and tools to resolve project-local context (cwd/worktree). REQUIRED.
+| CLI flag `--permission-mode` | Explicit mode value (e.g., `enforced`) | Aegis MUST always set this flag explicitly when spawning CC; do NOT rely on CC's persisted permission state. REQUIRED for security.
+
+Notes:
+- These env vars are applied on every spawn. They are part of the security boundary between Aegis and CC and must not be optional.
+- `CLAUDE_PROJECT_DIR` is the canonical way we pass worktree context; do not rely on local heuristics inside CC.
+
+### 6.2 Agent Worktree Isolation (opt-in)
+
+To preserve host safety and avoid unintentional background edits, agents expose a worktree isolation option in the profile config:
+
+- `worktree_bgIsolation` (string) — one of `"preserve"` (default), `"none"` (opt-in). 
+- Implementation: default `preserve` prevents direct background edits to the worktree by default. Users can set `worktree_bgIsolation: "none"` to opt-in to direct edits for performance reasons.
+
+Rationale: default-preserve enforces a safer model. Only advanced users opt-in to `none`.
+
 ## 7. WebSocket Events
 
 - `agent:created` — new agent created
