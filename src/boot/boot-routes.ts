@@ -39,6 +39,7 @@ import {
 } from '../routes/index.js';
 import { registerDeviceAuthRoutes } from '../routes/device-auth.js';
 import { AgentProfileManager } from '../services/agents/AgentProfileManager.js';
+import JsonAgentStore from '../services/agents/JsonAgentStore.js';
 import { registerBudgetRoutes } from '../budgets/routes.js';
 import { validateWorkDir } from '../validation.js';
 import type { BudgetStore } from '../budgets/store.js';
@@ -140,7 +141,7 @@ export async function registerRoutes(
   registerDriverRoutes(app, routeCtx);
   registerTerminalRoutes(app, routeCtx);
   // Issue #3971: Agent profiles CRUD
-  const agentProfileManager = new AgentProfileManager(ctx.config.stateDir);
+  const agentProfileManager = new AgentProfileManager(new JsonAgentStore(ctx.config.stateDir));
   await agentProfileManager.load();
   routeCtx.agentProfileManager = agentProfileManager;
   registerAgentProfileRoutes(app, routeCtx);
