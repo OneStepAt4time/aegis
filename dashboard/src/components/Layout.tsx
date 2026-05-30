@@ -28,6 +28,7 @@ import { Sidebar } from './layout/Sidebar';
 import { Header } from './layout/Header';
 import { useLayoutSSE } from './layout/useLayoutSSE';
 import { useVersionCheck } from './layout/useVersionCheck';
+import { useInboxFromActivity } from '../hooks/useInboxFromActivity';
 import { MOBILE_SIDEBAR_QUERY } from './layout/types';
 import { useT } from '../i18n/context';
 
@@ -50,6 +51,7 @@ export default function Layout() {
   const [isMobileViewport, setIsMobileViewport] = useState(isMobileSidebarViewport);
 
   const { sseConnected, sseError, sseIndicatorLabel } = useLayoutSSE(token);
+  useInboxFromActivity(); // Bridge SSE events to inbox
   const {
     aegisVersion,
     updateCheckLoading,
