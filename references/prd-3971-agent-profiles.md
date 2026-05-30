@@ -83,6 +83,7 @@ interface Agent {
   mcpConfig?: Record<string, unknown>;
   ownerKeyId: string;            // API key that created this agent
   permissions: ApiKeyPermission[]; // Subset of owner key's permissions
+  configHash: string;            // Hash of config fields — changes on intentional updates only
   archived: boolean;
   archivedAt?: string;
   createdAt: string;
@@ -131,6 +132,10 @@ Response includes `agentId` and `runnerName` in session object.
 9. `ag run --agent <name>` works end-to-end
 10. `npm run gate` passes
 11. Tests cover: CRUD, archive/restore, permission validation, session spawn with agent config, concurrent session limits
+12. **Rate limiting:** `POST /v1/agents` capped at 10/min, all mutations at 30/min (Themis audit finding 4)
+13. **effectivePermissions** enforced as a concrete test — not just PRD prose (Themis audit finding 5)
+14. **mcpConfig path traversal** blocked: `path.resolve()` + `startsWith()` + symlink resolution on all MCP paths (Themis audit finding 6)
+15. **configHash** on agent schema — changes only on intentional updates. Mismatch at session spawn = force review (Themis audit: key rotation race)
 
 ## 6. Dependencies + Blockers
 
@@ -248,6 +253,77 @@ AGENT_DEACTIVATED { agentId, reason: 'owner_key_revoked', keyId }
 ```
 
 Audit entries are immutable and follow the existing audit trail format.
+
+### 9.9 Security Audit Findings (Themis, 2026-05-30)
+
+#### Finding 4: Rate Limiting
+
+Agent mutation endpoints MUST be rate-limited to prevent abuse:
+
+| Endpoint | Rate Limit |
+|----------|------------|
+| `POST /v1/agents` (create) | 10 requests/min per key |
+| All mutations (create + update + archive + restore) | 30 requests/min per key |
+| Reads (list + get) | No additional limit (uses global API rate limit) |
+
+Exceeding rate limit returns `429 Too Many Requests` with `Retry-After` header.
+
+#### Finding 5: effectivePermissions Enforcement
+
+`effectivePermissions()` is a concrete acceptance criterion, not just PRD prose:
+
+- **Test requirement:** Integration test MUST verify that a session spawned with an agent whose owner was downgraded to `viewer` results in read-only permissions.
+- **Test requirement:** Integration test MUST verify that a session spawned with an agent whose `kill` permission exceeds the owner's current permissions has `kill` removed from effective permissions.
+- **Implementation requirement:** The `effectivePermissions()` function is called at EVERY session start, not cached. Per-request validation when multi-tenant lands; token cache is acceptable for solo-dev.
+
+#### Finding 6: mcpConfig Path Traversal
+
+MCP server paths in `mcp_config` MUST be validated against the session's workDir:
+
+```typescript
+function validateMcpPaths(
+  mcpConfig: Record<string, unknown>,
+  allowedWorkDir: string
+): void {
+  const resolved = path.resolve(allowedWorkDir);
+  for (const server of Object.values(mcpConfig)) {
+    const serverArgs = (server as any).args || [];
+    for (const arg of serverArgs) {
+      if (typeof arg === 'string' && arg.startsWith('/')) {
+        const resolvedArg = path.resolve(arg);
+        // Resolve symlinks before comparison
+        const realArg = fs.realpathSync(resolvedArg);
+        const realWorkDir = fs.realpathSync(resolved);
+        if (!realArg.startsWith(realWorkDir + path.sep)) {
+          throw new ForbiddenError(`MCP path escapes workDir: ${arg}`);
+        }
+      }
+    }
+  }
+}
+```
+
+This blocks `../../etc/passwd` attacks AND symlink-based escapes.
+
+#### Key Rotation Race Condition
+
+**Attack vector:** Admin rotates key while session is being created. Session might start with stale permissions.
+
+**Mitigation: `configHash` field on agent schema.**
+
+```typescript
+interface Agent {
+  // ... existing fields ...
+  configHash: string;  // SHA-256 of (permissions + constraints + config)
+}
+```
+
+- `configHash` is computed at agent creation and on every intentional update.
+- At session spawn, Aegis compares the stored `configHash` against a live recomputation.
+- If they differ (config changed mid-flight), the session start is rejected with `409 CONFIG_CHANGED` — client must retry.
+- This prevents TOCTOU races where config changes between validation and application.
+
+**Note on token cache:** Token caching in-process is acceptable for solo-dev (current scope). Per-request validation becomes mandatory when multi-tenant lands (Phase 4+).
 
 ---
 
