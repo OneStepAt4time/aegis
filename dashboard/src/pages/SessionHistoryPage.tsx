@@ -568,6 +568,7 @@ export default function SessionHistoryPage() {
 
           <button type="button"
             onClick={applyFilters}
+              aria-label={t("aria.applyFilters")}
             className="min-h-[44px] rounded border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20"
           >
             {t('sessionHistory.apply')}
@@ -575,6 +576,7 @@ export default function SessionHistoryPage() {
 
           <button type="button"
             onClick={clearFilters}
+              aria-label={t("aria.clearFilters")}
             className="min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-void-lighter)]"
           >
             {t('sessionHistory.clear')}

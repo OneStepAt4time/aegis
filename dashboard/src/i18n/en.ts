@@ -593,6 +593,7 @@ export const en = {
     sessionCaptureScreenshot: 'Capture screenshot',
     sessionSendEscape: 'Send Escape to session',
     sessionInterruptCtrlC: 'Interrupt session with Ctrl+C',
+    quickCommand: 'Insert {command} command',
     sessionSendMessage: 'Send message',
     sessionSendMessageCmd: 'Send message (⌘↵)',
     sessionInsertSlashCommand: 'Insert slash command',
@@ -998,6 +999,14 @@ export const en = {
 
     // Pages
     auditRecordDetail: 'Audit record detail',
+    copyHash: 'Copy hash',
+    copyPrevHash: 'Copy previous hash',
+    copyJson: 'Copy JSON',
+    refreshAudit: 'Refresh audit log',
+    refreshSessions: 'Refresh session history',
+    applyFilters: 'Apply filters',
+    clearFilters: 'Clear filters',
+    viewAuditDetail: 'View audit detail: {action}',
     closeDetailDrawer: 'Close detail drawer',
     exportCsv: 'Export CSV',
     exportNdjson: 'Export NDJSON',
