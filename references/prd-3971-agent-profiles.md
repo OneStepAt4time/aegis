@@ -54,26 +54,105 @@ The following are **removed from v1** and deferred to v2 or later:
 7. As a developer, I can bind an agent to a specific runtime (local daemon), so the agent always executes on the right infrastructure.
 8. As a user, I see real-time WebSocket events when agents are created, archived, or restored.
 
-## 4. Data Model
+## 4. Data Model (Storage-Agnostic)
+
+Agent profiles use the same dual-backend persistence pattern as sessions and pipelines: `JsonFileStore` (default, solo-dev) and `PostgresStore` (opt-in, multi-tenant).
+
+### 4.1 Agent TypeScript Interface
+
+```typescript
+interface Agent {
+  id: string;                          // UUID v4
+  name: string;                        // SAFE_NAME_RE: ^[a-zA-Z0-9_-]{1,64}$
+  description?: string;
+  avatarUrl?: string;
+  runnerName?: string;                 // maps to RunnerRegistry.get(name), default 'claude-code'
+  runtimeConfig?: Record<string, unknown>;
+  model?: string;                      // model override (null = tool default)
+  thinkingLevel?: 'none' | 'low' | 'medium' | 'high';
+  maxConcurrentTasks: number;          // default 1
+  instructions?: string;               // custom system prompt additions
+  customEnv?: Array<{key: string, value: string}>;   // validated against denylist at write time
+  customArgs?: string[];               // validated against denylist at write time
+  mcpConfig?: Record<string, unknown>; // validated against allowlist at write time
+  ownerKeyId: string;                  // matches ADR-0024 ownership model
+  archivedAt?: string;                 // ISO 8601 timestamp — soft delete
+  archivedBy?: string;                 // key ID that archived
+  createdAt: string;                   // ISO 8601 timestamp
+  updatedAt: string;                   // ISO 8601 timestamp
+}
+```
+
+### 4.2 Storage Interface Extension
+
+Extend `StateStore` (or create `AgentStore`) with agent CRUD:
+
+```typescript
+interface AgentStore {
+  // Load all agents
+  loadAgents(): Promise<Record<string, Agent>>;
+  
+  // Save all agents (atomic)
+  saveAgents(agents: Record<string, Agent>): Promise<void>;
+  
+  // Get single agent
+  getAgent(id: string): Promise<Agent | undefined>;
+  
+  // Put single agent (create or update)
+  putAgent(id: string, agent: Agent): Promise<void>;
+  
+  // Delete single agent (hard delete — archive is soft, this is for cleanup)
+  deleteAgent(id: string): Promise<void>;
+  
+  // List all agent IDs
+  listAgentIds(): Promise<string[]>;
+}
+```
+
+### 4.3 JsonFileStore Implementation (default)
+
+Persist agents to `agents.json` in the state directory, alongside `state.json` and `pipelines.json`:
+
+```typescript
+// In JsonFileStore
+private readonly agentFile: string;
+
+constructor(config: JsonFileStoreConfig) {
+  // ... existing ...
+  this.agentFile = join(config.stateDir, 'agents.json');
+}
+
+async loadAgents(): Promise<Record<string, Agent>> {
+  // Same pattern as load() / loadPipelines()
+  // Read agents.json → parse → validate → return
+}
+
+async saveAgents(agents: Record<string, Agent>): Promise<void> {
+  // Same atomic write pattern (tmp + rename, mode 0o600)
+}
+```
+
+### 4.4 PostgresStore Implementation (opt-in)
+
+When `AEGIS_SESSION_STORE=postgres`, agents are stored in a `agent` table:
 
 ```sql
 CREATE TABLE agent (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id UUID,  -- nullable in v1 (single-tenant), required in v2
-    name TEXT NOT NULL,  -- validated: ^[a-zA-Z0-9_-]{1,64}$
+    workspace_id UUID,                 -- nullable in v1 (single-tenant)
+    name TEXT NOT NULL,
     description TEXT,
     avatar_url TEXT,
-    runtime_mode TEXT NOT NULL DEFAULT 'daemon',
+    runner_name TEXT DEFAULT 'claude-code',
     runtime_config JSONB DEFAULT '{}',
-    runtime_id UUID REFERENCES runtime(id),
     model TEXT,
     thinking_level TEXT CHECK(thinking_level IN ('none','low','medium','high')),
     max_concurrent_tasks INTEGER NOT NULL DEFAULT 1,
     instructions TEXT,
-    custom_env JSONB DEFAULT '[]',   -- validated against env denylist at write time
-    custom_args JSONB DEFAULT '[]',  -- validated against arg denylist at write time
-    mcp_config JSONB DEFAULT '{}',   -- validated against MCP allowlist at write time
-    owner_key_id TEXT NOT NULL,       -- matches ADR-0024 ownership model
+    custom_env JSONB DEFAULT '[]',
+    custom_args JSONB DEFAULT '[]',
+    mcp_config JSONB DEFAULT '{}',
+    owner_key_id TEXT NOT NULL,
     archived_at TIMESTAMPTZ,
     archived_by TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -83,7 +162,9 @@ CREATE TABLE agent (
 CREATE INDEX idx_agent_active ON agent(workspace_id) WHERE archived_at IS NULL;
 ```
 
-### Skill Attachment (forward compat — no v1 API)
+**Note:** The Postgres schema is the persistence layer only. The application layer uses the TypeScript `Agent` interface regardless of backend.
+
+### 4.5 Skill Attachment (forward compat — no v1 API)
 
 ```sql
 CREATE TABLE agent_skill (
@@ -93,6 +174,8 @@ CREATE TABLE agent_skill (
     PRIMARY KEY (agent_id, skill_id)
 );
 ```
+
+**Note:** This table is Postgres-only. For `JsonFileStore`, skills are stored inline in `Agent.customEnv` or a separate `agent_skills.json` file. The v1 API does not expose skills — this is forward compatibility only.
 
 ## 5. API Design
 
