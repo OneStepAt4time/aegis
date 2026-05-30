@@ -22,6 +22,7 @@ import type {
 } from './types.js';
 import { SAFE_NAME_RE } from './types.js';
 import type AgentStore from './AgentStore.js';
+import { Mutex } from 'async-mutex';
 
 
 
@@ -134,7 +135,8 @@ export class AgentProfileManager {
     ownerKeyId: string,
     payload: CreateAgentProfilePayload,
   ): Promise<AgentProfile> {
-    if (!this.loaded) throw new Error('AgentProfileManager not loaded');
+    return this.writeMutex.runExclusive(async () => {
+      if (!this.loaded) throw new Error('AgentProfileManager not loaded');
 
     // Name validation (Themis finding #2: model layer)
     if (!SAFE_NAME_RE.test(payload.name)) {
@@ -186,7 +188,8 @@ export class AgentProfileManager {
       attributes: { profileId: profile.id, name: profile.name, agentId: profile.agentId },
     });
 
-    return cloneProfile(profile);
+      return cloneProfile(profile);
+    });
   }
 
   get(profileId: string): AgentProfile | undefined {
@@ -242,13 +245,15 @@ export class AgentProfileManager {
     if (payload.customArgs !== undefined) profile.customArgs = payload.customArgs;
     if (payload.mcpConfig !== undefined) profile.mcpConfig = payload.mcpConfig;
 
-    profile.updatedAt = Date.now();
-    // Recompute config hash on any update
-    const { configHash: _old, updatedAt: _ts, ...base } = profile;
-    profile.configHash = computeConfigHash(base as Omit<AgentProfile, 'configHash' | 'updatedAt'>);
+    return this.writeMutex.runExclusive(async () => {
+      profile.updatedAt = Date.now();
+      // Recompute config hash on any update
+      const { configHash: _old, updatedAt: _ts, ...base } = profile;
+      profile.configHash = computeConfigHash(base as Omit<AgentProfile, 'configHash' | 'updatedAt'>);
 
-    await this.putSerialized(profile);
-    return cloneProfile(profile);
+      await this.putSerialized(profile);
+      return cloneProfile(profile);
+    });
   }
 
   async archive(profileId: string, archivedByKeyId: string): Promise<AgentProfile> {
@@ -256,18 +261,20 @@ export class AgentProfileManager {
     if (!profile) throw new AgentProfileNotFoundError(profileId);
     if (profile.archivedAt !== null) return cloneProfile(profile); // idempotent
 
-    profile.archivedAt = Date.now();
-    profile.archivedBy = archivedByKeyId;
-    profile.updatedAt = Date.now();
-    await this.putSerialized(profile);
+    return this.writeMutex.runExclusive(async () => {
+      profile.archivedAt = Date.now();
+      profile.archivedBy = archivedByKeyId;
+      profile.updatedAt = Date.now();
+      await this.putSerialized(profile);
 
-    logger.info({
-      component: 'agent-profiles',
-      operation: 'archived',
-      attributes: { profileId },
+      logger.info({
+        component: 'agent-profiles',
+        operation: 'archived',
+        attributes: { profileId },
+      });
+
+      return cloneProfile(profile);
     });
-
-    return cloneProfile(profile);
   }
 
   async restore(profileId: string): Promise<AgentProfile> {
@@ -275,18 +282,20 @@ export class AgentProfileManager {
     if (!profile) throw new AgentProfileNotFoundError(profileId);
     if (profile.archivedAt === null) return cloneProfile(profile); // idempotent
 
-    profile.archivedAt = null;
-    profile.archivedBy = null;
-    profile.updatedAt = Date.now();
-    await this.putSerialized(profile);
+    return this.writeMutex.runExclusive(async () => {
+      profile.archivedAt = null;
+      profile.archivedBy = null;
+      profile.updatedAt = Date.now();
+      await this.putSerialized(profile);
 
-    logger.info({
-      component: 'agent-profiles',
-      operation: 'restored',
-      attributes: { profileId },
+      logger.info({
+        component: 'agent-profiles',
+        operation: 'restored',
+        attributes: { profileId },
+      });
+
+      return cloneProfile(profile);
     });
-
-    return cloneProfile(profile);
   }
 }
 
