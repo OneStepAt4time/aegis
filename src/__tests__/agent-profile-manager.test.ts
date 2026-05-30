@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
+import JsonAgentStore from "../services/agents/JsonAgentStore.js";
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AgentProfileManager, AgentProfileNotFoundError, AgentProfileArchivedError, AgentProfileNameError, AgentProfileEnvError } from '../services/agents/AgentProfileManager.js';
@@ -17,7 +18,8 @@ describe('AgentProfileManager', () => {
 
   beforeEach(async () => {
     dataDir = await mkdtemp(join(tmpdir(), 'aegis-profile-test-'));
-    manager = new AgentProfileManager(dataDir);
+    const store = new JsonAgentStore(dataDir);
+    manager = new AgentProfileManager(store);
     await manager.load();
   });
 
@@ -350,7 +352,8 @@ describe('AgentProfileManager', () => {
   it('persists data across load cycles', async () => {
     const created = await manager.create('ws-1', 'key-1', { name: 'persistent' });
 
-    const manager2 = new AgentProfileManager(dataDir);
+    const store2 = new JsonAgentStore(dataDir);
+    const manager2 = new AgentProfileManager(store2);
     await manager2.load();
 
     const fetched = manager2.get(created.id);
@@ -361,7 +364,8 @@ describe('AgentProfileManager', () => {
   });
 
   it('handles missing data file gracefully', async () => {
-    const empty = new AgentProfileManager(dataDir);
+    const emptyStore = new JsonAgentStore(dataDir);
+    const empty = new AgentProfileManager(emptyStore);
     await empty.load();
     expect(empty.list()).toHaveLength(0);
   });
