@@ -594,6 +594,7 @@ export const it = {
     interruptFailed: 'Interruzione fallita',
     sessionSlashCommand: 'Comando slash',
     sessionCaptureScreenshot: 'Cattura screenshot',
+    slashPanelCaptureScreenshot: 'Cattura schermata (pannello slash)',
     sessionSendEscape: 'Invia Escape alla sessione',
     sessionInterruptCtrlC: 'Interrompi sessione con Ctrl+C',
     quickCommand: 'Inserisci comando {command}',

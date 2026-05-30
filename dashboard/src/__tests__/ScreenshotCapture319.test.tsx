@@ -105,7 +105,7 @@ describe('Issue 319 screenshot capture', () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Screenshot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Capture screenshot' }));
 
     await waitFor(() => {
       expect(mockGetScreenshot).toHaveBeenCalledWith('session-1');
@@ -121,7 +121,7 @@ describe('Issue 319 screenshot capture', () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Screenshot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Capture screenshot' }));
 
     await waitFor(() => {
       expect(mockAddToast).toHaveBeenCalledWith(
@@ -131,6 +131,6 @@ describe('Issue 319 screenshot capture', () => {
       );
     });
 
-    expect(screen.queryByRole('button', { name: 'Screenshot' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Capture screenshot' })).toBeNull();
   });
 });

@@ -78,7 +78,7 @@ describe('SessionHistoryPage', () => {
 
     fireEvent.change(screen.getByLabelText('Owner key ID'), { target: { value: 'owner-1' } });
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'active' } });
-    fireEvent.click(screen.getByText('Apply'));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
 
     await waitFor(() => {
       expect(fetchSessionHistoryMock).toHaveBeenLastCalledWith(expect.objectContaining({

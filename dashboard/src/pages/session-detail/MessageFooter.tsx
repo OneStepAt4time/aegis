@@ -161,7 +161,7 @@ export function MessageFooter({
             disabled={capturingScreenshot || !h.alive}
             className={buttonClass}
             title={t('sessionDetail.sessionCaptureScreenshot')}
-            aria-label={t('sessionDetail.sessionCaptureScreenshot')}
+            aria-label={t('sessionDetail.slashPanelCaptureScreenshot')}
           >
             {capturingScreenshot ? t('sessionDetail.capturing') : t('sessionDetail.screenshot')}
           </button>

@@ -591,6 +591,7 @@ export const en = {
     // Session action aria-labels
     sessionSlashCommand: 'Slash command',
     sessionCaptureScreenshot: 'Capture screenshot',
+    slashPanelCaptureScreenshot: 'Capture screenshot (slash panel)',
     sessionSendEscape: 'Send Escape to session',
     sessionInterruptCtrlC: 'Interrupt session with Ctrl+C',
     quickCommand: 'Insert {command} command',
