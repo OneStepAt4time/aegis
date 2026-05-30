@@ -1,22 +1,13 @@
 /**
  * AgentProfileManager — Issue #3971
  *
- * CRUD operations for agent profiles. File-based storage consistent
- * with Aegis solo-dev patterns (see AgentManager).
- *
- * Profiles are workspace-scoped and support soft-delete via archive/restore.
- * v1: visibility removed from API, workspaceId nullable (ADR-0029 single-tenant).
- *
- * Security (Themis audit):
- *   - Name validation at model layer (SAFE_NAME_RE)
- *   - Env denylist validated at write time
- *   - configHash for key rotation race protection
+ * CRUD operations for agent profiles. Persistence is delegated to an
+ * AgentStore implementation (file-based, Postgres, etc.). Manager keeps
+ * in-memory cache and business logic (validation, configHash, archive/restore).
  */
 
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { logger } from '../../logger.js';
 import { ENV_DENYLIST, ENV_DANGEROUS_PREFIXES, ENV_NAME_RE, hasControlChars, ENV_VALUE_MAX_BYTES } from '../../validation.js';
 import type {
@@ -27,6 +18,7 @@ import type {
   UpdateAgentProfilePayload,
 } from './types.js';
 import { SAFE_NAME_RE } from './types.js';
+import type AgentStore from './AgentStore.js';
 
 
 
@@ -102,27 +94,21 @@ export interface ListProfilesOptions {
 }
 
 export class AgentProfileManager {
-  private filePath: string;
+  private store: AgentStore;
   private profiles = new Map<string, AgentProfile>();
   private loaded = false;
 
-  constructor(dataDir: string) {
-    this.filePath = `${dataDir}/agent-profiles.json`;
+  constructor(store: AgentStore) {
+    this.store = store;
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────
 
   async load(): Promise<void> {
-    try {
-      const raw = await readFile(this.filePath, 'utf8');
-      const data = JSON.parse(raw) as { profiles: SerializedAgentProfile[] };
-      this.profiles.clear();
-      for (const s of data.profiles) {
-        this.profiles.set(s.id, deserializeProfile(s));
-      }
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-      this.profiles.clear();
+    const data = await this.store.loadAgents();
+    this.profiles.clear();
+    for (const s of data) {
+      this.profiles.set(s.id, deserializeProfile(s));
     }
     this.loaded = true;
     logger.info({
@@ -132,10 +118,9 @@ export class AgentProfileManager {
     });
   }
 
-  private async persist(): Promise<void> {
-    const data = { profiles: [...this.profiles.values()].map(serializeProfile) };
-    await mkdir(dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(data, null, 2));
+  // Persist helpers delegate to the injected store
+  private async putSerialized(profile: AgentProfile): Promise<void> {
+    await this.store.putAgent(serializeProfile(profile));
   }
 
   // ── CRUD ─────────────────────────────────────────────────────────
@@ -189,7 +174,7 @@ export class AgentProfileManager {
     };
 
     this.profiles.set(profile.id, profile);
-    await this.persist();
+    await this.putSerialized(profile);
 
     logger.info({
       component: 'agent-profiles',
@@ -258,7 +243,7 @@ export class AgentProfileManager {
     const { configHash: _old, updatedAt: _ts, ...base } = profile;
     profile.configHash = computeConfigHash(base as Omit<AgentProfile, 'configHash' | 'updatedAt'>);
 
-    await this.persist();
+    await this.putSerialized(profile);
     return cloneProfile(profile);
   }
 
@@ -270,7 +255,7 @@ export class AgentProfileManager {
     profile.archivedAt = Date.now();
     profile.archivedBy = archivedByKeyId;
     profile.updatedAt = Date.now();
-    await this.persist();
+    await this.putSerialized(profile);
 
     logger.info({
       component: 'agent-profiles',
@@ -289,7 +274,7 @@ export class AgentProfileManager {
     profile.archivedAt = null;
     profile.archivedBy = null;
     profile.updatedAt = Date.now();
-    await this.persist();
+    await this.putSerialized(profile);
 
     logger.info({
       component: 'agent-profiles',
