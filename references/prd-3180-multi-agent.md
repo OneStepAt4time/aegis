@@ -224,7 +224,7 @@ Agent permissions (from #3971) flow to the runner:
 - Runner cannot perform actions outside the agent's permission scope
 - If agent owner's key is revoked mid-session, next API call fails hard (per #3971 security model)
 
-### 7.4 Environment Variable Isheritance
+### 7.4 Environment Variable Inheritance
 
 Agent `custom_env` passes to runner subprocess. Security rules:
 - No overriding Aegis internal env vars (`AEGIS_*`)
@@ -236,11 +236,47 @@ Agent `custom_env` passes to runner subprocess. Security rules:
 
 | Runner | Required env vars | Source |
 |--------|------------------|--------|
-| `claude-code` | `CLAUDE_CODE_SESSION_ID`, `CLAUDECODE=1` | CC v2.1.154 — passed to MCP stdio servers |
+| `claude-code` | `CLAUDE_CODE_SESSION_ID`, `CLAUDECODE=1`, `CLAUDE_PROJECT_DIR` | CC v2.1.154 (session ID), v2.1.139 (project dir) |
 | `codex` | TBD — verify if Codex app-server expects similar vars | Needs testing |
 | `gemini-cli` | TBD — verify if Gemini CLI expects similar vars | Needs testing |
 
+All three CC vars (`CLAUDE_CODE_SESSION_ID`, `CLAUDECODE=1`, `CLAUDE_PROJECT_DIR`) ship together as one bug-fix PR. Do not wait for #3971.
+
 **Important:** `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` (CC v2.1.83) strips Anthropic/cloud credentials from subprocess environments. Aegis must NOT set this var unless explicitly requested — it would break MCP server auth.
+
+### 7.5 Permission Mode Override
+
+**Aegis MUST always explicitly set `--permission-mode` on CC spawn.** Never inherit CC's persisted state.
+
+CC v2.1.143 persists `--dangerously-skip-permissions` across retire→wake for background sessions. This is a security boundary Aegis must control, not delegate to CC's memory.
+
+**Implementation requirement:**
+- Every CC session spawn includes `--permission-mode <mode>` derived from the agent's effective permissions
+- `--dangerously-skip-permissions` is NEVER passed by Aegis (use `--permission-mode bypass` if explicitly configured)
+- Aegis ignores CC's persisted permission state — sets it fresh on every spawn
+- Themis to flag in next security review
+
+### 7.6 Worktree Isolation
+
+**Default: preserve CC's worktree isolation for background sessions.**
+
+CC v2.1.143 introduced `worktree.bgIsolation: "none"` — lets background sessions edit the working copy directly without worktree isolation. This is faster but less safe.
+
+**Agent config schema addition:**
+
+```typescript
+interface AgentConfig {
+  // ... existing fields ...
+  /** Allow background sessions to edit working copy directly (no worktree isolation).
+   *  Default: false. Opt-in only. Users who want raw speed can enable it.
+   *  Maps to CC's worktree.bgIsolation: "none" setting. */
+  allowDirectBgEdit: boolean; // default: false
+}
+```
+
+- `false` (default): CC background sessions use worktree isolation — changes are isolated until merged
+- `true` (opt-in): CC background sessions edit the working copy directly — faster but no isolation
+- Aegis never sets this to `true` unless the agent config explicitly enables it
 
 ### 7.5 Dirty Shutdown Safety
 
