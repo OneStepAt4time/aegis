@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { AcpDurableIdentityError, AcpValidationError } from './session-service.js';
+import { AcpDurableIdentityError, AcpValidationError } from './acp-errors.js';
 import type { AcpBackendMetadataValue, AcpSessionScope } from './types.js';
 
 export type AcpPauseInterventionStatus = 'paused' | 'intervening' | 'resumed';

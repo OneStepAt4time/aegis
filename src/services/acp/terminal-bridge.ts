@@ -1,12 +1,14 @@
 import type {
-  AcpBackendClient,
+  AcpSessionScope,
+  AcpSessionRecord,
+} from './types.js';
+import type {
   AcpJsonObject,
   AcpJsonRpcNotification,
   AcpJsonRpcRequestOptions,
   AcpJsonValue,
-  AcpSessionRecord,
-  AcpSessionScope,
-} from './index.js';
+} from './json-rpc-client.js';
+import type { AcpBackendClient } from './backend.js';
 
 const TERMINAL_EXTENSION_PARITY_AREA = 'terminal-extension';
 const DEFAULT_EVENT_TIMEOUT_MS = 15_000;

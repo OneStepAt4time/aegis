@@ -11,7 +11,7 @@ import type {
   AggregateMetricsByKey,
   AggregateMetricsAnomaly,
 } from './api-contracts.js';
-import type { SessionMetrics } from './metrics.js';
+import type { SessionMetrics } from './metrics-types.js';
 
 export type GroupBy = 'day' | 'hour' | 'key';
 

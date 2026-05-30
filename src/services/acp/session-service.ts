@@ -73,19 +73,9 @@ export class AcpSessionNotFoundError extends Error {
   }
 }
 
-export class AcpDurableIdentityError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AcpDurableIdentityError';
-  }
-}
-
-export class AcpValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AcpValidationError';
-  }
-}
+// Re-exported from acp-errors.ts for backward compatibility.
+export { AcpDurableIdentityError, AcpValidationError } from './acp-errors.js';
+import { AcpDurableIdentityError, AcpValidationError } from './acp-errors.js';
 
 export class AcpSessionService {
   private readonly idProvider: () => string;

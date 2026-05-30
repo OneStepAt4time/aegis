@@ -52,25 +52,10 @@ export interface GlobalMetrics {
   promptsFailed: number;
 }
 
-/** Issue #488: Cumulative token usage + estimated cost for a session. */
-export interface SessionTokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-  estimatedCostUsd: number;
-}
-
-export interface SessionMetrics {
-  durationSec: number;
-  messages: number;
-  toolCalls: number;
-  approvals: number;
-  autoApprovals: number;
-  statusChanges: string[];
-  /** Issue #488: Cumulative token usage and estimated cost. Present once tokens are first observed. */
-  tokenUsage?: SessionTokenUsage;
-}
+// Re-exported from metrics-types.ts for backward compatibility.
+// Types defined in metrics-types.ts to break circular dep with metrics-aggregation.ts.
+export type { SessionTokenUsage, SessionMetrics } from './metrics-types.js';
+import type { SessionMetrics, SessionTokenUsage } from './metrics-types.js';
 
 /** Issue #87: Per-session latency samples (rolling window). */
 export interface SessionLatency {
