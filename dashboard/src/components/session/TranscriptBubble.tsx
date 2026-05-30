@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ParsedEntry } from '../../types';
 import { RenderWithCodeBlocks } from '../shared/CodeBlock';
 import { CopyButton } from '../shared/CopyButton';
@@ -95,6 +95,11 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
     navigator.clipboard.writeText(url);
   };
 
+  const toggleCollapse = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    setCollapsed(prev => !prev);
+  }, []);
+
   if (isSystem) {
     return (
       <div
@@ -174,13 +179,21 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
             </div>
           )}
           <div className="flex-1">
-            <button type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCollapsed(!collapsed);
+            {/* Using div with role="button" instead of <button> to avoid nesting
+                <button> inside <button> (CopyButton renders a <button>) */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={toggleCollapse}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleCollapse(e);
+                }
               }}
               aria-label={t('aria.collapseTranscriptEntry')}
-            className={`w-full text-left rounded-lg overflow-hidden border transition-colors ${
+              aria-expanded={!collapsed}
+              className={`w-full text-left rounded-lg overflow-hidden border transition-colors cursor-pointer ${
                 isFailed
                   ? 'border-[var(--color-danger)]/40 bg-[var(--color-void)]'
                   : entry.contentType === 'tool_use'
@@ -223,7 +236,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
                   {toolDisplay}
                 </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       </div>
