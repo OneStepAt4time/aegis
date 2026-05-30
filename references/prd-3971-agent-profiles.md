@@ -38,7 +38,7 @@ Agents are first-class persistent objects. Each agent has:
 
 The following are **removed from v1** and deferred to v2 or later:
 
-- ~~Visibility (`workspace` / `private`)~~ — no multi-user, no private agents until enterprise
+- ~~Visibility (`workspace` / `private`)~~ — **NO visibility field in v1 at all.** Single-tenant = everyone sees everything. Visibility layer is a multi-tenant concern for Phase 4 enterprise.
 - ~~Skills array in API~~ — `agent_skill` join table exists in migration for forward compat, but no skills endpoint or skills field in create/update payloads
 - ~~Routing rules~~ — model override via `model` field only. Routing logic is a follow-up issue
 - ~~`workspaceId` required~~ — field kept as nullable for future, not required in v1 (single-tenant per ADR-0029)
