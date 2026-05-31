@@ -191,7 +191,7 @@ function buildApp(opts: { authEnabled?: boolean; acpEnabled?: boolean } = {}) {
   const app = Fastify({ logger: false });
   app.addHook('onRequest', async (req: any) => {
     req.authKeyId = null;
-    req.tenantId = "_system";
+    req.tenantId = '_system';
     req.matchedPermission = 'kill';
   });
 
@@ -200,8 +200,6 @@ function buildApp(opts: { authEnabled?: boolean; acpEnabled?: boolean } = {}) {
 
   return { app, sessions, session1, session2, ctx, auditQueryResult };
 }
-
-// ─── GET /v1/sessions/history ────────────────────────────────────────────
 
 describe('GET /v1/sessions/history', () => {
   let app: ReturnType<typeof buildApp>['app'];
@@ -221,14 +219,15 @@ describe('GET /v1/sessions/history', () => {
     expect(body.pagination.page).toBe(1);
   });
 
-  it('respects page and limit query params', async () => {
+  it('accepts dashboard history filter, sort, and limit params', async () => {
+    const createdAfter = Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000);
     const res = await app.inject({
-      method: 'GET', url: '/v1/sessions/history?page=1&limit=1',
+      method: 'GET', url: `/v1/sessions/history?createdAfter=${createdAfter}&limit=500&sortBy=createdAt&sortOrder=desc`,
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.pagination.limit).toBe(1);
-    expect(body.records.length).toBeLessThanOrEqual(1);
+    expect(body.pagination.limit).toBe(500);
+    expect(body.records).toBeInstanceOf(Array);
   });
 
   it('returns 400 for invalid query params', async () => {

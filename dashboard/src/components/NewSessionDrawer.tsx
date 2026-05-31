@@ -88,7 +88,7 @@ export function NewSessionDrawer() {
     setWorkDirError(null);
 
     if (!workDir.trim()) {
-      addToast('error', 'Missing work directory', 'Work directory is required');
+      addToast('error', t('newSession.missingWorkDir'), t('newSession.missingWorkDirDescription'));
       return;
     }
 
@@ -101,20 +101,20 @@ export function NewSessionDrawer() {
         prompt: prompt.trim() || undefined,
         permissionMode: permissionMode !== 'default' ? permissionMode : undefined,
       });
-      addToast('success', 'Session created', session.id);
+      addToast('success', t('newSession.sessionCreated'), session.id);
       
       triggerFirstSessionConfetti(submitButtonRef.current || undefined);
       
       closeNewSession();
       navigate(`/sessions/${session.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create session';
-      addToast('error', 'Creation failed', msg);
+      const msg = err instanceof Error ? err.message : t('newSession.failedCreate');
+      addToast('error', t('newSession.creationFailed'), msg);
     } finally {
       addRecentDir(workDir.trim());
       setLoading(false);
     }
-  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession, triggerFirstSessionConfetti]);
+  }, [workDir, name, claudeCommand, prompt, permissionMode, addToast, navigate, closeNewSession, triggerFirstSessionConfetti, t]);
 
   return (
     <Drawer

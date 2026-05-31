@@ -29,6 +29,7 @@ import { SkeletonTable } from '../components/shared/Skeleton';
 import EmptyState from '../components/shared/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { useT } from '../i18n/context';
+import { useAuthStore } from '../store/useAuthStore';
 
 const REFRESH_INTERVAL_MS = 15_000;
 const SECRET_CLEAR_MS = 60_000;
@@ -82,6 +83,8 @@ export default function AuthKeysPage() {
   const [createdKey, setCreatedKey] = useState<CreatedAuthKey | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const addToast = useToastStore((store) => store.addToast);
+  const isPublicAccess = useAuthStore((store) =>
+    store.isAuthenticated && store.authMode === null && store.identity === null);
 
   const [showUsersBanner, setShowUsersBanner] = useState<boolean>(() => {
     if (!isUsersRedirectState(location.state)) return false;
@@ -101,6 +104,14 @@ export default function AuthKeysPage() {
   }
 
   const fetchKeys = useCallback(async (silent = false) => {
+    if (isPublicAccess) {
+      setKeys([]);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (silent) {
       setRefreshing(true);
     } else {
@@ -131,15 +142,16 @@ export default function AuthKeysPage() {
         setLoading(false);
       }
     }
-  }, [addToast, t]);
+  }, [isPublicAccess, t]);
 
   useEffect(() => {
     fetchKeys();
+    if (isPublicAccess) return undefined;
     const interval = setInterval(() => {
       void fetchKeys(true);
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetchKeys]);
+  }, [fetchKeys, isPublicAccess]);
 
   useEffect(() => {
     if (!createdKey) return;
@@ -240,7 +252,7 @@ export default function AuthKeysPage() {
           type="button"
           onClick={() => void fetchKeys(true)}
           aria-label={t('authKeys.refresh')}
-          disabled={refreshing}
+          disabled={isPublicAccess || refreshing}
           className="flex min-h-[44px] items-center justify-center gap-2 rounded border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-accent-cyan)]/30 hover:text-[var(--color-accent-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -255,9 +267,14 @@ export default function AuthKeysPage() {
             {t('authKeys.createKey')}
           </div>
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            {t('authKeys.newSecretsDescription')}
+            {isPublicAccess ? t('authKeys.publicAccessDescription') : t('authKeys.newSecretsDescription')}
           </p>
 
+          {isPublicAccess ? (
+            <div className="mt-4 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
+              {t('authKeys.publicAccessCreateDisabled')}
+            </div>
+          ) : (
           <form className="mt-4 space-y-4" onSubmit={handleCreate}>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]" htmlFor="auth-key-name">
@@ -283,6 +300,7 @@ export default function AuthKeysPage() {
               {creating ? t('authKeys.creating') : t('authKeys.createAuthKey')}
             </button>
           </form>
+          )}
 
           {createdKey ? (
             <div className="mt-5 rounded-lg border border-[var(--color-success)]/20 bg-[var(--color-success)]/5 p-4" role="status">
@@ -368,8 +386,8 @@ export default function AuthKeysPage() {
           ) : keys.length === 0 ? (
             <EmptyState
               icon={<KeyRound className="h-8 w-8" />}
-              title={t('authKeys.noAuthKeysYet')}
-              description={t('authKeys.noAuthKeysDescription')}
+              title={isPublicAccess ? t('authKeys.publicAccessTitle') : t('authKeys.noAuthKeysYet')}
+              description={isPublicAccess ? t('authKeys.publicAccessDescription') : t('authKeys.noAuthKeysDescription')}
             />
           ) : (
             <div className="mt-4 space-y-3">

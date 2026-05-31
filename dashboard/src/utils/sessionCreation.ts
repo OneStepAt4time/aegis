@@ -29,7 +29,7 @@ export function validateWorkDir(path: string): string | null {
 
   // Must start with / (Unix) or drive letter (Windows)
   if (!trimmed.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(trimmed)) {
-    return 'Working directory must be an absolute path (e.g. /home/user/project)';
+    return 'Working directory must be an absolute path (e.g. /home/user/project or C:\\Users\\you\\project)';
   }
 
   // Reject obviously wrong patterns

@@ -10,7 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
-import { isTourCompleted } from './utils/tourState';
+import { isTourCompleted, markTourCompleted } from './utils/tourState';
 
 import { useAuthStore } from './store/useAuthStore';
 
@@ -115,9 +115,10 @@ export default function App() {
         localStorage.setItem('aegis:onboarded', '1');
         sessionStorage.setItem('aegis:onboarded', '1');
       } catch { /* ignore storage errors */ }
+      if (!isTourCompleted()) markTourCompleted();
+      tourDismissed.current = true;
+      setShowTour(false);
       setShowOnboarding(false);
-      localStorage.setItem('aegis:onboarded', 'true');
-      if (!isTourCompleted()) setShowTour(true);
     }} /></Suspense>;
   }
 
@@ -260,6 +261,7 @@ export default function App() {
             />
             <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><SettingsPage /></Suspense>} />
             <Route path="/settings/notifications" element={<Suspense fallback={<LoadingFallback />}><NotificationSettingsPage /></Suspense>} />
+            <Route path="/notifications" element={<Navigate to="/settings/notifications" replace />} />
 
             <Route
               path="*"

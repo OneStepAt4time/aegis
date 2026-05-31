@@ -15,6 +15,7 @@ function TestComponent() {
       <div data-testid="locale">{locale}</div>
       <div data-testid="title">{t('overview.title')}</div>
       <div data-testid="subtitle">{t('overview.subtitle')}</div>
+      <div data-testid="dotted-leaf">{t('inbox.empty.unread')}</div>
       <div data-testid="missing">{t('nonexistent.key')}</div>
       <button type="button" onClick={() => setLocale('de-DE')}>Change to German</button>
     </div>
@@ -122,5 +123,16 @@ describe('I18nProvider', () => {
     expect(t('settings.display.theme')).toBe('Theme');
     expect(t('settings.autoRefresh.enable')).toBe('Enable auto-refresh');
     expect(t('status.idle')).toBe('Idle');
+    expect(t('inbox.filter.all')).toBe('All');
+  });
+
+  it('should resolve dotted leaf keys even when a prefix key exists', () => {
+    render(
+      <I18nProvider>
+        <TestComponent />
+      </I18nProvider>
+    );
+
+    expect(screen.getByTestId('dotted-leaf').textContent).toBe('No unread notifications.');
   });
 });

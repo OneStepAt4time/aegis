@@ -16,9 +16,7 @@ import {
 } from 'lucide-react';
 import { useInboxStore } from '../store/useInboxStore';
 import { useT } from '../i18n/context';
-import { fetchInbox, markInboxItemRead, markAllInboxRead, archiveInboxItem, archiveAllInboxRead } from '../api/inbox';
 import type { InboxItemType } from '../types/inbox';
-import { logger } from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 
 const TYPE_CONFIG: Record<InboxItemType, { icon: typeof CheckCircle2; accentVar: string }> = {
@@ -42,53 +40,33 @@ export function InboxPage() {
   const navigate = useNavigate();
   const {
     items, filter, isLoading, error, unreadCount,
-    setItems, markRead, markAllRead, archiveItem, archiveAllRead,
+    markRead, markAllRead, archiveItem, archiveAllRead,
     setFilter, setLoading, setError,
   } = useInboxStore();
 
-  const loadInbox = useCallback(async () => {
-    setLoading(true);
+  const loadInbox = useCallback(() => {
     setError(null);
-    try {
-      const data = await fetchInbox();
-      setItems(data.items, data.unreadCount);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load inbox');
-    } finally {
-      setLoading(false);
-    }
-  }, [setItems, setLoading, setError]);
+    setLoading(false);
+  }, [setLoading, setError]);
 
   useEffect(() => {
-    void loadInbox();
+    loadInbox();
   }, [loadInbox]);
 
   const handleMarkRead = useCallback(async (id: string) => {
-    try {
-      await markInboxItemRead(id);
-      markRead(id);
-    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
+    markRead(id);
   }, [markRead]);
 
   const handleMarkAllRead = useCallback(async () => {
-    try {
-      await markAllInboxRead();
-      markAllRead();
-    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
+    markAllRead();
   }, [markAllRead]);
 
   const handleArchive = useCallback(async (id: string) => {
-    try {
-      await archiveInboxItem(id);
-      archiveItem(id);
-    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
+    archiveItem(id);
   }, [archiveItem]);
 
   const handleArchiveAllRead = useCallback(async () => {
-    try {
-      await archiveAllInboxRead();
-      archiveAllRead();
-    } catch (err) { logger.warn("inbox", "Optimistic update — API call failed", err); }
+    archiveAllRead();
   }, [archiveAllRead]);
 
   const handleItemClick = useCallback((item: typeof items[number]) => {

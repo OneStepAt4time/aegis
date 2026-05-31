@@ -71,7 +71,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: RouteContext): v
   const { sessions, metrics, channels, alertManager, auth } = ctx;
 
   const healthRateLimitConfig = {
-    max: 60,
+    max: 600,
     timeWindow: '1 minute',
   } as const;
 

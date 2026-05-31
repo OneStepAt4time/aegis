@@ -2,8 +2,6 @@
  * api/claude.ts — Claude Code sessions proxy.
  */
 
-import { request } from './base';
-
 export interface ClaudeAgentSession {
   pid: number;
   cwd: string;
@@ -15,10 +13,8 @@ export interface ClaudeAgentSession {
 }
 
 export async function getClaudeSessions(signal?: AbortSignal): Promise<ClaudeAgentSession[]> {
-  try {
-    return await request<ClaudeAgentSession[]>('/v1/cc-sessions', { signal });
-  } catch {
-    // Endpoint may not exist yet — return empty array gracefully
-    return [];
-  }
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  // The backend endpoint is not available yet. Keep the UI quiet instead of
+  // polling a known-missing route and filling the console with 404s.
+  return [];
 }

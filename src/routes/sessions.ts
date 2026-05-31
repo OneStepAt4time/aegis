@@ -12,6 +12,9 @@ import { filterByTenant } from '../utils/tenant-filter.js';
 import { validateWorkdirPath } from '../tenant-workdir.js';
 import { cleanupTerminatedSessionState } from '../session-cleanup.js';
 import { SessionCreationError } from '../session.js';
+import { mapAcpStatusToUI, syncAcpSessionStatus } from './acp-status-sync.js';
+import { resolveRequestTenantScope } from './tenant-scope.js';
+import { applySessionHistoryQuery, type SessionHistoryRecord, sessionHistoryQuerySchema } from './session-history-query.js';
 import {
   type RouteContext,
   requirePermission,
@@ -75,13 +78,6 @@ const batchDeleteSchema = z.object({
   message: 'At least one of "ids" or "status" is required',
 });
 
-const sessionHistoryQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-  status: z.string().optional(),
-  ownerKeyId: z.string().optional(),
-});
-
 /**
  * Returns true when the caller is NOT a master key and NOT an admin.
  * Used to gate ownership-based session filtering.
@@ -116,28 +112,22 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
     const page = parsed.data.page ?? 1;
     const limit = parsed.data.limit ?? 50;
-    const statusFilter = parsed.data.status;
     const ownerFilter = parsed.data.ownerKeyId;
 
-    const historyMap = new Map<string, {
-      id: string;
-      ownerKeyId?: string;
-      createdAt?: number;
-      endedAt?: number;
-      lastSeenAt: number;
-      finalStatus: 'active' | 'killed' | 'unknown';
-      source: 'audit' | 'live' | 'audit+live';
-    }>();
+    const historyMap = new Map<string, SessionHistoryRecord>();
+    const tenantScope = resolveRequestTenantScope(req.tenantId, auth.authEnabled);
 
     const auditLogger = getAuditLogger();
     if (auditLogger) {
-      const records = await auditLogger.query({ limit: 5000, reverse: true });
+      const records = await auditLogger.query({ limit: 5000, reverse: true, tenantId: tenantScope });
       for (const rec of records) {
         if ((rec.action !== 'session.create' && rec.action !== 'session.kill') || !rec.sessionId) continue;
+        if (tenantScope !== SYSTEM_TENANT && rec.tenantId !== tenantScope) continue;
         const tsMs = Date.parse(rec.ts);
         if (!Number.isFinite(tsMs)) continue;
         const existing = historyMap.get(rec.sessionId) ?? {
           id: rec.sessionId,
+          tenantId: rec.tenantId,
           createdAt: undefined,
           endedAt: undefined,
           ownerKeyId: undefined,
@@ -148,6 +138,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
 
         if (rec.action === 'session.create') {
           existing.createdAt = existing.createdAt ?? tsMs;
+          existing.tenantId = existing.tenantId ?? rec.tenantId;
           existing.ownerKeyId = existing.ownerKeyId ?? rec.actor;
           if (!existing.endedAt) {
             existing.finalStatus = 'unknown';
@@ -166,6 +157,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       const existing = historyMap.get(s.id);
       if (existing) {
         existing.ownerKeyId = existing.ownerKeyId ?? s.ownerKeyId;
+        existing.tenantId = existing.tenantId ?? s.tenantId;
         existing.createdAt = existing.createdAt ?? s.createdAt;
         existing.lastSeenAt = Math.max(existing.lastSeenAt, s.lastActivity || s.createdAt);
         existing.finalStatus = 'active';
@@ -174,6 +166,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         historyMap.set(s.id, {
           id: s.id,
           ownerKeyId: s.ownerKeyId,
+          tenantId: s.tenantId,
           createdAt: s.createdAt,
           endedAt: undefined,
           lastSeenAt: s.lastActivity || s.createdAt,
@@ -183,7 +176,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
-    let history = Array.from(historyMap.values());
+    let history = filterByTenant(Array.from(historyMap.values()), tenantScope);
     const callerKeyId = req.authKeyId;
     const callerRole = getRequestRole(auth, req);
     if (isNonAdminCaller(callerKeyId, callerRole)) {
@@ -192,11 +185,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (ownerFilter) {
       history = history.filter(h => h.ownerKeyId === ownerFilter);
     }
-    if (statusFilter) {
-      history = history.filter(h => h.finalStatus === statusFilter);
-    }
-
-    history.sort((a, b) => (b.lastSeenAt - a.lastSeenAt) || (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    history = applySessionHistoryQuery(history, parsed.data);
 
     const total = history.length;
     const totalPages = Math.ceil(total / limit);
@@ -236,7 +225,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
-    all = filterByTenant(all, req.tenantId);
+    all = filterByTenant(all, resolveRequestTenantScope(req.tenantId, auth.authEnabled));
     if (statusFilter) {
       all = all.filter(s => s.status === statusFilter);
     }
@@ -265,7 +254,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
-    all = filterByTenant(all, req.tenantId);
+    all = filterByTenant(all, resolveRequestTenantScope(req.tenantId, auth.authEnabled));
     const byStatus: Partial<Record<string, number>> = {};
     for (const s of all) {
       byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
@@ -367,7 +356,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       all = all.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
     // Issue #1944: Tenant scoping
-    all = filterByTenant(all, req.tenantId);
+    all = filterByTenant(all, resolveRequestTenantScope(req.tenantId, auth.authEnabled));
     // Issue #2527: Redact sensitive fields
     return all.map(s => redactSession(s as unknown as Record<string, unknown>));
   });
@@ -466,12 +455,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     }
 
     let session: import('../session.js').SessionInfo;
+    let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
     if (acpBackend && ctx.config.acpEnabled) {
-      let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
+      const acpTenantId = req.tenantId ?? SYSTEM_TENANT;
+      const acpOwnerKeyId = req.authKeyId ?? 'master';
       try {
         acpResult = await acpBackend.createSessionAsync({
-          tenantId: req.tenantId ?? SYSTEM_TENANT,
-          ownerKeyId: req.authKeyId ?? 'master',
+          tenantId: acpTenantId,
+          ownerKeyId: acpOwnerKeyId,
           cwd: safeWorkDir,
           parentSessionId: parentId,
           resumeFromSessionId: resumeSessionId,
@@ -481,21 +472,19 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       } catch (e) {
         const auditLogger = getAuditLogger();
         if (auditLogger) void auditLogger.log(resolveRequestAuditActor(auth, req, 'system'), 'session.acp.failed', `ACP session record creation failed for workDir ${safeWorkDir}: ${(e as Error).message}`, undefined, req.tenantId);
-        const acpErr = e instanceof Error ? e.message : String(e);
         return reply.status(500).send({ error: 'Session creation failed' });
       }
       try {
-        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: req.authKeyId, tenantId: req.tenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
-        // Issue #3135: Sync ACP session status to local session state
-        // The ACP backend tracks agent status independently; mirror it here.
-        const acpToUIState: Record<string, import('../session.js').UIState> = { initializing: 'pending', idle: 'idle', running: 'working', paused: 'idle', intervening: 'working', closing: 'idle', closed: 'idle', failed: 'error' };
-        const mappedStatus = acpToUIState[acpResult.session.status];
+        if (!acpResult) throw new Error('ACP session creation returned no result');
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: acpOwnerKeyId, tenantId: acpTenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
+        const mappedStatus = mapAcpStatusToUI(acpResult.session.status);
         if (mappedStatus) {
           session.status = mappedStatus;
           session.lastActivity = Date.now();
         }
+        if (!prompt) void acpResult.ready?.then(result => syncAcpSessionStatus(sessions, session.id, result.session.status, 'Agent runtime ready')).catch(() => syncAcpSessionStatus(sessions, session.id, 'failed', 'Agent runtime failed'));
       } catch (e) {
-        await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }).catch(() => {});
+        if (acpResult) await acpBackend.shutdownSession({ sessionId: acpResult.session.id, tenantId: acpTenantId, ownerKeyId: acpOwnerKeyId }).catch(() => {});
         throw e;
       }
     } else {
@@ -538,12 +527,14 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
 
       if (acpBackend && ctx.config.acpEnabled) {
-        // Issue #3271: Reverted async prompt delivery (from #3243) to synchronous.
-        // Async delivery caused promptDelivery tracking to hang — the JSON-RPC
-        // session/prompt response was never received by the tracking layer even
-        // though Claude Code processed the prompt successfully.
-        // Synchronous delivery blocks until CC acknowledges, which is the
-        // proven pre-#3243 behavior.
+        if (session.status === 'pending' && acpResult?.ready) {
+          try {
+            await syncAcpSessionStatus(sessions, session.id, (await acpResult.ready).session.status, 'Agent runtime ready');
+          } catch (e) {
+            await syncAcpSessionStatus(sessions, session.id, 'failed', 'Agent runtime failed');
+            throw e;
+          }
+        }
         const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
         promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed', error: result.error };
         session.promptDelivery = promptDelivery;
@@ -650,7 +641,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
     if (!(callerRole === 'admin' || callerKeyId === null || callerKeyId === undefined)) {
       allSessions = allSessions.filter(s => !s.ownerKeyId || s.ownerKeyId === callerKeyId);
     }
-    allSessions = filterByTenant(allSessions, req.tenantId);
+    allSessions = filterByTenant(allSessions, resolveRequestTenantScope(req.tenantId, auth.authEnabled));
     const results: Record<string, {
       alive: boolean;
       claudeRunning: boolean;

@@ -18,15 +18,17 @@ import { registerDashboardStatic, StaticRateLimiter } from '../plugins/dashboard
 // ── StaticRateLimiter unit tests ───────────────────────────────────────────
 
 describe('StaticRateLimiter unit tests (#3220)', () => {
+  const createLimiter = () => new StaticRateLimiter({ limit: 100 });
+
   it('should not rate limit under threshold', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     for (let i = 0; i < 100; i++) {
       expect(limiter.isRateLimited('1.2.3.4')).toBe(false);
     }
   });
 
   it('should rate limit at threshold + 1', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     for (let i = 0; i < 100; i++) {
       limiter.isRateLimited('1.2.3.4');
     }
@@ -34,7 +36,7 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should track different IPs independently', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     for (let i = 0; i < 100; i++) {
       limiter.isRateLimited('1.1.1.1');
     }
@@ -43,7 +45,7 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should return correct bucket info', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     const info = limiter.getBucketInfo('1.2.3.4');
     expect(info.limit).toBe(100);
     expect(info.remaining).toBe(100);
@@ -55,7 +57,7 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should report size', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     expect(limiter.size).toBe(0);
     limiter.isRateLimited('1.2.3.4');
     expect(limiter.size).toBe(1);
@@ -64,7 +66,7 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should prune expired buckets', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     limiter.isRateLimited('1.2.3.4');
     expect(limiter.size).toBe(1);
     // Buckets are fresh so prune won't remove them
@@ -73,7 +75,7 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should evict oldest bucket when map exceeds max entries', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     // Fill 2001 entries to exceed STATIC_RATE_MAX_ENTRIES (2000)
     for (let i = 0; i < 2002; i++) {
       limiter.isRateLimited(`10.0.${Math.floor(i / 256)}.${i % 256}`);
@@ -84,12 +86,19 @@ describe('StaticRateLimiter unit tests (#3220)', () => {
   });
 
   it('should return 0 remaining when rate limited', () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = createLimiter();
     for (let i = 0; i < 101; i++) {
       limiter.isRateLimited('1.2.3.4');
     }
     const info = limiter.getBucketInfo('1.2.3.4');
     expect(info.remaining).toBe(0);
+  });
+
+  it('allows a cold dashboard load burst with the production default', () => {
+    const limiter = new StaticRateLimiter();
+    for (let i = 0; i < 150; i++) {
+      expect(limiter.isRateLimited('1.2.3.4')).toBe(false);
+    }
   });
 });
 
@@ -132,7 +141,7 @@ describe('StaticRateLimiter prune timer (#3227)', () => {
   });
 
   it('prune interval calls limiter.prune() every 60 seconds', async () => {
-    const limiter = new StaticRateLimiter();
+    const limiter = new StaticRateLimiter({ limit: 100 });
     const pruneSpy = vi.spyOn(limiter, 'prune');
     const app = Fastify();
     try {
@@ -174,7 +183,7 @@ describe('Dashboard static rate limiting integration (#3220)', () => {
     fs.writeFileSync(path.join(mockDashboardDir, 'assets', 'app-abc123.js'), '// test');
 
     app = Fastify();
-    limiter = new StaticRateLimiter();
+    limiter = new StaticRateLimiter({ limit: 100 });
   });
 
   afterEach(async () => {

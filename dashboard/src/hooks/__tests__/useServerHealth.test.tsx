@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useServerHealth } from '../useServerHealth';
+import { __resetServerHealthForTests, useServerHealth } from '../useServerHealth';
 
 // Mock the module-level fetchHealth by mocking fetch
 vi.stubGlobal('fetch', vi.fn());
@@ -12,6 +12,7 @@ vi.stubGlobal('fetch', vi.fn());
 describe('useServerHealth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetServerHealthForTests();
   });
 
   it('starts with checking status', () => {

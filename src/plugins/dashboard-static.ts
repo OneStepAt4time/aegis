@@ -48,7 +48,7 @@ const DASHBOARD_RESPONSE_HEADERS = {
 // ── Rate limiting (#3220) ──────────────────────────────────────────────────
 
 /** Max requests per IP per window for dashboard static assets. */
-const STATIC_RATE_LIMIT = 100;
+const STATIC_RATE_LIMIT = 1_000;
 /** Rate limit window in milliseconds. */
 const STATIC_RATE_WINDOW_MS = 60_000;
 /** Max tracked IPs before eviction. */
@@ -62,13 +62,22 @@ interface StaticRateBucket {
 /** Lightweight per-IP fixed-window rate limiter for static asset routes (#3220). */
 export class StaticRateLimiter {
   private buckets = new Map<string, StaticRateBucket>();
+  private readonly limit: number;
+  private readonly windowMs: number;
+  private readonly maxEntries: number;
+
+  constructor(options: { limit?: number; windowMs?: number; maxEntries?: number } = {}) {
+    this.limit = options.limit ?? STATIC_RATE_LIMIT;
+    this.windowMs = options.windowMs ?? STATIC_RATE_WINDOW_MS;
+    this.maxEntries = options.maxEntries ?? STATIC_RATE_MAX_ENTRIES;
+  }
 
   /** Check if an IP has exceeded the rate limit. Returns true if LIMITED. */
   isRateLimited(ip: string): boolean {
     const now = Date.now();
     let bucket = this.buckets.get(ip);
 
-    if (!bucket || now - bucket.windowStart >= STATIC_RATE_WINDOW_MS) {
+    if (!bucket || now - bucket.windowStart >= this.windowMs) {
       bucket = { windowStart: now, count: 0 };
       this.buckets.set(ip, bucket);
     }
@@ -76,7 +85,7 @@ export class StaticRateLimiter {
     bucket.count++;
 
     // Evict oldest entry when map grows too large
-    if (this.buckets.size > STATIC_RATE_MAX_ENTRIES) {
+    if (this.buckets.size > this.maxEntries) {
       let oldestKey = '';
       let oldestTime = Infinity;
       for (const [key, b] of this.buckets) {
@@ -88,7 +97,7 @@ export class StaticRateLimiter {
       if (oldestKey) this.buckets.delete(oldestKey);
     }
 
-    return bucket.count > STATIC_RATE_LIMIT;
+    return bucket.count > this.limit;
   }
 
   /** Get current bucket info for response headers. */
@@ -96,22 +105,22 @@ export class StaticRateLimiter {
     const bucket = this.buckets.get(ip);
     if (!bucket) {
       return {
-        limit: STATIC_RATE_LIMIT,
-        remaining: STATIC_RATE_LIMIT,
-        reset: Math.ceil((Date.now() + STATIC_RATE_WINDOW_MS) / 1000),
+        limit: this.limit,
+        remaining: this.limit,
+        reset: Math.ceil((Date.now() + this.windowMs) / 1000),
       };
     }
-    const remaining = Math.max(0, STATIC_RATE_LIMIT - bucket.count);
+    const remaining = Math.max(0, this.limit - bucket.count);
     return {
-      limit: STATIC_RATE_LIMIT,
+      limit: this.limit,
       remaining,
-      reset: Math.ceil((bucket.windowStart + STATIC_RATE_WINDOW_MS) / 1000),
+      reset: Math.ceil((bucket.windowStart + this.windowMs) / 1000),
     };
   }
 
   /** Prune expired buckets. */
   prune(): void {
-    const cutoff = Date.now() - STATIC_RATE_WINDOW_MS;
+    const cutoff = Date.now() - this.windowMs;
     for (const [key, bucket] of this.buckets) {
       if (bucket.windowStart < cutoff) this.buckets.delete(key);
     }
