@@ -105,7 +105,7 @@ describe('CalendarGrid', () => {
     render(<CalendarGrid {...defaultProps} />);
     const nextBtn = screen.getByRole('button', { name: /next month/i });
     fireEvent.click(nextBtn);
-    // The month header should have changed
+    // The month header should have changed - use FIXED_DATE for deterministic test
     const nextMonth = new Date(FIXED_DATE.getFullYear(), FIXED_DATE.getMonth() + 1, 1);
     const expected = nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     expect(screen.getByText(expected)).toBeTruthy();
