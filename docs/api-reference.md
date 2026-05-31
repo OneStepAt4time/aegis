@@ -785,7 +785,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `effort` | string | no | Reasoning effort level: `low`, `medium`, `high`. When set, passed to the CC session via `--effort` flag. |
 | `isolationPolicy` | string | no | Override server-level isolation policy for this session: `respect-cc` (default), `enforce-worktree`, or `enforce-direct`. See [isolation policy](#isolation-policy) below. |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
-| `env` | object | no | Environment variables (subject to denylist) |
+| `env` | object | no | Environment variables injected into the ACP child process (subject to denylist). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. See [ACP Environment Variables](#acp-environment-variables) below. |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
 | `stallRecoveryEnabled` | boolean | no | Auto-recover stalled sessions via restart (default: `true`). Requires `stallThresholdMs` detection.
 | `stallRecoveryMaxRetries` | number | no | Max restart attempts per stall event (default: `1`).
@@ -844,6 +844,18 @@ curl -X POST http://localhost:9100/v1/sessions \
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
 | 422 | `NO_RUNNER_AVAILABLE` | No agent runner available (ACP disabled and no runner configured). Returned instead of creating a zombie session with `promptDelivery.delivered=false`. Remove `prompt` or enable a runner. |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
+
+> **ACP Environment Variables:** When ACP spawns a child process (Claude Code or other agent), it injects the following Aegis-specific environment variables:
+>
+> | Variable | Source | Description |
+> |----------|--------|-------------|
+> | `AEGIS_AUTH_TOKEN` | Server env | Auth token for the ACP child to call back to Aegis |
+> | `AEGIS_SESSION_ID` | Session ID | The session UUID — child can reference its own session |
+> | `AEGIS_BASE_URL` | Server env | Aegis API origin for callbacks |
+> | `AEGIS_STATE_DIR` | Server env | State directory path |
+> | `AEGIS_PERMISSION_MODE` | Session `permissionMode` | Permission mode enforced on the child process |
+>
+> Additionally, all environment variables starting with `ANTHROPIC_` or `CLAUDE_` are automatically passed through from the server environment to the ACP child, allowing the child to authenticate with Anthropic APIs.
 
 ---
 
@@ -3909,7 +3921,7 @@ curl -X POST http://localhost:9100/v1/templates \
 | `workDir` | string | conditional | Working directory (required if no `sessionId`) |
 | `prompt` | string | no | Template prompt with `{{variable}}` substitution (max 100k chars) |
 | `claudeCommand` | string | no | Claude Code CLI arguments (max 500 chars) |
-| `env` | object | no | Environment variables map |
+| `env` | object | no | Environment variables map injected into the ACP child process (subject to denylist). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. |
 | `stallThresholdMs` | number | no | Stall timeout (1–3600000ms) |
 | `stallRecoveryEnabled` | boolean | no | Auto-recover stalled sessions (default: `true`) |
 | `stallRecoveryMaxRetries` | number | no | Max restart attempts per stall (default: `1`) |

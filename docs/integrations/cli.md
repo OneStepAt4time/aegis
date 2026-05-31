@@ -117,6 +117,8 @@ If the server is already running, skips straight to session creation. Existing c
 | `--passthrough` | Bypass all permissions (alias for `--accept-permissions`) |
 | `--model <provider/model>` | Override the default model for this session |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
+| `--env key=value` | Set environment variables for the ACP child process (repeatable) |
+| `--permission-mode <mode>` | Permission mode: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `--no-stream` | Wait for session completion and print output (non-streaming) |
 | `--timeout <sec>` | Maximum wait time in seconds (default: 300). Set to `0` for no timeout |
 
@@ -172,6 +174,8 @@ AEGIS_AUTH_TOKEN=secret ag
 | `AEGIS_AUTH_TOKEN` | _(none)_ | Bearer token (required for production) |
 | `AEGIS_DASHBOARD_ENABLED` | `true` | Serve the bundled dashboard |
 | `AEGIS_STATE_DIR` | `~/.aegis` (global) or `.aegis/` (project-local) | Session state directory. `ag init` defaults new configs to project-local |
+| `AEGIS_SESSION_ID` | _(injected)_ | Passed to ACP child process — session UUID for self-reference |
+| `AEGIS_PERMISSION_MODE` | _(injected)_ | Passed to ACP child process — permission mode enforced on the child |
 | `AEGIS_MAX_SESSIONS` | _(unlimited)_ | Max concurrent sessions |
 | `AEGIS_IDLE_TIMEOUT_MS` | `600000` | Idle timeout (10 min) |
 | `AEGIS_STALL_THRESHOLD_MS` | `120000` | Stall threshold (2 min) |
@@ -323,6 +327,8 @@ ag create "Fix the failing tests"                     # Uses current directory
 | `--cwd <dir>` | Working directory for the session |
 | `--model <provider/model>` | Override the default model for this session |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
+| `--env key=value` | Set environment variables for the ACP child process (repeatable). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. |
+| `--permission-mode <mode>` | Permission mode for the session: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `--session-id <id>` | Send the brief to an existing session instead of creating a new one |
 | `--port <port>` | Aegis API port (default: `AEGIS_PORT` or `9100`) |
 

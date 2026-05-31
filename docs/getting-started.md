@@ -48,6 +48,8 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
 | `--effort <level>` | Set reasoning effort: `low`, `medium`, `high`, or `0.0`–`1.0` |
 | `--passthrough` | Same as `--accept-permissions` — bypass all permissions (alias) |
+| `--env key=value` | Set environment variables for the ACP child process (repeatable). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. |
+| `--permission-mode <mode>` | Permission mode for the session: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 
 > **Note:** `ag run --help` shows the general help (which includes `ag run` in the usage section). For the full list of `ag run` flags, refer to the table above.
 
