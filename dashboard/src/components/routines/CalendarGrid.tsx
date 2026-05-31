@@ -13,10 +13,13 @@ function format(d: Date, fmt: string): string {
     'yyyy': String(d.getFullYear()),
     'MM': String(d.getMonth() + 1).padStart(2, '0'),
     'dd': String(d.getDate()).padStart(2, '0'),
+    'd': String(d.getDate()),
     'MMMM': d.toLocaleString('en', { month: 'long' }),
     'MMM': d.toLocaleString('en', { month: 'short' }),
+    'EEEE': d.toLocaleString('en', { weekday: 'long' }),
+    'EEE': d.toLocaleString('en', { weekday: 'short' }),
   };
-  return fmt.replace(/yyyy|MMMM|MMM|MM|dd/g, (m) => map[m] ?? m);
+  return fmt.replace(/yyyy|MMMM|MMM|MM|dd|EEEE|EEE|d/g, (m) => map[m] ?? m);
 }
 function startOfMonth(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function endOfMonth(d: Date): Date { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
