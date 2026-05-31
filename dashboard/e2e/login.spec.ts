@@ -20,7 +20,33 @@ test.describe('Login Page', () => {
         body: JSON.stringify({ status: 'ok', version: '0.0.0' }),
       });
     });
+    await page.route('**/v1/events', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ events: [] }),
+      });
+    });
+    await page.route('**/v1/sessions/stats', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ active: 0, totalCreated: 0, totalCompleted: 0, totalFailed: 0, byStatus: {} }),
+      });
+    });
+    await page.route('**/v1/analytics/summary', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ active_agents: 0, metrics: {}, prompt_delivery: { sent: 0, delivered: 0, failed: 0, success_rate: 0 } }),
+      });
+    });
     await page.route(/\/v1\/sessions(\?.*)?$/, async (route) => {
+      if (!route.request().headers().authorization) {
+        await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'Unauthorized' }) });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
