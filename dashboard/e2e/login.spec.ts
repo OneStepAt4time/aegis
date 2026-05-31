@@ -43,7 +43,7 @@ test.describe('Login Page', () => {
     });
     await page.route(/\/v1\/sessions(\?.*)?$/, async (route) => {
       if (!route.request().headers().authorization) {
-        await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'Unauthorized' }) });
+        await route.abort('failed');
         return;
       }
 
