@@ -1,6 +1,11 @@
 type Platform = NodeJS.Platform;
 
 const ACP_BIN_ENV_KEY = 'AEGIS_ACP_BIN';
+const AEGIS_AUTH_TOKEN_KEY = 'AEGIS_AUTH_TOKEN';
+const AEGIS_SESSION_ID_KEY = 'AEGIS_SESSION_ID';
+const AEGIS_BASE_URL_KEY = 'AEGIS_BASE_URL';
+const AEGIS_STATE_DIR_KEY = 'AEGIS_STATE_DIR';
+const AEGIS_PERMISSION_MODE_KEY = 'AEGIS_PERMISSION_MODE';
 
 export function buildAcpResolveEnv(
   overrides: Record<string, string | undefined> | undefined,
@@ -17,14 +22,45 @@ export function buildAcpSpawnEnv(
   overrides: Record<string, string | undefined> | undefined,
   mappedProviderEnv: Record<string, string> = {},
   source: NodeJS.ProcessEnv = process.env,
-  platform: Platform = process.platform
+  platform: Platform = process.platform,
+  sessionId?: string,
+  permissionMode?: string
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   copyPlatformExecutionEnv(env, source, platform);
   applyEnvOverrides(env, overrides, platform);
   applyEnvOverrides(env, mappedProviderEnv, platform);
   env.NO_COLOR = overrides?.NO_COLOR ?? source.NO_COLOR ?? '1';
+  applyAegisRequiredEnv(env, source, sessionId, permissionMode);
   return env;
+}
+
+/**
+ * Issue #4524: Inject Aegis-required environment variables into child process env.
+ * Sets AEGIS_AUTH_TOKEN, AEGIS_SESSION_ID, AEGIS_BASE_URL, AEGIS_STATE_DIR
+ * from the provider environment when available.
+ */
+export function applyAegisRequiredEnv(
+  target: NodeJS.ProcessEnv,
+  source: NodeJS.ProcessEnv = process.env,
+  sessionId?: string,
+  permissionMode?: string
+): void {
+  if (source[AEGIS_AUTH_TOKEN_KEY] !== undefined) {
+    target[AEGIS_AUTH_TOKEN_KEY] = source[AEGIS_AUTH_TOKEN_KEY];
+  }
+  if (sessionId !== undefined) {
+    target[AEGIS_SESSION_ID_KEY] = sessionId;
+  }
+  if (source[AEGIS_BASE_URL_KEY] !== undefined) {
+    target[AEGIS_BASE_URL_KEY] = source[AEGIS_BASE_URL_KEY];
+  }
+  if (source[AEGIS_STATE_DIR_KEY] !== undefined) {
+    target[AEGIS_STATE_DIR_KEY] = source[AEGIS_STATE_DIR_KEY];
+  }
+  if (permissionMode !== undefined) {
+    target[AEGIS_PERMISSION_MODE_KEY] = permissionMode;
+  }
 }
 
 function copyPlatformExecutionEnv(

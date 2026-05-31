@@ -89,6 +89,10 @@ export interface AcpChildProcessOptions {
   platform?: NodeJS.Platform;
   resolveCommand?: (options: ResolveAcpCommandOptions) => ResolvedAcpCommand;
   spawnProcess?: AcpChildProcessSpawner;
+  /** Issue #4524: Session ID to inject into child process env as AEGIS_SESSION_ID. */
+  sessionId?: string;
+  /** Issue #4524: Permission mode to enforce on the child process. */
+  permissionMode?: string;
 }
 
 export interface AcpChildProcessErrorDetails {
@@ -238,7 +242,9 @@ export class AcpChildProcess {
         this.options.env,
         definedEnv(this.options.providerEnv),
         process.env,
-        this.options.platform ?? process.platform
+        this.options.platform ?? process.platform,
+        this.options.sessionId,
+        this.options.permissionMode
       ),
       stdio: 'pipe',
       windowsHide: true,

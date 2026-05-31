@@ -5,24 +5,27 @@
  * @ticket #2908
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CalendarGrid } from '../components/routines';
 import type { RoutineSchedule } from '../components/routines/CalendarGrid';
+
+// Issue #4531: Use a fixed date to prevent flaky tests on date rollover
+const FIXED_DATE = new Date('2026-05-15T12:00:00Z');
 
 const mockRoutines: RoutineSchedule[] = [
   {
     id: 'routine-1',
     title: 'Daily standup',
     cronSchedule: '0 9 * * MON-FRI',
-    nextRunAt: new Date().toISOString(),
+    nextRunAt: FIXED_DATE.toISOString(),
     status: 'active',
   },
   {
     id: 'routine-2',
     title: 'Weekly deploy',
     cronSchedule: '0 14 * * FRI',
-    nextRunAt: new Date().toISOString(),
+    nextRunAt: FIXED_DATE.toISOString(),
     status: 'paused',
   },
 ];
@@ -34,10 +37,18 @@ describe('CalendarGrid', () => {
     onSelectDate: vi.fn(),
   };
 
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_DATE);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the current month and year', () => {
     render(<CalendarGrid {...defaultProps} />);
-    const now = new Date();
-    const expected = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const expected = FIXED_DATE.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     expect(screen.getByText(expected)).toBeTruthy();
   });
 
@@ -73,7 +84,7 @@ describe('CalendarGrid', () => {
 
   it('highlights days with routines', () => {
     render(<CalendarGrid {...defaultProps} routines={mockRoutines} />);
-    // Both routines have nextRunAt = today, so today should show routine labels
+    // Both routines have nextRunAt = FIXED_DATE, so today should show routine labels
     expect(screen.getByText('Daily standup')).toBeTruthy();
     expect(screen.getByText('Weekly deploy')).toBeTruthy();
   });
@@ -83,7 +94,7 @@ describe('CalendarGrid', () => {
       id: `r-${i}`,
       title: `Routine ${i}`,
       cronSchedule: '0 9 * * *',
-      nextRunAt: new Date().toISOString(),
+      nextRunAt: FIXED_DATE.toISOString(),
       status: 'active' as const,
     }));
     render(<CalendarGrid {...defaultProps} routines={manyRoutines} />);
@@ -95,8 +106,7 @@ describe('CalendarGrid', () => {
     const nextBtn = screen.getByRole('button', { name: /next month/i });
     fireEvent.click(nextBtn);
     // The month header should have changed
-    const now = new Date();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonth = new Date(FIXED_DATE.getFullYear(), FIXED_DATE.getMonth() + 1, 1);
     const expected = nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     expect(screen.getByText(expected)).toBeTruthy();
   });
@@ -107,8 +117,7 @@ describe('CalendarGrid', () => {
     fireEvent.click(screen.getByRole('button', { name: /next month/i }));
     // Then click Today
     fireEvent.click(screen.getByRole('button', { name: /go to today/i }));
-    const now = new Date();
-    const expected = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const expected = FIXED_DATE.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     expect(screen.getByText(expected)).toBeTruthy();
   });
 
