@@ -781,7 +781,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `resumeSessionId` | string (UUID) | no | Resume an existing session by UUID |
 | `model` | string | no | Model name for analytics grouping (max 200 chars) |
 | `claudeCommand` | string | no | Custom Claude Code CLI flags (max 500 chars, alphanumeric/safe chars only) |
-| `env` | object | no | Environment variables (subject to denylist) |
+| `env` | object | no | Environment variables injected into the ACP child process (subject to denylist). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. See [ACP Environment Variables](#acp-environment-variables) below. |
 | `stallThresholdMs` | number | no | Stall detection timeout (default: 300000, max: 3600000) |
 | `permissionMode` | string | no | `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 | `autoApprove` | boolean | no | Skip permission prompts (= `permissionMode: bypassPermissions`) |
@@ -826,6 +826,18 @@ curl -X POST http://localhost:9100/v1/sessions \
 | 403 | `TENANT_WORKDIR_DENIED` | workDir outside tenant root |
 | 422 | `CC_VERSION_TOO_OLD` | Claude Code version below minimum |
 | 429 | `QUOTA_EXCEEDED` | Per-key session quota exceeded |
+
+> **ACP Environment Variables:** When ACP spawns a child process (Claude Code or other agent), it injects the following Aegis-specific environment variables:
+>
+> | Variable | Source | Description |
+> |----------|--------|-------------|
+> | `AEGIS_AUTH_TOKEN` | Server env | Auth token for the ACP child to call back to Aegis |
+> | `AEGIS_SESSION_ID` | Session ID | The session UUID — child can reference its own session |
+> | `AEGIS_BASE_URL` | Server env | Aegis API origin for callbacks |
+> | `AEGIS_STATE_DIR` | Server env | State directory path |
+> | `AEGIS_PERMISSION_MODE` | Session `permissionMode` | Permission mode enforced on the child process |
+>
+> Additionally, all environment variables starting with `ANTHROPIC_` or `CLAUDE_` are automatically passed through from the server environment to the ACP child, allowing the child to authenticate with Anthropic APIs.
 
 ---
 
