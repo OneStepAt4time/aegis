@@ -33,6 +33,20 @@ const authHeaders = { authorization: `Bearer ${authToken}` };
 
 let capturedApp: FastifyInstance | null = null;
 
+async function removeSandboxRoot() {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      rmSync(sandboxRoot, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+  console.warn(`Could not remove sandbox root during test teardown: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
+
 // ── Spyable RateLimiter mock ────────────────────────────────────────
 const rateLimiterSpies = {
   checkIpRateLimit: vi.fn<(ip: string, isMaster: boolean, keyId?: string) => boolean>(() => false),
@@ -150,7 +164,7 @@ describe('server.ts Phase 3 — internal functions', () => {
       else process.env[key] = value;
     }
 
-    rmSync(sandboxRoot, { recursive: true, force: true });
+    await removeSandboxRoot();
   });
 
   afterEach(() => {

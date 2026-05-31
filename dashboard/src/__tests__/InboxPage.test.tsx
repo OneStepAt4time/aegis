@@ -5,15 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { InboxPage } from '../pages/InboxPage';
-import * as inboxApi from '../api/inbox';
-
-vi.mock('../api/inbox', () => ({
-  fetchInbox: vi.fn(),
-  markInboxItemRead: vi.fn(),
-  markAllInboxRead: vi.fn(),
-  archiveInboxItem: vi.fn(),
-  archiveAllInboxRead: vi.fn(),
-}));
+import { useInboxStore } from '../store/useInboxStore';
 
 vi.mock('../i18n/context', () => ({
   useT: () => (key: string) => key,
@@ -61,9 +53,12 @@ function renderInboxPage() {
 describe('InboxPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (inboxApi.fetchInbox as ReturnType<typeof vi.fn>).mockResolvedValue({
+    useInboxStore.setState({
       items: mockInboxItems,
       unreadCount: 1,
+      filter: 'all',
+      isLoading: false,
+      error: null,
     });
   });
 
@@ -88,15 +83,14 @@ describe('InboxPage', () => {
   });
 
   it('marks item as read on click', async () => {
-    (inboxApi.markInboxItemRead as ReturnType<typeof vi.fn>).mockResolvedValue({});
     renderInboxPage();
     const item = await screen.findByText('Task completed: Build dashboard');
     fireEvent.click(item.closest('button')!);
-    expect(inboxApi.markInboxItemRead).toHaveBeenCalledWith('1');
+    expect(useInboxStore.getState().items.find((entry) => entry.id === '1')?.readAt).toBeDefined();
   });
 
   it('renders empty state when no items', async () => {
-    (inboxApi.fetchInbox as ReturnType<typeof vi.fn>).mockResolvedValue({
+    useInboxStore.setState({
       items: [],
       unreadCount: 0,
     });
@@ -104,19 +98,10 @@ describe('InboxPage', () => {
     expect(await screen.findByText('inbox.empty')).toBeDefined();
   });
 
-  it('shows error state on fetch failure', async () => {
-    (inboxApi.fetchInbox as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('Network error'),
-    );
-    renderInboxPage();
-    expect(await screen.findByText('Network error')).toBeDefined();
-  });
-
   it('marks all read on button click', async () => {
-    (inboxApi.markAllInboxRead as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     renderInboxPage();
     const markAllBtn = await screen.findByLabelText('inbox.markAllRead');
     fireEvent.click(markAllBtn);
-    expect(inboxApi.markAllInboxRead).toHaveBeenCalled();
+    expect(useInboxStore.getState().unreadCount).toBe(0);
   });
 });

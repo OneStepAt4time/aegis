@@ -8,6 +8,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -68,7 +69,7 @@ function createMockTmux() {
 
 const MASTER_TOKEN = 'aegis-test-master-token-2458';
 
-async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: AuthManager }> {
+async function buildApp(tmpDir: string, options: { registerRateLimit?: boolean } = {}): Promise<{ app: FastifyInstance; auth: AuthManager }> {
   const mockTmux = createMockTmux();
 
   const config = {
@@ -188,6 +189,14 @@ async function buildApp(tmpDir: string): Promise<{ app: FastifyInstance; auth: A
   };
 
   const app = Fastify({ logger: false });
+  if (options.registerRateLimit) {
+    await app.register(fastifyRateLimit, {
+      global: true,
+      keyGenerator: (req: FastifyRequest) => req.ip ?? 'unknown',
+      max: 600,
+      timeWindow: '1 minute',
+    });
+  }
   app.decorateRequest('authKeyId', null as unknown as string);
   app.decorateRequest('tenantId', undefined as unknown as string);
   app.decorateRequest('matchedPermission', null as unknown as ApiKeyPermission);
@@ -281,5 +290,18 @@ describe('Issue #2458: GET /v1/health auth-gated info', () => {
     // Issue #4355: no session counts for unauthenticated
     expect(body.sessions).toBeUndefined();
     expect(Object.keys(body).sort()).toEqual(['status']);
+  });
+
+  it('allows a dashboard cold-navigation health burst without 429s', async () => {
+    const burstTmpDir = mkdtempSync(join(tmpdir(), 'aegis-health-burst-'));
+    const { app: burstApp } = await buildApp(burstTmpDir, { registerRateLimit: true });
+    try {
+      for (let i = 0; i < 150; i += 1) {
+        const res = await burstApp.inject({ method: 'GET', url: '/v1/health' });
+        expect(res.statusCode).toBe(200);
+      }
+    } finally {
+      await burstApp.close();
+    }
   });
 });

@@ -47,7 +47,7 @@ export function buildSessionHealth(session: SessionInfo): SessionHealthInfo {
     alive: true,
     claudeRunning: status === 'working' || status === 'permission_prompt' || status === 'ask_question',
     status,
-    hasTranscript: !!session.jsonlPath,
+    hasTranscript: !!session.jsonlPath || session.promptDelivery?.delivered === true,
     lastActivity: session.lastActivity,
     lastActivityAgo,
     sessionAge: Date.now() - session.createdAt,

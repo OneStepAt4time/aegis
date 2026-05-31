@@ -153,28 +153,20 @@ export class AcpBackend {
     return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt, input.env, input.permissionMode);
   }
 
-  /**
-   * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
-   * Returns immediately with the durable session record while the child process
-   * spawn + initialize + session/new handshake runs in the background.
-   *
-   * Use this for HTTP endpoints where synchronous handshake causes client timeouts
-   * (e.g., POST /v1/sessions hanging for 2+ minutes).
-   */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     const backendRunId = this.backendRunIdProvider();
 
-    // Fire-and-forget the handshake — caller gets the session record immediately.
-    // On success, session transitions to agent_ready. On failure, transitions to error.
-    this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId, input.env, input.permissionMode)
-      .catch((err) => {
-        log.error(
-          { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
-        );
+    const ready = this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId, input.env, input.permissionMode);
+    ready.catch((err) => {
+      log.error({
+        component: 'acp-backend',
+        operation: 'asyncStartFailed',
+        attributes: { sessionId: session.id, error: String(err) },
       });
+    });
 
-    return { session, initializeResult: {}, backendRunId };
+    return { session, initializeResult: {}, backendRunId, ready };
   }
 
   /**
@@ -594,7 +586,7 @@ export class AcpBackend {
     backendRunId: string,
     env?: Record<string, string>,
     permissionMode?: string
-  ): Promise<void> {
+  ): Promise<AcpBackendStartResult> {
     const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
     let started = false;
     try {
@@ -615,8 +607,10 @@ export class AcpBackend {
       });
       runtime.agentCapabilities = initializeResult.agentCapabilities;
       this.runtimes.set(session.id, runtime);
+      return { session: ready, initializeResult, backendRunId };
     } catch (error) {
       await this.failStartup(session.id, runtime.scope, runtime, started);
+      throw error;
     }
   }
 

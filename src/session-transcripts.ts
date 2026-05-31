@@ -15,6 +15,7 @@ import { findSessionFile, readNewEntries, type ParsedEntry } from './transcript.
 import { findSessionFileWithFanout } from './worktree-lookup.js';
 import { computeProjectHash } from './path-utils.js';
 import type { AcpEventStore } from './services/acp/event-store.js';
+import { listAllTranscriptEvents } from './services/acp/transcript-events.js';
 import type { Config } from './config.js';
 import type { SessionInfo } from './session-types.js';
 import type { UIState } from './session-types.js';
@@ -352,11 +353,7 @@ export class SessionTranscripts {
       ownerKeyId: session.ownerKeyId ?? '',
     };
 
-    const events = await this.acpEventStore.list({
-      sessionId: session.id,
-      ...scope,
-      limit: 10_000,
-    });
+    const events = await listAllTranscriptEvents(this.acpEventStore, scope, session.id);
 
     if (events.length === 0) return [];
 

@@ -34,7 +34,8 @@ describe('useAuthStore', () => {
     mockGetDashboardSession.mockResolvedValue({ oidcAvailable: false, authenticated: false });
     mockLogoutDashboardSession.mockResolvedValue('logged-out');
     mockGetOidcLoginUrl.mockReturnValue('/auth/login');
-  mockProbePublicAccess.mockResolvedValue(false);
+    mockProbePublicAccess.mockResolvedValue(false);
+    window.history.pushState({}, '', '/');
     localStorage.removeItem('aegis_token');
     sessionStorage.clear();
     useAuthStore.setState({
@@ -425,6 +426,17 @@ describe('useAuthStore', () => {
       expect(state.isAuthenticated).toBe(true);
       expect(state.authMode).toBeNull();
       expect(state.isVerifying).toBe(false);
+    });
+
+    it('enters zero-config mode from the login route when public access succeeds', async () => {
+      window.history.pushState({}, '', '/dashboard/login');
+      mockGetDashboardSession.mockResolvedValue({ oidcAvailable: false, authenticated: false });
+      mockProbePublicAccess.mockResolvedValue(true);
+
+      await useAuthStore.getState().init();
+
+      expect(mockProbePublicAccess).toHaveBeenCalled();
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
 
     it('falls back to login when probePublicAccess fails', async () => {

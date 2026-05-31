@@ -53,12 +53,22 @@ function getValue(obj: unknown, path: string): string | undefined {
   const keys = path.split('.');
   let current: unknown = obj;
   
-  for (const key of keys) {
-    if (current && typeof current === 'object' && key in current) {
-      current = (current as Record<string, unknown>)[key];
-    } else {
+  for (let index = 0; index < keys.length; index++) {
+    if (!current || typeof current !== 'object') {
       return undefined;
     }
+    const record = current as Record<string, unknown>;
+    const key = keys[index];
+    const remaining = keys.slice(index).join('.');
+    if (remaining in record) {
+      const value = record[remaining];
+      return typeof value === 'string' ? value : undefined;
+    }
+    if (key && key in record) {
+      current = record[key];
+      continue;
+    }
+    return undefined;
   }
   
   return typeof current === 'string' ? current : undefined;
@@ -111,16 +121,7 @@ export function useT() {
   if (!context) {
     // Fallback: resolve key from English catalog (for tests without I18nProvider)
     const resolve = (key: string): string => {
-      const parts = key.split('.');
-      let result: unknown = en;
-      for (const part of parts) {
-        if (result && typeof result === 'object' && part in result) {
-          result = (result as Record<string, unknown>)[part];
-        } else {
-          return key; // key not found, return as-is
-        }
-      }
-      return typeof result === 'string' ? result : key;
+      return getValue(en, key) ?? key;
     };
     // Support parameter interpolation in fallback (for tests without I18nProvider)
     return (key: string, params?: Record<string, string | number>) => {

@@ -201,9 +201,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // HttpOnly dashboard cookie, probe for zero-config (no-auth) mode.
       // #3490: Try accessing an authenticated endpoint without credentials.
       // If the server is in strictRBAC:false mode on localhost, it will succeed.
-      // Skip the probe if we're already on the login page to avoid console errors.
-      const onLoginPage = typeof window !== 'undefined' && window.location.pathname.includes('/login');
-      const publicAccess = onLoginPage ? false : await probePublicAccess().catch(() => false);
+      const publicAccess = await probePublicAccess().catch(() => false);
       if (publicAccess) {
         set({
           authMode: null,

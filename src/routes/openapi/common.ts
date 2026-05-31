@@ -116,9 +116,14 @@ export const sessionListQuerySchema = z.object({
 
 export const sessionHistoryQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(10_000).optional(),
   status: z.string().optional(),
   ownerKeyId: z.string().optional(),
+  name: z.string().optional(),
+  createdAfter: z.coerce.number().optional(),
+  createdBefore: z.coerce.number().optional(),
+  sortBy: z.enum(['createdAt', 'lastSeenAt', 'status']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
 export const verifyTokenSchema = z.object({ token: z.string().min(1) }).strict();

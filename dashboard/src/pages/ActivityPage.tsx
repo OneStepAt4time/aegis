@@ -34,7 +34,7 @@ export default function ActivityPage() {
       const byDate = new Map<string, number>();
       for (const record of result.records) {
         const ts = record.createdAt ?? record.lastSeenAt;
-        const dateStr = new Date(ts * 1000).toISOString().split('T')[0];
+        const dateStr = new Date(toTimestampMs(ts)).toISOString().split('T')[0];
         if (dateStr) {
           byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + 1);
         }
@@ -52,6 +52,10 @@ export default function ActivityPage() {
       setHeatmapLoading(false);
     }
   }, []);
+
+  function toTimestampMs(value: number): number {
+    return value < 1_000_000_000_000 ? value * 1000 : value;
+  }
 
   useEffect(() => {
     void fetchHeatmapData();

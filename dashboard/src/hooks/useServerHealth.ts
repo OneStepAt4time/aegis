@@ -5,7 +5,7 @@
  * Returns connection status for the health indicator.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 export type ServerHealthStatus = 'connected' | 'disconnected' | 'reconnecting' | 'checking';
 
@@ -18,6 +18,21 @@ interface ServerHealth {
 
 const POLL_INTERVAL_MS = 30_000;
 const DOWN_THRESHOLD_MS = 60_000;
+const MIN_CHECK_INTERVAL_MS = 10_000;
+
+const initialHealth: ServerHealth = {
+  status: 'checking',
+  lastCheck: null,
+  downSince: null,
+  errorMessage: null,
+};
+
+let sharedHealth = initialHealth;
+let sharedDownSince: Date | null = null;
+let inFlightCheck: Promise<void> | null = null;
+let interval: ReturnType<typeof setInterval> | null = null;
+let lastCheckStartedAt = 0;
+const subscribers = new Set<(health: ServerHealth) => void>();
 
 async function fetchHealth(): Promise<{ ok: boolean; status?: string }> {
   try {
@@ -34,53 +49,88 @@ async function fetchHealth(): Promise<{ ok: boolean; status?: string }> {
   }
 }
 
-export function useServerHealth(): ServerHealth {
-  const [health, setHealth] = useState<ServerHealth>({
-    status: 'checking',
-    lastCheck: null,
-    downSince: null,
-    errorMessage: null,
-  });
+function publish(next: ServerHealth): void {
+  sharedHealth = next;
+  for (const subscriber of subscribers) subscriber(sharedHealth);
+}
 
-  const downSinceRef = useRef<Date | null>(null);
+function runHealthCheck(force = false): Promise<void> {
+  const now = Date.now();
+  if (inFlightCheck) return inFlightCheck;
+  if (!force && now - lastCheckStartedAt < MIN_CHECK_INTERVAL_MS) return Promise.resolve();
 
-  const check = useCallback(async () => {
+  lastCheckStartedAt = now;
+  inFlightCheck = (async () => {
     const result = await fetchHealth();
 
     if (result.ok) {
-      downSinceRef.current = null;
-      setHealth({
+      sharedDownSince = null;
+      publish({
         status: 'connected',
         lastCheck: new Date(),
         downSince: null,
         errorMessage: null,
       });
-    } else {
-      const now = new Date();
-      if (!downSinceRef.current) {
-        downSinceRef.current = now;
-      }
-      const downMs = now.getTime() - downSinceRef.current.getTime();
-      const isExtended = downMs >= DOWN_THRESHOLD_MS;
-
-      setHealth({
-        status: isExtended ? 'disconnected' : 'reconnecting',
-        lastCheck: now,
-        downSince: downSinceRef.current,
-        errorMessage: isExtended
-          ? 'Aegis server is unreachable. Check if the server is running.'
-          : 'Connection to Aegis server lost. Reconnecting…',
-      });
+      return;
     }
-  }, []);
+
+    const checkedAt = new Date();
+    sharedDownSince ??= checkedAt;
+    const downMs = checkedAt.getTime() - sharedDownSince.getTime();
+    const isExtended = downMs >= DOWN_THRESHOLD_MS;
+
+    publish({
+      status: isExtended ? 'disconnected' : 'reconnecting',
+      lastCheck: checkedAt,
+      downSince: sharedDownSince,
+      errorMessage: isExtended
+        ? 'Aegis server is unreachable. Check if the server is running.'
+        : 'Connection to Aegis server lost. Reconnecting…',
+    });
+  })().finally(() => {
+    inFlightCheck = null;
+  });
+
+  return inFlightCheck;
+}
+
+function ensurePollingStarted(): void {
+  if (!interval) {
+    void runHealthCheck();
+    interval = setInterval(() => { void runHealthCheck(true); }, POLL_INTERVAL_MS);
+  }
+}
+
+function stopPollingIfUnused(): void {
+  if (subscribers.size > 0 || !interval) return;
+  clearInterval(interval);
+  interval = null;
+}
+
+export function __resetServerHealthForTests(): void {
+  sharedHealth = initialHealth;
+  sharedDownSince = null;
+  inFlightCheck = null;
+  lastCheckStartedAt = 0;
+  subscribers.clear();
+  if (interval) {
+    clearInterval(interval);
+    interval = null;
+  }
+}
+
+export function useServerHealth(): ServerHealth {
+  const [health, setHealth] = useState<ServerHealth>(sharedHealth);
 
   useEffect(() => {
-    // Initial check
-    check();
-    // Poll every 30s
-    const interval = setInterval(check, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [check]);
+    subscribers.add(setHealth);
+    setHealth(sharedHealth);
+    ensurePollingStarted();
+    return () => {
+      subscribers.delete(setHealth);
+      stopPollingIfUnused();
+    };
+  }, []);
 
   return health;
 }

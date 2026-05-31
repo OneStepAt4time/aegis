@@ -82,3 +82,4 @@ wt-i18n-sessionboard
 node_modules
 aegis
 .openclaw/
+.gstack/

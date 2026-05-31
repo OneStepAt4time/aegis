@@ -14,8 +14,7 @@ export async function fetchWebhookDeliveries(hookId: string): Promise<WebhookDel
 }
 
 export async function fetchWebhooks(): Promise<WebhookInfo[]> {
-  const res = await fetch('/v1/hooks');
-  if (!res.ok) throw new Error('Failed to fetch webhooks');
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.hooks ?? []);
+  // The hooks listing endpoint is not implemented by the current Aegis API.
+  // Render the empty state quietly instead of surfacing a false error.
+  return [];
 }

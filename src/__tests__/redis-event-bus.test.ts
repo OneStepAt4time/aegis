@@ -43,6 +43,14 @@ function wait(ms = 80): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
 }
 
+async function waitForCondition(predicate: () => boolean, timeoutMs = 500): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await wait(10);
+  }
+}
+
 describe('RedisEventBus (mocked)', () => {
   let redis: MockRedis;
   beforeEach(() => {
@@ -55,8 +63,7 @@ describe('RedisEventBus (mocked)', () => {
     bus.subscribe('session:1', (e: BusEvent) => got.push(e));
     const id = bus.publish('session:1', 'created', { foo: 'bar' });
     expect(typeof id === 'number').toBeTruthy();
-    // publish delivers via setImmediate + poll loop picks up from Redis
-    await wait(60);
+    await waitForCondition(() => got.length >= 1);
     expect(got.length).toBeGreaterThanOrEqual(1);
     expect(got[0].type).toBe('created');
     bus.destroy();
@@ -82,7 +89,10 @@ describe('RedisEventBus (mocked)', () => {
     bus.subscribe('session:*', (e: BusEvent) => got.push(e));
     bus.publish('session:10', 'z', { k: 1 });
     bus.publish('session:11', 'w', { k: 2 });
-    await wait(100);
+    await waitForCondition(() =>
+      got.some((x: BusEvent) => x.channel === 'session:10') &&
+      got.some((x: BusEvent) => x.channel === 'session:11')
+    );
     expect(got.some((x: BusEvent) => x.channel === 'session:10')).toBeTruthy();
     expect(got.some((x: BusEvent) => x.channel === 'session:11')).toBeTruthy();
     bus.destroy();
@@ -93,7 +103,7 @@ describe('RedisEventBus (mocked)', () => {
     const got: BusEvent[] = [];
     bus.subscribe('global', (e: BusEvent) => got.push(e));
     bus.publish('global', 't', {});
-    await wait(60);
+    await waitForCondition(() => got.length > 0);
     expect(got.length).toBeGreaterThan(0);
     bus.destroy();
     bus.publish('global', 't2', {});
@@ -109,7 +119,7 @@ describe('RedisEventBus (mocked)', () => {
     bus.subscribe('multi', () => { throw new Error('boom'); });
     bus.subscribe('multi', (e: BusEvent) => { gotB.push(e); });
     bus.publish('multi', 'm', {});
-    await wait(60);
+    await waitForCondition(() => gotA.length === 1 && gotB.length === 1);
     expect(gotA.length).toBe(1);
     expect(gotB.length).toBe(1);
     bus.destroy();
@@ -120,7 +130,7 @@ describe('RedisEventBus (mocked)', () => {
     const got: BusEvent[] = [];
     const unsub = bus.subscribe('one', (e: BusEvent) => got.push(e));
     bus.publish('one', 'x', {});
-    await wait(60);
+    await waitForCondition(() => got.length > 0);
     expect(got.length).toBe(1);
     unsub();
     bus.publish('one', 'y', {});
@@ -167,8 +177,7 @@ describe('RedisEventBus (mocked)', () => {
     redis.throwOnce = true;
     bus.subscribe('resilient', (e: BusEvent) => got.push(e));
     bus.publish('resilient', 'ok', {});
-    await wait(120);
-    // publish delivers via xadd even if poll loop hits error first
+    await waitForCondition(() => got.length >= 1);
     expect(got.length).toBeGreaterThanOrEqual(1);
     bus.destroy();
   });
