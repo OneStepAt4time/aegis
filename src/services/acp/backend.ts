@@ -83,6 +83,10 @@ export interface AcpBackendSessionService {
 export interface AcpBackendCreateSessionInput extends AcpCreateSessionInput {
   cwd: string;
   mcpServers?: AcpJsonObject;
+  /** Issue #4524: Per-session environment variables passed to the agent child process. */
+  env?: Record<string, string>;
+  /** Issue #4524: Permission mode enforced on the agent child process. */
+  permissionMode?: string;
 }
 
 export interface AcpBackendScopedRuntimeInput extends AcpSessionScope {
@@ -116,6 +120,10 @@ export interface AcpBackendClientFactoryContext extends AcpSessionScope {
   durableSessionId: string;
   backendRunId: string;
   cwd: string;
+  /** Issue #4524: Per-session environment variables for the agent child process. */
+  env?: Record<string, string>;
+  /** Issue #4524: Permission mode enforced on the agent child process. */
+  permissionMode?: string;
 }
 
 export interface AcpBackendInitializeResult {
@@ -305,7 +313,7 @@ export class AcpBackend {
    */
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt);
+    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt, input.env, input.permissionMode);
   }
 
   /**
@@ -322,7 +330,7 @@ export class AcpBackend {
 
     // Fire-and-forget the handshake — caller gets the session record immediately.
     // On success, session transitions to agent_ready. On failure, transitions to error.
-    this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId)
+    this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId, input.env, input.permissionMode)
       .catch((err) => {
         log.error(
           { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
@@ -705,10 +713,12 @@ export class AcpBackend {
     session: AcpSessionRecord,
     cwd: string,
     mcpServers: AcpJsonObject | undefined,
-    systemPrompt?: string
+    systemPrompt?: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): Promise<AcpBackendStartResult> {
     const backendRunId = this.backendRunIdProvider();
-    const runtime = this.createRuntime(session, cwd, backendRunId);
+    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
     let started = false;
     try {
       const initializeResult = await this.startAndInitialize(runtime);
@@ -744,9 +754,11 @@ export class AcpBackend {
     cwd: string,
     mcpServers: AcpJsonObject | undefined,
     systemPrompt: string | undefined,
-    backendRunId: string
+    backendRunId: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): Promise<void> {
-    const runtime = this.createRuntime(session, cwd, backendRunId);
+    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
     let started = false;
     try {
       const initializeResult = await this.startAndInitialize(runtime);
@@ -855,7 +867,9 @@ export class AcpBackend {
   private createRuntime(
     session: AcpSessionRecord,
     cwd: string,
-    backendRunId: string
+    backendRunId: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): AcpBackendRuntime {
     const context: AcpBackendClientFactoryContext = {
       durableSessionId: session.id,
@@ -863,6 +877,8 @@ export class AcpBackend {
       ownerKeyId: session.ownerKeyId,
       backendRunId,
       cwd,
+      env,
+      permissionMode,
     };
     return this.bindRuntime({
       sessionId: session.id,
@@ -1169,6 +1185,8 @@ export function createDefaultAcpBackendClient(
   const child = new AcpChildProcess({
     ...options.childProcessOptions,
     cwd: context.cwd,
+    env: context.env,
+    permissionMode: context.permissionMode,
   });
   // Issue #3135: Forward ACP child process stderr for debugging.
   // Without this, errors from claude-agent-acp (API key issues, crashes)
@@ -1200,6 +1218,8 @@ function toCreateSessionInput(input: AcpBackendCreateSessionInput): AcpCreateSes
     correlationId: input.correlationId,
     resumeFromSessionId: input.resumeFromSessionId,
     backendMetadata: input.backendMetadata,
+    env: input.env,
+    permissionMode: input.permissionMode,
   };
 }
 

@@ -89,6 +89,8 @@ export interface AcpChildProcessOptions {
   platform?: NodeJS.Platform;
   resolveCommand?: (options: ResolveAcpCommandOptions) => ResolvedAcpCommand;
   spawnProcess?: AcpChildProcessSpawner;
+  /** Issue #4524: Permission mode enforced on the agent child process. */
+  permissionMode?: string;
 }
 
 export interface AcpChildProcessErrorDetails {
@@ -238,7 +240,8 @@ export class AcpChildProcess {
         this.options.env,
         definedEnv(this.options.providerEnv),
         process.env,
-        this.options.platform ?? process.platform
+        this.options.platform ?? process.platform,
+        this.options.permissionMode
       ),
       stdio: 'pipe',
       windowsHide: true,

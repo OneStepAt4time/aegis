@@ -9,6 +9,11 @@ if (mode === 'print-env') {
     customEnv: process.env.ACP_CHILD_TEST_VALUE,
     providerEnv: process.env.ANTHROPIC_AUTH_TOKEN === 'synthetic-token',
     noColor: process.env.NO_COLOR,
+    aegisAuthToken: process.env.AEGIS_AUTH_TOKEN,
+    aegisPermissionMode: process.env.AEGIS_PERMISSION_MODE,
+    aegisBaseUrl: process.env.AEGIS_BASE_URL,
+    aegisSessionId: process.env.AEGIS_SESSION_ID,
+    aegisStateDir: process.env.AEGIS_STATE_DIR,
   };
   process.stdout.write(`${JSON.stringify(payload)}\n`);
   process.stderr.write('fixture stderr ready\n');

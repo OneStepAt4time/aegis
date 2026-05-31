@@ -22,7 +22,6 @@ import type {
 } from './types.js';
 import { SAFE_NAME_RE } from './types.js';
 import type AgentStore from './AgentStore.js';
-import { Mutex } from 'async-mutex';
 
 
 

@@ -17,14 +17,52 @@ export function buildAcpSpawnEnv(
   overrides: Record<string, string | undefined> | undefined,
   mappedProviderEnv: Record<string, string> = {},
   source: NodeJS.ProcessEnv = process.env,
-  platform: Platform = process.platform
+  platform: Platform = process.platform,
+  permissionMode?: string,
+  sessionId?: string
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   copyPlatformExecutionEnv(env, source, platform);
   applyEnvOverrides(env, overrides, platform);
   applyEnvOverrides(env, mappedProviderEnv, platform);
   env.NO_COLOR = overrides?.NO_COLOR ?? source.NO_COLOR ?? '1';
+  // Issue #4524: Inject required AEGIS env vars for child process auth and identification
+  applyAegisRequiredEnv(env, source, sessionId);
+  // Issue #4524: Enforce permission mode via env var for CC to pick up
+  if (permissionMode) {
+    env.AEGIS_PERMISSION_MODE = permissionMode;
+  }
   return env;
+}
+
+/**
+ * Issue #4524: Inject required AEGIS environment variables into the child process env.
+ * These vars allow the CC agent to authenticate with Aegis and identify its session.
+ */
+function applyAegisRequiredEnv(
+  target: NodeJS.ProcessEnv,
+  source: NodeJS.ProcessEnv,
+  sessionId?: string
+): void {
+  // Pass through auth token so the child process can authenticate with Aegis APIs
+  const authToken = source.AEGIS_AUTH_TOKEN ?? source.AEGIS_TOKEN;
+  if (authToken) {
+    target.AEGIS_AUTH_TOKEN = authToken;
+  }
+  // Pass through session ID so the child process can identify itself
+  if (sessionId) {
+    target.AEGIS_SESSION_ID = sessionId;
+  }
+  // Pass through base URL for API calls
+  const baseUrl = source.AEGIS_BASE_URL;
+  if (baseUrl) {
+    target.AEGIS_BASE_URL = baseUrl;
+  }
+  // Pass through state dir for shared state access
+  const stateDir = source.AEGIS_STATE_DIR ?? source.MANUS_STATE_DIR;
+  if (stateDir) {
+    target.AEGIS_STATE_DIR = stateDir;
+  }
 }
 
 function copyPlatformExecutionEnv(

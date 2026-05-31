@@ -145,6 +145,59 @@ describe('AcpChildProcess supervision', () => {
     expect(exit).toMatchObject({ code: null, signal: 'SIGKILL', expected: true, escalated: true });
   });
 
+
+  it('Issue #4524: passes permissionMode and required AEGIS env vars to child process', async () => {
+    const originalAuthToken = process.env.AEGIS_AUTH_TOKEN;
+    const originalBaseUrl = process.env.AEGIS_BASE_URL;
+    process.env.AEGIS_AUTH_TOKEN = 'test-auth-token-4524';
+    process.env.AEGIS_BASE_URL = 'http://localhost:8080';
+
+    try {
+      const child = new AcpChildProcess({
+        command: process.execPath,
+        args: [fixturePath, '--fixture-arg'],
+        cwd: process.cwd(),
+        env: {
+          FAKE_ACP_CHILD_MODE: 'print-env',
+          ACP_CHILD_TEST_VALUE: 'custom-value',
+        },
+        permissionMode: 'bypassPermissions',
+      });
+      const stdout: string[] = [];
+      child.on('stdout', event => stdout.push(event.chunk));
+
+      const started = await child.start();
+      const exit = await child.waitForExit();
+
+      expect(started.pid).toEqual(expect.any(Number));
+      expect(exit.code).toBe(0);
+
+      const payload = JSON.parse(stdout.join('').trim()) as {
+        argv: string[];
+        customEnv?: string;
+        aegisAuthToken?: string;
+        aegisPermissionMode?: string;
+        aegisBaseUrl?: string;
+      };
+      expect(payload.customEnv).toBe('custom-value');
+      // Issue #4524: Required AEGIS env vars must be passed through
+      expect(payload.aegisAuthToken).toBe('test-auth-token-4524');
+      expect(payload.aegisBaseUrl).toBe('http://localhost:8080');
+      // Issue #4524: Permission mode must be enforced via env
+      expect(payload.aegisPermissionMode).toBe('bypassPermissions');
+    } finally {
+      if (originalAuthToken !== undefined) {
+        process.env.AEGIS_AUTH_TOKEN = originalAuthToken;
+      } else {
+        delete process.env.AEGIS_AUTH_TOKEN;
+      }
+      if (originalBaseUrl !== undefined) {
+        process.env.AEGIS_BASE_URL = originalBaseUrl;
+      } else {
+        delete process.env.AEGIS_BASE_URL;
+      }
+    }
+  });
   it('emits an unexpected exit event for non-zero child termination', async () => {
     const child = new AcpChildProcess({
       command: process.execPath,
