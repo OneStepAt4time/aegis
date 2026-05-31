@@ -46,6 +46,8 @@ If the server is already running, `ag run` skips bootstrap and start — goes st
 | `--name <name>` | Set a display name for the session |
 | `--yes` | Suppress all status messages for non-interactive/CI usage |
 | `--accept-permissions` / `-y` | Auto-approve all permission prompts (sets `permissionMode: bypassPermissions`) |
+| `--env key=value` | Set environment variables for the ACP child process (repeatable). Keys starting with `ANTHROPIC_` or `CLAUDE_` are always passed through. |
+| `--permission-mode <mode>` | Permission mode for the session: `default`, `bypassPermissions`, `plan`, `acceptEdits`, `dontAsk`, `auto` |
 
 > **Note:** `ag run --help` currently shows the general help. For `ag run` flags, refer to this table.
 
