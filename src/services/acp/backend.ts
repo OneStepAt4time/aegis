@@ -150,24 +150,20 @@ export class AcpBackend {
    */
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt);
+    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt, input.env, input.permissionMode);
   }
 
-  /**
-   * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
-   * Returns immediately with the durable session record while the child process
-   * spawn + initialize + session/new handshake runs in the background.
-   *
-   * Use this for HTTP endpoints where synchronous handshake causes client timeouts
-   * (e.g., POST /v1/sessions hanging for 2+ minutes).
-   */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     const backendRunId = this.backendRunIdProvider();
 
-    const ready = this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId);
+    const ready = this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId, input.env, input.permissionMode);
     ready.catch((err) => {
-      log.error({ component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } });
+      log.error({
+        component: 'acp-backend',
+        operation: 'asyncStartFailed',
+        attributes: { sessionId: session.id, error: String(err) },
+      });
     });
 
     return { session, initializeResult: {}, backendRunId, ready };
@@ -546,10 +542,12 @@ export class AcpBackend {
     session: AcpSessionRecord,
     cwd: string,
     mcpServers: AcpJsonObject | undefined,
-    systemPrompt?: string
+    systemPrompt?: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): Promise<AcpBackendStartResult> {
     const backendRunId = this.backendRunIdProvider();
-    const runtime = this.createRuntime(session, cwd, backendRunId);
+    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
     let started = false;
     try {
       const initializeResult = await this.startAndInitialize(runtime);
@@ -585,9 +583,11 @@ export class AcpBackend {
     cwd: string,
     mcpServers: AcpJsonObject | undefined,
     systemPrompt: string | undefined,
-    backendRunId: string
+    backendRunId: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): Promise<AcpBackendStartResult> {
-    const runtime = this.createRuntime(session, cwd, backendRunId);
+    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
     let started = false;
     try {
       const initializeResult = await this.startAndInitialize(runtime);
@@ -698,7 +698,9 @@ export class AcpBackend {
   private createRuntime(
     session: AcpSessionRecord,
     cwd: string,
-    backendRunId: string
+    backendRunId: string,
+    env?: Record<string, string>,
+    permissionMode?: string
   ): AcpBackendRuntime {
     const context: AcpBackendClientFactoryContext = {
       durableSessionId: session.id,
@@ -706,6 +708,8 @@ export class AcpBackend {
       ownerKeyId: session.ownerKeyId,
       backendRunId,
       cwd,
+      env,
+      permissionMode,
     };
     return this.bindRuntime({
       sessionId: session.id,
@@ -1012,6 +1016,8 @@ export function createDefaultAcpBackendClient(
   const child = new AcpChildProcess({
     ...options.childProcessOptions,
     cwd: context.cwd,
+    env: context.env,
+    permissionMode: context.permissionMode,
   });
   child.on('stderr', (event) => {
     const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';

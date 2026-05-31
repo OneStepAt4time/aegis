@@ -104,6 +104,10 @@ export interface AcpBackendClientFactoryContext extends AcpSessionScope {
   durableSessionId: string;
   backendRunId: string;
   cwd: string;
+  /** Issue #4524: Per-session environment overrides for the child process. */
+  env?: Record<string, string>;
+  /** Issue #4524: Permission mode to enforce on the child process. */
+  permissionMode?: string;
 }
 
 export interface AcpBackendInitializeResult {

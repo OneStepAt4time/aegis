@@ -55,6 +55,127 @@ describe('AcpChildProcess supervision', () => {
     expect(stderr.join('')).toContain('fixture stderr ready');
   });
 
+  it('injects AEGIS env vars into child process env', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: {
+        FAKE_ACP_CHILD_MODE: 'print-env',
+        ACP_CHILD_TEST_VALUE: 'custom-value',
+      },
+      sessionId: 'test-session-123',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisAuthToken?: string;
+      aegisSessionId?: string;
+      aegisBaseUrl?: string;
+      aegisStateDir?: string;
+    };
+    expect(payload.aegisSessionId).toBe('test-session-123');
+  });
+
+  it('injects permissionMode as AEGIS_PERMISSION_MODE env var', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath],
+      cwd: process.cwd(),
+      env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+      sessionId: 'test-session-456',
+      permissionMode: 'bypassPermissions',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisSessionId?: string;
+      aegisPermissionMode?: string;
+    };
+    expect(payload.aegisSessionId).toBe('test-session-456');
+    expect(payload.aegisPermissionMode).toBe('bypassPermissions');
+  });
+
+  it('passes through AEGIS_AUTH_TOKEN from provider env', async () => {
+    const originalToken = process.env.AEGIS_AUTH_TOKEN;
+    process.env.AEGIS_AUTH_TOKEN = 'provider-auth-token-abc';
+    try {
+      const child = new AcpChildProcess({
+        command: process.execPath,
+        args: [fixturePath],
+        cwd: process.cwd(),
+        env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+        sessionId: 'test-session-789',
+      });
+      const stdout: string[] = [];
+      child.on('stdout', event => stdout.push(event.chunk));
+
+      await child.start();
+      await child.waitForExit();
+
+      const payload = JSON.parse(stdout.join('').trim()) as {
+        aegisAuthToken?: string;
+        aegisSessionId?: string;
+      };
+      expect(payload.aegisAuthToken).toBe('provider-auth-token-abc');
+      expect(payload.aegisSessionId).toBe('test-session-789');
+    } finally {
+      if (originalToken !== undefined) {
+        process.env.AEGIS_AUTH_TOKEN = originalToken;
+      } else {
+        delete process.env.AEGIS_AUTH_TOKEN;
+      }
+    }
+  });
+
+  it('does not inject missing AEGIS env vars', async () => {
+    const originalToken = process.env.AEGIS_AUTH_TOKEN;
+    const originalBaseUrl = process.env.AEGIS_BASE_URL;
+    const originalStateDir = process.env.AEGIS_STATE_DIR;
+    delete process.env.AEGIS_AUTH_TOKEN;
+    delete process.env.AEGIS_BASE_URL;
+    delete process.env.AEGIS_STATE_DIR;
+    try {
+      const child = new AcpChildProcess({
+        command: process.execPath,
+        args: [fixturePath],
+        cwd: process.cwd(),
+        env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+      });
+      const stdout: string[] = [];
+      child.on('stdout', event => stdout.push(event.chunk));
+
+      await child.start();
+      await child.waitForExit();
+
+      const payload = JSON.parse(stdout.join('').trim()) as {
+        aegisAuthToken?: string;
+        aegisBaseUrl?: string;
+        aegisStateDir?: string;
+        aegisSessionId?: string;
+        aegisPermissionMode?: string;
+      };
+      expect(payload.aegisAuthToken).toBeUndefined();
+      expect(payload.aegisBaseUrl).toBeUndefined();
+      expect(payload.aegisStateDir).toBeUndefined();
+      expect(payload.aegisSessionId).toBeUndefined();
+      expect(payload.aegisPermissionMode).toBeUndefined();
+    } finally {
+      if (originalToken !== undefined) process.env.AEGIS_AUTH_TOKEN = originalToken;
+      if (originalBaseUrl !== undefined) process.env.AEGIS_BASE_URL = originalBaseUrl;
+      if (originalStateDir !== undefined) process.env.AEGIS_STATE_DIR = originalStateDir;
+    }
+  });
+
+
   it('propagates structured binary resolver failures without spawning', async () => {
     const resolverError = new AcpBinaryResolutionError('missing test binary', {
       attemptedPaths: ['D:\\missing\\claude-agent-acp.mjs'],
