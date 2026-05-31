@@ -51,6 +51,10 @@ export interface AcpCreateSessionInput extends AcpSessionScope {
   backendMetadata?: AcpBackendMetadata;
   /** Per-session custom system prompt. Passed via _meta.systemPrompt in ACP session/new. */
   systemPrompt?: string;
+  /** Issue #4524: Per-session environment variables passed to the agent child process. */
+  env?: Record<string, string>;
+  /** Issue #4524: Permission mode enforced on the agent child process. */
+  permissionMode?: string;
 }
 
 export interface AcpAgentSessionAttachment {

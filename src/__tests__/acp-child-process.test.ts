@@ -188,3 +188,101 @@ class FakeChildProcess extends EventEmitter implements AcpChildProcessHandle {
     return true;
   }
 }
+
+describe('AcpChildProcess env injection (Issue #4524)', () => {
+  it('injects AEGIS env vars into child process', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: {
+        FAKE_ACP_CHILD_MODE: 'print-env',
+      },
+      sessionId: 'test-session-123',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisAuthToken?: string;
+      aegisSessionId?: string;
+      aegisBaseUrl?: string;
+      aegisStateDir?: string;
+    };
+    expect(payload.aegisSessionId).toBe('test-session-123');
+  });
+
+  it('injects permissionMode as AEGIS_PERMISSION_MODE', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: {
+        FAKE_ACP_CHILD_MODE: 'print-env',
+      },
+      permissionMode: 'bypassPermissions',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisPermissionMode?: string;
+    };
+    expect(payload.aegisPermissionMode).toBe('bypassPermissions');
+  });
+
+  it('passes through AEGIS_AUTH_TOKEN from parent env', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: {
+        FAKE_ACP_CHILD_MODE: 'print-env',
+      },
+      providerEnv: {
+        AEGIS_AUTH_TOKEN: 'test-token-abc',
+      },
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisAuthToken?: string;
+    };
+    expect(payload.aegisAuthToken).toBe('test-token-abc');
+  });
+
+  it('does not inject missing env vars', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: {
+        FAKE_ACP_CHILD_MODE: 'print-env',
+      },
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as {
+      aegisAuthToken?: string;
+      aegisSessionId?: string;
+      aegisPermissionMode?: string;
+    };
+    expect(payload.aegisAuthToken).toBeUndefined();
+    expect(payload.aegisSessionId).toBeUndefined();
+    expect(payload.aegisPermissionMode).toBeUndefined();
+  });
+});

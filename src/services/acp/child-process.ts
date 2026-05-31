@@ -87,6 +87,10 @@ export interface AcpChildProcessOptions {
   env?: Record<string, string | undefined>;
   providerEnv?: Record<string, string | undefined>;
   platform?: NodeJS.Platform;
+  /** Issue #4524: Permission mode enforced on the agent child process. */
+  permissionMode?: string;
+  /** Issue #4524: Session ID for child process identification. */
+  sessionId?: string;
   resolveCommand?: (options: ResolveAcpCommandOptions) => ResolvedAcpCommand;
   spawnProcess?: AcpChildProcessSpawner;
 }
@@ -238,7 +242,9 @@ export class AcpChildProcess {
         this.options.env,
         definedEnv(this.options.providerEnv),
         process.env,
-        this.options.platform ?? process.platform
+        this.options.platform ?? process.platform,
+        this.options.permissionMode,
+        this.options.sessionId
       ),
       stdio: 'pipe',
       windowsHide: true,

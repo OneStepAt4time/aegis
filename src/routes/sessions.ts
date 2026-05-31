@@ -477,6 +477,8 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           resumeFromSessionId: resumeSessionId,
           backendMetadata: model ? { model } : undefined,
           systemPrompt,
+          env: env as Record<string, string> | undefined,
+          permissionMode,
         });
       } catch (e) {
         const auditLogger = getAuditLogger();
