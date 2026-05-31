@@ -113,7 +113,7 @@ describe('Issue #3143: ACP event store fallback for /read', () => {
     expect(mockStore.list).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: 'test-session-3143',
-        limit: 10_000,
+        limit: 1_000,
       }),
     );
   });

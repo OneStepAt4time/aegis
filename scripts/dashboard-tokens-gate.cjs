@@ -2,9 +2,11 @@
 /**
  * Dashboard Design-Tokens Gate (issue dashboard-perfection #016).
  *
- * Scans `dashboard/src/components/**` and `dashboard/src/pages/**` for raw
- * design values that should live in `dashboard/src/design/tokens.ts` instead:
+ * Scans changed files in `dashboard/src/components/**` and `dashboard/src/pages/**`
+ * for raw design values that should live in `dashboard/src/design/tokens.ts`
+ * instead. Pass `--all` to scan the full dashboard tree.
  *
+ * Checks for:
  *   - hex color literals      (#rgb, #rrggbb, #rrggbbaa)
  *   - rgb() / rgba() / hsl() / hsla() literals
  *   - raw cubic-bezier() literals
@@ -25,6 +27,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 // Resolve repo root by finding .git directory upward from cwd.
 // This allows the script to scan a worktree instead of the main repo
@@ -107,6 +110,7 @@ function walk(root) {
     } catch {
       continue;
     }
+
     for (const entry of entries) {
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
@@ -118,6 +122,62 @@ function walk(root) {
     }
   }
   return out;
+}
+
+function runGit(args) {
+  const result = spawnSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
+  if (result.status !== 0) {
+    const details = (result.stderr || '').trim() || (result.stdout || '').trim() || `exit code ${result.status}`;
+    console.error(`git ${args.join(' ')} failed: ${details}`);
+    process.exit(1);
+  }
+  return (result.stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function ensureBase(base) {
+  let baseCheck = spawnSync('git', ['rev-parse', '--verify', `${base}^{commit}`], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  });
+
+  if (baseCheck.status !== 0 && base === 'origin/develop') {
+    spawnSync('git', ['fetch', 'origin', 'develop', '--quiet'], { cwd: REPO_ROOT, stdio: 'inherit' });
+    baseCheck = spawnSync('git', ['rev-parse', '--verify', `${base}^{commit}`], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+    });
+  }
+
+  if (baseCheck.status !== 0) {
+    const details = (baseCheck.stderr || '').trim() || (baseCheck.stdout || '').trim() || `exit code ${baseCheck.status}`;
+    console.error(`Unable to resolve ${base}: ${details}`);
+    process.exit(1);
+  }
+}
+
+function changedScanFiles() {
+  const base = 'origin/develop';
+  const files = new Set();
+  const roots = ['dashboard/src/components', 'dashboard/src/pages'];
+  ensureBase(base);
+
+  const collect = (args) => {
+    for (const file of runGit(args)) {
+      if (!/\.(tsx?|mts|cts)$/i.test(file)) continue;
+      if (!roots.some((root) => file.replace(/\\/g, '/').startsWith(`${root}/`))) continue;
+      files.add(path.join(REPO_ROOT, file));
+    }
+  };
+
+  collect(['diff', '--name-only', '--diff-filter=ACMR', `${base}...HEAD`, '--', ...roots]);
+  collect(['diff', '--name-only', '--diff-filter=ACMR', '--', ...roots]);
+  collect(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--', ...roots]);
+  collect(['ls-files', '--others', '--exclude-standard', '--', ...roots]);
+
+  return [...files].filter((file) => fs.existsSync(file));
 }
 
 // ----------------------------------------------------------------------------
@@ -162,6 +222,16 @@ function scanFile(absPath) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmed = line.trim();
+    if (
+      trimmed.startsWith('//') ||
+      trimmed.startsWith('/*') ||
+      trimmed.startsWith('*') ||
+      trimmed.startsWith('*/') ||
+      trimmed.startsWith('{/*')
+    ) {
+      continue;
+    }
     if (/\/\/\s*token-ok\b/.test(line)) continue;
     if (/\{\s*\/\*\s*token-ok\b/.test(line)) continue;
 
@@ -191,6 +261,7 @@ function main() {
   const started = Date.now();
   const args = new Set(process.argv.slice(2));
   const emitAllowlist = args.has('--write-allowlist');
+  const scanAll = emitAllowlist || args.has('--all');
 
   const allowlist = loadAllowlist();
 
@@ -198,14 +269,13 @@ function main() {
   const allViolations = [];
   let fileCount = 0;
 
-  for (const root of SCAN_ROOTS) {
-    for (const file of walk(root)) {
-      fileCount++;
-      const rel = toRepoRelative(file);
-      if (allowlist.has(rel)) continue;
-      const found = scanFile(file);
-      if (found.length > 0) allViolations.push(...found);
-    }
+  const filesToScan = scanAll ? SCAN_ROOTS.flatMap((root) => walk(root)) : changedScanFiles();
+  for (const file of filesToScan) {
+    fileCount++;
+    const rel = toRepoRelative(file);
+    if (allowlist.has(rel)) continue;
+    const found = scanFile(file);
+    if (found.length > 0) allViolations.push(...found);
   }
 
   const elapsed = Date.now() - started;

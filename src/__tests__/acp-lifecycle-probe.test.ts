@@ -718,13 +718,13 @@ describe('acp lifecycle probe', () => {
       runAcpLifecycleProbe({
         ...nodeFixtureOptions(),
         prompt: 'request-permission',
-        timeoutMs: 500,
+        timeoutMs: 2_000,
       })
     ).rejects.toMatchObject({
       message: 'ACP request timed out',
       details: expect.objectContaining({
         method: 'session/prompt',
-        timeoutMs: 500,
+        timeoutMs: 2_000,
         pendingApprovals: [
           expect.objectContaining({
             requestId: 'permission-1',

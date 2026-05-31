@@ -61,6 +61,12 @@ describe('ActivityPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No session activity recorded yet')).not.toBeNull();
     });
+    expect(mockFetchSessionHistory).toHaveBeenCalledWith(expect.objectContaining({
+      createdAfter: expect.any(Number),
+      limit: 500,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }));
   });
 
   it('shows error state with retry when heatmap fetch fails', async () => {
@@ -96,7 +102,7 @@ describe('ActivityPage', () => {
     mockFetchSessionHistory.mockResolvedValue({
       records: [{
         id: 'test-record-1',
-        createdAt: Math.floor(Date.now() / 1000),
+        createdAt: Date.now(),
         lastSeenAt: 0,
         finalStatus: 'active',
         source: 'live',

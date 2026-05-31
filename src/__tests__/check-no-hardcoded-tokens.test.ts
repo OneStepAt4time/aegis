@@ -1,19 +1,42 @@
 import { afterEach, describe, it, expect } from "vitest";
-import { execSync } from "child_process";
-import { writeFileSync, mkdirSync, rmSync } from "fs";
-import { join } from "path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
-const SCRIPT = join(__dirname, "../../scripts/check-no-hardcoded-tokens.sh");
+const SCRIPT = join(__dirname, "../../scripts/check-no-hardcoded-tokens.cjs");
 
-describe("check-no-hardcoded-tokens.sh", () => {
-  const tmpDir = join(__dirname, "__tmp_token_test__");
+describe("check-no-hardcoded-tokens.cjs", () => {
+  let tmpDir: string | undefined;
+
+  function createRepo(files: Record<string, string>): string {
+    const repo = mkdtempSync(join(tmpdir(), "aegis-token-test-"));
+    execFileSync("git", ["init"], { cwd: repo, stdio: "ignore" });
+
+    for (const [file, content] of Object.entries(files)) {
+      const filePath = join(repo, file);
+      mkdirSync(dirname(filePath), { recursive: true });
+      writeFileSync(filePath, content);
+    }
+
+    execFileSync("git", ["add", "."], { cwd: repo, stdio: "ignore" });
+    tmpDir = repo;
+    return repo;
+  }
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+    if (tmpDir) {
+      rmSync(tmpDir, { recursive: true, force: true });
+      tmpDir = undefined;
+    }
   });
 
   it("exits 0 when no tokens are present", () => {
-    const result = execSync(`bash ${SCRIPT}`, {
+    const repo = createRepo({
+      "src/config.ts": 'const token = process.env["AEGIS_MCP_GITHUB_TOKEN"];',
+    });
+    const result = execFileSync("node", [SCRIPT], {
+      cwd: repo,
       encoding: "utf-8",
       timeout: 60000,
     });
@@ -21,53 +44,37 @@ describe("check-no-hardcoded-tokens.sh", () => {
   }, 30000);
 
   it("detects a hardcoded gho_ token", () => {
-    mkdirSync(tmpDir, { recursive: true });
-    const fakeFile = join(tmpDir, "fake-config.ts");
-    // Use obviously-fake pattern: all zeros (not a real token)
-    writeFileSync(
-      fakeFile,
-      'const token = "gho_000000000000000000000000000000000000";'
-    );
-
-    const pattern = "gho_[a-zA-Z0-9]{36}";
-    const result = execSync(`grep -Pcn '${pattern}' '${fakeFile}'`, {
+    const repo = createRepo({
+      "src/fake-config.ts": 'const token = "gho_000000000000000000000000000000000000";',
+    });
+    const result = spawnSync("node", [SCRIPT], {
+      cwd: repo,
       encoding: "utf-8",
     });
-    expect(result.trim()).toBe("1");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Hardcoded token pattern 'gho_[a-zA-Z0-9]{36}'");
   });
 
   it("detects a hardcoded ghp_ token", () => {
-    mkdirSync(tmpDir, { recursive: true });
-    const fakeFile = join(tmpDir, "fake-pat.ts");
-    // Use obviously-fake pattern: all zeros (not a real token)
-    writeFileSync(
-      fakeFile,
-      'const pat = "ghp_000000000000000000000000000000000000";'
-    );
-
-    const pattern = "ghp_[a-zA-Z0-9]{36}";
-    const result = execSync(`grep -Pcn '${pattern}' '${fakeFile}'`, {
+    const repo = createRepo({
+      "src/fake-pat.ts": 'const pat = "ghp_000000000000000000000000000000000000";',
+    });
+    const result = spawnSync("node", [SCRIPT], {
+      cwd: repo,
       encoding: "utf-8",
     });
-    expect(result.trim()).toBe("1");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Hardcoded token pattern 'ghp_[a-zA-Z0-9]{36}'");
   });
 
   it("does not flag env var references", () => {
-    mkdirSync(tmpDir, { recursive: true });
-    const fakeFile = join(tmpDir, "safe-config.ts");
-    writeFileSync(
-      fakeFile,
-      'const token = process.env["AEGIS_MCP_GITHUB_TOKEN"];'
-    );
-
-    const pattern = "gho_[a-zA-Z0-9]{36}";
-    let matched = false;
-    try {
-      execSync(`grep -Pc '${pattern}' '${fakeFile}'`, { encoding: "utf-8" });
-      matched = true;
-    } catch {
-      // grep exits 1 when no match
-    }
-    expect(matched).toBe(false);
+    const repo = createRepo({
+      "src/safe-config.ts": 'const token = process.env["AEGIS_MCP_GITHUB_TOKEN"];',
+    });
+    const result = execFileSync("node", [SCRIPT], {
+      cwd: repo,
+      encoding: "utf-8",
+    });
+    expect(result).toContain("OK: No hardcoded tokens");
   });
 });

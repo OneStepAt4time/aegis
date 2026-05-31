@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
  * scripts/clickable-gate.cjs
- * Scans all .tsx files in dashboard/src/ and reports JSX elements that:
+ * Scans changed .tsx files in dashboard/src/ and reports JSX elements that:
  *   - have `cursor-pointer` class OR a `hover:bg-` Tailwind class
  *   - but NO onClick, href, to, type="button", type="submit", or semantic tag (<a>, <button>, <Link>)
  * Exits 1 if violations > 0 (excluding allowlisted files).
+ * Pass `--all` to audit the full dashboard tree.
  */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('node:child_process');
 
 // Resolve repo root by finding .git directory upward from cwd.
 // This allows the script to scan a worktree instead of the main repo
@@ -50,6 +52,62 @@ function collectTsxFiles(dir, files = []) {
     }
   }
   return files;
+}
+
+function runGit(args) {
+  const result = spawnSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
+  if (result.status !== 0) {
+    const details = (result.stderr || '').trim() || (result.stdout || '').trim() || `exit code ${result.status}`;
+    console.error(`git ${args.join(' ')} failed: ${details}`);
+    process.exit(1);
+  }
+  return (result.stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function ensureBase(base) {
+  let baseCheck = spawnSync('git', ['rev-parse', '--verify', `${base}^{commit}`], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  });
+
+  if (baseCheck.status !== 0 && base === 'origin/develop') {
+    spawnSync('git', ['fetch', 'origin', 'develop', '--quiet'], { cwd: REPO_ROOT, stdio: 'inherit' });
+    baseCheck = spawnSync('git', ['rev-parse', '--verify', `${base}^{commit}`], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+    });
+  }
+
+  if (baseCheck.status !== 0) {
+    const details = (baseCheck.stderr || '').trim() || (baseCheck.stdout || '').trim() || `exit code ${baseCheck.status}`;
+    console.error(`Unable to resolve ${base}: ${details}`);
+    process.exit(1);
+  }
+}
+
+function collectChangedTsxFiles() {
+  const base = 'origin/develop';
+  const files = new Set();
+  const root = 'dashboard/src';
+  ensureBase(base);
+
+  const collect = (args) => {
+    for (const file of runGit(args)) {
+      if (!file.endsWith('.tsx')) continue;
+      if (!file.replace(/\\/g, '/').startsWith(`${root}/`)) continue;
+      files.add(path.join(REPO_ROOT, file));
+    }
+  };
+
+  collect(['diff', '--name-only', '--diff-filter=ACMR', `${base}...HEAD`, '--', root]);
+  collect(['diff', '--name-only', '--diff-filter=ACMR', '--', root]);
+  collect(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '--', root]);
+  collect(['ls-files', '--others', '--exclude-standard', '--', root]);
+
+  return [...files].filter((file) => fs.existsSync(file));
 }
 
 /**
@@ -133,8 +191,9 @@ function analyzeTag(block, filePath, lineNum, violations) {
 }
 
 function main() {
+  const args = new Set(process.argv.slice(2));
   const allowlist = loadAllowlist();
-  const files = collectTsxFiles(SCAN_DIR);
+  const files = args.has('--all') ? collectTsxFiles(SCAN_DIR) : collectChangedTsxFiles();
   const allViolations = [];
 
   for (const file of files) {

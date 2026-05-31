@@ -36,6 +36,18 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
   let tmpDir: string;
   let filePath: string;
 
+  async function blockStorageDirectory() {
+    const storageDir = path.dirname(filePath);
+    await fs.promises.rm(storageDir, { recursive: true, force: true });
+    await fs.promises.writeFile(storageDir, 'not-a-directory');
+  }
+
+  async function restoreStorageDirectory() {
+    const storageDir = path.dirname(filePath);
+    await fs.promises.rm(storageDir, { force: true });
+    await fs.promises.mkdir(storageDir, { recursive: true });
+  }
+
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'aegis-3366-'));
     filePath = path.join(tmpDir, 'acp-local-storage.json');
@@ -52,15 +64,14 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
     await profile.start();
     expect(profile.getPersistError()).toBeNull();
 
-    // Make the directory read-only to force a write failure
-    await fs.promises.chmod(tmpDir, 0o444);
+    // Replace the storage directory with a file to force ENOTDIR on all platforms.
+    await blockStorageDirectory();
 
     // Trigger persist via a mutation — should fail silently
     await profile.sessionStore.create(makeSession('fail-1'));
     expect(profile.getPersistError()).not.toBeNull();
 
-    // Restore write permissions
-    await fs.promises.chmod(tmpDir, 0o755);
+    await restoreStorageDirectory();
 
     // Trigger another mutation — this should SUCCEED (not cascade!)
     await profile.sessionStore.create(makeSession('recover-1'));
@@ -78,8 +89,7 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
     const profile = createFileAcpLocalStorageProfile({ filePath, persistDebounceMs: 0 });
     await profile.start();
 
-    // Make dir read-only
-    await fs.promises.chmod(tmpDir, 0o444);
+    await blockStorageDirectory();
 
     // First failed persist
     await profile.sessionStore.create(makeSession('fail-1'));
@@ -93,8 +103,7 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
     await profile.sessionStore.create(makeSession('fail-3'));
     expect(profile.getPersistError()).not.toBeNull();
 
-    // Now restore and verify recovery
-    await fs.promises.chmod(tmpDir, 0o755);
+    await restoreStorageDirectory();
     await profile.sessionStore.create(makeSession('recover'));
     expect(profile.getPersistError()).toBeNull();
 
@@ -109,12 +118,11 @@ describe('Issue #3366: ACP local storage persist() failure cascade', () => {
     const profile = createFileAcpLocalStorageProfile({ filePath, persistDebounceMs: 0 });
     await profile.start();
 
-    // Make dir read-only so persist fails
-    await fs.promises.chmod(tmpDir, 0o444);
+    await blockStorageDirectory();
     await profile.sessionStore.create(makeSession('doomed'));
 
     // stop() should NOT throw — it catches the chain rejection
-    await fs.promises.chmod(tmpDir, 0o755);
+    await restoreStorageDirectory();
     await expect(profile.stop()).resolves.toBeUndefined();
   });
 });

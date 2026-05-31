@@ -37,6 +37,7 @@ describe('#3732 stream timeout fixes', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -166,6 +167,7 @@ describe('#3732 stream timeout fixes', () => {
   });
 
   it('gives up after 3 consecutive fetch errors', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let callCount = 0;
 
     globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
@@ -205,7 +207,9 @@ describe('#3732 stream timeout fixes', () => {
       stdin: process.stdin as any,
     };
 
-    const result = await handleRun(['hello', '--yes'], io);
+    const runPromise = handleRun(['hello', '--yes'], io);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const result = await runPromise;
     expect(result).toBe(1);
     const errors = stderr.join('');
     expect(errors).toContain('3 attempts');
@@ -213,6 +217,7 @@ describe('#3732 stream timeout fixes', () => {
   });
 
   it('returns exit code 1 for no output in non-yes mode too', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
 
@@ -250,7 +255,9 @@ describe('#3732 stream timeout fixes', () => {
     };
 
     // Note: no --yes flag
-    const result = await handleRun(['hello'], io);
+    const runPromise = handleRun(['hello'], io);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const result = await runPromise;
     expect(result).toBe(1);
   });
 });

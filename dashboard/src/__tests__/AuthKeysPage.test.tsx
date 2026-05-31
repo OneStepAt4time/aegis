@@ -3,6 +3,7 @@ import { I18nProvider } from '../i18n/context';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, Navigate } from 'react-router-dom';
 import AuthKeysPage from '../pages/AuthKeysPage';
+import { useAuthStore } from '../store/useAuthStore';
 
 const mockCreateAuthKey = vi.fn();
 const mockGetAuthKeys = vi.fn();
@@ -24,6 +25,11 @@ describe('AuthKeysPage', () => {
     vi.clearAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-04-03T14:00:00.000Z'));
     mockGetAuthKeys.mockResolvedValue([]);
+    useAuthStore.setState({
+      authMode: 'token',
+      identity: { authenticated: true, userId: 'admin', role: 'admin', tenantId: '', createdAt: Date.now(), expiresAt: Date.now() + 3600000 },
+      isAuthenticated: true,
+    });
   });
 
   afterEach(() => {
@@ -31,6 +37,11 @@ describe('AuthKeysPage', () => {
     vi.unstubAllGlobals();
     try {
       sessionStorage.removeItem('aegis:users-banner-dismissed');
+      useAuthStore.setState({
+        authMode: null,
+        identity: null,
+        isAuthenticated: false,
+      });
     } catch {
       // ignore
     }
@@ -165,6 +176,22 @@ describe('AuthKeysPage', () => {
     });
 
     expect(mockAddToast).toHaveBeenCalledWith('success', 'Auth key revoked');
+  });
+
+  it('does not call auth key endpoints in zero-config public access mode', async () => {
+    useAuthStore.setState({
+      authMode: null,
+      identity: null,
+      isAuthenticated: true,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('API keys disabled in zero-config mode')).toBeDefined();
+    });
+    expect(mockGetAuthKeys).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Create Auth Key' })).toBeNull();
   });
 
   describe('users-redirect banner (issue 022)', () => {

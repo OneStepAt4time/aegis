@@ -40,6 +40,7 @@ import {
 } from '../routes/index.js';
 
 import { type Config } from '../config.js';
+import { MemoryAcpEventStore } from '../services/acp/local-storage.js';
 
 const MASTER_TOKEN = 'aegis-master-3271';
 
@@ -68,15 +69,30 @@ function buildMockAcpBackend(sendPromptImpl?: () => Promise<{ delivered: boolean
       session: initializingSession,
       initializeResult: {},
       backendRunId: 'run-async-1',
+      ready: Promise.resolve({
+        session: mockAcpSession,
+        initializeResult: {},
+        backendRunId: 'run-async-1',
+      }),
     }),
     sendPrompt: vi.fn(sendPromptImpl ?? (() => Promise.resolve({ delivered: true, attempts: 1 }))),
     shutdownSession: vi.fn().mockResolvedValue({}),
   };
 }
 
-async function buildRouteContext(tmpDir: string, acpBackend?: ReturnType<typeof buildMockAcpBackend>) {
+async function waitForCondition(predicate: () => boolean, timeoutMs = 1000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  throw new Error('condition not met before timeout');
+}
+
+async function buildRouteContext(tmpDir: string, acpBackend?: ReturnType<typeof buildMockAcpBackend>, options: { authToken?: string } = {}) {
+  const authToken = options.authToken ?? MASTER_TOKEN;
   const config = {
-    port: 0, host: '127.0.0.1', authToken: MASTER_TOKEN,
+    port: 0, host: '127.0.0.1', authToken,
     stateDir: tmpDir,
     claudeProjectsDir: join(tmpDir, 'projects'),
     maxSessionAgeMs: 2 * 60 * 60 * 1000, reaperIntervalMs: 60 * 60 * 1000,
@@ -105,7 +121,7 @@ async function buildRouteContext(tmpDir: string, acpBackend?: ReturnType<typeof 
   const sessions = new SessionManager(config);
   await sessions.load();
 
-  const auth = new AuthManager(join(tmpDir, 'keys.json'), MASTER_TOKEN);
+  const auth = new AuthManager(join(tmpDir, 'keys.json'), authToken);
   auth.setHost('127.0.0.1');
 
   const metrics = new MetricsCollector(join(tmpDir, 'metrics.json'));
@@ -145,7 +161,8 @@ async function buildRouteContext(tmpDir: string, acpBackend?: ReturnType<typeof 
   return { ctx, sessions, auth };
 }
 
-async function buildApp(ctx: RouteContext) {
+async function buildApp(ctx: RouteContext, options: { requireAuth?: boolean } = {}) {
+  const requireAuth = options.requireAuth ?? true;
   const app = Fastify({ logger: false });
 
   app.decorateRequest('authKeyId', null as unknown as string);
@@ -156,6 +173,7 @@ async function buildApp(ctx: RouteContext) {
   app.decorateRequest('authActor', null);
 
   app.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAuth) return;
     const urlPath = req.url?.split('?')[0] ?? '';
     if (urlPath === '/health' || urlPath === '/v1/health') return;
     if (urlPath === '/v1/auth/verify') return;
@@ -215,6 +233,52 @@ describe('Issue #3271 — synchronous prompt delivery (revert of async #3243)', 
         expect(body.promptDelivery.status).toBe('delivered');
         expect(body.promptDelivery.delivered).toBe(true);
         expect(body.promptDelivery.attempts).toBe(1);
+        expect(acp.sendPrompt).toHaveBeenCalledTimes(1);
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('waits for async ACP runtime readiness before sending initial prompt', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      let readyResolved = false;
+      const acp = buildMockAcpBackend(() => Promise.resolve({
+        delivered: readyResolved,
+        attempts: 1,
+        ...(readyResolved ? {} : { error: 'no_acp_runtime' }),
+      }));
+      const readySession = {
+        id: acp._mockSessionId,
+        tenantId: '_system',
+        ownerKeyId: 'master',
+        conversationId: 'conv-1',
+        transcriptId: 'trans-1',
+        status: 'idle' as const,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      acp.createSessionAsync.mockResolvedValueOnce({
+        session: { ...readySession, status: 'initializing' as const },
+        initializeResult: {},
+        backendRunId: 'run-async-race',
+        ready: Promise.resolve().then(() => {
+          readyResolved = true;
+          return { session: readySession, initializeResult: {}, backendRunId: 'run-async-race' };
+        }),
+      });
+      const { ctx } = await buildRouteContext(tmpDir, acp);
+      const { app, port } = await buildApp(ctx);
+
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ prompt: 'hello', workDir: tmpDir }),
+        });
+
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body.promptDelivery).toMatchObject({ delivered: true, status: 'delivered' });
         expect(acp.sendPrompt).toHaveBeenCalledTimes(1);
       } finally {
         await app.close();
@@ -281,6 +345,90 @@ describe('Issue #3271 — synchronous prompt delivery (revert of async #3243)', 
         const body = await res.json();
         expect(body.promptDelivery).toBeUndefined();
         expect(acp.sendPrompt).not.toHaveBeenCalled();
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('syncs no-prompt async ACP readiness back to the REST session status', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend();
+      const { ctx, sessions } = await buildRouteContext(tmpDir, acp);
+      const { app, port } = await buildApp(ctx);
+
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ workDir: tmpDir }),
+        });
+
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body.status).toBe('starting');
+        await waitForCondition(() => sessions.getSession(body.id)?.status === 'idle');
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('uses ACP system scope for no-auth sessions so transcript reads can see ACP events', async () => {
+      const tmpDir = mkdtempSync(join(tmpdir(), 'aegis-test-3271-'));
+      const acp = buildMockAcpBackend();
+      const eventStore = new MemoryAcpEventStore();
+      const { ctx, sessions } = await buildRouteContext(tmpDir, acp, { authToken: '' });
+      sessions.setAcpEventStore(eventStore);
+      const { app, port } = await buildApp(ctx, { requireAuth: false });
+
+      try {
+        const createRes = await fetch(`http://127.0.0.1:${port}/v1/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'hello', workDir: tmpDir }),
+        });
+
+        expect(createRes.status).toBe(201);
+        const created = await createRes.json();
+        const session = sessions.getSession(created.id);
+        expect(session).toMatchObject({ tenantId: '_system', ownerKeyId: 'master' });
+
+        const listRes = await fetch(`http://127.0.0.1:${port}/v1/sessions`);
+        expect(listRes.status).toBe(200);
+        await expect(listRes.json()).resolves.toMatchObject({
+          sessions: [expect.objectContaining({ id: created.id, tenantId: '_system', ownerKeyId: 'master' })],
+          pagination: expect.objectContaining({ total: 1 }),
+        });
+        const healthRes = await fetch(`http://127.0.0.1:${port}/v1/sessions/health`);
+        expect(healthRes.status).toBe(200);
+        await expect(healthRes.json()).resolves.toHaveProperty(created.id);
+
+        await eventStore.append({
+          tenantId: '_system',
+          ownerKeyId: 'master',
+          sessionId: created.id,
+          eventType: 'message.delta',
+          payload: { text: 'hello from acp' },
+        });
+        const sessionHealthRes = await fetch(`http://127.0.0.1:${port}/v1/sessions/${created.id}/health`);
+        expect(sessionHealthRes.status).toBe(200);
+        await expect(sessionHealthRes.json()).resolves.toMatchObject({ hasTranscript: true });
+        const storedEvents = await eventStore.list({ tenantId: '_system', ownerKeyId: 'master', sessionId: created.id });
+        expect(storedEvents).toEqual([
+          expect.objectContaining({ eventType: 'message.delta', payload: { text: 'hello from acp' } }),
+        ]);
+        expect(session?.jsonlPath).toBeUndefined();
+        const directRead = await sessions.readMessagesFromSession(session!);
+        expect(session?.jsonlPath).toBeUndefined();
+        expect(directRead.messages).toEqual([
+          expect.objectContaining({ role: 'assistant', contentType: 'text', text: 'hello from acp' }),
+        ]);
+
+        const readRes = await fetch(`http://127.0.0.1:${port}/v1/sessions/${created.id}/read`);
+        expect(readRes.status).toBe(200);
+        const readBody = await readRes.json();
+        expect(readBody.messages).toEqual([
+          expect.objectContaining({ role: 'assistant', contentType: 'text', text: 'hello from acp' }),
+        ]);
       } finally {
         await app.close();
       }

@@ -121,6 +121,7 @@ export interface AcpBackendStartResult {
   session: AcpSessionRecord;
   initializeResult: AcpBackendInitializeResult;
   backendRunId: string;
+  ready?: Promise<AcpBackendStartResult>;
 }
 
 export interface AcpBackendCancelResult {
