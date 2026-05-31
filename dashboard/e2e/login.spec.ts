@@ -6,6 +6,27 @@ const DASHBOARD_BASE_URL = 'http://localhost:5200/dashboard';
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
     await mockOidcUnavailable(page);
+    await page.route('**/v1/auth/sse-token', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token: 'e2e-sse-token', expiresAt: Date.now() + 60_000 }),
+      });
+    });
+    await page.route('**/v1/health', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'ok', version: '0.0.0' }),
+      });
+    });
+    await page.route(/\/v1\/sessions(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ sessions: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } }),
+      });
+    });
     await page.addInitScript(() => {
       localStorage.setItem('aegis:onboarded', 'true');
       localStorage.setItem('aegis:tour:completed', '1');
@@ -71,15 +92,6 @@ test.describe('Login Page', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ valid: true, role: 'admin' }),
-      });
-    });
-
-    // Mock overview API so the page loads without error
-    await page.route('**/v1/health', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ status: 'ok', version: '0.0.0' }),
       });
     });
 
