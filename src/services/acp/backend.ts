@@ -182,20 +182,23 @@ export class AcpBackend {
 
     // Fire-and-forget the handshake — caller gets the session record immediately.
     // On success, session transitions to agent_ready. On failure, transitions to error.
-    runtimeLifecycle.startNewRuntimeBackground(
+    const ready = runtimeLifecycle.startNewRuntimeBackground(
       this.getRuntimeDeps(),
       session,
       input.cwd,
       input.mcpServers,
       input.systemPrompt,
       backendRunId
-    ).catch((err) => {
+    ).then(() => {
+      return { session, initializeResult: {}, backendRunId };
+    }).catch((err) => {
       log.error(
         { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
       );
+      throw err;
     });
 
-    return { session, initializeResult: {}, backendRunId };
+    return { session, initializeResult: {}, backendRunId, ready };
   }
 
   /**

@@ -122,6 +122,9 @@ export interface AcpBackendStartResult {
   session: AcpSessionRecord;
   initializeResult: AcpBackendInitializeResult;
   backendRunId: string;
+  /** Issue #4456: Promise that resolves when the async runtime handshake completes.
+   * Only present for createSessionAsync; absent for synchronous start methods. */
+  ready?: Promise<AcpBackendStartResult>;
 }
 
 export interface AcpBackendCancelResult {
