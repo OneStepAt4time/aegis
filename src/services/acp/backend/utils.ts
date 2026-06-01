@@ -1,15 +1,14 @@
 /**
- * acp-backend-utils.ts — Utility functions for the ACP backend lifecycle manager.
+ * backend/utils.ts — ACP Backend utility functions.
  *
- * Pure functions extracted from backend.ts for reuse and testability.
+ * Issue #4534: Extracted from backend.ts for gate:arch compliance.
  */
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import type { AcpActionRecord } from './action-queue.js';
-import type { AcpJsonObject, AcpJsonValue } from './json-rpc-client.js';
+import type { AcpJsonObject, AcpJsonValue } from '../json-rpc-client.js';
+import type { AcpActionRecord } from '../action-queue.js';
 import type {
   AcpAgentSessionAttachment,
   AcpBackendMetadata,
@@ -17,16 +16,59 @@ import type {
   AcpCreateSessionInput,
   AcpSessionRecord,
   AcpSessionScope,
+} from '../types.js';
+import type { AcpChildProcessOptions } from '../child-process.js';
+import type { AcpJsonRpcClientOptions } from '../json-rpc-client.js';
+import {
+  AcpBackendLifecycleError,
+  AcpBackendRuntimeUnavailableError,
+} from './errors.js';
+import type {
+  AcpBackendClient,
+  AcpBackendClientFactoryContext,
+  AcpBackendCreateSessionInput,
+  AcpBackendInitializeResult,
+  AcpBackendSessionResult,
 } from './types.js';
+import { AcpChildProcess } from '../child-process.js';
+import { AcpJsonRpcClient } from '../json-rpc-client.js';
+import { StructuredLogger } from '../../../logger.js';
 
-import { AcpBackendLifecycleError } from './acp-backend-errors.js';
-import type { AcpBackendInitializeResult, AcpBackendSessionResult } from './acp-backend-types.js';
+const log = new StructuredLogger();
+
+export function createDefaultAcpBackendClient(
+  context: AcpBackendClientFactoryContext,
+  options: {
+    childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
+    jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
+  } = {}
+): AcpBackendClient {
+  const child = new AcpChildProcess({
+    ...options.childProcessOptions,
+    cwd: context.cwd,
+  });
+  // Issue #3135: Forward ACP child process stderr for debugging.
+  // Without this, errors from claude-agent-acp (API key issues, crashes)
+  // are silently discarded, making diagnosis impossible.
+  child.on('stderr', (event) => {
+    const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
+    if (text) {
+      log.error({ component: 'acp-backend', operation: 'childStderr', attributes: { sessionId: context.durableSessionId.slice(0, 8), text } });
+    }
+  });
+  return new AcpJsonRpcClient({
+    ...options.jsonRpcClientOptions,
+    child,
+    idNamespace:
+      options.jsonRpcClientOptions?.idNamespace ?? `aegis-acp-${context.durableSessionId}`,
+  });
+}
 
 export function scopeFromInput(input: AcpSessionScope): AcpSessionScope {
   return { tenantId: input.tenantId, ownerKeyId: input.ownerKeyId };
 }
 
-export function toCreateSessionInput(input: AcpCreateSessionInput): AcpCreateSessionInput {
+export function toCreateSessionInput(input: AcpBackendCreateSessionInput): AcpCreateSessionInput {
   return {
     tenantId: input.tenantId,
     ownerKeyId: input.ownerKeyId,
@@ -79,6 +121,12 @@ export function optionalActionMetadataString(action: AcpActionRecord, key: strin
   return value;
 }
 
+
+/** Issue #3853: Post-response content validation for hallucination signatures */
+
+
+
+
 export function primitiveResultMetadata(result: AcpJsonValue): AcpBackendMetadata {
   const metadata: AcpBackendMetadata = {};
   if (!isJsonObject(result)) return metadata;
@@ -119,7 +167,7 @@ export function isActiveStatus(status: AcpSessionRecord['status']): boolean {
 
 export function readPackageVersion(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  const pkg: unknown = JSON.parse(readFileSync(join(currentDir, '../../../package.json'), 'utf8'));
+  const pkg: unknown = JSON.parse(readFileSync(join(currentDir, '../../../../package.json'), 'utf8'));
   if (typeof pkg !== 'object' || pkg === null || !('version' in pkg)) {
     return '0.0.0';
   }
@@ -133,3 +181,10 @@ export function hasLoadSessionCapability(initializeResult: AcpBackendInitializeR
   }
   return (capabilities as Record<string, unknown>).loadSession === true;
 }
+
+// Re-export errors for backward compatibility (Issue #4534)
+export {
+  AcpBackendLifecycleError,
+  AcpBackendRuntimeUnavailableError,
+} from './errors.js';
+

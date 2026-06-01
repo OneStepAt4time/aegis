@@ -1,7 +1,7 @@
 /**
- * acp-backend-errors.ts — Error classes for the ACP backend lifecycle manager.
+ * backend/errors.ts — ACP Backend error classes.
  *
- * Extracted from backend.ts for shared use across modules.
+ * Issue #4534: Extracted from backend.ts for gate:arch compliance.
  */
 
 export class AcpBackendLifecycleError extends Error {
