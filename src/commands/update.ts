@@ -12,6 +12,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseSemver } from '../validation.js';
 
 // ---------------------------------------------------------------------------
 // Version resolution
@@ -27,29 +28,6 @@ function getCurrentVersion(): string {
   } catch {
     return '0.0.0';
   }
-}
-
-// ---------------------------------------------------------------------------
-// Semver comparison (lightweight — avoids adding a runtime dependency)
-// ---------------------------------------------------------------------------
-
-/** Parse a semver string (with optional "v" prefix) into [major, minor, patch]. */
-function parseSemver(v: string): [number, number, number] | null {
-  const s = v.trim().replace(/^v/, '');
-  const m = s.match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (!m) return null;
-  return [parseInt(m[1]!, 10), parseInt(m[2]!, 10), parseInt(m[3]!, 10)];
-}
-
-/** Returns true when `latest` is strictly newer than `current`. */
-function isNewer(latest: string, current: string): boolean {
-  const l = parseSemver(latest);
-  const c = parseSemver(current);
-  if (!l || !c) return false;
-  for (let i = 0; i < 3; i++) {
-    if (l[i] !== c[i]) return l[i] > c[i];
-  }
-  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,6 +394,18 @@ export async function handleUpdate(argv: string[], io: CliIO): Promise<number> {
   }
 
   return 0;
+}
+
+
+/** Returns true when `latest` is strictly newer than `current`. */
+function isNewer(latest: string, current: string): boolean {
+  const l = parseSemver(latest);
+  const c = parseSemver(current);
+  if (!l || !c) return false;
+  for (let i = 0; i < 3; i++) {
+    if (l[i] !== c[i]) return l[i] > c[i];
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

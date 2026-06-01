@@ -11,6 +11,7 @@
  */
 
 import { execFile } from 'node:child_process';
+import { parseSemver, compareSemverTuples } from '../validation.js';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -65,28 +66,6 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const MIN_CC_VERSION_FOR_AGENTS_JSON = '2.1.145';
 
 /**
- * Parse a semver string into [major, minor, patch].
- * Returns null if the string is not valid semver.
- */
-export function parseSemver(version: string): [number, number, number] | null {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (!match) return null;
-  return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
-}
-
-/**
- * Compare two semver tuples. Returns negative if a < b, 0 if equal, positive if a > b.
- */
-export function compareSemver(
-  a: [number, number, number],
-  b: [number, number, number],
-): number {
-  if (a[0] !== b[0]) return a[0] - b[0];
-  if (a[1] !== b[1]) return a[1] - b[1];
-  return a[2] - b[2];
-}
-
-/**
  * Detect the installed CC version.
  *
  * @returns Version string (e.g. "2.1.146") or null if not found.
@@ -117,7 +96,7 @@ export async function isCcAgentsJsonSupported(claudePathOrVersion?: string, _cla
   const parsed = parseSemver(version);
   const minParsed = parseSemver(MIN_CC_VERSION_FOR_AGENTS_JSON);
   if (!parsed || !minParsed) return false;
-  return compareSemver(parsed, minParsed) >= 0;
+  return compareSemverTuples(parsed, minParsed) >= 0;
 }
 
 /**
@@ -145,7 +124,9 @@ export async function discoverCcAgents(
     };
   }
 
-  if (!await isCcAgentsJsonSupported(ccVersion, bin)) {
+  const parsed = parseSemver(ccVersion);
+  const minParsed = parseSemver(MIN_CC_VERSION_FOR_AGENTS_JSON);
+  if (!parsed || !minParsed || compareSemverTuples(parsed, minParsed) < 0) {
     return {
       available: false,
       sessions: [],

@@ -19,9 +19,8 @@ import {
   detectCcVersion,
   isCcAgentsJsonSupported,
   discoverCcAgents,
-  parseSemver,
-  compareSemver,
 } from '../runners/cc-agents-discovery.js';
+import { parseSemver, compareSemverTuples } from '../validation.js';
 
 const mockExecFile = vi.mocked(execFile);
 
@@ -42,19 +41,19 @@ describe('parseSemver', () => {
 
 describe('compareSemver', () => {
   it('compares equal versions', () => {
-    expect(compareSemver([2, 1, 145], [2, 1, 145])).toBe(0);
+    expect(compareSemverTuples([2, 1, 145], [2, 1, 145])).toBe(0);
   });
 
   it('compares major difference', () => {
-    expect(compareSemver([3, 0, 0], [2, 1, 145])).toBeGreaterThan(0);
+    expect(compareSemverTuples([3, 0, 0], [2, 1, 145])).toBeGreaterThan(0);
   });
 
   it('compares minor difference', () => {
-    expect(compareSemver([2, 0, 0], [2, 1, 145])).toBeLessThan(0);
+    expect(compareSemverTuples([2, 0, 0], [2, 1, 145])).toBeLessThan(0);
   });
 
   it('compares patch difference', () => {
-    expect(compareSemver([2, 1, 146], [2, 1, 145])).toBeGreaterThan(0);
+    expect(compareSemverTuples([2, 1, 146], [2, 1, 145])).toBeGreaterThan(0);
   });
 });
 

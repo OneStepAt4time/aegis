@@ -629,7 +629,7 @@ export const MIN_CC_VERSION = '2.1.80';
 
 /** Parse a semver string into [major, minor, patch], or null if invalid. */
 export function parseSemver(v: string): [number, number, number] | null {
-  const match = v.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+  const match = v.trim().replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
@@ -647,6 +647,19 @@ export function compareSemver(a: string, b: string): number {
     if (pa[i] > pb[i]) return 1;
   }
   return 0;
+}
+
+/**
+ * Compare two semver tuples.
+ * Returns negative if a < b, 0 if equal, positive if a > b.
+ */
+export function compareSemverTuples(
+  a: [number, number, number],
+  b: [number, number, number],
+): number {
+  if (a[0] !== b[0]) return a[0] - b[0];
+  if (a[1] !== b[1]) return a[1] - b[1];
+  return a[2] - b[2];
 }
 
 /** Extract version number from `claude --version` output. */
