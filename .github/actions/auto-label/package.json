@@ -1,8 +1,9 @@
 {
   "private": true,
   "dependencies": {
-    "@actions/core": "^1.11.1",
-    "@actions/github": "^6.0.1"
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "@actions/http-client": "^4.0.1"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
