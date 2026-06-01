@@ -1,39 +1,33 @@
-import { randomUUID } from 'node:crypto';
+/**
+ * backend.ts — ACP Backend core class.
+ *
+ * Issue #4534: Split from monolithic backend.ts for gate:arch compliance.
+ * Types moved to backend/types.ts, errors to backend/errors.ts,
+ * utilities to backend/utils.ts, runtime lifecycle to backend/runtime.ts,
+ * prompt delivery to backend/prompts.ts, drivers to backend/drivers.ts,
+ * action dispatch to backend/actions.ts.
+ */
 
-import {
-  AcpChildProcess,
-  type AcpChildProcessExitEvent,
-  type AcpChildProcessOptions,
-} from './child-process.js';
-import {
-  AcpJsonRpcClient,
-  type AcpJsonObject,
-  type AcpJsonRpcClientOptions,
-  type AcpJsonRpcInboundRequest,
-  type AcpJsonValue,
+import { randomUUID } from 'node:crypto';
+import type {
+  AcpJsonObject,
+  AcpJsonRpcInboundRequest,
+  AcpJsonValue,
 } from './json-rpc-client.js';
 import type { AcpActionRecord } from './action-queue.js';
-import { validatePromptOutput } from './content-validation.js';
 import type {
   AcpSessionRecord,
   AcpSessionScope,
-  AcpSessionTransitionEvent,
-  PromptValidationWarning,
 } from './types.js';
-
-// Re-export types from extracted modules for backward compatibility
-export type {
+import { StructuredLogger } from '../../logger.js';
+import {
+  AcpBackendLifecycleError,
+  AcpBackendRuntimeUnavailableError,
+} from './backend/errors.js';
+import type {
   AcpBackendClient,
-  AcpBackendSessionService,
-  AcpBackendCreateSessionInput,
-  AcpBackendScopedRuntimeInput,
-  AcpBackendResumeSessionInput,
-  AcpBackendLoadSessionInput,
-  AcpBackendCancelSessionInput,
-  AcpBackendShutdownSessionInput,
-  AcpBackendRestartSessionInput,
-  AcpBackendAdoptRuntimeInput,
   AcpBackendClientFactoryContext,
+  AcpBackendCreateSessionInput,
   AcpBackendInitializeResult,
   AcpBackendSessionResult,
   AcpBackendStartResult,
@@ -50,58 +44,31 @@ export type {
   AcpBackendDriverResult,
   AcpBackendParticipantsResult,
   AcpBackendRuntimeExitEvent,
-  AcpBackendRestartBackoffContext,
-  AcpBackendRestartBackoffEvent,
   AcpBackendOptions,
   AcpBackendRuntime,
-} from './acp-backend-types.js';
-
-export { AcpBackendLifecycleError, AcpBackendRuntimeUnavailableError } from './acp-backend-errors.js';
-export { hasLoadSessionCapability } from './acp-backend-utils.js';
-
-import { AcpBackendLifecycleError, AcpBackendRuntimeUnavailableError } from './acp-backend-errors.js';
-import type {
-  AcpBackendClient,
-  AcpBackendSessionService,
-  AcpBackendClientFactoryContext,
-  AcpBackendCreateSessionInput,
+  AcpBackendShutdownSessionInput,
+  AcpBackendCancelSessionInput,
+  AcpBackendRestartSessionInput,
   AcpBackendResumeSessionInput,
   AcpBackendLoadSessionInput,
-  AcpBackendCancelSessionInput,
-  AcpBackendShutdownSessionInput,
-  AcpBackendRestartSessionInput,
   AcpBackendAdoptRuntimeInput,
-  AcpBackendInitializeResult,
-  AcpBackendSessionResult,
-  AcpBackendStartResult,
-  AcpBackendCancelResult,
-  AcpBackendShutdownResult,
-  AcpBackendRestartResult,
-  AcpBackendDispatchActionResult,
-  AcpBackendApprovalInput,
-  AcpBackendApprovalResult,
-  AcpPendingApproval,
-  AcpBackendClaimDriverInput,
-  AcpBackendReleaseDriverInput,
-  AcpBackendTransferDriverInput,
-  AcpBackendDriverResult,
-  AcpBackendParticipantsResult,
-  AcpBackendOptions,
-  AcpBackendRuntime,
-} from './acp-backend-types.js';
+} from './backend/types.js';
 import {
+  createDefaultAcpBackendClient,
+  hasLoadSessionCapability,
   scopeFromInput,
   toCreateSessionInput,
-  attachmentFromResult,
   isNonEmptyString,
   requireActionMetadataString,
   primitiveResultMetadata,
   assertNeverAction,
   isActiveStatus,
   readPackageVersion,
-} from './acp-backend-utils.js';
-
-import { StructuredLogger } from '../../logger.js';
+} from './backend/utils.js';
+import * as runtimeLifecycle from './backend/runtime.js';
+import * as promptModule from './backend/prompts.js';
+import * as driverModule from './backend/drivers.js';
+import * as actionModule from './backend/actions.js';
 
 const log = new StructuredLogger();
 
@@ -110,8 +77,10 @@ const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
 const ACP_PROMPT_ACK_TIMEOUT_MS = 5_000;
 const PACKAGE_VERSION = readPackageVersion();
 
+export { hasLoadSessionCapability } from './backend/utils.js';
+
 export class AcpBackend {
-  private readonly sessionService: AcpBackendSessionService;
+  private readonly sessionService: AcpBackendOptions['sessionService'];
   private readonly clientFactory: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
   private readonly backendRunIdProvider: () => string;
   private readonly clientInfo: AcpJsonObject;
@@ -144,26 +113,89 @@ export class AcpBackend {
     this.clientCapabilities = options.clientCapabilities ?? {};
   }
 
+  private getRuntimeDeps(): runtimeLifecycle.RuntimeLifecycleDeps {
+    return {
+      sessionService: this.sessionService,
+      clientFactory: this.clientFactory,
+      backendRunIdProvider: this.backendRunIdProvider,
+      clientInfo: this.clientInfo,
+      clientCapabilities: this.clientCapabilities,
+      options: this.options,
+      runtimes: this.runtimes,
+      inFlightPrompts: this.inFlightPrompts,
+      pendingApprovals: this.pendingApprovals,
+    };
+  }
+
+  private getPromptDeps(): promptModule.PromptDeps {
+    return {
+      sessionService: this.sessionService,
+      inFlightPrompts: this.inFlightPrompts,
+    };
+  }
+
+  private getDriverDeps(): driverModule.DriverDeps {
+    return {
+      participants: this.participants,
+      driverFences: this.driverFences,
+      sessionService: this.sessionService,
+    };
+  }
+
+  private getActionDeps(): actionModule.ActionDeps {
+    return {
+      sessionService: this.sessionService,
+      inFlightPrompts: this.inFlightPrompts,
+      strictValidation: this.strictValidation,
+      emitValidationWarnings: this.emitValidationWarnings,
+      shutdownSession: (input: AcpBackendShutdownSessionInput) => this.shutdownSession(input),
+      cancelSession: (input: AcpBackendCancelSessionInput) => this.cancelSession(input),
+    };
+  }
+
   /**
    * Create a new ACP session: durable record → child process → initialize → session/new.
    * @throws {AcpBackendLifecycleError} on handshake or session/new failure
    */
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    return this.startNewRuntime(session, input.cwd, input.mcpServers, input.systemPrompt, input.env, input.permissionMode);
+    return runtimeLifecycle.startNewRuntime(
+      this.getRuntimeDeps(),
+      session,
+      input.cwd,
+      input.mcpServers,
+      input.systemPrompt
+    );
   }
 
+  /**
+   * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
+   * Returns immediately with the durable session record while the child process
+   * spawn + initialize + session/new handshake runs in the background.
+   *
+   * Use this for HTTP endpoints where synchronous handshake causes client timeouts
+   * (e.g., POST /v1/sessions hanging for 2+ minutes).
+   */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     const backendRunId = this.backendRunIdProvider();
 
-    const ready = this.startNewRuntimeBackground(session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId, input.env, input.permissionMode);
-    ready.catch((err) => {
-      log.error({
-        component: 'acp-backend',
-        operation: 'asyncStartFailed',
-        attributes: { sessionId: session.id, error: String(err) },
-      });
+    // Fire-and-forget the handshake — caller gets the session record immediately.
+    // On success, session transitions to agent_ready. On failure, transitions to error.
+    const ready = runtimeLifecycle.startNewRuntimeBackground(
+      this.getRuntimeDeps(),
+      session,
+      input.cwd,
+      input.mcpServers,
+      input.systemPrompt,
+      backendRunId
+    ).then(() => {
+      return { session, initializeResult: {}, backendRunId };
+    }).catch((err) => {
+      log.error(
+        { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
+      );
+      throw err;
     });
 
     return { session, initializeResult: {}, backendRunId, ready };
@@ -180,7 +212,7 @@ export class AcpBackend {
         `Cannot resume ACP session ${session.id} without a verified ACP agent session id`
       );
     }
-    return this.startResumeRuntime(session, input.cwd);
+    return runtimeLifecycle.startResumeRuntime(this.getRuntimeDeps(), session, input.cwd);
   }
 
   /**
@@ -194,7 +226,12 @@ export class AcpBackend {
         `Cannot load ACP session ${session.id} without a verified ACP agent session id`
       );
     }
-    return this.startLoadRuntime(session, input.cwd, input.mcpServers);
+    return runtimeLifecycle.startLoadRuntime(
+      this.getRuntimeDeps(),
+      session,
+      input.cwd,
+      input.mcpServers
+    );
   }
 
   /**
@@ -268,16 +305,13 @@ export class AcpBackend {
     return { client: runtime.client, agentCapabilities: runtime.agentCapabilities };
   }
 
-
-
   /** Issue #4294: Return all session IDs with active ACP runtimes. */
   getActiveRuntimeIds(): string[] {
     return [...this.runtimes.keys()];
   }
+
   /**
    * Issue #3093: Direct prompt delivery to ACP runtime.
-   * Bypasses the action queue for immediate prompt delivery during session creation
-   * and send_message API calls. Returns {delivered, attempts} matching the session.ts stub contract.
    */
   async sendPrompt(
     sessionId: string,
@@ -288,59 +322,7 @@ export class AcpBackend {
     if (!runtime) {
       return { delivered: false, attempts: 0, error: 'no_acp_runtime' };
     }
-
-    // Issue #2805: Reject concurrent prompts — CC blocks on background terminals
-    const existing = this.inFlightPrompts.get(sessionId);
-    if (existing) {
-      throw new AcpBackendLifecycleError(
-        `Session ${sessionId} already has a prompt in-flight. ` +
-        'Claude Code blocks on background terminals — wait for the current prompt to complete or cancel it.'
-      );
-    }
-
-    const abort = new AbortController();
-    this.inFlightPrompts.set(sessionId, abort);
-
-    try {
-      const session = await this.sessionService.getSession(sessionId, scope);
-      const acpSessionId = session.acpAgentSessionId;
-      if (!acpSessionId) {
-        return { delivered: false, attempts: 0, error: 'no_agent_session' };
-      }
-
-      // #3479: Revert notify() back to request() with a short ack timeout.
-      // #3423's notify() fix silently swallowed CC's -32601 "Method not found"
-      // error because JSON-RPC notifications have no response. Using request()
-      // with a 5s timeout: if CC acks within 5s → confirmed delivered. If it
-      // times out → CC likely received it but hasn't responded yet → mark as
-      // delivered (same behavior as notify, but with a chance to catch errors).
-      // If CC returns an actual error (e.g. -32601) → surface it properly.
-      try {
-        await runtime.client.request('session/prompt', {
-          sessionId: acpSessionId,
-          prompt: [{ type: 'text', text }],
-        }, { timeoutMs: ACP_PROMPT_ACK_TIMEOUT_MS });
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
-          // Timeout is acceptable — CC likely received the prompt but hasn't
-          // responded yet. Log and continue as delivered.
-          log.warn({ component: 'acp-backend', operation: 'promptAckTimeout', attributes: { sessionId } });
-        } else {
-          // Actual error (e.g. -32601 Method not found) — surface it
-          throw err;
-        }
-      }
-      return { delivered: true, attempts: 1 };
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
-        // Handled above — should not reach here, but defensive
-        return { delivered: true, attempts: 1 };
-      }
-      log.warn({ component: 'acp-backend', operation: 'promptError', attributes: { sessionId, error: (err as Error).message } });
-      return { delivered: false, attempts: 1, error: (err as Error).message };
-    } finally {
-      this.inFlightPrompts.delete(sessionId);
-    }
+    return promptModule.sendPrompt(this.getPromptDeps(), runtime, sessionId, text, scope);
   }
 
   /**
@@ -348,23 +330,7 @@ export class AcpBackend {
    * @throws {AcpBackendLifecycleError} if a driver is already claimed
    */
   async claimDriver(input: AcpBackendClaimDriverInput): Promise<AcpBackendDriverResult> {
-    const scope = scopeFromInput(input);
-    // Capture participant state before yielding to avoid TOCTOU race (#3921)
-    let record = this.participants.get(input.sessionId);
-    if (!record) {
-      record = { sessionId: input.sessionId, driver: null, observers: [], activeCount: 0 };
-      this.participants.set(input.sessionId, record);
-    }
-    if (record.driver) {
-      throw new AcpBackendLifecycleError(`Driver already claimed for session ${input.sessionId}`);
-    }
-    // Claim atomically before any await — prevents concurrent claims
-    const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
-    this.driverFences.set(input.sessionId, fence);
-    record.driver = { subscriberId: input.holderId, role: 'driver' };
-    record.activeCount = 1 + record.observers.length;
-    await this.sessionService.getSession(input.sessionId, scope);
-    return { sessionId: input.sessionId, holderId: input.holderId, role: 'driver', fence, ttlMs: input.ttlMs };
+    return driverModule.claimDriver(this.getDriverDeps(), input);
   }
 
   /**
@@ -372,16 +338,7 @@ export class AcpBackend {
    * @throws {AcpBackendLifecycleError} if not the current driver
    */
   async releaseDriver(input: AcpBackendReleaseDriverInput): Promise<AcpBackendDriverResult> {
-    const scope = scopeFromInput(input);
-    // Capture and mutate participant state before yielding to avoid TOCTOU race (#3921)
-    const record = this.participants.get(input.sessionId);
-    if (!record || !record.driver || record.driver.subscriberId !== input.holderId) {
-      throw new AcpBackendLifecycleError(`Not the driver of session ${input.sessionId}`);
-    }
-    record.driver = null;
-    record.activeCount = record.observers.length;
-    await this.sessionService.getSession(input.sessionId, scope);
-    return { sessionId: input.sessionId, holderId: null, role: 'observer' };
+    return driverModule.releaseDriver(this.getDriverDeps(), input);
   }
 
   /**
@@ -389,71 +346,25 @@ export class AcpBackend {
    * fence is incremented.
    */
   async transferDriver(input: AcpBackendTransferDriverInput): Promise<AcpBackendDriverResult> {
-    const scope = scopeFromInput(input);
-    // Capture and mutate participant state before yielding to avoid TOCTOU race (#3921)
-    const record = this.participants.get(input.sessionId);
-    if (!record || !record.driver) {
-      throw new AcpBackendLifecycleError(`No driver to transfer for session ${input.sessionId}`);
-    }
-    const fence = (this.driverFences.get(input.sessionId) ?? 0) + 1;
-    this.driverFences.set(input.sessionId, fence);
-    record.driver = { subscriberId: input.targetSubscriberId, role: 'driver' };
-    await this.sessionService.getSession(input.sessionId, scope);
-    return { sessionId: input.sessionId, holderId: input.targetSubscriberId, role: 'driver', fence };
+    return driverModule.transferDriver(this.getDriverDeps(), input);
   }
 
   /** Return current driver, observers, and active count for a session. */
-  getParticipants(sessionId: string, _scope: AcpSessionScope): AcpBackendParticipantsResult {
-    return (
-      this.participants.get(sessionId) ?? {
-        sessionId,
-        driver: null,
-        observers: [],
-        activeCount: 0,
-      }
-    );
+  getParticipants(sessionId: string, scope: AcpSessionScope): AcpBackendParticipantsResult {
+    return driverModule.getParticipants(this.getDriverDeps(), sessionId, scope);
   }
 
   /**
    * Dispatch an action from the action queue to the appropriate ACP runtime method.
-   * Handles: close, prompt, approve, reject, cancel. Throws for unimplemented types.
    */
   async dispatchAction(action: AcpActionRecord): Promise<AcpBackendDispatchActionResult> {
+    // Handle close action without requiring runtime (idempotent shutdown)
     if (action.actionType === 'close') {
       const result = await this.shutdownSession(action);
       return { resultMetadata: { status: result.session.status } };
     }
-
-    const scope = scopeFromInput(action);
-    const session = await this.sessionService.getSession(action.sessionId, scope);
     const runtime = this.requireRuntime(action.sessionId);
-    const acpSessionId = session.acpAgentSessionId;
-    if (!acpSessionId) {
-      throw new AcpBackendLifecycleError(
-        `Cannot dispatch ACP action ${action.actionId} before ACP agent attachment`
-      );
-    }
-
-    switch (action.actionType) {
-      case 'prompt':
-        return this.dispatchPromptAction(runtime, acpSessionId, action);
-      case 'approve':
-      case 'reject':
-        return this.dispatchApprovalAction(runtime, action);
-      case 'cancel': {
-        const result = await this.cancelSession(action);
-        return { resultMetadata: primitiveResultMetadata(result.cancelResult) };
-      }
-      case 'pause':
-      case 'resume':
-      case 'driver_transfer':
-      case 'intervene':
-        throw new AcpBackendLifecycleError(
-          `ACP action type ${action.actionType} has no runtime dispatch contract in ACP-046`
-        );
-      default:
-        return assertNeverAction(action.actionType);
-    }
+    return actionModule.dispatchAction(this.getActionDeps(), runtime, action);
   }
 
   /**
@@ -469,7 +380,11 @@ export class AcpBackend {
       return { session };
     }
     if (!runtime.cleanupPromise) {
-      runtime.cleanupPromise = this.shutdownRuntime(session, runtime);
+      runtime.cleanupPromise = runtimeLifecycle.shutdownRuntime(
+        this.getRuntimeDeps(),
+        session,
+        runtime
+      );
     }
     return runtime.cleanupPromise;
   }
@@ -489,7 +404,7 @@ export class AcpBackend {
     const previous = this.runtimes.get(input.sessionId);
     if (previous) {
       await previous.client.shutdown();
-      this.disposeRuntime(previous);
+      runtimeLifecycle.disposeRuntime(this.getRuntimeDeps(), previous);
       this.runtimes.delete(input.sessionId);
       this.inFlightPrompts.delete(input.sessionId);
     }
@@ -519,7 +434,12 @@ export class AcpBackend {
       scope,
       backendRunId
     );
-    const result = await this.startResumeRuntime(restarted, input.cwd, backendRunId);
+    const result = await runtimeLifecycle.startResumeRuntime(
+      this.getRuntimeDeps(),
+      restarted,
+      input.cwd,
+      backendRunId
+    );
     return { ...result, backoffDelayMs };
   }
 
@@ -528,7 +448,7 @@ export class AcpBackend {
     await this.sessionService.getSession(input.sessionId, scope);
     this.runtimes.set(
       input.sessionId,
-      this.bindRuntime({
+      runtimeLifecycle.bindRuntime(this.getRuntimeDeps(), {
         sessionId: input.sessionId,
         scope,
         backendRunId: input.backendRunId,
@@ -538,497 +458,42 @@ export class AcpBackend {
     );
   }
 
-  private async startNewRuntime(
-    session: AcpSessionRecord,
-    cwd: string,
-    mcpServers: AcpJsonObject | undefined,
-    systemPrompt?: string,
-    env?: Record<string, string>,
-    permissionMode?: string
-  ): Promise<AcpBackendStartResult> {
-    const backendRunId = this.backendRunIdProvider();
-    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
-    let started = false;
-    try {
-      const initializeResult = await this.startAndInitialize(runtime);
-      started = true;
-      const response = await runtime.client.request<AcpBackendSessionResult>(
-        'session/new',
-        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers, systemPrompt)
-      );
-      const attachment = attachmentFromResult(response.result, backendRunId);
-      const attached = await this.sessionService.attachAgentSession(
-        session.id,
-        runtime.scope,
-        attachment
-      );
-      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
-        type: 'agent_ready',
-      });
-      runtime.agentCapabilities = initializeResult.agentCapabilities;
-      this.runtimes.set(session.id, runtime);
-      return { session: ready, initializeResult, backendRunId };
-    } catch (error) {
-      await this.failStartup(session.id, runtime.scope, runtime, started);
-      throw error;
-    }
-  }
-
-  /**
-   * Issue #4456: Run the startNewRuntime handshake in the background.
-   * Extracted from startNewRuntime to allow fire-and-forget startup.
-   */
-  private async startNewRuntimeBackground(
-    session: AcpSessionRecord,
-    cwd: string,
-    mcpServers: AcpJsonObject | undefined,
-    systemPrompt: string | undefined,
-    backendRunId: string,
-    env?: Record<string, string>,
-    permissionMode?: string
-  ): Promise<AcpBackendStartResult> {
-    const runtime = this.createRuntime(session, cwd, backendRunId, env, permissionMode);
-    let started = false;
-    try {
-      const initializeResult = await this.startAndInitialize(runtime);
-      started = true;
-      const response = await runtime.client.request<AcpBackendSessionResult>(
-        'session/new',
-        this.buildSessionStartParams(session.id, backendRunId, cwd, mcpServers, systemPrompt)
-      );
-      const attachment = attachmentFromResult(response.result, backendRunId);
-      const attached = await this.sessionService.attachAgentSession(
-        session.id,
-        runtime.scope,
-        attachment
-      );
-      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
-        type: 'agent_ready',
-      });
-      runtime.agentCapabilities = initializeResult.agentCapabilities;
-      this.runtimes.set(session.id, runtime);
-      return { session: ready, initializeResult, backendRunId };
-    } catch (error) {
-      await this.failStartup(session.id, runtime.scope, runtime, started);
-      throw error;
-    }
-  }
-
-  private async startResumeRuntime(
-    session: AcpSessionRecord,
-    cwd: string,
-    forcedBackendRunId?: string
-  ): Promise<AcpBackendStartResult> {
-    const acpAgentSessionId = session.acpAgentSessionId;
-    if (!acpAgentSessionId) {
-      throw new AcpBackendLifecycleError(
-        `Cannot resume ACP session ${session.id} without ACP agent session id`
-      );
-    }
-    const backendRunId = forcedBackendRunId ?? this.backendRunIdProvider();
-    const runtime = this.createRuntime(session, cwd, backendRunId);
-    let started = false;
-    try {
-      const initializeResult = await this.startAndInitialize(runtime);
-      started = true;
-      const response = await runtime.client.request<AcpBackendSessionResult>('session/resume', {
-        sessionId: acpAgentSessionId,
-        cwd,
-        _meta: this.buildAegisMetadata(session.id, backendRunId),
-      });
-      const attachment = attachmentFromResult(response.result, backendRunId);
-      const attached = await this.sessionService.attachAgentSession(
-        session.id,
-        runtime.scope,
-        attachment
-      );
-      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
-        type: 'agent_ready',
-      });
-      runtime.agentCapabilities = initializeResult.agentCapabilities;
-      this.runtimes.set(session.id, runtime);
-      return { session: ready, initializeResult, backendRunId };
-    } catch (error) {
-      await this.failStartup(session.id, runtime.scope, runtime, started);
-      throw error;
-    }
-  }
-
-  private async startLoadRuntime(
-    session: AcpSessionRecord,
-    cwd: string,
-    mcpServers?: AcpJsonObject
-  ): Promise<AcpBackendStartResult> {
-    const acpAgentSessionId = session.acpAgentSessionId;
-    if (!acpAgentSessionId) {
-      throw new AcpBackendLifecycleError(
-        `Cannot load ACP session ${session.id} without ACP agent session id`
-      );
-    }
-    const backendRunId = this.backendRunIdProvider();
-    const runtime = this.createRuntime(session, cwd, backendRunId);
-    let started = false;
-    try {
-      const initializeResult = await this.startAndInitialize(runtime);
-      started = true;
-      const response = await runtime.client.request<AcpBackendSessionResult>('session/load', {
-        sessionId: acpAgentSessionId,
-        cwd,
-        mcpServers: mcpServers ?? [],
-        _meta: this.buildAegisMetadata(session.id, backendRunId),
-      });
-      const attachment = attachmentFromResult(response.result, backendRunId);
-      const attached = await this.sessionService.attachAgentSession(
-        session.id,
-        runtime.scope,
-        attachment
-      );
-      const ready = await this.transitionIfInitializing(attached, runtime.scope, {
-        type: 'agent_ready',
-      });
-      runtime.agentCapabilities = initializeResult.agentCapabilities;
-      this.runtimes.set(session.id, runtime);
-      return { session: ready, initializeResult, backendRunId };
-    } catch (error) {
-      await this.failStartup(session.id, runtime.scope, runtime, started);
-      throw error;
-    }
-  }
-
-  private createRuntime(
-    session: AcpSessionRecord,
-    cwd: string,
-    backendRunId: string,
-    env?: Record<string, string>,
-    permissionMode?: string
-  ): AcpBackendRuntime {
-    const context: AcpBackendClientFactoryContext = {
-      durableSessionId: session.id,
-      tenantId: session.tenantId,
-      ownerKeyId: session.ownerKeyId,
-      backendRunId,
-      cwd,
-      env,
-      permissionMode,
-    };
-    return this.bindRuntime({
-      sessionId: session.id,
-      scope: { tenantId: session.tenantId, ownerKeyId: session.ownerKeyId },
-      backendRunId,
-      client: this.clientFactory(context),
-      disposers: [],
-    });
-  }
-
-  private bindRuntime(runtime: AcpBackendRuntime): AcpBackendRuntime {
-    runtime.disposers.push(
-      runtime.client.onNotification(notification => {
-        this.options.onRawNotification?.(notification, { sessionId: runtime.sessionId, ...runtime.scope });
-      }),
-      runtime.client.onRequest(request => {
-        if (request.method === 'session/request_permission') {
-          this.trackPendingApproval(runtime.sessionId, request);
-        }
-        this.options.onRawRequest?.(request);
-      }),
-      runtime.client.onExit(exit => {
-        void this.handleRuntimeExit(runtime, exit);
-      })
-    );
-    return runtime;
-  }
-
-  private async dispatchPromptAction(
-    runtime: AcpBackendRuntime,
-    acpSessionId: string,
-    action: AcpActionRecord
-  ): Promise<AcpBackendDispatchActionResult> {
-    const sessionId = action.sessionId;
-
-    // Issue #2805: Reject concurrent prompts — CC blocks on background terminals
-    const existing = this.inFlightPrompts.get(sessionId);
-    if (existing) {
-      throw new AcpBackendLifecycleError(
-        `Session ${sessionId} already has a prompt in-flight (action ${action.actionId}). ` +
-        'Claude Code blocks on background terminals — wait for the current prompt to complete or cancel it.'
-      );
-    }
-
-    const abort = new AbortController();
-    this.inFlightPrompts.set(sessionId, abort);
-
-    const text = requireActionMetadataString(action, 'text', 'prompt action metadata.text');
-    await this.sessionService.transition(sessionId, runtime.scope, { type: 'run_started' });
-    try {
-      const response = await runtime.client.request<AcpJsonValue>('session/prompt', {
-        sessionId: acpSessionId,
-        prompt: [{ type: 'text', text }],
-      }, { timeoutMs: ACP_PROMPT_REQUEST_TIMEOUT_MS });
-
-      // Issue #3853: Validate output for hallucination signatures
-      // Issue #3900: Structured warnings + strict validation enforcement
-      const warnings = validatePromptOutput(response.result, text);
-      if (warnings.length > 0) {
-        log.warn({ component: 'acp-backend', operation: 'contentValidationWarning', attributes: { sessionId, actionId: action.actionId, warnings: JSON.stringify(warnings) } });
-
-        // Issue #3897: Emit validation_warning event for monitoring/alerting (opt-in)
-        if (this.emitValidationWarnings) {
-          try {
-            await this.sessionService.transition(sessionId, runtime.scope, {
-              type: 'validation_warning',
-              warnings,
-            });
-          } catch (err) {
-            log.warn({ component: 'acp-backend', operation: 'validationWarningEmitFailed', attributes: { error: String(err) } });
-          }
-        }
-
-        // Issue #3900: Strict mode — fail the action on validation warnings
-        if (this.strictValidation) {
-          throw new AcpBackendLifecycleError(
-            `ACP strict validation: ${warnings.length} warning(s) detected for action ${action.actionId} in session ${sessionId}: ${warnings.map(w => w.message).join('; ')}`
-          );
-        }
-      }
-
-      await this.sessionService.transition(sessionId, runtime.scope, {
-        type: 'run_completed',
-      });
-      const metadata = primitiveResultMetadata(response.result);
-      return { resultMetadata: metadata };
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AcpJsonRpcTimeoutError') {
-        log.warn({ component: 'acp-backend', operation: 'promptTimeout', attributes: { sessionId, actionId: action.actionId, timeout: ACP_PROMPT_REQUEST_TIMEOUT_MS } });
-      }
-      try {
-        await this.sessionService.transition(sessionId, runtime.scope, {
-          type: 'runtime_failed',
-        });
-      } catch (transitionError) {
-        log.error({ component: 'acp-backend', operation: 'transitionToFailedError', attributes: { sessionId, error: String(transitionError) } });
-      }
-      throw error;
-    } finally {
-      this.inFlightPrompts.delete(sessionId);
-    }
-  }
-
-  private async dispatchApprovalAction(
-    runtime: AcpBackendRuntime,
-    action: AcpActionRecord
-  ): Promise<AcpBackendDispatchActionResult> {
-    if (!isNonEmptyString(action.approvalId)) {
-      throw new AcpBackendLifecycleError(
-        `ACP ${action.actionType} action ${action.actionId} requires approvalId`
-      );
-    }
-    const optionId = requireActionMetadataString(
-      action,
-      'optionId',
-      'approval action metadata.optionId'
-    );
-    await runtime.client.respond(action.approvalId, {
-      outcome: {
-        outcome: 'selected',
-        optionId,
-      },
-    });
-    return {
-      resultMetadata: {
-        approvalId: action.approvalId,
-        outcome: 'selected',
-      },
-    };
-  }
-
-  private async startAndInitialize(
-    runtime: AcpBackendRuntime
-  ): Promise<AcpBackendInitializeResult> {
-    await runtime.client.start();
-    const response = await runtime.client.request<AcpBackendInitializeResult>('initialize', {
-      protocolVersion: DEFAULT_PROTOCOL_VERSION,
-      clientCapabilities: this.clientCapabilities,
-      clientInfo: this.clientInfo,
-    });
-    return response.result;
-  }
-
-  private buildSessionStartParams(
-    durableSessionId: string,
-    backendRunId: string,
-    cwd: string,
-    mcpServers: AcpJsonObject | undefined,
-    systemPrompt?: string
-  ): AcpJsonObject {
-    return {
-      cwd,
-      mcpServers: mcpServers ?? [],
-      _meta: {
-        ...this.buildAegisMetadata(durableSessionId, backendRunId),
-        ...(systemPrompt ? { systemPrompt } : {}),
-      },
-    };
-  }
-
-  private buildAegisMetadata(durableSessionId: string, backendRunId: string): AcpJsonObject {
-    return {
-      aegis: {
-        sessionId: durableSessionId,
-        backendRunId,
-      },
-    };
-  }
-
-  private async transitionIfInitializing(
-    session: AcpSessionRecord,
-    scope: AcpSessionScope,
-    event: AcpSessionTransitionEvent
-  ): Promise<AcpSessionRecord> {
-    if (session.status !== 'initializing') return session;
-    return this.sessionService.transition(session.id, scope, event);
-  }
-
-  private async failStartup(
-    sessionId: string,
-    scope: AcpSessionScope,
-    runtime: AcpBackendRuntime,
-    started: boolean
-  ): Promise<void> {
-    try {
-      try {
-        await this.sessionService.transition(sessionId, scope, { type: 'runtime_failed' });
-      } catch (transitionError) {
-        log.error({ component: 'acp-backend', operation: 'startupTransitionFailed', attributes: { sessionId, error: String(transitionError) } });
-      }
-    } finally {
-      if (started) {
-        await runtime.client.shutdown().catch(() => undefined);
-      }
-      this.disposeRuntime(runtime);
-      this.runtimes.delete(sessionId);
-      this.inFlightPrompts.delete(sessionId);
-    }
-  }
-
-  private async shutdownRuntime(
-    session: AcpSessionRecord,
-    runtime: AcpBackendRuntime
-  ): Promise<AcpBackendShutdownResult> {
-    let current = session;
-    let exit: AcpChildProcessExitEvent | undefined;
-    try {
-      if (isActiveStatus(current.status)) {
-        current = await this.sessionService.transition(session.id, runtime.scope, {
-          type: 'close_requested',
-        });
-      }
-      const acpAgentSessionId = current.acpAgentSessionId;
-      if (acpAgentSessionId) {
-        await runtime.client.request('session/close', { sessionId: acpAgentSessionId });
-      }
-      exit = await runtime.client.shutdown();
-      if (current.status === 'closing') {
-        current = await this.sessionService.transition(session.id, runtime.scope, {
-          type: 'close_completed',
-        });
-      } else {
-        current = await this.sessionService.getSession(session.id, runtime.scope);
-      }
-      return { session: current, exit };
-    } finally {
-      this.disposeRuntime(runtime);
-      this.runtimes.delete(session.id);
-      this.inFlightPrompts.delete(session.id);
-    }
-  }
-
-  private async handleRuntimeExit(
-    runtime: AcpBackendRuntime,
-    exit: AcpChildProcessExitEvent
-  ): Promise<void> {
-    this.options.onRuntimeExit?.({
-      sessionId: runtime.sessionId,
-      backendRunId: runtime.backendRunId,
-      exit,
-    });
-    if (exit.expected || runtime.cleanupPromise) return;
-    try {
-      try {
-        await this.sessionService.transition(runtime.sessionId, runtime.scope, {
-          type: 'runtime_failed',
-        });
-      } catch (transitionError) {
-        log.error({ component: 'acp-backend', operation: 'exitTransitionFailed', attributes: { sessionId: runtime.sessionId, error: String(transitionError) } });
-      }
-    } finally {
-      this.disposeRuntime(runtime);
-      this.runtimes.delete(runtime.sessionId);
-      this.inFlightPrompts.delete(runtime.sessionId);
-    }
-  }
-
   private requireRuntime(sessionId: string): AcpBackendRuntime {
     const runtime = this.runtimes.get(sessionId);
     if (!runtime) throw new AcpBackendRuntimeUnavailableError(sessionId);
     return runtime;
   }
-
-  private trackPendingApproval(sessionId: string, request: AcpJsonRpcInboundRequest): void {
-    const params =
-      typeof request.params === 'object' && request.params !== null
-        ? (request.params as Record<string, unknown>)
-        : {};
-    const toolCall =
-      typeof params.toolCall === 'object' && params.toolCall !== null
-        ? (params.toolCall as Record<string, unknown>)
-        : {};
-    this.pendingApprovals.set(sessionId, {
-      approvalId: String(request.id),
-      sessionId,
-      tool: {
-        toolName: typeof toolCall.kind === 'string' ? toolCall.kind : 'unknown',
-        description:
-          typeof toolCall.title === 'string' ? toolCall.title : 'Tool execution requested',
-        input:
-          typeof toolCall.input === 'object' && toolCall.input !== null
-            ? (toolCall.input as Record<string, unknown>)
-            : undefined,
-      },
-      requestedAt: new Date().toISOString(),
-    });
-  }
-
-  private disposeRuntime(runtime: AcpBackendRuntime): void {
-    for (const dispose of runtime.disposers.splice(0)) {
-      dispose();
-    }
-    this.pendingApprovals.delete(runtime.sessionId);
-  }
 }
 
-export function createDefaultAcpBackendClient(
-  context: AcpBackendClientFactoryContext,
-  options: {
-    childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
-    jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
-  } = {}
-): AcpBackendClient {
-  const child = new AcpChildProcess({
-    ...options.childProcessOptions,
-    cwd: context.cwd,
-    env: context.env,
-    permissionMode: context.permissionMode,
-  });
-  child.on('stderr', (event) => {
-    const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
-    if (text) {
-      log.error({ component: 'acp-backend', operation: 'childStderr', attributes: { sessionId: context.durableSessionId.slice(0, 8), text } });
-    }
-  });
-  return new AcpJsonRpcClient({
-    ...options.jsonRpcClientOptions,
-    child,
-    idNamespace:
-      options.jsonRpcClientOptions?.idNamespace ?? `aegis-acp-${context.durableSessionId}`,
-  });
-}
+// Re-export types for backward compatibility (Issue #4534)
+// Re-export values for backward compatibility (Issue #4534)
+export {
+  AcpBackendLifecycleError,
+  AcpBackendRuntimeUnavailableError,
+  createDefaultAcpBackendClient,
+} from './backend/utils.js';
+
+export type {
+  AcpBackendAdoptRuntimeInput,
+  AcpBackendCancelResult,
+  AcpBackendCancelSessionInput,
+  AcpBackendClient,
+  AcpBackendClientFactoryContext,
+  AcpBackendCreateSessionInput,
+  AcpBackendDispatchActionResult,
+  AcpBackendInitializeResult,
+  AcpBackendLoadSessionInput,
+  AcpBackendOptions,
+  AcpBackendRestartBackoffContext,
+  AcpBackendRestartBackoffEvent,
+  AcpBackendRestartResult,
+  AcpBackendRestartSessionInput,
+  AcpBackendResumeSessionInput,
+  AcpBackendRuntimeExitEvent,
+  AcpBackendScopedRuntimeInput,
+  AcpBackendSessionResult,
+  AcpBackendSessionService,
+  AcpBackendShutdownResult,
+  AcpBackendShutdownSessionInput,
+  AcpBackendStartResult,
+} from './backend/types.js';

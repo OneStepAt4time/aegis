@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const base = process.argv[2] || 'origin/develop';
 const forbiddenCast = 'as ' + 'any';
+const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 
 function runGit(args, options = {}) {
   return spawnSync('git', args, { encoding: 'utf8', ...options });
@@ -36,7 +37,7 @@ const diffs = [];
 if (baseCheck.status === 0) {
   diffs.push(gitOutput(['diff', '--no-color', '--unified=0', `${base}...HEAD`]));
 } else {
-  const details = (baseCheck.stderr || '').trim() || (baseCheck.stdout || '').trim() || `exit code ${baseCheck.status}`;
+  const details = (baseCheck.stderr || '').trim() || (baseCheck.stderr || '').trim() || `exit code ${baseCheck.status}`;
   console.error(`Unable to resolve ${base}: ${details}`);
   process.exit(1);
 }
@@ -47,16 +48,37 @@ diffs.push(gitOutput(['diff', '--cached', '--no-color', '--unified=0']));
 const untrackedFiles = gitOutput(['ls-files', '--others', '--exclude-standard'], true)
   .split(/\r?\n/)
   .map((line) => line.trim())
-  .filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file));
+  .filter((file) => SOURCE_EXT.test(file));
 
 for (const file of untrackedFiles) {
   const content = require('node:fs').readFileSync(file, 'utf8');
-  diffs.push(content.split(/\r?\n/).map((line) => `+${line}`).join('\n'));
+  // Tag with synthetic file header so the filter below treats it as a source file.
+  diffs.push(`--- a/${file}\n+++ b/${file}\n` + content.split(/\r?\n/).map((line) => `+${line}`).join('\n'));
 }
 
-const additions = diffs.join('\n')
-  .split(/\r?\n/)
-  .filter((line) => line.startsWith('+') && !line.startsWith('+++'));
+// Filter diffs: only keep additions from source files.
+// Unified diff sections start with "+++ b/<path>" — we track the current file
+// and skip lines from non-source files (markdown, json, yaml, etc.).
+const additions = [];
+let currentFile = null;
+for (const diff of diffs) {
+  for (const line of diff.split(/\r?\n/)) {
+    if (line.startsWith('+++ b/')) {
+      currentFile = line.slice('+++ b/'.length).trim();
+      continue;
+    }
+    if (line.startsWith('--- ')) {
+      continue;
+    }
+    if (line.startsWith('diff --git ')) {
+      // Reset to allow next "+++ b/" to set the current file.
+      continue;
+    }
+    if (!line.startsWith('+') || line.startsWith('+++')) continue;
+    if (currentFile && !SOURCE_EXT.test(currentFile)) continue;
+    additions.push(line);
+  }
+}
 
 if (additions.length === 0) {
   console.log(`No additions detected vs ${base}. Skipping as-any check.`);

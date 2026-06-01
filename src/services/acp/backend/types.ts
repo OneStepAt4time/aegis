@@ -1,16 +1,17 @@
 /**
- * acp-backend-types.ts — Type definitions for the ACP backend lifecycle manager.
+ * backend/types.ts — ACP Backend type definitions.
  *
- * Extracted from backend.ts to keep the core class focused on orchestration.
+ * Issue #4534: Extracted from backend.ts for gate:arch compliance.
  */
 
 import type {
   AcpChildProcessExitEvent,
   AcpChildProcessOptions,
   AcpChildProcessShutdownOptions,
-} from './child-process.js';
+} from '../child-process.js';
 import type {
   AcpJsonObject,
+  AcpJsonRpcClientOptions,
   AcpJsonRpcId,
   AcpJsonRpcInboundRequest,
   AcpJsonRpcNotification,
@@ -18,9 +19,8 @@ import type {
   AcpJsonRpcResponseError,
   AcpJsonRpcSuccess,
   AcpJsonValue,
-  AcpJsonRpcClientOptions,
-} from './json-rpc-client.js';
-import type { AcpActionMetadata } from './action-queue.js';
+} from '../json-rpc-client.js';
+import type { AcpActionMetadata, AcpActionRecord } from '../action-queue.js';
 import type {
   AcpAgentSessionAttachment,
   AcpBackendMetadata,
@@ -29,7 +29,8 @@ import type {
   AcpSessionRecord,
   AcpSessionScope,
   AcpSessionTransitionEvent,
-} from './types.js';
+  PromptValidationWarning,
+} from '../types.js';
 
 export interface AcpBackendClient {
   start(): Promise<void>;
@@ -104,10 +105,6 @@ export interface AcpBackendClientFactoryContext extends AcpSessionScope {
   durableSessionId: string;
   backendRunId: string;
   cwd: string;
-  /** Issue #4524: Per-session environment overrides for the child process. */
-  env?: Record<string, string>;
-  /** Issue #4524: Permission mode to enforce on the child process. */
-  permissionMode?: string;
 }
 
 export interface AcpBackendInitializeResult {
@@ -125,6 +122,8 @@ export interface AcpBackendStartResult {
   session: AcpSessionRecord;
   initializeResult: AcpBackendInitializeResult;
   backendRunId: string;
+  /** Issue #4456: Promise that resolves when the async runtime handshake completes.
+   * Only present for createSessionAsync; absent for synchronous start methods. */
   ready?: Promise<AcpBackendStartResult>;
 }
 
