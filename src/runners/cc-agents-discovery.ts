@@ -91,11 +91,11 @@ export function compareSemver(
  *
  * @returns Version string (e.g. "2.1.146") or null if not found.
  */
-export async function detectCcVersion(claudePath?: string): Promise<string | null> {
+export async function detectCcVersion(claudePath?: string, timeoutMs?: number): Promise<string | null> {
   const bin = claudePath || 'claude';
   try {
     const { stdout } = await execFileAsync(bin, ['--version'], {
-      timeout: 5000,
+      timeout: timeoutMs ?? 5000,
       encoding: 'utf-8',
     });
     // Output format: "2.1.146 (Claude Code)" or "2.1.146"
@@ -109,8 +109,10 @@ export async function detectCcVersion(claudePath?: string): Promise<string | nul
 /**
  * Check if the installed CC version supports `claude agents --json`.
  */
-export async function isCcAgentsJsonSupported(claudePath?: string): Promise<boolean> {
-  const version = await detectCcVersion(claudePath);
+export async function isCcAgentsJsonSupported(claudePath?: string): Promise<boolean>;
+export async function isCcAgentsJsonSupported(version: string, _claudePath?: string): Promise<boolean>;
+export async function isCcAgentsJsonSupported(claudePathOrVersion?: string, _claudePath?: string): Promise<boolean> {
+  const version = claudePathOrVersion?.match(/^\d+\.\d+\.\d+/) ? claudePathOrVersion : await detectCcVersion(claudePathOrVersion);
   if (!version) return false;
   const parsed = parseSemver(version);
   const minParsed = parseSemver(MIN_CC_VERSION_FOR_AGENTS_JSON);
@@ -134,7 +136,7 @@ export async function discoverCcAgents(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   // Check version first
-  const ccVersion = await detectCcVersion(bin);
+  const ccVersion = await detectCcVersion(bin, timeoutMs);
   if (!ccVersion) {
     return {
       available: false,
@@ -143,9 +145,7 @@ export async function discoverCcAgents(
     };
   }
 
-  const parsed = parseSemver(ccVersion);
-  const minParsed = parseSemver(MIN_CC_VERSION_FOR_AGENTS_JSON);
-  if (!parsed || !minParsed || compareSemver(parsed, minParsed) < 0) {
+  if (!await isCcAgentsJsonSupported(ccVersion, bin)) {
     return {
       available: false,
       sessions: [],
