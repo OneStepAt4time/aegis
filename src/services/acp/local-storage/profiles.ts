@@ -182,30 +182,50 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
    * to disk via atomic rename and resolves all pending waiters.
    */
   private async persistNow(): Promise<void> {
+  private async persistNow(): Promise<void> {
     const serialized = serializeStateLightweight(this.state);
+    const tmpPath = `${this.config.filePath}.tmp.${process.pid}`;
+
     const write = async (): Promise<void> => {
-      const tmpPath = `${this.config.filePath}.tmp`;
       await writeFile(tmpPath, JSON.stringify(serialized));
       await rename(tmpPath, this.config.filePath);
     };
-    this.writeChain = this.writeChain.then(write, write);
+
+    // Chain writes so concurrent persists serialize. If a previous write
+    // failed, still attempt this write — but ensure failures do not
+    // poison subsequent writes (reset writeChain on failure).
+    const prevChain = this.writeChain;
+    this.writeChain = prevChain.then(write, write)
+      .then(() => {
+        // Success: clear any previous persist error
+        this.persistError = null;
+      })
+      .catch((err) => {
+        // Record the error for health checks but DO NOT re-throw: callers
+        // (schedulePersist/flush/stop) expect persist failures to be
+        // recorded and not cause unhandled rejections.
+        this.persistError = err instanceof Error ? err : new Error(String(err));
+        logger.error({
+          component: acp-local-storage,
+          operation: persistNow,
+          attributes: { filePath: this.config.filePath, error: this.persistError.message },
+        });
+        // Clean up stale tmp file if present; best-effort.
+        import(node:fs/promises).then(fs => fs.unlink(tmpPath).catch(() => {})).catch(() => {});
+        // Reset chain so next persist() is not chained to a rejected promise
+        this.writeChain = Promise.resolve();
+      });
+
+    // Await the chain so callers waiting for persist completion are
+    // notified, but do not re-throw errors (they are surfaced via
+    // getPersistError/health()).
     try {
       await this.writeChain;
       this.dirty = false;
-      this.persistError = null;
-    } catch (error) {
-      this.persistError = error instanceof Error ? error : new Error(String(error));
-      logger.error({
-        component: 'acp-local-storage',
-        operation: 'persistNow',
-        attributes: { filePath: this.config.filePath, error: this.persistError.message },
-      });
-      throw this.persistError;
     } finally {
       this.drainPendingResolvers();
     }
   }
-
   private drainPendingResolvers(): void {
     const resolvers = this.pendingPersistResolvers;
     this.pendingPersistResolvers = [];
