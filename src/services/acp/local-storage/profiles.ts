@@ -182,7 +182,6 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
    * to disk via atomic rename and resolves all pending waiters.
    */
   private async persistNow(): Promise<void> {
-  private async persistNow(): Promise<void> {
     const serialized = serializeStateLightweight(this.state);
     const tmpPath = `${this.config.filePath}.tmp.${process.pid}`;
 
@@ -206,12 +205,12 @@ export class FileAcpLocalStorageProfile implements AcpLocalStorageProfile {
         // recorded and not cause unhandled rejections.
         this.persistError = err instanceof Error ? err : new Error(String(err));
         logger.error({
-          component: acp-local-storage,
-          operation: persistNow,
+          "component": 'acp-local-storage',
+          "operation": 'persistNow',
           attributes: { filePath: this.config.filePath, error: this.persistError.message },
         });
         // Clean up stale tmp file if present; best-effort.
-        import(node:fs/promises).then(fs => fs.unlink(tmpPath).catch(() => {})).catch(() => {});
+        import('node:fs/promises').then(fs => fs.unlink(tmpPath).catch(() => {})).catch(() => {});
         // Reset chain so next persist() is not chained to a rejected promise
         this.writeChain = Promise.resolve();
       });
