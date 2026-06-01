@@ -195,3 +195,38 @@ describe('Issue #3263 — Runner abstraction layer', () => {
     });
   });
 });
+
+    it('unregisters a runner and updates default', () => {
+      const registry = new InMemoryRunnerRegistry();
+      const first = new MockRunner('first');
+      const second = new MockRunner('second');
+
+      registry.register(first);
+      registry.register(second);
+      expect(registry.getDefault()).toBe(first);
+
+      registry.unregister('first');
+      expect(registry.get('first')).toBeUndefined();
+      expect(registry.listNames()).toEqual(['second']);
+      expect(registry.getDefault()).toBe(second);
+    });
+
+    it('unregisters the last runner and getDefault throws', () => {
+      const registry = new InMemoryRunnerRegistry();
+      const runner = new MockRunner('only');
+
+      registry.register(runner);
+      registry.unregister('only');
+      expect(registry.get('only')).toBeUndefined();
+      expect(registry.listNames()).toEqual([]);
+      expect(() => registry.getDefault()).toThrow('No runners registered');
+    });
+
+    it('unregister of unknown runner is a no-op', () => {
+      const registry = new InMemoryRunnerRegistry();
+      registry.register(new MockRunner('existing'));
+
+      registry.unregister('nonexistent');
+      expect(registry.listNames()).toEqual(['existing']);
+      expect(registry.getDefault().name).toBe('existing');
+    });

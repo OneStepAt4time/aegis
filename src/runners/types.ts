@@ -165,4 +165,11 @@ export interface RunnerRegistry {
 
   /** Get the default runner. */
   getDefault(): AgentRunner;
+
+  /**
+   * Unregister a runner by name.
+   *
+   * @param name - Runner name to remove.
+   */
+  unregister(name: string): void;
 }

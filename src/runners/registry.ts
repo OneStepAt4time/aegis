@@ -32,4 +32,12 @@ export class InMemoryRunnerRegistry implements RunnerRegistry {
     }
     return this.defaultRunner;
   }
+
+  unregister(name: string): void {
+    this.runners.delete(name);
+    // If we removed the default, pick a new one
+    if (this.defaultRunner?.name === name) {
+      this.defaultRunner = this.runners.values().next().value;
+    }
+  }
 }
