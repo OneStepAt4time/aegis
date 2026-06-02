@@ -11,6 +11,12 @@ permissions:
 
 jobs:
   helm-smoke:
+    # Skip on DRAFT PRs: helm-smoke spins up a k3d cluster (~1-5min) and runs
+    # the full chart deploy + ag doctor pipeline. DRAFT PRs are still being
+    # iterated on by the author; this gate keeps CI minutes available for
+    # the ready-for-review signal. Push events are not DRAFT, so the disjunct
+    # form correctly handles the dual trigger (pull_request + push).
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
