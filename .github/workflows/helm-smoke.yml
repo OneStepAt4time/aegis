@@ -34,6 +34,7 @@ jobs:
         with:
           cluster-name: aegis-helm-smoke
           args: --agents 1
+          k3d-version: v5.9.0
       - name: Prepare smoke image assets
         shell: bash
         run: |
