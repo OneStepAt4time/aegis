@@ -67,7 +67,7 @@ jobs:
       - name: Console.* guard — block new console.log/warn/error in src/
         run: bash scripts/console-guard.sh
   feat-minor-bump-gate:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Enforce approved minor bump label for feat PRs
@@ -233,7 +233,7 @@ jobs:
           \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
           \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
   platform-smoke:
-    if: ${{ (github.event_name == 'pull_request' && github.base_ref == 'develop') || (github.event_name == 'push' && github.ref == 'refs/heads/develop') }}
+    if: ${{ ((github.event_name == 'pull_request' && github.base_ref == 'develop') && github.event.pull_request.draft == false) || (github.event_name == 'push' && github.ref == 'refs/heads/develop') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -373,7 +373,7 @@ jobs:
           \  echo \"::error::Blacklisted files found in git tracking\"\n  echo \"$FOUND\"\
           \n  exit 1\nfi\necho \"Audit passed - no blacklisted files found\"\n"
   dashboard-e2e:
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
