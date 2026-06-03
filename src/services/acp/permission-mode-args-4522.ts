@@ -58,15 +58,35 @@ export function applyPermissionModeArgs(
  * `--dangerously-skip-permissions` in argv. This is a hard security boundary;
  * the spawn must fail closed if this flag is present.
  */
+/**
+ * Issue #4522 AC #3: case-insensitive match for the dangerous flag, including
+ * the \`=value\` single-arg form. The previous exact-string \`Array.includes\`
+ * was bypassable by:
+ *   - \`--Dangerously-Skip-Permissions\` / \`--DANGEROUSLY-SKIP-PERMISSIONS\` (case)
+ *   - \`--dangerously-skip-permissions=true\` / \`=1\` / \`=disabled\` (single-arg form)
+ *
+ * Defense-in-depth trade-off: case-insensitive exact-match + startsWith for the
+ * \`=value\` form catches the bypasses without false-positive-risking on
+ * \`--dangerously-skip-permissions-disabled\` (hypothetical future flag) or
+ * \`--my-arg=--dangerously-skip-permissions\` (substring in unrelated arg).
+ * Substring matches are deliberately excluded.
+ */
 export function assertNoDangerousArgs(
   resolved: ResolvedAcpCommand,
   cwd: string
 ): void {
-  if (resolved.args.includes('--dangerously-skip-permissions')) {
+  const offendingArg = resolved.args.find((a) => {
+    const lower = a.toLowerCase();
+    return (
+      lower === '--dangerously-skip-permissions' ||
+      lower.startsWith('--dangerously-skip-permissions=')
+    );
+  });
+  if (offendingArg !== undefined) {
     log.error({
       component: 'acp-child-process',
       operation: 'dangerousFlagDetected',
-      attributes: { command: resolved.command, args: resolved.args },
+      attributes: { command: resolved.command, args: resolved.args, offendingArg },
     });
     throw new AcpChildProcessStartError({
       command: resolved.command,
@@ -74,7 +94,7 @@ export function assertNoDangerousArgs(
       cwd,
       message:
         '--dangerously-skip-permissions is forbidden in ACP spawn args (Issue #4522 security boundary). ' +
-        'Use --permission-mode <mode> instead.',
+        'Use --permission-mode <mode> instead. Caught via: ' + offendingArg,
     });
   }
 }

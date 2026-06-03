@@ -76,14 +76,17 @@ describe('AC #3: --permission-mode argv injection (Issue #4522)', () => {
     expect(started.command.args).not.toContain('--permission-mode');
   });
 
-  // Document the boundary: exact-match is the correct behavior.
-  // Variations should NOT trigger the assertion (only the exact flag name).
+  // Document the boundary: case-insensitive exact-match + the =value form
+  // (per Themis's re-review). 4 case/value variations now REJECT (defense in
+  // depth). 1 partial / typo is still NOT rejected because it's a prefix,
+  // not the full flag name (would risk false-positive on a hypothetical
+  // future flag like --dangerously-skip-permissions-disabled).
   it.each([
-    ['--dangerously-skip-permissions=true', 'with =true suffix', false],
-    ['--dangerously-skip-permissions=1', 'with =1 suffix', false],
-    ['--Dangerously-Skip-Permissions', 'capitalized case', false],
-    ['--DANGEROUSLY-SKIP-PERMISSIONS', 'uppercase', false],
-    ['--dangerously-skip-permiss', 'partial / typo', false],
+    ['--dangerously-skip-permissions=true', 'with =true suffix (value form)', true],
+    ['--dangerously-skip-permissions=1', 'with =1 suffix (value form)', true],
+    ['--Dangerously-Skip-Permissions', 'capitalized case', true],
+    ['--DANGEROUSLY-SKIP-PERMISSIONS', 'uppercase', true],
+    ['--dangerously-skip-permiss', 'partial / typo (prefix, not the full flag)', false],
     ['--dangerously-skip-permissions', 'exact match (the threat)', true],
   ])('flag detection boundary: %s (%s) — should reject? %s', async (flag, _label, shouldReject) => {
     const child = new AcpChildProcess({
@@ -115,6 +118,54 @@ describe('AC #3: --permission-mode argv injection (Issue #4522)', () => {
       // Sanity: no exception thrown, command started
       expect(started.pid).toEqual(expect.any(Number));
     }
+  });
+
+  // WIRED-PATH TEST (Issue #4522 AC #3, per Themis's re-review):
+  // Verify that session.permissionMode actually flows from createRuntime's
+  // context into the AcpChildProcess constructor. Without this wiring, the
+  // helper-level permissionMode injection is dead code in production.
+  it('wired path: session.permissionMode propagates from createRuntime context to AcpChildProcess', async () => {
+    const { createRuntime } = await import('../services/acp/backend/runtime.js');
+
+    const session = {
+      id: '00000000-0000-4000-8000-000000000001',
+      conversationId: 'conv-1',
+      transcriptId: 'trans-1',
+      tenantId: 't-1',
+      ownerKeyId: 'o-1',
+      status: 'initializing',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      permissionMode: 'bypassPermissions',  // the session has a permission mode
+    } as const;
+
+    // Capture the context the clientFactory receives
+    let capturedContext: unknown = null;
+    const fakeClient = {
+      start: async () => {},
+      request: async () => ({ jsonrpc: '2.0' as const, id: '1', result: {} }),
+      notify: async () => {},
+      respond: () => {},
+      respondWithError: () => {},
+      shutdown: async () => ({ code: 0, signal: null, expected: true, escalated: false }),
+      onNotification: () => () => {},
+      onRequest: () => () => {},
+      onExit: () => () => {},
+      onError: () => () => {},
+    };
+
+    const fakeDeps = {
+      runtimes: new Map(),
+      options: {},
+      clientFactory: (ctx: unknown) => { capturedContext = ctx; return fakeClient as never; },
+      sessionService: {} as never,
+      backendRunIdProvider: () => 'run-1',
+    } as never;
+
+    createRuntime(fakeDeps, session, '/tmp/test', 'run-1');
+
+    expect(capturedContext).not.toBeNull();
+    expect((capturedContext as { permissionMode?: string }).permissionMode).toBe('bypassPermissions');
   });
 
   it('rejects --dangerously-skip-permissions in resolved args (security boundary)', async () => {

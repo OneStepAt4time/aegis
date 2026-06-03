@@ -105,6 +105,13 @@ export interface AcpBackendClientFactoryContext extends AcpSessionScope {
   durableSessionId: string;
   backendRunId: string;
   cwd: string;
+  /**
+   * Issue #4522 AC #3: Session's effective permission mode. Propagated through
+   * the clientFactory so the resulting AcpChildProcess can inject
+   * \`--permission-mode <mode>\` at spawn time, closing the retire→wake CC
+   * v2.1.143 persistence threat.
+   */
+  permissionMode?: string;
 }
 
 export interface AcpBackendInitializeResult {
