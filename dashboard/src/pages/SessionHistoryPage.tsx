@@ -55,7 +55,7 @@ function statusClass(status: SessionHistoryRecord['finalStatus']): string {
 
 function sourceClass(source: SessionHistoryRecord['source']): string {
   if (source === 'audit+live') return 'text-[var(--color-accent-cyan-glow)] bg-[var(--color-accent-cyan)]/10 border-[var(--color-accent-cyan)]/25';
-  if (source === 'live') return 'text-sky-300 bg-sky-500/10 border-sky-500/25';
+  if (source === 'live') return 'text-[var(--color-info-glow)] bg-[var(--color-info)]/10 border-[var(--color-info)]/25';
   return 'text-[var(--color-text-muted)] dark:text-[var(--color-text-primary)] bg-[var(--color-void-lighter)]/40 border-[var(--color-void-lighter)]';
 }
 
