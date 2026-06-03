@@ -1439,7 +1439,7 @@ curl -N "http://localhost:9100/v1/sessions/abc123/events?token=$SSE_TOKEN"
 
 **Rate limited:** Per-IP and global connection limits apply.
 
-**Events:** `connected`, `heartbeat`, `status.*`, `approval`, `approval_resolved`, `permission.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`.
+**Events:** `connected`, `heartbeat`, `status.*`, `approval`, `approval_resolved`, `permission.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`, `message_display`.
 
 > **`approval_resolved`** — emitted after an approval or rejection via `POST /v1/sessions/:id/approval/approve` or `/reject`. Payload: `{ action: "approved" | "rejected", approvalId: string }`.
 
@@ -4739,7 +4739,7 @@ curl -N "http://localhost:9100/v1/events?token=$SSE_TOKEN"
 
 **Authentication:** SSE token via query parameter (`?token=<sse-token>`) or Bearer header (`Authorization: Bearer sse_...`). Regular API keys are rejected.
 
-**Event types:** `connected`, `heartbeat`, `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`, `permission.granted`, `permission.denied`, `approval_resolved`, `message.user`, `status.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`.
+**Event types:** `connected`, `heartbeat`, `session.created`, `session.idle`, `session.working`, `session.stalled`, `session.killed`, `permission.requested`, `permission.granted`, `permission.denied`, `approval_resolved`, `message.user`, `status.*`, `verification.*`, `subagent_start`, `subagent_stop`, `circuit_breaker`, `message_display`.
 
 **Heartbeat payload:** The `heartbeat` event includes a `sessionCosts` map with `estimatedCostUsd` per session, enabling real-time cost tracking on the dashboard.
 
