@@ -14,7 +14,7 @@ When Claude Code runs a session, it emits lifecycle events at key points. Claude
 | **HTTP** | POST to a URL with JSON body | Network-accessible |
 | **Prompt** | LLM prompt injection | In-process |
 
-Aegis uses **HTTP hooks** exclusively — registering a single endpoint (`POST /v1/hooks/:eventName`) that receives all 29+ CC lifecycle events. This gives Aegis a centralized event bus that no shell-only or config-only approach can match.
+Aegis uses **HTTP hooks** exclusively — registering a single endpoint (`POST /v1/hooks/:eventName`) that receives all 30+ CC lifecycle events. This gives Aegis a centralized event bus that no shell-only or config-only approach can match.
 
 ## Complete Event Reference
 
@@ -24,11 +24,17 @@ Aegis handles all Claude Code lifecycle events. Here's the full taxonomy:
 
 | Event | Trigger | Aegis Action |
 |-------|---------|-------------|
-| `SessionStart` | Session begins or resumes | Track session state |
+| `SessionStart` | Session begins or resumes | Track session state; respond with `reloadSkills: true` and optional `sessionTitle` (see [SessionStart — Return Fields](#sessionstart--return-fields)) |
 | `SessionEnd` | Session terminates | Clean up resources, emit final metrics |
 | `Setup` | `--init-only` or `--maintenance` mode | One-time CI preparation |
 | `Stop` | Claude finishes responding | Detect waiting-for-input, emit `session.idle` |
 | `StopFailure` | Turn ends due to API error | Circuit breaker protection (see below) |
+
+### Message Display
+
+| Event | Trigger | Aegis Action |
+|-------|---------|-------------|
+| `MessageDisplay` | A hook transforms message text/visibility before display | HTML-escape the text, reject `visible: false` by default, emit `message_display` SSE (see [MessageDisplay — Transform Hook](#messagedisplay--transform-hook)) |
 
 ### Tool Lifecycle (Agentic Loop)
 
@@ -141,6 +147,87 @@ curl -X POST "http://localhost:9100/v1/hooks/Stop" \
 ```
 
 Response: `{ "ok": true }`
+
+### SessionStart — Return Fields
+
+Aegis augments the `SessionStart` response with two fields so hooks can re-apply skills and label the session title. Both fields are returned on every `SessionStart` call:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reloadSkills` | `boolean` | Always `true` — signals that the session's skill set should be re-applied on resume. |
+| `hookSpecificOutput.sessionTitle` | `string` (optional) | Echo of the request body's `sessionTitle`. Persisted on `session.metadata.title` and used by the dashboard. |
+
+If the request body includes a `sessionTitle` (1–200 characters), Aegis sanitizes it (HTML-escape + control-char strip) and stores it on `session.metadata.title`. The sanitized value is echoed back in the response.
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/SessionStart" \
+  -H "X-Session-Id: <session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionTitle": "Refactor billing module"
+  }'
+```
+
+Response:
+
+```json
+{
+  "reloadSkills": true,
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "sessionTitle": "Refactor billing module"
+  }
+}
+```
+
+### MessageDisplay — Transform Hook
+
+The `MessageDisplay` event lets a hook transform message text and visibility before it is rendered. Aegis sanitizes the returned text (HTML-escape + control-char strip) and forwards the result to downstream consumers via the `message_display` SSE event.
+
+| Input field | Type | Behavior |
+|-------------|------|----------|
+| `hookSpecificOutput.message.text` | `string` | HTML-escaped before being stored or emitted. `<`, `>`, `&`, `"`, `'` become entities; control chars are stripped; `javascript:` URLs are removed. |
+| `hookSpecificOutput.message.visible` | `boolean` | When `false`, Aegis **rejects the request with a warning** by default — suppression requires Themis sign-off. |
+| `hookSpecificOutput.message.redactReasons` | `string[]` | Optional reasons the message was redacted; passed through to the SSE payload. |
+
+```bash
+curl -X POST "http://localhost:9100/v1/hooks/MessageDisplay" \
+  -H "X-Session-Id: <session-uuid>" \
+  -H "X-Hook-Secret: <hook-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hookSpecificOutput": {
+      "message": {
+        "text": "Patched package version to <1.2.3>",
+        "visible": true
+      }
+    }
+  }'
+```
+
+Response:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "MessageDisplay",
+    "message": {
+      "text": "Patched package version to &lt;1.2.3&gt;",
+      "visible": true
+    }
+  }
+}
+```
+
+Subscribers to the [per-session SSE stream](./api-reference.md#get-session-events) receive a `message_display` event:
+
+```
+data: {"event":"message_display","sessionId":"<uuid>","timestamp":"...","data":{"text":"Patched package version to &lt;1.2.3&gt;","visible":true}}
+```
+
+> **Security boundary — `visible: false`** is rejected with `200 { "ok": true, "warning": "visible:false rejected — requires Themis sign-off" }`. Hooks that need to suppress message rendering must be pre-approved by Themis.
+
 
 ### PreToolUse — Approve a Tool Call
 
@@ -257,6 +344,24 @@ When Claude Code asks a question via `AskUserQuestion`, Aegis can intercept and 
 | **Payload truncation protection** | Warns when hook payloads exceed 1.5KB (CC silently truncates at ~2KB) |
 | **Session validation** | Rejects non-UUID session IDs before lookup |
 | **Event allowlist** | Unknown event names return `400` — prevents injection |
+| **Permission mode enforcement** | Aegis always injects `--permission-mode <mode>` into the CC child process argv; `--dangerously-skip-permissions` is rejected at spawn with `AcpChildProcessStartError` (see [Permission Mode Boundary](#permission-mode-boundary)) |
+| **MessageDisplay sanitization** | `MessageDisplay` text is HTML-escaped; `visible: false` is rejected by default |
+
+### Permission Mode Boundary
+
+Every CC child process spawned by Aegis is launched with `--permission-mode <mode>` derived from the session's effective `permissionMode` (`default`, `plan`, `bypassPermissions`, `acceptEdits`, `dontAsk`, or `auto`). This prevents a previously-supplied permissive state from being inherited across retire→wake cycles.
+
+If a caller (or a custom profile) attempts to spawn CC with `--dangerously-skip-permissions` in argv, the spawn **fails closed** with an `AcpChildProcessStartError`:
+
+```
+--dangerously-skip-permissions is forbidden in ACP spawn args (Issue #4522 security boundary).
+Use --permission-mode <mode> instead.
+```
+
+The check is case-insensitive and matches both the bare flag (`--dangerously-skip-permissions`) and the single-arg form (`--dangerously-skip-permissions=true`, `=1`, `=disabled`, etc.). If a session is created with an invalid `permissionMode` value, the flag is not injected and a warning is logged — the spawn proceeds, but the operator should fix the upstream config.
+
+> **Migration note:** If you previously relied on `AEGIS_PERMISSION_MODE` env var + the env-var-only injection path, the argv-level boundary is now the source of truth. Setting `permissionMode` per session on the `CreateSessionRequest` is the supported way to control this flag.
+
 
 ## Observability
 

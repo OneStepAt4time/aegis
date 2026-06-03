@@ -147,6 +147,22 @@ Recommend an explicit denylist of security-sensitive env keys (`ANTHROPIC_API_KE
 2. **`permissionProfile`** per session — `allow`/`deny`/`ask` rules evaluated in `evaluatePermissionProfile()` against each incoming `PreToolUse` hook event.
 3. **`permission-guard.ts`** — neutralizes CC settings files that declare `bypassPermissions`.
 
+### Argv-Level Security Boundary (Issue #4522)
+
+Aegis always injects `--permission-mode <mode>` into the CC child process argv at spawn time, derived from the session's `permissionMode` (`default`, `plan`, `bypassPermissions`, `acceptEdits`, `dontAsk`, or `auto`). This is the source of truth — env-var-only paths are no longer sufficient.
+
+**Hard reject:** `--dangerously-skip-permissions` is rejected at spawn with `AcpChildProcessStartError`. The check is case-insensitive and covers both the bare flag and the `=value` single-arg form (`--dangerously-skip-permissions=true`, `=1`, `=disabled`, etc.). This closes a window where CC could inherit a previously-supplied permissive state across retire→wake cycles.
+
+| `permissionMode` value | Injected CC flag | Notes |
+|------------------------|------------------|-------|
+| `default` | `--permission-mode default` | Default for most sessions. |
+| `plan` | `--permission-mode plan` | Read-only exploration, no edits. |
+| `bypassPermissions` | `--permission-mode bypassPermissions` | Auto-approve all — controlled via `autoApprove` or `--accept-permissions`. |
+| `acceptEdits` | `--permission-mode acceptEdits` | Auto-approve file edits, prompt for Bash. |
+| `dontAsk` | `--permission-mode dontAsk` | Auto-deny prompts that would otherwise escalate. |
+| `auto` | `--permission-mode auto` | CC decides per-tool. |
+| _invalid value_ | _(not injected, warning logged)_ | Operator should fix upstream config. |
+
 ### Bypass Vectors
 
 **[SD-PERM-01] MEDIUM — `extractCandidatePaths()` only checks known field names** (`path`, `file_path`, `target`, `paths[]`). A CC tool naming its path argument `destination`, `output_path`, or `filename` would bypass path constraints entirely.

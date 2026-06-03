@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- **CC hook bridge updates (v2.1.152)** — `SessionStart` returns `reloadSkills: true` and echoes `hookSpecificOutput.sessionTitle` (persisted to `session.metadata.title`); new `MessageDisplay` hook event with HTML-escape sanitization and `visible: false` rejected by default; new `message_display` SSE event ([#4555](https://github.com/OneStepAt4time/aegis/pull/4555), closes [#4522](https://github.com/OneStepAt4time/aegis/issues/4522))
+- **Argv-level `--permission-mode` injection** — Aegis now injects `--permission-mode <mode>` into every CC child process spawn based on the session's `permissionMode`; `--dangerously-skip-permissions` is rejected at spawn as a hard security boundary ([#4555](https://github.com/OneStepAt4time/aegis/pull/4555), closes [#4522](https://github.com/OneStepAt4time/aegis/issues/4522))
+
 - **Worktree isolation policy** — enforce per-session isolation mode (worktree|none) with config, env var, and API parameter ([#3651](https://github.com/OneStepAt4time/aegis/pull/3651))
 - **Sensible session display names** — `ag run` derives human-readable names from prompts; OIDC-aware conditional CLI help ([#3654](https://github.com/OneStepAt4time/aegis/pull/3654))
 - **Session creation timeout configurable** — `AEGIS_SESSION_CREATION_TIMEOUT_MS` env var to control how long ACP session startup may take ([#3909](https://github.com/OneStepAt4time/aegis/pull/3909), closes [#3904](https://github.com/OneStepAt4time/aegis/issues/3904))
