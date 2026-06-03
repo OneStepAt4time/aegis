@@ -67,7 +67,7 @@ function StatusCard({ label, value, detail, tone, icon, actionButton }: StatusCa
     >
       {/* Critical Alert Glowing Underlay */}
       {isCritical && (
-        <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/5 animate-pulse pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-danger)]/10 via-transparent to-[var(--color-danger)]/5 animate-pulse pointer-events-none" />
       )}
 
       <div className="flex flex-col gap-2 relative z-10">
@@ -258,7 +258,7 @@ export default function HomeStatusPanel({ onCreateFirstSession }: HomeStatusPane
             <button
               type="button"
               onClick={onCreateFirstSession}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2.5 text-sm font-medium text-slate-950 transition-opacity hover:opacity-90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-cyan)] px-4 py-2.5 text-sm font-medium text-[var(--color-cta-text)] transition-opacity hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
               Create first session
