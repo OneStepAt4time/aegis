@@ -64,7 +64,7 @@ export interface AcpSessionParticipants {
 /** Role color mapping for UI badges. */
 export const ROLE_COLORS: Record<AcpDisplayRole, { bg: string; text: string }> = {
   driver: { bg: 'bg-[var(--color-info)]/20', text: 'text-[var(--color-info-glow)]' },
-  observer: { bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
+  observer: { bg: 'bg-[var(--color-info)]/20', text: 'text-[var(--color-info-glow)]' },
   operator: { bg: 'bg-[var(--color-warning)]/20', text: 'text-[var(--color-warning-glow)]' },
   admin: { bg: 'bg-[var(--color-danger)]/20', text: 'text-[var(--color-danger-glow)]' },
 };
