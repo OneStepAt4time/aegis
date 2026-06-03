@@ -540,8 +540,8 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
   writeLine(io.stdout, `    runtime: ${acpRuntime.label}`);
   writeLine(io.stdout, `    claude: ${hasClaude ? '✅' : '❌'}`);
   writeLine(io.stdout);
-
-  await import('./server.js');
+  const { main } = await import('./server.js');
+  main().catch((err) => { log.error({ component: 'server', operation: 'startup_failed', attributes: { error: String(err) } }); process.exit(1); });
   return 0;
 }
 
