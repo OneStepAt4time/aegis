@@ -131,7 +131,7 @@ describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('sanitizes text in hookSpecificOutput.message and returns sanitized text', async () => {
+  it('sanitizes text in hookSpecificOutput.message: HTML-escapes payloads so tags render as text', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/hooks/MessageDisplay?sessionId=00000000-0000-4000-8000-000000000001',
@@ -151,31 +151,39 @@ describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {
     const hso = body.hookSpecificOutput as Record<string, unknown>;
     const message = hso.message as Record<string, unknown>;
     expect(typeof message.text).toBe('string');
-    // Script tag stripped
+    // Script tag escaped (rendered as text, not interpreted as markup)
     expect(message.text as string).not.toContain('<script>');
+    expect(message.text as string).toContain('&lt;script&gt;');
     // Control chars stripped (0x00, 0x01)
     expect(message.text as string).not.toMatch(/[\x00-\x08]/);
-    // 'Hello' and 'World' still present
+    // 'Hello' and 'World' still present (as visible text)
     expect(message.text as string).toContain('Hello');
     expect(message.text as string).toContain('World');
     expect(message.visible).toBe(true);
   });
 
-  // CodeQL #4522: prior sanitizer regex failed on script/style tag whitespace
-  // variations (< script >, <script >, </script >, etc.) and on attribute forms.
-  // These cases must all be stripped.
+  // CodeQL #4522: prior regex-based tag stripping was provably incomplete.
+  // Switched to HTML-escape. The security model: payload is rendered as TEXT
+  // (via the &lt; / &gt; / &quot; entities), so a safe text renderer (textContent,
+  // JSX, etc.) cannot execute the payload. These tests confirm the output is
+  // HTML-safe (no raw tag characters) and that benign text passes through.
   it.each([
-    ['< script>alert(1)</script>', 'whitespace before opening tag'],
-    ['<script >alert(1)</script>', 'whitespace after opening tag'],
-    ['</script >', 'whitespace after closing tag name'],
+    ['<script>alert(1)</script>', 'standard script tag'],
+    ['< script>alert(1)</script>', 'whitespace before tag name'],
+    ['<script >alert(1)</script>', 'whitespace after tag name'],
+    ['</script >', 'whitespace after closing tag'],
     ['<script\ttype="text/javascript">alert(1)</script>', 'tab + attributes'],
     ['<script\n>alert(1)</script>', 'newline in tag'],
     ['<STYLE>body{}</STYLE>', 'uppercase style tags'],
     ['<script src="http://evil/x.js"></script>', 'script with src attribute'],
     ['<iframe src="http://evil/"></iframe>', 'iframe tag'],
+    ['<img src=x onerror=alert(1)>', 'img with onerror handler'],
+    ['<svg/onload=alert(1)>', 'svg with onload handler'],
     ['javascript:alert(1)', 'javascript: URL'],
-    ['onclick="alert(1)"', 'inline event handler'],
-  ])('strips dangerous payload: %s (%s)', async (payload, _label) => {
+    ['onclick="alert(1)"', 'inline event handler attribute'],
+    ['<a href="javascript:alert(1)">click</a>', 'anchor with javascript: href'],
+    ['&#x3C;script&#x3E;alert(1)&#x3C;/script&#x3E;', 'HTML-entity-encoded script'],
+  ])('renders dangerous payload as inert text: %s (%s)', async (payload, _label) => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/hooks/MessageDisplay?sessionId=00000000-0000-4000-8000-000000000001',
@@ -194,12 +202,11 @@ describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {
     // Surrounding 'before' / 'after' preserved
     expect(out).toContain('before');
     expect(out).toContain('after');
-    // No tag-like content survived
-    expect(out).not.toMatch(/<\s*\/?\s*script/i);
-    expect(out).not.toMatch(/<\s*\/?\s*style/i);
-    expect(out).not.toMatch(/<\s*\/?\s*iframe/i);
+    // No raw tag characters survive in the output (any tags/attributes are escaped)
+    expect(out).not.toContain('<');
+    expect(out).not.toContain('>');
+    // javascript: URLs (with any whitespace) are stripped
     expect(out).not.toMatch(/javascript\s*:/i);
-    expect(out).not.toMatch(/on[a-z]+\s*=/i);
   });
 
   it('rejects visible:false with a warning and no transform (Themis sign-off required)', async () => {
