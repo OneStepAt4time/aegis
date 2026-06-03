@@ -69,11 +69,19 @@ const ccBridgeHookBodySchema = z.object({
 /** Issue #4522 AC #2: Sanitize MessageDisplay text — strip control chars, disallow JS/CSS payloads. */
 function sanitizeMessageDisplayText(text: string): string {
   if (typeof text !== 'string') return '';
+  // Strip control chars (except \n and \t), then strip <script>/<style> tags
+  // in any common form (whitespace, attributes, self-closing, attribute tricks),
+  // then any remaining HTML tags, then javascript: URLs and inline event handlers.
+  // CodeQL #4522: prior multi-regex approach failed on `< script >`, `<script >`,
+  // `</script >`, etc. This single regex per tag handles the variations.
   return text
     .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '')
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<[^>]+>/g, '');
+    .replace(/<\/?\s*script\b[^>]*>/gi, '')
+    .replace(/<\/?\s*style\b[^>]*>/gi, '')
+    .replace(/<\/?\s*iframe\b[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/on[a-z]+\s*=/gi, '');
 }
 
 export interface CcBridgeDispatchResult {

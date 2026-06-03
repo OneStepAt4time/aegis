@@ -161,6 +161,47 @@ describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {
     expect(message.visible).toBe(true);
   });
 
+  // CodeQL #4522: prior sanitizer regex failed on script/style tag whitespace
+  // variations (< script >, <script >, </script >, etc.) and on attribute forms.
+  // These cases must all be stripped.
+  it.each([
+    ['< script>alert(1)</script>', 'whitespace before opening tag'],
+    ['<script >alert(1)</script>', 'whitespace after opening tag'],
+    ['</script >', 'whitespace after closing tag name'],
+    ['<script\ttype="text/javascript">alert(1)</script>', 'tab + attributes'],
+    ['<script\n>alert(1)</script>', 'newline in tag'],
+    ['<STYLE>body{}</STYLE>', 'uppercase style tags'],
+    ['<script src="http://evil/x.js"></script>', 'script with src attribute'],
+    ['<iframe src="http://evil/"></iframe>', 'iframe tag'],
+    ['javascript:alert(1)', 'javascript: URL'],
+    ['onclick="alert(1)"', 'inline event handler'],
+  ])('strips dangerous payload: %s (%s)', async (payload, _label) => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/hooks/MessageDisplay?sessionId=00000000-0000-4000-8000-000000000001',
+      payload: {
+        hook_event_name: 'MessageDisplay',
+        hookSpecificOutput: {
+          hookEventName: 'MessageDisplay',
+          message: { text: `before ${payload} after`, visible: true },
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as Record<string, unknown>;
+    const message = (body.hookSpecificOutput as Record<string, unknown>).message as Record<string, unknown>;
+    const out = message.text as string;
+    // Surrounding 'before' / 'after' preserved
+    expect(out).toContain('before');
+    expect(out).toContain('after');
+    // No tag-like content survived
+    expect(out).not.toMatch(/<\s*\/?\s*script/i);
+    expect(out).not.toMatch(/<\s*\/?\s*style/i);
+    expect(out).not.toMatch(/<\s*\/?\s*iframe/i);
+    expect(out).not.toMatch(/javascript\s*:/i);
+    expect(out).not.toMatch(/on[a-z]+\s*=/i);
+  });
+
   it('rejects visible:false with a warning and no transform (Themis sign-off required)', async () => {
     const res = await app.inject({
       method: 'POST',
