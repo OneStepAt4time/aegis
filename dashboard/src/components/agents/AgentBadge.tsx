@@ -18,7 +18,7 @@ const COLOR_CLASSES: Record<string, string> = {
   amber: "bg-[var(--color-warning)]/15 text-[var(--color-warning-glow)] border-[var(--color-warning)]/25",
   cyan: "bg-[var(--color-accent-cyan)]/15 text-[var(--color-accent-cyan-glow)] border-[var(--color-accent-cyan)]/25",
   rose: "bg-[var(--color-danger)]/15 text-[var(--color-danger-glow)] border-[var(--color-danger)]/25",
-  gray: "bg-gray-500/15 text-gray-400 border-gray-500/25",
+  gray: "bg-[var(--color-void-lighter)]/15 text-[var(--color-text-muted)] border-[var(--color-void-lighter)]/25",
 };
 
 export interface AgentBadgeProps {
