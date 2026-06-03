@@ -35,7 +35,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
 }: SessionRowProps) {
   const t = useT();
   return (
-    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-cyan-500/30' : ''}${needsApproval(session) ? ' approval-pending-row' : ''}`}>
+    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-[var(--color-accent-cyan)]/30' : ''}${needsApproval(session) ? ' approval-pending-row' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
@@ -90,7 +90,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
             onClick={(e) => onInterrupt(e, session.id)}
             disabled={currentAction === 'interrupt' || currentAction === 'kill'}
             aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-yellow-900/30 p-2 text-[var(--color-warning)] transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-warning)]/15 p-2 text-[var(--color-warning-glow)] transition-colors hover:bg-[var(--color-warning)]/25 disabled:pointer-events-none disabled:opacity-40"
             title={t('aria.interrupt')}
           >
             <Ban className="h-4 w-4" />
