@@ -9,6 +9,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { setStructuredLogSink } from '../logger.js';
 import { registerHookRoutes } from '../hooks.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { stripProtoKeys } from '../hooks-cc-bridge-4522.js';
 import { SessionEventBus } from '../events.js';
 import type { SessionManager, SessionInfo } from '../session.js';
 
@@ -260,5 +262,39 @@ describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {
     const body = res.json() as Record<string, unknown>;
     expect(body.warning).toContain('visible:false rejected');
     expect(JSON.stringify(body)).not.toContain('should be ignored');
+  });
+});
+
+describe('Issue #4522 prototype pollution defense (stripProtoKeys helper)', () => {
+  it('strips __proto__/constructor/prototype keys from the parsed ccBridge body', () => {
+    // Standard __proto__ pollution attempt
+    const polluted = JSON.parse('{"__proto__":{"isAdmin":true},"safe":"value"}');
+    const cleaned = stripProtoKeys(polluted) as { safe?: string };
+    expect(cleaned.safe).toBe('value');
+    // The prototype is NOT polluted — a fresh object should not see isAdmin
+    expect((cleaned as Record<string, unknown>).isAdmin).toBeUndefined();
+    expect(({} as Record<string, unknown>).isAdmin).toBeUndefined();
+
+    // constructor.prototype pollution
+    const ctorPolluted = JSON.parse('{"constructor":{"prototype":{"polluted":true}},"safe":"v2"}');
+    const cleaned2 = stripProtoKeys(ctorPolluted) as { safe?: string };
+    expect(cleaned2.safe).toBe('v2');
+    expect((cleaned2 as Record<string, unknown>).polluted).toBeUndefined();
+
+    // Nested pollution (recursive)
+    const nested = JSON.parse('{"outer":{"__proto__":{"x":1},"inner":{"safe":"y"}}}');
+    const cleaned3 = stripProtoKeys(nested) as { outer: { inner: { safe?: string } } };
+    expect(cleaned3.outer.inner.safe).toBe('y');
+
+    // Arrays handled (each element stripped recursively)
+    const arr = JSON.parse('[{"__proto__":{"x":1}},{"safe":"a"}]');
+    const cleaned4 = stripProtoKeys(arr) as Array<{ safe?: string }>;
+    expect(cleaned4[0].safe).toBeUndefined();
+    expect(cleaned4[1].safe).toBe('a');
+
+    // Non-objects pass through unchanged
+    expect(stripProtoKeys(null)).toBe(null);
+    expect(stripProtoKeys('string')).toBe('string');
+    expect(stripProtoKeys(42)).toBe(42);
   });
 });

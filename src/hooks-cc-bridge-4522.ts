@@ -79,7 +79,7 @@ const ccBridgeHookBodySchema = z.object({
  * set via JSON.parse can still pollute the parsed object's prototype chain
  * before Zod sees it. This helper ensures the returned object is clean.
  */
-function stripProtoKeys<T>(obj: T): T {
+export function stripProtoKeys<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) {
     return obj.map((item) => stripProtoKeys(item)) as unknown as T;
