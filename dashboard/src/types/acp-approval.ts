@@ -65,6 +65,6 @@ export interface AcpApprovalActionResult {
 export const RISK_LEVEL_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
   low: { label: 'Low Risk', bg: 'bg-[var(--color-success)]/10', text: 'text-[var(--color-success-glow)]', border: 'border-[var(--color-success)]/30' },
   medium: { label: 'Medium Risk', bg: 'bg-[var(--color-warning)]/10', text: 'text-[var(--color-warning-glow)]', border: 'border-[var(--color-warning)]/30' },
-  high: { label: 'High Risk', bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
+  high: { label: 'High Risk', bg: 'bg-[var(--color-warning)]/10', text: 'text-[var(--color-warning-glow)]', border: 'border-[var(--color-warning)]/30' },
   critical: { label: 'Critical Risk', bg: 'bg-[var(--color-danger)]/10', text: 'text-[var(--color-danger-glow)]', border: 'border-[var(--color-danger)]/30' },
 };
