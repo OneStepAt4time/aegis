@@ -482,7 +482,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
     return (
       <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md">{t('sessionTable.wakingAgents')}</h3>
+        <h3 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] drop-shadow-md">{t('sessionTable.wakingAgents')}</h3>
         <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessionTable.wakingAgentsDescription')}</p>
       </div>
     );
@@ -657,7 +657,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 onClick={() => runBulkAction('interrupt')}
                 disabled={bulkAction !== null}
                 aria-label={`Interrupt ${selectedIds.length} selected session${selectedIds.length === 1 ? '' : 's'}`}
-                className="min-h-[44px] rounded-md bg-yellow-900/30 px-3 py-2 text-sm font-medium text-yellow-300 transition-colors hover:bg-yellow-900/50 disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-[44px] rounded-md bg-[var(--color-warning)]/15 px-3 py-2 text-sm font-medium text-[var(--color-warning-glow)] transition-colors hover:bg-[var(--color-warning)]/25 disabled:pointer-events-none disabled:opacity-40"
               >
                 Interrupt Selected
               </button>
@@ -695,14 +695,14 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
         <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
           {/* Ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[var(--color-accent-cyan)]/30 to-transparent" />
 
           {/* Icon diamond */}
           <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[var(--shadow-accent-cyan)] transform rotate-45">
             <span className="text-2xl transform -rotate-45 block text-[var(--color-text-muted)]">⌘</span>
           </div>
 
-          <h3 className="relative z-10 text-xl font-bold tracking-tight text-gray-900 dark:text-white drop-shadow-md mb-2">
+          <h3 className="relative z-10 text-xl font-bold tracking-tight text-[var(--color-text-primary)] drop-shadow-md mb-2">
             {hasActiveFilters ? 'No Matching Directives' : 'Agent Standby Mode'}
           </h3>
           <p className="relative z-10 max-w-sm text-sm text-[var(--color-text-muted)] dark:text-[var(--color-text-muted)] leading-relaxed mb-6">
