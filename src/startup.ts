@@ -8,6 +8,22 @@ import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 import { findPidOnPort, readParentPid } from './process-utils.js';
 
+/** Thrown when aegis.pid indicates another Aegis process is alive. */
+export class AegisAlreadyRunningError extends Error {
+  constructor(pid: number) {
+    super(`Aegis is already running (PID ${pid}) — see \`ag status\``);
+    this.name = 'AegisAlreadyRunningError';
+  }
+}
+
+/** Thrown when the listen port is held and cannot be reclaimed. */
+export class AegisPortInUseError extends Error {
+  constructor(port: number) {
+    super(`Port ${port} is in use by another process — Aegis is already running`);
+    this.name = 'AegisPortInUseError';
+  }
+}
+
 export async function writePidFile(stateDir: string): Promise<string> {
   try {
     const pidFilePath = path.join(stateDir, 'aegis.pid');
@@ -153,6 +169,55 @@ async function killStalePortHolder(port: number, stateDir: string): Promise<bool
   }
 }
 
+/**
+ * Acquire the PID lockfile before starting expensive service initialization.
+ *
+ * Checks whether `aegis.pid` in `stateDir` references a live process.
+ * If it does, throws {@link AegisAlreadyRunningError} so the caller
+ * can exit gracefully before initializing services that write state files.
+ *
+ * If the referenced PID is dead (or the file is missing/stale), removes
+ * the stale file and writes the current process PID.
+ */
+export async function acquirePidLock(stateDir: string): Promise<string> {
+  try {
+    const pidFilePath = path.join(stateDir, 'aegis.pid');
+    const existingPid = await readPidFile(stateDir);
+
+    if (existingPid !== null) {
+      if (pidExists(existingPid)) {
+        throw new AegisAlreadyRunningError(existingPid);
+      }
+      // Stale PID file — clean it up so we don't leave cruft behind
+      try {
+        await fs.unlink(pidFilePath);
+        log.warn({
+          component: 'startup',
+          operation: 'removedStalePidFile',
+          attributes: { pid: existingPid, path: pidFilePath },
+        });
+      } catch {
+        // ignore unlink errors (may not exist or may be unreadable)
+      }
+    }
+
+    const written = await writePidFile(stateDir);
+    return written;
+  } catch (err) {
+    if (err instanceof AegisAlreadyRunningError) {
+      throw err;
+    }
+    // If we can't read or write the PID file, treat it as non-blocking
+    // (dev shells may lack write access to the state dir).
+    log.warn({
+      component: 'startup',
+      operation: 'pidFileUnavailable',
+      attributes: { error: err instanceof Error ? err.message : String(err) },
+    });
+    return '';
+  }
+}
+
 export async function listenWithRetry(
   app: ReturnType<typeof Fastify>,
   port: number,
@@ -175,7 +240,7 @@ export async function listenWithRetry(
         log.error({ component: 'startup', operation: 'addrInUsePeerRunning', attributes: { port } });
         log.error({ component: 'startup', operation: 'addrInUseHintConnect', attributes: { port } });
         log.error({ component: 'startup', operation: 'addrInUseHintStop', attributes: { port } });
-        process.exit(1);
+        throw new AegisPortInUseError(port);
       }
     }
   }

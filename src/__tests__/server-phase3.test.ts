@@ -85,6 +85,7 @@ vi.mock('../startup.js', () => ({
     await app.ready();
   }),
   writePidFile: vi.fn(async () => join(stateDir, 'aegis.pid')),
+  acquirePidLock: vi.fn(async () => join(stateDir, 'aegis.pid')),
   removePidFile: vi.fn(),
 }));
 
@@ -136,7 +137,8 @@ describe('server.ts Phase 3 — internal functions', () => {
     vi.spyOn(globalThis, 'clearInterval').mockImplementation((() => undefined) as unknown as typeof clearInterval);
     vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
 
-    await import('../server.js');
+    const { main } = await import('../server.js');
+    await main();
 
     // Wait for app capture
     for (let i = 0; i < 200 && !capturedApp; i++) {

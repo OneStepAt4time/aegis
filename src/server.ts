@@ -14,7 +14,7 @@ const log = new StructuredLogger();
 import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
-import { watch, type FSWatcher } from 'node:fs';
+import { watch, type FSWatcher, realpathSync } from 'node:fs';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
 import crypto from 'node:crypto';
@@ -62,8 +62,9 @@ import { cleanupTerminatedSessionState, shutdownAcpRuntime } from './session-cle
 import { MeteringService } from './metering.js';
 import { MetricsCache, JsonFileBackend } from './services/metrics-cache.js';
 import { normalizeApiErrorPayload } from './api-error-envelope.js';
-import { listenWithRetry, writePidFile } from './startup.js';
+import { listenWithRetry, acquirePidLock, removePidFile } from './startup.js';
 import { AlertManager } from './alerting.js';
+let startupPidPath = ''; // #4568: track for cleanup on startup failure
 
 import { ServiceContainer } from './container.js';
 import type { AppContext } from './app-context.js';
@@ -303,10 +304,6 @@ app.addHook('onSend', (req, reply, payload, done) => {
 
 // Route handlers are registered in main() via route modules (src/routes/*).
 
-
-
-
-
 // ── Start ────────────────────────────────────────────────────────────
 
 /** Register notification channels from config */
@@ -352,11 +349,13 @@ export { readParentPid as readPpid } from './process-utils.js';
 
 
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   // Issue #4241: Single context object replaces all module-level mutable globals
   const ctx = {} as AppContext;
   // Load configuration
   ctx.config = await loadConfig();
+  startupPidPath = await acquirePidLock(ctx.config.stateDir); // #4568: early lock — refuse before expensive init
+
   ctx.dashboardTokenSessions = new DashboardSessionStore();
   ctx.dashboardOidc = await createDashboardOidcManagerFromEnv(ctx.config);
 
@@ -611,7 +610,7 @@ ctx.actionSweeper?.start();
   // Issue #4248: staticPruneInterval tracked via timers.track() after registration
   let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
   // #4243 step 4: Mutable refs for data set after registration
-  const shutdownLateRefs = { pidFilePath: '' };
+  const shutdownLateRefs = { pidFilePath: startupPidPath };
 
   // Issue #4243 step 4: Graceful shutdown handler extracted to boot/boot-shutdown.ts
   registerShutdownHandler({
@@ -654,7 +653,6 @@ staticPruneInterval = await registerDashboardStatic(app, { enabled: ctx.config.d
   if (staticPruneInterval) timers.track(staticPruneInterval);
   await container.assertHealthy();
 await listenWithRetry(app, ctx.config.port, ctx.config.host, ctx.config.stateDir);
-shutdownLateRefs.pidFilePath = await writePidFile(ctx.config.stateDir);
   logger.info({
     component: 'server',
     operation: 'startup_listening',
@@ -682,12 +680,11 @@ if (ctx.auth.authEnabled) {
   }
 }
 
-main().catch(err => {
-  logger.error({
-    component: 'server',
-    operation: 'startup_failed',
-    errorCode: 'STARTUP_FAILED',
-    attributes: { error: err instanceof Error ? err.message : String(err) },
+const isMainModule = (() => { try { return fileURLToPath(import.meta.url) === realpathSync(process.argv[1]); } catch { return false; } })();
+if (isMainModule) {
+  main().catch(err => {
+    if (startupPidPath) removePidFile(startupPidPath);
+    logger.error({ component: 'server', operation: 'startup_failed', errorCode: 'STARTUP_FAILED', attributes: { error: err instanceof Error ? err.message : String(err) } });
+    process.exit(1);
   });
-  process.exit(1);
-});
+}

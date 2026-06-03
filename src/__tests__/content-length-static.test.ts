@@ -18,6 +18,7 @@ vi.mock('../startup.js', () => ({
     await app.ready();
   }),
   writePidFile: vi.fn(async () => join(stateDir, 'aegis.pid')),
+  acquirePidLock: vi.fn(async () => join(stateDir, 'aegis.pid')),
   removePidFile: vi.fn(),
 }));
 
@@ -39,7 +40,8 @@ beforeAll(async () => {
 
   // No per-test spy required.
 
-  await import('../server.js');
+  const { main } = await import('../server.js');
+    await main();
 
   for (let i = 0; i < 200 && !capturedApp; i++) {
     await new Promise(resolve => setTimeout(resolve, 10));
