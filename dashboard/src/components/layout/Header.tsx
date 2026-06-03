@@ -81,7 +81,8 @@ export function Header({
             <button
               type="button"
               onClick={() => onPaletteOpenChange(true)}
-              className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-slate-50 hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+              // TODO(#4564 follow-up): dark:border-white/10, dark:bg-white/5, dark:hover:bg-white/10 have no design token (translucent white overlay in dark mode). Adding tokens for these is on the Path A follow-up.
+              className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
               aria-label={t('aria.openCommandPalette')}
             >
               <Search className="h-3 w-3" />
@@ -89,7 +90,7 @@ export function Header({
               <kbd className="hidden sm:inline ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
             </button>
 
-            <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-white px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-[var(--color-void-lighter)] dark:bg-[var(--color-void-dark)] dark:text-[var(--color-text-primary)]">
+            <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-[var(--color-void-lighter)] dark:bg-[var(--color-void-dark)] dark:text-[var(--color-text-primary)]">
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -106,7 +107,7 @@ export function Header({
               type="button"
               onClick={onCheckUpdates}
               disabled={updateCheckLoading || aegisVersion === '...'}
-              className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-[var(--color-void-lighter)] dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-50 disabled:text-[var(--color-text-primary)] dark:disabled:border-[var(--color-void-lighter)] dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
+              className="hidden min-h-[44px] sm:inline-flex items-center gap-1 rounded-md border border-[var(--color-border-strong)] px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] dark:border-[var(--color-void-lighter)] dark:hover:bg-[var(--color-void-lighter)] disabled:cursor-not-allowed disabled:border-[var(--color-border-strong)] disabled:bg-[var(--color-surface-hover)] disabled:text-[var(--color-text-primary)] dark:disabled:border-[var(--color-void-lighter)] dark:disabled:bg-transparent dark:disabled:text-[var(--color-text-muted)]"
             >
               <RefreshCw className={`h-3 w-3 ${updateCheckLoading ? 'animate-spin' : ''}`} />
               {updateCheckLoading ? 'Checking…' : 'Check updates'}
