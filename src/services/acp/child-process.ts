@@ -6,6 +6,9 @@ import {
   type ResolveAcpCommandOptions,
   type ResolvedAcpCommand,
 } from './binary-resolver.js';
+import { applyPermissionModeArgs, assertNoDangerousArgs } from './permission-mode-args-4522.js';
+import { AcpChildProcessStartError } from './acp-child-process-errors.js';
+export { AcpChildProcessStartError, type AcpChildProcessErrorDetails } from './acp-child-process-errors.js';
 
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_000;
 
@@ -95,23 +98,7 @@ export interface AcpChildProcessOptions {
   permissionMode?: string;
 }
 
-export interface AcpChildProcessErrorDetails {
-  command: string;
-  args: string[];
-  cwd: string;
-  message: string;
-}
-
-export class AcpChildProcessStartError extends Error {
-  readonly code = 'AEGIS_ACP_CHILD_PROCESS_START_FAILED';
-  readonly details: AcpChildProcessErrorDetails;
-
-  constructor(details: AcpChildProcessErrorDetails) {
-    super(`ACP child process failed to start: ${details.message}`);
-    this.name = 'AcpChildProcessStartError';
-    this.details = details;
-  }
-}
+// AcpChildProcessErrorDetails + AcpChildProcessStartError moved to ./acp-child-process-errors.ts (Issue #4522).
 
 export class AcpChildProcessStateError extends Error {
   readonly code = 'AEGIS_ACP_CHILD_PROCESS_INVALID_STATE';
@@ -349,27 +336,32 @@ export class AcpChildProcess {
   }
 
   private resolveCommand(): ResolvedAcpCommand {
+    let resolved: ResolvedAcpCommand;
     if (this.options.resolvedCommand) {
-      return {
+      resolved = {
         ...this.options.resolvedCommand,
         args: [...this.options.resolvedCommand.args],
       };
-    }
-
-    if (this.options.command && this.options.command.trim() !== '') {
-      return {
+    } else if (this.options.command && this.options.command.trim() !== '') {
+      resolved = {
         command: this.options.command,
         args: [...(this.options.args ?? [])],
         source: 'explicit',
       };
+    } else {
+      const resolver = this.options.resolveCommand ?? resolveClaudeAgentAcpBinary;
+      resolved = resolver({
+        cwd: this.options.cwd,
+        env: buildAcpResolveEnv(this.options.env),
+        platform: this.options.platform,
+      });
     }
 
-    const resolver = this.options.resolveCommand ?? resolveClaudeAgentAcpBinary;
-    return resolver({
-      cwd: this.options.cwd,
-      env: buildAcpResolveEnv(this.options.env),
-      platform: this.options.platform,
-    });
+    // Issue #4522 AC #3: inject --permission-mode argv + assert no --dangerously-skip-permissions
+    resolved = applyPermissionModeArgs(resolved, this.options.permissionMode);
+    assertNoDangerousArgs(resolved, this.options.cwd);
+
+    return resolved;
   }
 
   private spawnProcess(

@@ -46,6 +46,12 @@ export function createDefaultAcpBackendClient(
   const child = new AcpChildProcess({
     ...options.childProcessOptions,
     cwd: context.cwd,
+    // Issue #4522 AC #3: forward the session's effective permission mode from
+    // the clientFactory context. options.childProcessOptions (if provided) takes
+    // precedence via spread; the context value fills in when the caller didn't
+    // override. The downstream resolveCommand() passes this to
+    // applyPermissionModeArgs(), which injects --permission-mode at spawn.
+    permissionMode: options.childProcessOptions?.permissionMode ?? context.permissionMode,
   });
   // Issue #3135: Forward ACP child process stderr for debugging.
   // Without this, errors from claude-agent-acp (API key issues, crashes)

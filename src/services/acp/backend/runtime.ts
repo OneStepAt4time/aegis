@@ -212,6 +212,9 @@ export function createRuntime(
     ownerKeyId: session.ownerKeyId,
     backendRunId,
     cwd,
+    // Issue #4522 AC #3: propagate the session's effective permission mode
+    // so the AcpChildProcess can inject --permission-mode at spawn time.
+    permissionMode: session.permissionMode,
   };
   return bindRuntime(deps, {
     sessionId: session.id,

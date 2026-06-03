@@ -33,6 +33,15 @@ export interface AcpSessionRecord extends AcpSessionScope {
   rootSessionId?: string;
   correlationId?: string;
   resumeFromSessionId?: string;
+  /**
+   * Issue #4522 AC #3: Session's effective permission mode (e.g., 'default',
+   * 'plan', 'bypassPermissions', 'acceptEdits', 'dontAsk', 'auto'). Set when
+   * the ACP session record is created from the parent SessionInfo; read by
+   * `createRuntime()` to propagate into the AcpChildProcess spawn so
+   * --permission-mode is injected (closing the CC v2.1.143 retire→wake
+   * persistence threat).
+   */
+  permissionMode?: string;
   status: AcpSessionStatus;
   createdAt: number;
   updatedAt: number;

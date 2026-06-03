@@ -13,7 +13,7 @@ import { EventEmitter } from 'node:events';
 import { CircularBuffer } from './utils/circular-buffer.js';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'system' | 'approval' | 'approval_resolved' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification' | 'permission_denied' | 'circuit_breaker';
+  event: 'status' | 'message' | 'system' | 'approval' | 'approval_resolved' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification' | 'permission_denied' | 'circuit_breaker' | 'message_display';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
