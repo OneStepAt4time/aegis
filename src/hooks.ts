@@ -16,6 +16,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { KNOWN_HOOK_EVENTS, dispatchCcBridgeEvents } from './hooks-cc-bridge-4522.js';
 import type { SessionManager, PermissionDecision } from './session.js';
 import type { SessionEventBus } from './events.js';
 import { isValidUUID, hookBodySchema, parseIntSafe } from './validation.js';
@@ -84,38 +85,6 @@ const HOOK_CIRCUIT_BREAKER_WINDOW_MS = getCircuitBreakerWindowMs();
 
 /** Valid permission_mode values accepted by Claude Code. */
 const VALID_PERMISSION_MODES = new Set(['default', 'plan', 'bypassPermissions', 'acceptEdits', 'dontAsk', 'auto']);
-
-/** Valid CC hook event names (allow any for extensibility, but these are known). */
-const KNOWN_HOOK_EVENTS = new Set([
-  'Stop',
-  'StopFailure',
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'Notification',
-  'PermissionRequest',
-  'SessionStart',
-  'SessionEnd',
-  'SubagentStart',
-  'SubagentStop',
-  'TaskCompleted',
-  'TeammateIdle',
-  'PreCompact',
-  'PostCompact',
-  'UserPromptSubmit',
-  'WorktreeCreate',
-  'WorktreeRemove',
-  'Elicitation',
-  'ElicitationResult',
-  'FileChanged',
-  'CwdChanged',
-  // Issue #703 Phase 1: additional lifecycle events
-  'PermissionDenied',
-  'TaskCreated',
-  'Setup',
-  'ConfigChange',
-  'InstructionsLoaded',
-]);
 
 /** Hook events that are informational (logged + forwarded to SSE, no status change). */
 const INFORMATIONAL_EVENTS = new Set([
@@ -310,6 +279,14 @@ export function registerHookRoutes(app: FastifyInstance, deps: HookRouteDeps): v
     }
     // Forward the validated hook event to SSE subscribers
     deps.eventBus.emitHook(sessionId, eventName, hookBody);
+
+    // Issue #4522: dispatch SessionStart + MessageDisplay (CC v2.1.152 hook bridge)
+    const ccBridgeResult = dispatchCcBridgeEvents({
+      eventName, sessionId, session, rawBody: req.body, deps,
+    });
+    if (ccBridgeResult !== null) {
+      return reply.status(ccBridgeResult.status).send(ccBridgeResult.body);
+    }
 
     // Issue #2518: Circuit breaker for rapid StopFailure events.
     // A user-defined Stop hook returning ok:false causes CC to retry in an infinite loop.
