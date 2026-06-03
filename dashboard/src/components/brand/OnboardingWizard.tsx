@@ -127,7 +127,7 @@ function ConnectStep({ health, loading }: { health: HealthState | null; loading:
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-green-400" />
+              <CheckCircle2 className="h-4 w-4 text-[var(--color-success-glow)]" />
               {t('onboarding.claudeHealthy', { version: health.claudeVersion ?? '' })}
             </span>
           </p>
@@ -139,7 +139,7 @@ function ConnectStep({ health, loading }: { health: HealthState | null; loading:
           </h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-yellow-400" />
+              <AlertTriangle className="h-4 w-4 text-[var(--color-warning-glow)]" />
               {t('onboarding.claudeIssues')}
             </span>
           </p>
