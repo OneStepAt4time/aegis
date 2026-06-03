@@ -107,6 +107,38 @@ describe('AC #1: SessionStart return fields (Issue #4522)', () => {
     // Title stored in metadata (no new field on SessionInfo)
     expect(storedSession?.metadata?.title).toBe('My Project Work');
   });
+
+  it('sanitizes sessionTitle before storage (defense against stored XSS in metadata.title)', async () => {
+    let storedSession: SessionInfo | undefined;
+    const localSessions = makeFakeSessionManager({
+      getSession: vi.fn().mockImplementation(() => {
+        storedSession = makeFakeSession();
+        return storedSession;
+      }),
+    });
+    const localApp = Fastify();
+    registerHookRoutes(localApp, { sessions: localSessions, eventBus: new SessionEventBus() });
+    await localApp.ready();
+
+    const maliciousTitle = '<script>alert(1)</script>Evil';
+    const res = await localApp.inject({
+      method: 'POST',
+      url: '/v1/hooks/SessionStart?sessionId=00000000-0000-4000-8000-000000000001',
+      payload: { hook_event_name: 'SessionStart', sessionTitle: maliciousTitle },
+    });
+    expect(res.statusCode).toBe(200);
+    // The stored title is HTML-escaped (script tag rendered as text)
+    const stored = storedSession?.metadata?.title as string;
+    expect(stored).toBeDefined();
+    expect(stored).not.toContain('<script>');
+    expect(stored).toContain('&lt;script&gt;');
+    expect(stored).toContain('Evil');
+    // The response also returns the sanitized title
+    const body = res.json() as Record<string, unknown>;
+    const hso = body.hookSpecificOutput as Record<string, unknown>;
+    expect(hso.sessionTitle as string).not.toContain('<script>');
+    expect(hso.sessionTitle as string).toContain('&lt;script&gt;');
+  });
 });
 
 describe('AC #2: MessageDisplay transform event (Issue #4522)', () => {

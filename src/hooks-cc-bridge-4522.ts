@@ -52,6 +52,13 @@ export const KNOWN_HOOK_EVENTS = new Set([
 ]);
 
 /** CC bridge body schema — secondary parser for the new fields. */
+// Schema is permissive at the structural level (`.passthrough()`) to accept
+// standard CC body fields we don't enumerate here (e.g., `hook_event_name`).
+// Prototype-pollution defense is layered:
+//   1. After safeParse, `stripProtoKeys` removes any `__proto__`/`constructor`/
+//      `prototype` keys that JSON.parse may have set on the parsed object.
+//   2. The handler only reads the specific fields it needs (sessionTitle,
+//      hookSpecificOutput.message) — never iterates the parsed object.
 const ccBridgeHookBodySchema = z.object({
   reloadSkills: z.boolean().optional(),
   sessionTitle: z.string().min(1).max(200).optional(),
@@ -65,6 +72,27 @@ const ccBridgeHookBodySchema = z.object({
     }).passthrough().optional(),
   }).passthrough().optional(),
 }).passthrough();
+
+/**
+ * Strip prototype-pollution keys from a parsed object. The Zod schema is
+ * already strict (no unknown keys), but defense-in-depth: a `__proto__` key
+ * set via JSON.parse can still pollute the parsed object's prototype chain
+ * before Zod sees it. This helper ensures the returned object is clean.
+ */
+function stripProtoKeys<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => stripProtoKeys(item)) as unknown as T;
+  }
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
+    out[key] = stripProtoKeys((obj as Record<string, unknown>)[key]);
+  }
+  return out as T;
+}
 
 /** Issue #4522 AC #2: Sanitize MessageDisplay text — strip control chars, disallow JS/CSS payloads. */
 function sanitizeMessageDisplayText(text: string): string {
@@ -105,7 +133,8 @@ export function dispatchCcBridgeEvents(args: {
 }): CcBridgeDispatchResult | null {
   const { eventName, sessionId, session, rawBody, deps } = args;
   const ccParse = ccBridgeHookBodySchema.safeParse(rawBody ?? {});
-  const ccBridge = (ccParse.success ? ccParse.data : {}) as Record<string, unknown>;
+  // Defense-in-depth: even with strict schema, strip prototype-pollution keys.
+  const ccBridge = (ccParse.success ? stripProtoKeys(ccParse.data) : {}) as Record<string, unknown>;
 
   if (eventName === 'SessionStart') {
     const requestedTitle = ccBridge.sessionTitle;
@@ -114,10 +143,14 @@ export function dispatchCcBridgeEvents(args: {
       hookSpecificOutput: { hookEventName: 'SessionStart' },
     };
     if (typeof requestedTitle === 'string' && requestedTitle.length > 0 && requestedTitle.length <= 200) {
-      // Issue #4522 AC #1: persist title in session.metadata (no new field on SessionInfo)
+      // Issue #4522 AC #1: persist title in session.metadata (no new field on SessionInfo).
+      // Sanitize for stored-XSS defense in depth: downstream consumers may render
+      // `session.metadata.title` in HTML; we strip control chars + HTML-escape so
+      // the stored value is inert regardless of render path.
+      const sanitizedTitle = sanitizeMessageDisplayText(requestedTitle);
       if (!session.metadata) session.metadata = {};
-      session.metadata.title = requestedTitle;
-      (responseBody.hookSpecificOutput as Record<string, unknown>).sessionTitle = requestedTitle;
+      session.metadata.title = sanitizedTitle;
+      (responseBody.hookSpecificOutput as Record<string, unknown>).sessionTitle = sanitizedTitle;
       log.info({ component: 'hooks', operation: 'sessionStartResponse', sessionId, attributes: { sessionTitle: 'set' } });
     } else {
       log.info({ component: 'hooks', operation: 'sessionStartResponse', sessionId, attributes: { sessionTitle: 'none' } });

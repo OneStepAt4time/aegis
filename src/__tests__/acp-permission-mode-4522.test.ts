@@ -76,6 +76,47 @@ describe('AC #3: --permission-mode argv injection (Issue #4522)', () => {
     expect(started.command.args).not.toContain('--permission-mode');
   });
 
+  // Document the boundary: exact-match is the correct behavior.
+  // Variations should NOT trigger the assertion (only the exact flag name).
+  it.each([
+    ['--dangerously-skip-permissions=true', 'with =true suffix', false],
+    ['--dangerously-skip-permissions=1', 'with =1 suffix', false],
+    ['--Dangerously-Skip-Permissions', 'capitalized case', false],
+    ['--DANGEROUSLY-SKIP-PERMISSIONS', 'uppercase', false],
+    ['--dangerously-skip-permiss', 'partial / typo', false],
+    ['--dangerously-skip-permissions', 'exact match (the threat)', true],
+  ])('flag detection boundary: %s (%s) — should reject? %s', async (flag, _label, shouldReject) => {
+    const child = new AcpChildProcess({
+      resolvedCommand: {
+        command: process.execPath,
+        args: [fixturePath, flag],
+        source: 'explicit',
+      },
+      cwd: process.cwd(),
+      env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+      permissionMode: 'default',
+    });
+    child.on('stdout', () => {});
+    child.on('stderr', () => {});
+
+    if (shouldReject) {
+      let thrown: unknown = null;
+      try {
+        await child.start();
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(AcpChildProcessStartError);
+      expect((thrown as Error).message).toMatch(/--dangerously-skip-permissions is forbidden/);
+    } else {
+      // Variation should NOT trigger — the spawn proceeds. The fixture exits cleanly.
+      const started = await child.start();
+      await child.waitForExit();
+      // Sanity: no exception thrown, command started
+      expect(started.pid).toEqual(expect.any(Number));
+    }
+  });
+
   it('rejects --dangerously-skip-permissions in resolved args (security boundary)', async () => {
     const child = new AcpChildProcess({
       resolvedCommand: {
