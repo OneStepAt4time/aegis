@@ -64,7 +64,11 @@ export interface AcpSessionParticipants {
 /** Role color mapping for UI badges. */
 export const ROLE_COLORS: Record<AcpDisplayRole, { bg: string; text: string }> = {
   driver: { bg: 'bg-[var(--color-info)]/20', text: 'text-[var(--color-info-glow)]' },
-  observer: { bg: 'bg-[var(--color-info)]/20', text: 'text-[var(--color-info-glow)]' },
+  // DESIGN INTENT: observer is intentionally neutral (passive role), distinct
+  //   from driver (active, info color). Tokens added 2026-06-04 (#4564 audit).
+  //   Future audits: do NOT collapse observer to --color-info*; the neutral tier
+  //   conveys the passive observer role in DriverControlBar.
+  observer: { bg: 'bg-[var(--color-neutral)]/20', text: 'text-[var(--color-neutral-glow)]' },
   operator: { bg: 'bg-[var(--color-warning)]/20', text: 'text-[var(--color-warning-glow)]' },
   admin: { bg: 'bg-[var(--color-danger)]/20', text: 'text-[var(--color-danger-glow)]' },
 };

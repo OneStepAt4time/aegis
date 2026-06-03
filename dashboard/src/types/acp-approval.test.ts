@@ -25,10 +25,10 @@ describe('RISK_LEVEL_CONFIG', () => {
     expect(config.border).not.toMatch(/border-orange-/);
   });
 
-  it('high risk maps to warning design tokens', () => {
+  it('high risk maps to warning-strong design tokens (distinct from medium)', () => {
     const { bg, text, border } = RISK_LEVEL_CONFIG.high;
-    expect(bg).toContain('--color-warning');
-    expect(text).toContain('--color-warning');
-    expect(border).toContain('--color-warning');
+    expect(bg).toContain('--color-warning-strong');
+    expect(text).toContain('--color-warning-strong-glow');
+    expect(border).toContain('--color-warning-strong');
   });
 });

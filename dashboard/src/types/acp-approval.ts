@@ -65,6 +65,11 @@ export interface AcpApprovalActionResult {
 export const RISK_LEVEL_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
   low: { label: 'Low Risk', bg: 'bg-[var(--color-success)]/10', text: 'text-[var(--color-success-glow)]', border: 'border-[var(--color-success)]/30' },
   medium: { label: 'Medium Risk', bg: 'bg-[var(--color-warning)]/10', text: 'text-[var(--color-warning-glow)]', border: 'border-[var(--color-warning)]/30' },
-  high: { label: 'High Risk', bg: 'bg-[var(--color-warning)]/10', text: 'text-[var(--color-warning-glow)]', border: 'border-[var(--color-warning)]/30' },
+  // DESIGN INTENT: high risk is intentionally more urgent than medium.
+  //   medium = amber (--color-warning), high = orange (--color-warning-strong).
+  //   Tokens added 2026-06-04 to preserve this visual distinction (#4564 audit).
+  //   Future audits: do NOT collapse high to --color-warning*; the orange tier
+  //   is the severity-escalation signal in AcpApprovalModal.
+  high: { label: 'High Risk', bg: 'bg-[var(--color-warning-strong)]/10', text: 'text-[var(--color-warning-strong-glow)]', border: 'border-[var(--color-warning-strong)]/30' },
   critical: { label: 'Critical Risk', bg: 'bg-[var(--color-danger)]/10', text: 'text-[var(--color-danger-glow)]', border: 'border-[var(--color-danger)]/30' },
 };

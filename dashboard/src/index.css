@@ -94,6 +94,16 @@
   --color-info-glow: #93c5fd;    /* blue-300 — text on dark surfaces */
   --color-accent-purple-glow: #c4b5fd; /* purple-300 — text on dark surfaces */
 
+  /* Severity-tier tokens (Path A additions for #4564 audit).
+   * --color-warning-strong: more urgent than --color-warning (orange-500 vs amber-500).
+   *                    Used for "high" risk level (above medium).
+   * --color-neutral:   non-status color (zinc-500). Used for passive/observer roles
+   *                    (distinct from active/driver info color). */
+  --color-warning-strong: #f97316;        /* orange-500 */
+  --color-warning-strong-glow: #fb923c;   /* orange-400 — text on dark surfaces */
+  --color-neutral: #71717a;              /* zinc-500 */
+  --color-neutral-glow: #a1a1aa;         /* zinc-400 — text on dark surfaces */
+
   /* ------------------------------------------------------------------ */
   /* Motion tokens (mirror of dashboard/src/design/tokens.ts).          */
   /* Keep in sync with tokens.duration and tokens.easing.               */

@@ -22,9 +22,9 @@ describe('ROLE_COLORS', () => {
     expect(colors.text).not.toMatch(/text-zinc-/);
   });
 
-  it('observer maps to info design tokens', () => {
+  it('observer maps to neutral design tokens (distinct from driver)', () => {
     const { bg, text } = ROLE_COLORS.observer;
-    expect(bg).toContain('--color-info');
-    expect(text).toContain('--color-info');
+    expect(bg).toContain('--color-neutral');
+    expect(text).toContain('--color-neutral-glow');
   });
 });
