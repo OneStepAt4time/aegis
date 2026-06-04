@@ -136,7 +136,7 @@ describe('AC #3: --permission-mode argv injection (Issue #4522)', () => {
       status: 'initializing',
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      permissionMode: 'bypassPermissions',  // the session has a permission mode
+      permissionMode: 'default',  // non-bypass so the runtime-layer guard is a no-op (no /tmp/test side effect)
     } as const;
 
     // Capture the context the clientFactory receives
@@ -162,10 +162,10 @@ describe('AC #3: --permission-mode argv injection (Issue #4522)', () => {
       backendRunIdProvider: () => 'run-1',
     } as never;
 
-    createRuntime(fakeDeps, session, '/tmp/test', 'run-1');
+    await createRuntime(fakeDeps, session, '/tmp/test', 'run-1');
 
     expect(capturedContext).not.toBeNull();
-    expect((capturedContext as { permissionMode?: string }).permissionMode).toBe('bypassPermissions');
+    expect((capturedContext as { permissionMode?: string }).permissionMode).toBe('default');
   });
 
   it('rejects --dangerously-skip-permissions in resolved args (security boundary)', async () => {
