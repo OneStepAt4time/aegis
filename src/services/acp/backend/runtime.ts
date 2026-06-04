@@ -32,6 +32,10 @@ import {
   attachmentFromResult,
   isActiveStatus,
 } from './utils.js';
+import {
+  activateBypassPermissions,
+  neutralizeBypassPermissions,
+} from '../../../permission-guard.js';
 
 const log = new StructuredLogger();
 
@@ -57,7 +61,7 @@ export async function startNewRuntime(
   systemPrompt?: string
 ): Promise<AcpBackendStartResult> {
   const backendRunId = deps.backendRunIdProvider();
-  const runtime = createRuntime(deps, session, cwd, backendRunId);
+  const runtime = await createRuntime(deps, session, cwd, backendRunId);
   let started = false;
   try {
     const initializeResult = await startAndInitialize(deps, runtime);
@@ -92,7 +96,7 @@ export async function startNewRuntimeBackground(
   systemPrompt: string | undefined,
   backendRunId: string
 ): Promise<void> {
-  const runtime = createRuntime(deps, session, cwd, backendRunId);
+  const runtime = await createRuntime(deps, session, cwd, backendRunId);
   let started = false;
   try {
     const initializeResult = await startAndInitialize(deps, runtime);
@@ -130,7 +134,7 @@ export async function startResumeRuntime(
     );
   }
   const backendRunId = forcedBackendRunId ?? deps.backendRunIdProvider();
-  const runtime = createRuntime(deps, session, cwd, backendRunId);
+  const runtime = await createRuntime(deps, session, cwd, backendRunId);
   let started = false;
   try {
     const initializeResult = await startAndInitialize(deps, runtime);
@@ -171,7 +175,7 @@ export async function startLoadRuntime(
     );
   }
   const backendRunId = deps.backendRunIdProvider();
-  const runtime = createRuntime(deps, session, cwd, backendRunId);
+  const runtime = await createRuntime(deps, session, cwd, backendRunId);
   let started = false;
   try {
     const initializeResult = await startAndInitialize(deps, runtime);
@@ -200,12 +204,30 @@ export async function startLoadRuntime(
   }
 }
 
-export function createRuntime(
+export async function createRuntime(
   deps: RuntimeLifecycleDeps,
   session: AcpSessionRecord,
   cwd: string,
   backendRunId: string
-): AcpBackendRuntime {
+): Promise<AcpBackendRuntime> {
+  // Issue #4575 P0: Apply permission-guard at the runtime boundary so
+  // resume/load paths (which do NOT go through buildSessionInfo) get
+  // the same settings.local.json protection as createSession. CC
+  // v2.1.143 reads permissions.defaultMode from
+  // <workDir>/.claude/settings.local.json on startup and OVERRIDES
+  // the --permission-mode argv, so the file MUST be patched before
+  // the child process spawns. This hoists the dispatch from
+  // session-factory.ts:123-131 with session.permissionMode as the
+  // source of truth. For new/new-background paths the call is
+  // idempotent (settings already correct from buildSessionInfo);
+  // for resume/load paths it closes the actual P0 gap.
+  const effectivePermissionMode = session.permissionMode ?? 'default';
+  if (effectivePermissionMode === 'bypassPermissions') {
+    await activateBypassPermissions(cwd);
+  } else {
+    await neutralizeBypassPermissions(cwd, effectivePermissionMode);
+  }
+
   const context: AcpBackendClientFactoryContext = {
     durableSessionId: session.id,
     tenantId: session.tenantId,
