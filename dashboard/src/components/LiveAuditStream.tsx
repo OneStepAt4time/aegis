@@ -125,7 +125,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
       {/* Empty state */}
       {visibleEvents.length === 0 && (
         <div className="flex flex-col items-center justify-center pt-12 gap-3 text-center">
-          <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-[var(--color-overlay-bg)] flex items-center justify-center">
             <Activity className="h-4 w-4 text-[var(--color-text-muted)]" />
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">{t('liveStream.noEvents')}</p>
