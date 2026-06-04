@@ -515,10 +515,10 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
   return (
     <div className="space-y-6 relative">
       <div className="card-glass w-full animate-bento-reveal shadow-[var(--shadow-card)]">
-        <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-4 border-b border-[var(--color-overlay-border)] bg-[var(--color-overlay-bg)] p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--color-void)] px-3 py-3 min-h-[44px] text-sm text-[var(--color-text-primary)] focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--color-overlay-border-strong)] bg-[var(--color-void)] px-3 py-3 min-h-[44px] text-sm text-[var(--color-text-primary)] focus-within:border-[var(--color-accent-cyan)] focus-within:ring-1 focus-within:ring-[var(--color-accent-cyan)]/30 transition-all shadow-inner">
                 <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
                 <input
                   value={searchInput}
@@ -686,19 +686,19 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
       {isLoading && sessions.length === 0 ? (
         /* Bento-style Loading Skeleton */
-        <div className="card-glass relative overflow-hidden p-12 flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-pulse">
-           <div className="w-16 h-16 rounded-2xl bg-white/5 mb-6" />
-           <div className="w-48 h-4 bg-white/10 rounded-full mb-3" />
-           <div className="w-64 h-3 bg-white/5 rounded-full" />
+        <div className="card-glass relative overflow-hidden p-12 flex flex-col items-center justify-center min-h-[420px] border border-[var(--color-overlay-border)] animate-pulse">
+           <div className="w-16 h-16 rounded-2xl bg-[var(--color-overlay-bg)] mb-6" />
+           <div className="w-48 h-4 bg-[var(--color-overlay-bg-hover)] rounded-full mb-3" />
+           <div className="w-64 h-3 bg-[var(--color-overlay-bg)] rounded-full" />
         </div>
       ) : sessions.length === 0 ? (
-        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-white/5 animate-bento-reveal shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
+        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-[var(--color-overlay-border)] animate-bento-reveal shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
           {/* Ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[var(--color-accent-cyan)]/30 to-transparent" />
 
           {/* Icon diamond */}
-          <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[var(--shadow-accent-cyan)] transform rotate-45">
+          <div className="relative z-10 w-20 h-20 mb-6 rounded-2xl bg-[var(--color-overlay-bg)] border border-[var(--color-overlay-border-strong)] flex items-center justify-center shadow-[var(--shadow-accent-cyan)] transform rotate-45">
             <span className="text-2xl transform -rotate-45 block text-[var(--color-text-muted)]">⌘</span>
           </div>
 
@@ -722,9 +722,9 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
                 Deploy New Agent
               </button>
               <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
-                <div className="h-px w-12 bg-white/10" />
+                <div className="h-px w-12 bg-[var(--color-overlay-bg-hover)]" />
                 <span className="text-[10px] uppercase tracking-widest">or</span>
-                <div className="h-px w-12 bg-white/10" />
+                <div className="h-px w-12 bg-[var(--color-overlay-bg-hover)]" />
               </div>
               <button
                 type="button"
