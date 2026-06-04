@@ -61,7 +61,7 @@ export function Sidebar({
     <aside
       aria-label={t("aria.primarySidebar")}
       className={`
-        fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/5 bg-transparent backdrop-blur-xl
+        fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[var(--color-overlay-border)] bg-transparent backdrop-blur-xl
         transition-all duration-300 ease-in-out
         ${sidebarWidth}
         ${isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -73,7 +73,7 @@ export function Sidebar({
       inert={isMobileSidebarHidden ? true : undefined}
       style={{ backgroundImage: 'var(--sidebar-glow)' }}
     >
-      <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-white/5">
+      <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-[var(--color-overlay-border)]">
         <ShieldWordmark size="md" collapsed={isCollapsed} />
         <button
           type="button"
@@ -122,7 +122,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="border-t border-white/5 px-3 py-4 flex flex-col gap-2">
+      <div className="border-t border-[var(--color-overlay-border)] px-3 py-4 flex flex-col gap-2">
         {identityLabel && identityDetailLabel && !isCollapsed && (
           <div className="px-3 py-2" aria-label={t("aria.signedInUser")}>
             <p className="truncate text-xs font-medium text-[var(--color-text-primary)] dark:text-[var(--color-text-primary)]">{identityLabel}</p>

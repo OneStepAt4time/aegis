@@ -72,7 +72,7 @@ export function Drawer({
             aria-label={ariaLabel}
             ref={trapRef}
             {...panelMotion}
-            className={`fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] overflow-y-auto border-l border-white/5 bg-[var(--color-surface)] shadow-2xl flex flex-col ${className}`}
+            className={`fixed right-0 top-0 bottom-0 z-[var(--z-drawer)] w-full md:w-[480px] overflow-y-auto border-l border-[var(--color-overlay-border)] bg-[var(--color-surface)] shadow-2xl flex flex-col ${className}`}
           >
             {children}
           </motion.aside>
