@@ -64,6 +64,27 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: /Open command palette/i })).toBeDefined();
   });
 
+  // Regression: #4564 audit — ensure the search palette button uses overlay
+  // design tokens instead of raw `white/N` Tailwind opacity classes.
+  it('palette button uses overlay design tokens (no raw white/ classes)', () => {
+    renderHeader();
+    const btn = screen.getByRole('button', { name: /Open command palette/i });
+    const cls = btn.className;
+    expect(cls).not.toMatch(/white\//);
+    expect(cls).toContain('var(--color-overlay-border-strong)');
+    expect(cls).toContain('var(--color-overlay-bg)');
+    expect(cls).toContain('var(--color-overlay-bg-hover)');
+  });
+
+  // Regression: #4564 audit — the kbd shortcut hint inside the palette button
+  // must use the overlay-border-strong token, not raw white/10.
+  it('palette kbd uses overlay-border-strong token', () => {
+    renderHeader();
+    const kbd = screen.getByText('⌘K');
+    expect(kbd.className).not.toMatch(/white\//);
+    expect(kbd.className).toContain('var(--color-overlay-border-strong)');
+  });
+
   it('renders the theme toggle button', () => {
     renderHeader();
     expect(screen.getByRole('button', { name: /Switch to light mode/i })).toBeDefined();

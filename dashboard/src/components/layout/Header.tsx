@@ -42,7 +42,7 @@ export function Header({
 
   return (
     <>
-      <header className="shrink-0 border-b border-white/5 bg-transparent backdrop-blur-md px-4 py-4 sm:px-8">
+      <header className="shrink-0 border-b border-[var(--color-overlay-border)] bg-transparent backdrop-blur-md px-4 py-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
@@ -81,13 +81,12 @@ export function Header({
             <button
               type="button"
               onClick={() => onPaletteOpenChange(true)}
-              // TODO(#4564 follow-up): dark:border-white/10, dark:bg-white/5, dark:hover:bg-white/10 have no design token (translucent white overlay in dark mode). Adding tokens for these is on the Path A follow-up.
-              className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all"
+              className="min-h-[44px] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] dark:border-[var(--color-overlay-border-strong)] dark:bg-[var(--color-overlay-bg)] dark:hover:bg-[var(--color-overlay-bg-hover)] transition-all"
               aria-label={t('aria.openCommandPalette')}
             >
               <Search className="h-3 w-3" />
               <span className="hidden sm:inline">Search…</span>
-              <kbd className="hidden sm:inline ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-white/10 rounded px-1">⌘K</kbd>
+              <kbd className="hidden sm:inline ml-1 font-mono text-[10px] text-[var(--color-text-primary)] border border-[var(--color-overlay-border-strong)] rounded px-1">⌘K</kbd>
             </button>
 
             <div className="inline-flex items-center gap-1 sm:gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-1.5 py-1 sm:px-2 text-xs text-[var(--color-text-primary)] dark:border-[var(--color-void-lighter)] dark:bg-[var(--color-void-dark)] dark:text-[var(--color-text-primary)]">

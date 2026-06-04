@@ -104,6 +104,17 @@
   --color-neutral: #71717a;              /* zinc-500 */
   --color-neutral-glow: #a1a1aa;         /* zinc-400 — text on dark surfaces */
 
+  /* Overlay tokens (#4564 audit, Path A follow-up).
+   * Translucent surfaces used for hairline borders, subtle backgrounds,
+   * and modal scrims. In dark mode they read as white-tinted glass; in
+   * light mode they re-tint to dark so dividers stay visible on white.
+   * --color-scrim stays dark in every theme — modal backdrops always dim. */
+  --color-overlay-border: rgba(255, 255, 255, 0.05);        /* white/5   */
+  --color-overlay-border-strong: rgba(255, 255, 255, 0.1);  /* white/10  */
+  --color-overlay-bg: rgba(255, 255, 255, 0.05);            /* white/5   */
+  --color-overlay-bg-hover: rgba(255, 255, 255, 0.1);       /* white/10  */
+  --color-scrim: rgba(0, 0, 0, 0.6);                         /* black/60  */
+
   /* ------------------------------------------------------------------ */
   /* Motion tokens (mirror of dashboard/src/design/tokens.ts).          */
   /* Keep in sync with tokens.duration and tokens.easing.               */
@@ -240,6 +251,13 @@
 
   /* Timeline trace line: clearly visible in light mode. */
   --color-trace-line: #94a3b8;
+
+  /* Overlay tokens — dark-tinted glass on white surfaces (#4564 audit). */
+  --color-overlay-border: rgba(15, 23, 42, 0.08);        /* slate-900/8  */
+  --color-overlay-border-strong: rgba(15, 23, 42, 0.14); /* slate-900/14 */
+  --color-overlay-bg: rgba(15, 23, 42, 0.04);            /* slate-900/4  */
+  --color-overlay-bg-hover: rgba(15, 23, 42, 0.08);      /* slate-900/8  */
+  --color-scrim: rgba(0, 0, 0, 0.5);                      /* black/50     */
 }
 
 /* ------------------------------------------------------------------------
@@ -278,6 +296,13 @@
   --color-syn-string: #1a3a5c;
   --color-syn-comment: #6b6b5e;
   --color-syn-number: #1a4a7a;
+
+  /* Overlay tokens — dark ink tints on warm paper. */
+  --color-overlay-border: rgba(10, 10, 10, 0.08);
+  --color-overlay-border-strong: rgba(10, 10, 10, 0.16);
+  --color-overlay-bg: rgba(10, 10, 10, 0.04);
+  --color-overlay-bg-hover: rgba(10, 10, 10, 0.10);
+  --color-scrim: rgba(0, 0, 0, 0.5);
 }
 
 /* ------------------------------------------------------------------------
@@ -316,6 +341,13 @@
   --color-syn-string: #00008b;
   --color-syn-comment: #696969;
   --color-syn-number: #00008b;
+
+  /* Overlay tokens — pure-black tints on white. */
+  --color-overlay-border: rgba(0, 0, 0, 0.1);
+  --color-overlay-border-strong: rgba(0, 0, 0, 0.2);
+  --color-overlay-bg: rgba(0, 0, 0, 0.05);
+  --color-overlay-bg-hover: rgba(0, 0, 0, 0.12);
+  --color-scrim: rgba(0, 0, 0, 0.7);
 }
 
 body {
