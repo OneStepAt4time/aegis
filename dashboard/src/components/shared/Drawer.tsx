@@ -59,7 +59,7 @@ export function Drawer({
           <motion.div
             key="drawer-backdrop"
             {...backdropMotion}
-            className="fixed inset-0 z-[var(--z-drawer-overlay)] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[var(--z-drawer-overlay)] bg-[var(--color-scrim)] backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
           />

@@ -27,7 +27,7 @@ export function KeyboardShortcutsHelp({
   const trapRef = useFocusTrap(open);
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-200 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-scrim)] backdrop-blur-sm transition-opacity duration-200 ${
         open ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
       onClick={onClose}

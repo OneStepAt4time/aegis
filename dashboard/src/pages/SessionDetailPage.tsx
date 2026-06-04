@@ -289,7 +289,7 @@ export default function SessionDetailPage() {
   return (
     <div className="min-h-screen bg-transparent">
       {needsApproval && (
-        <div className="fixed inset-0 z-30 bg-black/40 sm:hidden" aria-hidden="true" />
+        <div className="fixed inset-0 z-30 bg-[var(--color-scrim)] sm:hidden" aria-hidden="true" />
       )}
 
       <div
