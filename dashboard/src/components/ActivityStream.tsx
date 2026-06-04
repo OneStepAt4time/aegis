@@ -179,7 +179,7 @@ export default function ActivityStream({
   return (
     <div className="card-glass w-full animate-bento-reveal overflow-hidden">
       {/* Header + filters */}
-      <div className="flex flex-col gap-3 border-b border-white/5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-[var(--color-overlay-border)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h3>
         {showFilters && (
           <div className="flex items-center gap-2">

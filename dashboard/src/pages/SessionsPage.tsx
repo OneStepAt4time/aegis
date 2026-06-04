@@ -58,7 +58,7 @@ export default function SessionsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-white/5" role="tablist" aria-label={translate("aria.sessionViews")}>
+      <div className="flex gap-1 border-b border-[var(--color-overlay-border)]" role="tablist" aria-label={translate("aria.sessionViews")}>
         {TABS.map(({ id, label }) => (
           <button
             key={id}
