@@ -171,7 +171,7 @@ function VirtualizedRow(props: {
     return (
       <div
         style={style}
-        className="border-b border-white/5 bg-white/[0.02]"
+        className="border-b border-[color:var(--color-overlay-border-faint)] bg-[color:var(--color-overlay-bg-faint)]"
         {...ariaAttributes}
       >
         <button

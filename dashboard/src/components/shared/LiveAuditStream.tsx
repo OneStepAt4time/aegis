@@ -100,7 +100,7 @@ export default function LiveAuditStream() {
             >
               <Link
                 to={`/sessions/${encodeURIComponent(ev.sessionId)}`}
-                className="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.03] transition-colors"
+                className="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-[color:var(--color-overlay-bg-faint-hover)] transition-colors"
               >
                 <EventIcon event={ev.event} />
                 <div className="flex-1 min-w-0">
