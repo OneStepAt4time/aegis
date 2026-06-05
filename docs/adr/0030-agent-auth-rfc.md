@@ -433,7 +433,12 @@ agrees the structural fix is not worth the setup cost.
    review window are gating factors.
 3. **Per-agent App naming:** `aegis-hermes[bot]`, `aegis-argus[bot]`,
    `aegis-hephaestus[bot]`, etc.? Or a single `aegis-agents[bot]` with
-   a "creator" field? Recommend the former (cleaner audit trail).
+   a "creator" field? **Recommended default: per-agent Apps with
+   per-role names** (cleaner audit trail; matches the existing
+   `aegis-gh-agent` convention; no creator-field archaeology needed
+   post-hoc — i.e., you can tell which agent authored which commit
+   without parsing branch metadata). Ema confirms or picks an
+   alternative.
 4. **CODEOWNERS rule revision:** Phase 2 unblocks App self-approval.
    Should `* @OneStepAt4time` change to allow App self-approval for
    non-CI files? Ema + Argus should weigh in. See the
