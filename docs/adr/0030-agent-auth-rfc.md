@@ -284,9 +284,13 @@ agrees the structural fix is not worth the setup cost.
 ### Positive
 
 - **Phase 1** unblocks Gap 1 immediately. Every future CI-infra change
-  can be bot-pushed. The 7-PR queue clears as soon as Ema approves
-  per-agent CODEOWNERS rules (Phase 2) or self-approves one-off
-  (Phase 1 alone).
+  can be bot-pushed. The 7-PR queue (PRs #4579-#4584, #4587) clears
+  via **Ema's per-PR UI approval** (gate-clearer, manual cost
+  14-21 min). Phase 1 doesn't change the per-PR cost — it changes
+  the *velocity of future CI-infra changes*. **Phase 2** is what
+  unblocks the 7-PR queue at *scale* (per-agent CODEOWNERS rules let
+  Argus self-approve on Ema's behalf, reducing the per-PR cost to
+  ~30 sec of bot review).
 - **Phase 2** adds per-agent attribution. Post-incident review can
   attribute a CI change to the agent that made it. Per-agent rate
   limits become possible. Per-agent secret rotation becomes possible.
@@ -406,9 +410,11 @@ agrees the structural fix is not worth the setup cost.
    `get-installation-token-hephaestus.sh`. Each script returns 1h-TTL
    installation tokens for its App.
 5. Hermes: update HEARTBEAT.md to reference the per-agent flow.
-6. Hermes: file a follow-up ADR (or amend this one) for the
-   per-agent CODEOWNERS rules — which agents can self-approve, which
-   still need Ema.
+6. Hermes: file a follow-up **ADR-0031** (separate, not amend this
+   one) for the per-agent CODEOWNERS rules — which agents can
+   self-approve, which still need Ema. Separate ADR is cleaner
+   audit trail per Themis's security review + Argus's
+   06:48Z-review-aligned recommendation.
 7. Hermes: deprecate `aegis-gh-agent` (keep for 30 days, then remove).
 
 **Review-gate preservation (cross-cutting, applies to all of Phase 2):**
