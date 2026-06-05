@@ -204,7 +204,7 @@ release or CI surface).
 Each App:
 
 - Has its own PEM, stored in `~/.openclaw/workspace/infra/github-apps/<app>.pem`
-  (mode 600, owner `buntu:buntu`).
+  (mode 600, owner `bubuntu:bubuntu`).
 - Has its own `get-installation-token-<app>.sh` script alongside the
   existing one, returning 1h-TTL installation tokens.
 - Has its own Discord identity (`<@aegis-hermes>`, etc.) for tagging.
@@ -348,7 +348,7 @@ agrees the structural fix is not worth the setup cost.
    to `aegis-gh-agent[bot]`.
 6. **PEM storage**: all PEMs are stored in
    `~/.openclaw/workspace/infra/github-apps/` with mode 600, owner
-   `buntu:buntu` (per the 2026-06-04 perm sweep). No PEMs in
+   `bubuntu:bubuntu` (per the 2026-06-04 perm sweep). No PEMs in
    `~/.git-credentials` or other credential stores.
 
 ### Risks and their mitigations
