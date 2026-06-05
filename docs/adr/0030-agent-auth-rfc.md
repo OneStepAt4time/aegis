@@ -44,11 +44,53 @@ Concrete impact (2026-06-05):
 - **Seven dashboard overlay PRs** (#4579, #4580, #4581, #4582, #4583, #4584,
   #4587) are all green, all `mergeable: true`, all blocked on the
   `* @OneStepAt4time` CODEOWNERS rule (which requires Ema to approve every
-  PR). Each one is a one-click-per-PR tax on Ema.
+  PR). Each one is a one-click-per-PR tax on Ema. See the
+  [7-batch concrete impact](#7-batch-concrete-impact) subsection below
+  for the full per-PR state, bottleneck cost, and structural-fix
+  comparison.
 - **PR #4585** (hono Dependabot 4-CVE bump) is blocked on the same
   helm-smoke gate that #4586 fixes.
 - Audit trail is coarser than human-authored work. Hard to attribute
   changes to specific agents in post-incident review.
+
+#### 7-batch concrete impact
+
+PRs in queue (7): #4579, #4580, #4581, #4582, #4583, #4584, #4587.
+
+State across all 7 (verified 2026-06-05):
+
+- All `mergeable: MERGEABLE`
+- All `mergeStateStatus: BLOCKED`
+- All App-authored (`app/aegis-gh-agent`)
+- 0 Ema UI-approvals across all 7
+
+**Bottleneck-per-PR cost:** Ema opens GitHub, navigates to PR, reads
+LGTM (bot's), clicks Approve, clicks Merge. ~2-3 minutes per click
+(varies by Ema's review depth). 7 PRs × 2-3 min = **14-21 minutes of
+Ema's time** for the batch.
+
+**ETA observations:**
+
+- 7 PRs reviewed: ~3 hours (sliding through the slice-arc)
+- 7 PRs approved: 14-21 min of Ema's time
+- 7 PRs merged: 7 minutes (sequential squash-merge, no rebase
+  conflicts per the hunk-disjoint file-overlap lesson in
+  `~/self-improving-ag-argus/memory.md`)
+- Net: the LGTM work is done; the merge work is gated on Ema's
+  bandwidth + the structural long pole.
+
+**Why the structural fix matters more for the next batch:** bug fixes,
+security bumps, future slice arcs will face the same blocker. Phase 2
+scales: 1 setup cost → N future PRs unblocked. The 14-21 min of Ema's
+time per batch becomes a one-time cost amortized over many batches.
+
+**Comparison with structural fix:**
+
+- Per-agent App RFC Phase 1 (10 min, Ema's grant) → unblocks Hermes's
+  #4586 + all future CI/infra edits
+- Per-agent App RFC Phase 2 (6 hours, Ema + Themis) → unblocks all 7
+  batched PRs retroactively (cross-App review allowed; Ema UI-approve
+  still required but on a clean LGTM)
 
 ### Current workaround
 
@@ -68,6 +110,62 @@ Ema is the perpetual bottleneck for every App-authored PR and every CI
 tweak. Without a structural fix, the queue never clears — each unblock
 costs Ema a click. The fix needs to land before the next major merge
 campaign, not as a one-off.
+
+## 9-gate Review Mechanics
+
+The 9 gates (from `workspace-argus/SOUL.md` §"Review Checklist (every
+PR)"):
+
+1. **Review completed** — full diff reviewed, no open comments
+2. **No conflicts** — branch is up-to-date with develop, clean rebase if
+   needed
+3. **CI green** — all checks passing, zero failures
+4. **No regressions** — existing tests still pass, no performance
+   degradation
+5. **Unit tests** — new code has tests covering happy path + edge cases
+6. **E2E / UAT** — functional verification confirmed (via session
+   transcript or manual check)
+7. **Documented** — Scribe has confirmed or PR includes doc updates
+8. **Security clean** — no secrets, no vulnerabilities, Themis sign-off
+   if security-sensitive
+9. **PR targets develop** — NEVER merge to main. If PR targets main →
+   REJECT immediately
+
+### Human-required gates (by design, can't be replaced by App)
+
+- **Gate 1 (UI-approve layer):** LGTM can be posted by App
+  (`event=COMMENT` or `event=APPROVE`), but the merge UI-Approve is a
+  separate CODEOWNERS layer (`* @OneStepAt4time`). Ema is the only
+  human with write access.
+- **Gate 6 (E2E / UAT):** typically requires a session transcript or
+  human verification.
+- **Gate 7 (Documented):** Scribe's review is the human layer.
+- **Gate 8 (Security clean):** Themis's sign-off is the human layer for
+  security-sensitive changes.
+
+### Bot-checkable gates (App can verify on its own)
+
+- **Gate 2:** `gh pr view --json mergeable`
+- **Gate 3:** `gh pr checks`
+- **Gate 4 + 5:** test results in CI
+- **Gate 9:** `gh pr view --json baseRefName`
+
+### App self-approval implication
+
+| author of PR | reviewer | `event=APPROVE` | rationale |
+| --- | --- | --- | --- |
+| `app/dependabot` | `aegis-gh-agent[bot]` | **allowed** | different App identity, no self-approval concern |
+| `app/aegis-gh-agent` | `aegis-gh-agent[bot]` | **blocked** | same App identity, 422 "Can not approve your own pull request" |
+| `aegis-hermes[bot]` (Phase 2) | `aegis-argus[bot]` (Phase 2) | **allowed** | different App identities, cross-App review permitted |
+| human (`OneStepAt4time`) | `aegis-gh-agent[bot]` | **allowed** | humans are the approver, not the bot; bot's APPROVE is informational |
+| human (`OneStepAt4time`) | human (`OneStepAt4time`) | **allowed** | same human, but self-approval is a GitHub-side decision |
+
+**Key implication for Phase 2:** per-agent Apps unblock **cross-App
+review**, not same-App self-approval. The 4 human-required gates
+(1-UI-approve, 6, 7, 8) don't change with Phase 2 — Scribe / Themis /
+human sign-off still applies. Phase 1 (10-min `workflows: write` grant)
+doesn't change the LGTM state either; it just unblocks the
+workflow-file edit so the per-agent Apps can be registered.
 
 ## Decision
 
@@ -313,6 +411,19 @@ agrees the structural fix is not worth the setup cost.
    still need Ema.
 7. Hermes: deprecate `aegis-gh-agent` (keep for 30 days, then remove).
 
+**Review-gate preservation (cross-cutting, applies to all of Phase 2):**
+
+- All 9 gates (from [9-gate Review Mechanics](#9-gate-review-mechanics))
+  must still pass for per-agent App PRs — no gate relaxation.
+- The CODEOWNERS layer is separate (Ema UI-approve for the merge,
+  regardless of LGTM state).
+- Per-agent App scope is per-role: Hermes = DevOps, Argus = Review /
+  Merge gate, Hephaestus = Backend, etc. Each App's permissions
+  reflect its lane. Per-role permission matrix is the same as the
+  table in the Alternatives section.
+- Bot self-approval matrix (see [App self-approval implication](#app-self-approval-implication))
+  governs LGTM events; UI-approve remains Ema's.
+
 ### Open questions for Ema
 
 1. **Phase 1 immediate unblock:** OK to grant `workflows: write` to
@@ -325,10 +436,44 @@ agrees the structural fix is not worth the setup cost.
    a "creator" field? Recommend the former (cleaner audit trail).
 4. **CODEOWNERS rule revision:** Phase 2 unblocks App self-approval.
    Should `* @OneStepAt4time` change to allow App self-approval for
-   non-CI files? Ema + Argus should weigh in.
+   non-CI files? Ema + Argus should weigh in. See the
+   [App self-approval implication](#app-self-approval-implication) matrix
+   for the per-author × per-reviewer behavior (dependabot allowed,
+   `aegis-gh-agent` blocked, per-agent Apps cross-allowed, human
+   self-allowed, per-agent App same-blocked).
 5. **PAT cleanup:** should Ema's `gho_` token in
    `~/.git-credentials` be removed once Phase 1 + 2 land? Themis
    flagged this as a P1 (2026-06-04).
+
+## Reviewer commentary
+
+### Argus (2026-06-05, 07:47 GMT+2)
+
+Argus reviewed the proposal and offered two contributions integrated
+above (see [9-gate Review Mechanics](#9-gate-review-mechanics) and
+[7-batch concrete impact](#7-batch-concrete-impact)). Argus's reads on
+the 5 open questions:
+
+1. **Phase 1 OK today** — yes, low risk + high value. 10-min unblocks
+   today's #4586 + all future CI/infra. The "consistency with existing
+   `contents: write`" framing is the right one for the Ema pitch:
+   not a new permission class, just a scope extension within the
+   same security model.
+2. **Phase 2 this week** — yes, gated on Themis's review window. The
+   structural audit is the real value-add.
+3. **Per-agent App naming** — `aegis-hermes[bot]`, `aegis-argus[bot]`,
+   `aegis-hephaestus[bot]` looks clean and matches the existing
+   `aegis-gh-agent` convention.
+4. **CODEOWNERS rule revision** — yes, scoped to non-CI. CI/infra
+   files retain human review per the security model. Most surgical
+   change; smallest blast radius; preserves defense-in-depth.
+5. **PAT cleanup** — yes, the `gho_` should go. Sequencing: only after
+   Phase 1 + 2 land AND the script recipe is confirmed canonical for
+   all paths. Don't remove the fallback before the replacement is
+   proven.
+
+Source: PR #4591 comment id 4628616053 (Argus 👁️ <1490089830472880218>,
+filed via `app/aegis-gh-agent[bot]`).
 
 ## References
 
