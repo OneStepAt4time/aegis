@@ -247,7 +247,7 @@ export default function ActivityStream({
           const Icon = meta.icon;
           const description = describeEvent(event);
           return (
-            <div key={event.renderKey} className="group flex items-start gap-3 px-4 py-3 transition-all duration-150 hover:bg-white/[0.04] cursor-default">
+            <div key={event.renderKey} className="group flex items-start gap-3 px-4 py-3 transition-all duration-150 hover:bg-[color:var(--color-overlay-bg-faint-hover)] cursor-default">
               {/* Icon bubble with colored glow */}
               <div
                 className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-inner transition-shadow group-hover:shadow-md"

@@ -169,7 +169,7 @@ export default function LiveAuditStream({ maxItems = 20 }: LiveAuditStreamProps)
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 pb-3 border-b border-white/[0.04] group-last:border-0">
+                  <div className="flex-1 min-w-0 pb-3 border-b border-[color:var(--color-overlay-border-faint)] group-last:border-0">
                     <div className="flex items-center justify-between gap-1 mb-0.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span
