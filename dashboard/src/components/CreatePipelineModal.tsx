@@ -118,7 +118,7 @@ export default function CreatePipelineModal({ open, onClose }: CreatePipelineMod
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+      <div className="absolute inset-0 bg-[color:var(--color-scrim)] backdrop-blur-sm" onClick={handleClose} />
 
       <div ref={trapRef} role="dialog" aria-modal="true" aria-label={t("aria.createNewPipeline")} className="relative w-full max-w-2xl mx-4 bg-[var(--color-surface)] border border-[var(--color-void-lighter)] rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
