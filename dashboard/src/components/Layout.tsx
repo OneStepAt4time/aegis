@@ -181,7 +181,7 @@ export default function Layout() {
           <LiveAuditStream />
         </div>
 
-        <footer className="shrink-0 border-t border-white/5 bg-transparent backdrop-blur-md px-3 py-2 sm:px-6 flex items-center justify-between gap-2">
+        <footer className="shrink-0 border-t border-[var(--color-overlay-border)] bg-transparent backdrop-blur-md px-3 py-2 sm:px-6 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" title={sseError ?? undefined}>
             {sseError ? (
               <>

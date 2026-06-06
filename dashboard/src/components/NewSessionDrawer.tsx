@@ -124,7 +124,7 @@ export function NewSessionDrawer() {
       panelRef={trapRef as React.Ref<HTMLDivElement>}
     >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--color-overlay-border)] shrink-0">
               <div>
                 <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('newSession.title')}</h2>
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('newSession.subtitle')}</p>
