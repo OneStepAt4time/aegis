@@ -223,7 +223,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   placeholder={t('commandPalette.searchPlaceholder')}
                   className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-[var(--color-text-muted)] outline-none"
                 />
-                <kbd className="shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+                <kbd className="shrink-0 rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
                   ESC
                 </kbd>
               </div>
@@ -294,15 +294,15 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               {/* Footer hint */}
               <div className="border-t border-white/5 px-4 py-2 flex items-center gap-4">
                 <span className="text-[10px] text-[var(--color-text-muted)]">
-                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&uarr;&darr;</kbd>
+                  <kbd className="rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1 font-mono">&uarr;&darr;</kbd>
                   {' '}navigate
                 </span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">
-                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">&crarr;</kbd>
+                  <kbd className="rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1 font-mono">&crarr;</kbd>
                   {' '}select
                 </span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">
-                  <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono">esc</kbd>
+                  <kbd className="rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1 font-mono">esc</kbd>
                   {' '}close
                 </span>
               </div>

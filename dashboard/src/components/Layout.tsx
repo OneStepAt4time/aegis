@@ -206,7 +206,7 @@ export default function Layout() {
             onClick={() => setPaletteOpen(true)}
             className="hidden min-h-[44px] md:flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
-            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1 text-[var(--color-text-primary)]">⌘K</kbd>
+            <kbd className="font-mono text-[10px] border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] rounded px-1 text-[var(--color-text-primary)]">⌘K</kbd>
             Command palette
           </button>
 
@@ -218,7 +218,7 @@ export default function Layout() {
             title={t('aria.keyboardShortcuts')}
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true }))}
           >
-            <kbd className="font-mono text-[10px] border border-white/10 bg-white/5 rounded px-1.5 text-[var(--color-text-primary)]">?</kbd>
+            <kbd className="font-mono text-[10px] border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] rounded px-1.5 text-[var(--color-text-primary)]">?</kbd>
             Shortcuts
           </button>
 
