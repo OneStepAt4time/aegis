@@ -139,7 +139,7 @@ export default function Layout() {
       {isMobileOpen && (
         <div
           data-testid="mobile-sidebar-backdrop"
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-[var(--color-scrim)] md:hidden"
           onClick={closeMobile}
           role="button"
           tabIndex={-1}

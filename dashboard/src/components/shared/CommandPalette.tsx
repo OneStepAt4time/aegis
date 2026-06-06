@@ -188,7 +188,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[var(--z-cmd-overlay)] md:bg-black/60 md:backdrop-blur-sm bg-[var(--color-void)]"
+            className="fixed inset-0 z-[var(--z-cmd-overlay)] md:bg-[var(--color-scrim)] md:backdrop-blur-sm bg-[var(--color-void)]"
             style={{ backgroundImage: 'var(--palette-backdrop)' }}
             onClick={onClose}
           />

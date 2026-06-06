@@ -799,7 +799,7 @@ export default function SessionHistoryPage() {
       )}
 
       {confirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-scrim)]">
           <div className="w-full max-w-sm mx-4 sm:mx-0 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
               {t('sessionHistory.killDialogTitle', { count: selectedIds.size })}
