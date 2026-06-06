@@ -176,7 +176,7 @@ function VirtualizedRow(props: {
       >
         <button
           type="button"
-          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-white/5"
+          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-overlay-bg)]"
           onClick={() => onToggleGroup(dirKey)}
           aria-expanded={!isCollapsed}
           aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
@@ -198,10 +198,10 @@ function VirtualizedRow(props: {
   return (
     <div
       style={{ ...style, gridTemplateColumns: GRID_COLUMNS }}
-      className={`grid border-b border-white/5 transition-all duration-[var(--duration-slow)] ease-out ${
+      className={`grid border-b border-[var(--color-overlay-border)] transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
           ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-          : 'hover:bg-white/5 hover:scale-[1.002] cursor-pointer'
+          : 'hover:bg-[var(--color-overlay-bg)] hover:scale-[1.002] cursor-pointer'
       }${needsApproval(session) ? ' approval-pending-row' : ''}`}
       data-session-id={session.id}
       {...ariaAttributes}
