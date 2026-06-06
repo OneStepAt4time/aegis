@@ -207,7 +207,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           >
             <div className="card-glass overflow-hidden shadow-palette">
               {/* Search input */}
-              <div className="flex min-h-[44px] items-center gap-3 border-b border-white/5 px-4 py-3.5">
+              <div className="flex min-h-[44px] items-center gap-3 border-b border-[var(--color-overlay-border)] px-4 py-3.5">
                 <Search className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
                 <input
                   ref={inputRef}
@@ -292,7 +292,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </div>
 
               {/* Footer hint */}
-              <div className="border-t border-white/5 px-4 py-2 flex items-center gap-4">
+              <div className="border-t border-[var(--color-overlay-border)] px-4 py-2 flex items-center gap-4">
                 <span className="text-[10px] text-[var(--color-text-muted)]">
                   <kbd className="rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1 font-mono">&uarr;&darr;</kbd>
                   {' '}navigate
