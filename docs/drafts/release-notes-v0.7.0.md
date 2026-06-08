@@ -56,9 +56,21 @@ When a session is created, Aegis sends a Telegram notification with inline Appro
 - Telegram notification settings page in the dashboard
 
 **Setup:**
+
+Set two env vars and restart Aegis:
+
 ```bash
-ag setup telegram
+export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
+
+Or add to `aegis.config.json`:
+
+```json
+{ "tgBotToken": "<token>", "tgGroupId": "<chat-id>" }
+```
+
+See [`docs/guides/phone-approvals.md`](https://github.com/OneStepAt4time/aegis/blob/develop/docs/guides/phone-approvals.md) for the full walkthrough (creating a bot, getting the chat ID, security notes).
 
 ---
 

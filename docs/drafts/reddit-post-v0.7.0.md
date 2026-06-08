@@ -41,10 +41,16 @@ When Claude Code needs permission, Aegis sends a Telegram push notification with
 
 It works for session creation too — new session starts, you get a notification, approve it from your phone, agent goes to work.
 
-Setup:
+Setup — set two env vars and restart Aegis:
+
 ```bash
-ag setup telegram  # guided, 60 seconds
+export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
+
+(or add `tgBotToken` / `tgGroupId` to `aegis.config.json`)
+
+See [`docs/guides/phone-approvals.md`](https://github.com/OneStepAt4time/aegis/blob/develop/docs/guides/phone-approvals.md) for the full walkthrough.
 
 The approval state machine is: `pending_approval → approved → running` or `rejected`. Timeout auto-reject if you don't respond within the configured window.
 
@@ -105,8 +111,8 @@ npx @onestepat4time/aegis init
 # Run your first agent
 ag run "Summarize this project and suggest improvements" --cwd ./my-project
 
-# Set up phone approvals
-ag setup telegram
+# Set up phone approvals (env vars AEGIS_TG_BOT_TOKEN and AEGIS_TG_GROUP)
+# see docs/guides/phone-approvals.md for the full walkthrough
 ```
 
 GitHub: https://github.com/OneStepAt4time/aegis  

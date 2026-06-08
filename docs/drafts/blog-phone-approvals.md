@@ -36,14 +36,24 @@ Every minute your agent spends waiting for you to approve something is a minute 
 
 ## Set it up in 60 seconds
 
+1. Create a Telegram bot via [@BotFather](https://t.me/BotFather) (30 seconds)
+2. Add the bot to a group (or DM it) and grab the chat ID via `https://api.telegram.org/bot<TOKEN>/getUpdates`
+3. Set two env vars where Aegis runs:
+
 ```bash
-# 1. Create a Telegram bot via @BotFather (takes 30 seconds)
-# 2. Create a group, add the bot, get the chat ID
-# 3. Run setup
-ag setup telegram
+export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
 
-That's it. Aegis handles the rest — notifications, inline buttons, callback authentication, timeout auto-reject if you don't respond.
+Or add to `aegis.config.json`:
+
+```json
+{ "tgBotToken": "<token>", "tgGroupId": "<chat-id>" }
+```
+
+Then restart Aegis. That's it — notifications, inline buttons, callback authentication, timeout auto-reject if you don't respond.
+
+See [`docs/guides/phone-approvals.md`](https://github.com/OneStepAt4time/aegis/blob/develop/docs/guides/phone-approvals.md) for the full walkthrough.
 
 ## What's next
 
@@ -55,7 +65,7 @@ That's it. Aegis handles the rest — notifications, inline buttons, callback au
 
 ```bash
 npx --package=@onestepat4time/aegis ag init
-ag setup telegram
+# set AEGIS_TG_BOT_TOKEN and AEGIS_TG_GROUP (see above)
 ag run "Build a REST API for a todo app" --cwd ./my-project
 ```
 
