@@ -36,7 +36,6 @@ function makeCtx(): TestCtx {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function asAppCtx(ctx: TestCtx): AppContext {
   return ctx as unknown as AppContext;
 }
@@ -143,7 +142,7 @@ describe('handleInbound + stable-actor resolver (#4617)', () => {
 
       // Warning fired exactly once
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      const warnArg = warnSpy.mock.calls[0][0] as Record<string, unknown>;
+      const warnArg = warnSpy.mock.calls[0][0] as unknown as Record<string, unknown>;
       expect(warnArg).toMatchObject({
         component: 'server-inbound',
         operation: 'stable_actor_drift',
