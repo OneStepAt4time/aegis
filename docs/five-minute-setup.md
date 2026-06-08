@@ -79,11 +79,20 @@ ag run "Your prompt here" --cwd ./my-project
 
 ## Optional: Approve from your phone (1 minute)
 
+Set two environment variables, then restart Aegis:
+
 ```bash
-ag setup telegram
+export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
 
-Follow the guided setup. After that, Claude's permission prompts arrive on Telegram — approve or deny from anywhere.
+Or add them to `aegis.config.json`:
+
+```json
+{ "tgBotToken": "<token>", "tgGroupId": "<chat-id>" }
+```
+
+After restart, Claude's permission prompts arrive on Telegram — approve or deny from anywhere.
 
 > 📖 For the full walkthrough (create a bot, get chat ID, configure security), see the [Phone Approvals guide](./guides/phone-approvals.md).
 
