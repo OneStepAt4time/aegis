@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Awaiting_approval status + riskLevel crash** — dashboard handles approval status without crashing ([#4155](https://github.com/OneStepAt4time/aegis/pull/4155), [#4156](https://github.com/OneStepAt4time/aegis/pull/4156), [#4150](https://github.com/OneStepAt4time/aegis/issues/4150))
 - **Auth: remove __Host- cookie prefix** — dashboard auth works over HTTP without TLS ([#4146](https://github.com/OneStepAt4time/aegis/pull/4146))
 - **ag status shows cumulative total** — totalCreated persists across restarts instead of in-memory counter ([#4171](https://github.com/OneStepAt4time/aegis/pull/4171))
+- **Onboarding phone-approval setup command** — `docs/five-minute-setup.md` "Approve from your phone" section now uses the documented env-var (`AEGIS_TG_BOT_TOKEN` / `AEGIS_TG_GROUP`) and config (`tgBotToken` / `tgGroupId`) setup path instead of the non-existent `ag setup telegram` subcommand (closes [#4605](https://github.com/OneStepAt4time/aegis/issues/4605))
 - **ACP OOM prevention** — event compaction and debounced persist prevent memory crash loops ([#4032](https://github.com/OneStepAt4time/aegis/pull/4032))
 - **Transcript API returns full messages** — no more truncated responses from `/read` ([#3863](https://github.com/OneStepAt4time/aegis/pull/3863))
 - **Cross-session rate-limit coordination** — prevent concurrent retry storms across sessions ([#3931](https://github.com/OneStepAt4time/aegis/pull/3931))
