@@ -78,7 +78,7 @@ Set these environment variables where Aegis runs:
 
 ```bash
 export AEGIS_TG_BOT_TOKEN="7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-export AEGIS_TG_GROUP_ID="-1001234567890"   # your chat ID from Step 2
+export AEGIS_TG_GROUP="-1001234567890"   # your chat ID from Step 2
 ```
 
 Then restart Aegis:

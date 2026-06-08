@@ -79,7 +79,7 @@ export function printBanner(io: CliIO, port: number, host: string): void {
   // Issue #3500 (F22): human-friendly startup hint
   writeLine(io.stdout, `  → Dashboard: http://${host}:${port}/dashboard/`);
   writeLine(io.stdout, `  → Try: ag create 'Build a hello world'`);
-  writeLine(io.stdout, `  → Telegram: set up with ag telegram`);
+  writeLine(io.stdout, `  → Telegram: set AEGIS_TG_BOT_TOKEN + AEGIS_TG_GROUP (see docs/guides/phone-approvals.md)`);
   writeLine(io.stdout);
 }
 
