@@ -212,11 +212,13 @@ describe('printBanner output', () => {
     expect(joined).toContain("ag create 'Build a hello world'");
   });
 
-  it('includes Telegram setup hint', () => {
+  it('includes Telegram setup hint pointing at env vars and docs', () => {
     const io = mockIO();
     printBanner(io, 9100, 'localhost');
     const joined = io.output.join('');
-    expect(joined).toContain('ag telegram');
+    expect(joined).toContain('AEGIS_TG_BOT_TOKEN');
+    expect(joined).toContain('AEGIS_TG_GROUP');
+    expect(joined).toContain('phone-approvals.md');
   });
 
   it('uses custom host and port', () => {
