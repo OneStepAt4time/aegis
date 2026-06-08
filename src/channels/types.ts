@@ -64,7 +64,11 @@ export interface InboundCommand {
   action: 'approve' | 'reject' | 'escape' | 'kill' | 'message' | 'command' | 'session_approve' | 'session_reject';
   text?: string;
   /** Issue #4117: Actor who triggered this command (e.g. Telegram user info). */
-  actor?: { type: 'telegram'; userId: number; firstName: string };
+  /** Issue #4617: relayAccountId is the OpenClaw-side identity passed through
+   *  the inbound message envelope. Used by the stable-actor resolver to
+   *  detect relay-layer drift (see src/identity/stable-actor.ts). Optional
+   *  because not all channels supply it. */
+  actor?: { type: 'telegram'; userId: number; firstName: string; relayAccountId?: string };
 }
 
 /** Callback for inbound commands. */

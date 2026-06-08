@@ -16,8 +16,45 @@ import type { AppContext } from './app-context.js';
 import { shutdownAcpRuntime, cleanupTerminatedSessionState } from './session-cleanup.js';
 import { logger } from './logger.js';
 import { channels } from './server-channels.js';
+import { resolveStableActor } from './identity/stable-actor.js';
 import { makePayload as makePayloadFromCtx } from './routes/context.js';
 
+
+
+/**
+ * Resolve the inbound actor to an audit-string, threading the stable
+ * actor id through the resolver and emitting a structured drift warning
+ * if the OpenClaw relay's `relayAccountId` differs from a previously
+ * observed baseline for the same (channel, userId) (issue #4617).
+ *
+ * Returns the human-readable form augmented with a `[stable:<id>]` tag,
+ * preserving the pre-#4617 form (`telegram:<userId> (<firstName>)`) as
+ * a substring. The default 'telegram' string is returned when no actor
+ * is supplied (preserves pre-#4617 fallback).
+ */
+function resolveInboundActor(cmd: InboundCommand, sessionId: string): string {
+  if (cmd.actor?.type !== 'telegram') {
+    return 'telegram';
+  }
+  const resolution = resolveStableActor({
+    channel: 'telegram',
+    userId: cmd.actor.userId,
+    firstName: cmd.actor.firstName,
+    relayAccountId: cmd.actor.relayAccountId,
+  });
+  if (resolution.isDriftSuspected) {
+    logger.warn({
+      component: 'server-inbound',
+      operation: 'stable_actor_drift',
+      sessionId,
+      attributes: {
+        stableActorId: resolution.stableActorId,
+        observedRelayAccountId: cmd.actor.relayAccountId,
+      },
+    });
+  }
+  return `telegram:${cmd.actor.userId} (${cmd.actor.firstName}) [stable:${resolution.stableActorId}]`;
+}
 
 async function handleInbound(cmd: InboundCommand, ctx: AppContext): Promise<void> {
   try {
@@ -45,10 +82,9 @@ async function handleInbound(cmd: InboundCommand, ctx: AppContext): Promise<void
         if (recentApprovalActions.has(cmd.sessionId)) break;
         recentApprovalActions.add(cmd.sessionId);
         setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
-        // Issue #4117: Include actor info (Telegram user) in approvedBy.
-        const approveActor = cmd.actor?.type === 'telegram'
-          ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
-          : 'telegram';
+        // Issue #4117/#4617: Include actor info (Telegram user) in approvedBy,
+        // threading the stable actor id through the resolver for drift defense.
+        const approveActor = resolveInboundActor(cmd, cmd.sessionId);
         // Issue #4092: Wrap in try/catch — stale Telegram callbacks (e.g. user taps
         // Approve after session was already approved via API) should not crash callback processing.
         try {
@@ -69,10 +105,8 @@ async function handleInbound(cmd: InboundCommand, ctx: AppContext): Promise<void
         if (recentApprovalActions.has(cmd.sessionId)) break;
         recentApprovalActions.add(cmd.sessionId);
         setTimeout(() => recentApprovalActions.delete(cmd.sessionId), 2000);
-        // Issue #4117: Include actor info in rejection log.
-        const rejectActor = cmd.actor?.type === 'telegram'
-          ? `telegram:${cmd.actor.userId} (${cmd.actor.firstName})`
-          : 'telegram';
+        // Issue #4117/#4617: Include actor info in rejection log + stable id.
+        const rejectActor = resolveInboundActor(cmd, cmd.sessionId);
         try {
           await ctx.sessions.rejectSession(cmd.sessionId);
           channels.statusChange({
