@@ -312,13 +312,22 @@ See [Configuration Reference](getting-started.md#configuration) for all options.
 
 ## Approve from Your Phone (optional)
 
-Set up Telegram approvals to handle Claude Code permission prompts from anywhere:
+Set up Telegram approvals to handle Claude Code permission prompts from anywhere.
+
+Set two environment variables, then restart Aegis:
 
 ```bash
-ag setup telegram
+export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
 
-Follow the guided setup. After that, permission prompts arrive on Telegram — approve or deny from your phone.
+Or add them to `aegis.config.json`:
+
+```json
+{ "tgBotToken": "<token>", "tgGroupId": "<chat-id>" }
+```
+
+After restart, permission prompts arrive on Telegram — approve or deny from your phone.
 
 > 📖 Full walkthrough: [Phone Approvals guide](./guides/phone-approvals.md).
 
