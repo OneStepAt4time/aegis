@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP secrets moved to env vars** — remove hardcoded secrets, add CI gate ([#4040](https://github.com/OneStepAt4time/aegis/pull/4040))
 - **OTEL PII redaction** — redact hostname and PID from resource attributes ([#4039](https://github.com/OneStepAt4time/aegis/pull/4039))
 - **Multi-agent security requirements** — documented review protocol and security requirements ([#3980](https://github.com/OneStepAt4time/aegis/pull/3980))
+- **Workdir redaction in Email + Slack channels** — `workDir` in outbound messages is masked (home → `~`, last 2 path segments) matching the existing Telegram pattern; closes audit §4.7 inconsistency ([#4641](https://github.com/OneStepAt4time/aegis/pull/4641), closes [#4630](https://github.com/OneStepAt4time/aegis/issues/4630))
 
 ### Bug Fixes
 
