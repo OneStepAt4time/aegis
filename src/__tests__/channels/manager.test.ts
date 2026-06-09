@@ -474,5 +474,36 @@ describe('ChannelManager', () => {
       // Channel still not disabled — all calls went through
       expect(onMessage).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD * 3);
     });
+
+    it('re-enables channel after COOLDOWN_MS elapses (cooldown recovery)', async () => {
+      vi.useFakeTimers();
+      try {
+        const manager = new ChannelManager();
+        const { channel: ch, onSessionCreated } = createMockChannel('webhook');
+
+        // 5 consecutive retriable failures → channel disabled for COOLDOWN_MS
+        onSessionCreated.mockRejectedValue(new RetriableError('HTTP 503'));
+        manager.register(ch);
+
+        for (let i = 0; i < ChannelManager.FAILURE_THRESHOLD; i++) {
+          await manager.sessionCreated(createPayload('session.created'));
+        }
+        expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD);
+
+        // During cooldown: next call is skipped (channel still disabled)
+        await manager.sessionCreated(createPayload('session.created'));
+        expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD);
+
+        // Advance time past the cooldown
+        vi.advanceTimersByTime(ChannelManager.COOLDOWN_MS + 1);
+
+        // Channel re-enabled: next call goes through
+        onSessionCreated.mockResolvedValue(undefined);
+        await manager.sessionCreated(createPayload('session.created'));
+        expect(onSessionCreated).toHaveBeenCalledTimes(ChannelManager.FAILURE_THRESHOLD + 1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });
