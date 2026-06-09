@@ -3,6 +3,10 @@
  *
  * Creates one topic per CC session in a Telegram supergroup.
  * Bidirectional: reads replies from topics and fires inbound commands.
+ *
+ * Refactored from 405-line god module (#4626). Transport extracted to
+ * telegram/api.ts, health tracking to telegram/health.ts. Delegate methods
+ * kept as instance methods for test spy compatibility.
  */
 
 import type {
@@ -75,6 +79,8 @@ import {
   runTopicCleanup,
   TOPIC_CLEANUP_MAX_RETRIES,
 } from './telegram-topic-lifecycle.js';
+import { TelegramApiClient } from './api.js';
+import { createHealthTracker, trackSuccess, trackFailure, getHealth, type HealthTracker } from './health.js';
 
 // Re-export everything that was previously exported from telegram.ts
 export type { TelegramChannelConfig, SessionTopic, SessionProgress, QueuedItem, ToolInfo } from './types.js';
@@ -101,7 +107,6 @@ export class TelegramChannel implements Channel, TelegramChannelInternals {
   progress = new Map<string, SessionProgress>();
   pollOffset = 0;
   polling = false;
-  rateLimitUntil = 0;
   pollBackoffMs = 1_000;
   onInbound: InboundHandler | null = null;
   topicCleanupTimers = new Map<string, NodeJS.Timeout>();
@@ -125,12 +130,23 @@ export class TelegramChannel implements Channel, TelegramChannelInternals {
 
   lastUserMessage = new Map<string, string>();
 
-  lastSuccessAt: number | null = null;
-  lastErrorAt: number | null = null;
-  lastErrorMessage: string | null = null;
-  deliveryFailCount = 0;
+  private apiClient: TelegramApiClient;
+  private healthTracker: HealthTracker;
 
   pollLoopPromise: Promise<void> = Promise.resolve();
+
+  // ── Health tracking accessors (for TelegramChannelInternals compatibility) ──
+
+  get rateLimitUntil(): number { return this.apiClient['rateLimitUntil']; }
+  set rateLimitUntil(value: number) { this.apiClient['rateLimitUntil'] = value; }
+  get lastSuccessAt(): number | null { return this.healthTracker.lastSuccessAt; }
+  set lastSuccessAt(value: number | null) { this.healthTracker.lastSuccessAt = value; }
+  get lastErrorAt(): number | null { return this.healthTracker.lastErrorAt; }
+  set lastErrorAt(value: number | null) { this.healthTracker.lastErrorAt = value; }
+  get lastErrorMessage(): string | null { return this.healthTracker.lastErrorMessage; }
+  set lastErrorMessage(value: string | null) { this.healthTracker.lastErrorMessage = value; }
+  get deliveryFailCount(): number { return this.healthTracker.deliveryFailCount; }
+  set deliveryFailCount(value: number) { this.healthTracker.deliveryFailCount = value; }
 
   // ── Constructor ──────────────────────────────────────────────────────────
 
@@ -145,54 +161,18 @@ export class TelegramChannel implements Channel, TelegramChannelInternals {
     if (this.topics.size > 0) {
       log.info({ component: 'telegram', operation: 'restoreTopics', attributes: { count: this.topics.size } });
     }
+    this.apiClient = new TelegramApiClient(config);
+    this.healthTracker = createHealthTracker();
   }
 
-  // ── Telegram Bot API ────────────────────────────────────────────────────
+  // ── Telegram Bot API (delegated to apiClient) ───────────────────────────
 
   async tgApi(
     method: string,
     body: Record<string, unknown>,
     retries = 3,
   ): Promise<unknown> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      const now = Date.now();
-      if (this.rateLimitUntil > now) {
-        const waitMs = this.rateLimitUntil - now;
-        log.info({ component: 'telegram', operation: 'rateLimitWait', attributes: { waitSeconds: Math.ceil(waitMs / 1000), method } });
-        await sleep(waitMs);
-      }
-
-      const res = await fetch(`https://api.telegram.org/bot${this.config.botToken}/${method}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.config.hookTimeoutMs ?? 10_000),
-      });
-      const data = (await res.json()) as {
-        ok: boolean;
-        result?: unknown;
-        description?: string;
-        parameters?: { retry_after?: number };
-      };
-
-      if (data.ok) return data.result;
-
-      if (res.status === 429 && data.parameters?.retry_after) {
-        const retryAfter = data.parameters.retry_after;
-        this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
-        log.info({ component: 'telegram', operation: 'rateLimit429', attributes: { retryAfter, attempt: attempt + 1, maxAttempts: retries + 1 } });
-        if (attempt < retries) {
-          await sleep(retryAfter * 1000 + 500);
-          continue;
-        }
-      }
-
-      if (attempt === retries) {
-        throw new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
-      }
-      await sleep(1000 * (attempt + 1));
-    }
-    throw new Error('Unreachable');
+    return this.apiClient.tgApi(method, body, retries);
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -346,27 +326,15 @@ export class TelegramChannel implements Channel, TelegramChannelInternals {
   }
 
   getHealth(): ChannelHealthStatus {
-    return {
-      channel: this.name,
-      healthy: this.lastErrorAt === null || (this.lastSuccessAt !== null && this.lastSuccessAt > this.lastErrorAt),
-      lastSuccess: this.lastSuccessAt,
-      lastError: this.lastErrorMessage,
-      pendingCount: this.messageQueue.size,
-    };
+    return getHealth(this.healthTracker, this.name, this.messageQueue.size);
   }
 
   trackSuccess(): void {
-    this.lastSuccessAt = Date.now();
-    this.deliveryFailCount = 0;
+    trackSuccess(this.healthTracker);
   }
 
   trackFailure(error: unknown): void {
-    this.lastErrorAt = Date.now();
-    const redacted = this.redactError(error);
-    this.lastErrorMessage = redacted instanceof Error
-      ? (redacted as Error).message
-      : String(redacted);
-    this.deliveryFailCount++;
+    trackFailure(this.healthTracker, error, this.redactError.bind(this));
   }
 
   // ── Delegate methods (used by tests via spyOn) ──────────────────────────
