@@ -3,7 +3,7 @@
 **Author:** Hephaestus (`<hephaestus@aegis.dev>`)
 **Branch:** `audit/4619-channels`
 **Date:** 2026-06-09
-**Scope:** `src/channels/**` (3,861 lines across 18 files) — quality review, coverage analysis, security/error-handling findings, refactor opportunities.
+**Scope:** `src/channels/**` (3,861 lines across 19 files (18 source files + 1 barrel: channels/index.ts)) — quality review, coverage analysis, security/error-handling findings, refactor opportunities.
 **DoD items addressed in this report:** #1 (audit report).
 
 ---
