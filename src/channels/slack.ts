@@ -150,7 +150,7 @@ export class SlackChannel implements Channel {
         elements: [
           {
             type: 'mrkdwn',
-            text: `WorkDir: \`${payload.session.workDir}\` • ${new Date(payload.timestamp).toISOString()}`,
+            text: `WorkDir: \`${redactWorkDir(payload.session.workDir)}\` • ${new Date(payload.timestamp).toISOString()}`,
           },
         ],
       },
