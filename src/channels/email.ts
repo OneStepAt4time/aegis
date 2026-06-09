@@ -1,3 +1,4 @@
+import { redactWorkDir } from './redact-workdir.js';
 /**
  * channels/email.ts — Email notification channel.
  *
@@ -164,7 +165,7 @@ export class EmailChannel implements Channel {
     <table style="width: 100%; border-collapse: collapse;">
       <tr><td style="padding: 4px 0; color: #666;">Session</td><td style="padding: 4px 0; font-weight: bold;">${this.escapeHtml(payload.session.name)}</td></tr>
       <tr><td style="padding: 4px 0; color: #666;">Session ID</td><td style="padding: 4px 0; font-family: monospace;">${this.escapeHtml(payload.session.id)}</td></tr>
-      <tr><td style="padding: 4px 0; color: #666;">WorkDir</td><td style="padding: 4px 0; font-family: monospace; font-size: 12px;">${this.escapeHtml(payload.session.workDir)}</td></tr>
+      <tr><td style="padding: 4px 0; color: #666;">WorkDir</td><td style="padding: 4px 0; font-family: monospace; font-size: 12px;">${this.escapeHtml(redactWorkDir(payload.session.workDir))}</td></tr>
       <tr><td style="padding: 4px 0; color: #666;">Event</td><td style="padding: 4px 0;"><code>${eventLabel}</code></td></tr>
       <tr><td style="padding: 4px 0; color: #666;">Detail</td><td style="padding: 4px 0;">${this.escapeHtml(payload.detail)}</td></tr>
       <tr><td style="padding: 4px 0; color: #666;">Time</td><td style="padding: 4px 0;">${new Date(payload.timestamp).toISOString()}</td></tr>
@@ -178,7 +179,7 @@ export class EmailChannel implements Channel {
     return `Aegis — ${this.formatEvent(payload.event)}
 
 Session: ${payload.session.name} (${payload.session.id})
-WorkDir: ${payload.session.workDir}
+WorkDir: ${redactWorkDir(payload.session.workDir)}
 Event: ${payload.event}
 Detail: ${payload.detail}
 Time: ${new Date(payload.timestamp).toISOString()}`;

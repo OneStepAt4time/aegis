@@ -1,3 +1,4 @@
+import { redactWorkDir } from './redact-workdir.js';
 /**
  * channels/slack.ts — Slack notification channel.
  *
