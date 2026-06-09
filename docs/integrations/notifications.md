@@ -196,6 +196,8 @@ Slack messages use Block Kit with color-coded severity:
 | `status.dead` | :skull: | Red |
 | `status.error` | :x: | Red |
 
+> 🔒 **Path privacy:** the `WorkDir` field in Slack messages is redacted to protect user privacy — your home directory is replaced with `~` and only the last 2 path segments are shown (e.g. `/home/alice/projects/aegis/src` → `…/projects/src`). This matches the redaction pattern used in Telegram. Webhooks always show `workDir` as `[REDACTED]`.
+
 ---
 
 ## Email (SMTP)
@@ -234,6 +236,8 @@ Subject lines indicate severity:
 - `[CRITICAL] Session Dead` — session unresponsive
 - `[ERROR] Session Error` — error state detected
 - `[WARNING] Permission Timeout` — user didn't respond in time
+
+> 🔒 **Path privacy:** the `WorkDir` line in Email bodies is redacted to protect user privacy — your home directory is replaced with `~` and only the last 2 path segments are shown (e.g. `/home/alice/projects/aegis/src` → `…/projects/src`). This matches the redaction pattern used in Telegram and Slack. Webhooks always show `workDir` as `[REDACTED]`.
 
 ---
 
