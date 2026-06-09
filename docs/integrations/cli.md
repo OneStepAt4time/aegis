@@ -498,7 +498,7 @@ AEGIS_AUTH_TOKEN=my-secret ag --port 9100
 
 ```bash
 AEGIS_AUTH_TOKEN=secret \
-AEGIS_TG_BOT_TOKEN=123456:ABC \
+AEGIS_TG_TOKEN=123456:ABC \
 AEGIS_TG_GROUP=-1001234567890 \
 AEGIS_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx \
 AEGIS_EMAIL_HOST=smtp.example.com \

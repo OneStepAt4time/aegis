@@ -26,7 +26,7 @@ Telegram provides bidirectional communication — you can approve/reject permiss
 3. Set env vars and restart Aegis:
 
 ```bash
-AEGIS_TG_BOT_TOKEN=123456:ABC-DEF
+AEGIS_TG_TOKEN=123456:ABC-DEF
 AEGIS_TG_GROUP=-1001234567890
 AEGIS_TG_ALLOWED_USERS=user1,user2  # optional
 ```
