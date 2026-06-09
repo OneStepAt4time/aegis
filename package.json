@@ -104,7 +104,7 @@
     "zod": "^4.4.3",
     "@anthropic-ai/sdk": "^0.91.1",
     "express-rate-limit": "^8.5.1",
-    "hono": "^4.12.23",
+    "hono": "^4.12.25",
     "fast-uri": "^3.1.2",
     "protobufjs": ">=8.2.0",
     "qs": "^6.15.2"
@@ -135,7 +135,7 @@
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.8"
   },
   "optionalDependencies": {
     "@opentelemetry/resources": "^2.7.1",
