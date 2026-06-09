@@ -26,7 +26,7 @@ import {
   removeReplyMarkup,
 } from '../../channels/telegram/telegram-sender.js';
 import type { TelegramChannelInternals } from '../../channels/telegram/types.js';
-import type { StyledMessage } from '../../channels/telegram/telegram-style.js';
+import type { StyledMessage } from '../../channels/telegram-style.js';
 
 function makeCtx(opts: { topicExists?: boolean; tgApiResult?: any; tgApiError?: Error } = {}): TelegramChannelInternals & { tgApiCallCount: number } {
   const topicExists = opts.topicExists ?? true;
