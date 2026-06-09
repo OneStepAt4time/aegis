@@ -42,6 +42,9 @@ export async function createStateStore(config: Config): Promise<StateStore> {
 
     case 'redis': {
       // Lazy-import to avoid requiring ioredis when not using Redis.
+      // ioredis is listed in optionalDependencies; on platforms where it fails
+      // to install (e.g., exotic architectures), the dynamic import below will
+      // throw ERR_MODULE_NOT_FOUND — the caller should catch and surface this.
       const { RedisStateStore } = await import('./RedisStateStore.js');
       const ioredis = await import('ioredis');
       const url = process.env['AEGIS_REDIS_URL'] ?? 'redis://localhost:6379';
