@@ -219,7 +219,7 @@ describe('printBanner output', () => {
     // Match the new hint character-for-character so future drift in either
     // the env var names, the prefix, or the docs path is caught. The
     // original test codifed the broken `ag telegram` subcommand ref.
-    expect(joined).toContain('  → Telegram: set AEGIS_TG_BOT_TOKEN + AEGIS_TG_GROUP (see docs/guides/phone-approvals.md)');
+    expect(joined).toContain('  → Telegram: set AEGIS_TG_TOKEN + AEGIS_TG_GROUP (see docs/guides/phone-approvals.md)');
   });
 
   it('uses custom host and port', () => {

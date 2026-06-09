@@ -317,7 +317,7 @@ Set up Telegram approvals to handle Claude Code permission prompts from anywhere
 Set two environment variables, then restart Aegis:
 
 ```bash
-export AEGIS_TG_BOT_TOKEN="<your-bot-token>"
+export AEGIS_TG_TOKEN="<your-bot-token>"
 export AEGIS_TG_GROUP="<your-chat-id>"   # positive for DM, negative for group
 ```
 
