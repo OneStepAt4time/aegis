@@ -131,6 +131,8 @@ describe('Issue 319 screenshot capture', () => {
       );
     });
 
-    expect(screen.queryByRole('button', { name: 'Capture screenshot' })).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Capture screenshot' })).toBeNull();
+    });
   });
 });
