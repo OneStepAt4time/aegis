@@ -78,7 +78,7 @@ ag run "Your prompt here" --cwd ./my-project
 After your first session, you might want to:
 
 - **Dashboard** — open <http://127.0.0.1:9100/dashboard> to see sessions, cost analytics, and audit trails
-- **Telegram** — approve agent actions from your phone: `ag setup telegram` (one guided setup)
+- **Telegram** — approve agent actions from your phone: run `ag init` and follow the Telegram setup prompt, or see the [Phone Approvals guide](docs/guides/phone-approvals.md)
 - **MCP** — let Claude Code control Aegis: `claude mcp add --scope user aegis -- ag mcp`
 - **Multiple sessions** — `ag run "fix the tests" & ag run "update the README"` (parallel agents)
 
