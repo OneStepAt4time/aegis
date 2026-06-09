@@ -11,6 +11,7 @@ describe('Issue #3092 — /manifest.json is public', () => {
     const app = Fastify();
     const dashboardRoot = path.resolve('dist/dashboard');
 
+    // codeql[js/missing-rate-limiting]: test handler — rate limiting verified in dashboard-static-rate-limit.test.ts
     app.get('/manifest.json', async (_req, reply) => {
       const manifestPath = path.join(dashboardRoot, 'manifest.json');
       try {
