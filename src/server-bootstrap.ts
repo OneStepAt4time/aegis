@@ -381,51 +381,15 @@ timers.setInterval(() => ctx.auth.sweepStaleRateLimits(), 5 * 60_000);
 ctx.actionSweeper?.start();
   // Issue #4195: Start budget evaluation timer
   budgetTimer.start();
-  // #3227: Prune interval from StaticRateLimiter — assigned after registerDashboardStatic()
-  // Issue #4248: staticPruneInterval tracked via timers.track() after registration
-  let staticPruneInterval: ReturnType<typeof setInterval> | null = null;
-  // #4243 step 4: Mutable refs for data set after registration
-  const shutdownLateRefs = { pidFilePath: startupPidPath };
-
-  // Issue #4243 step 4: Graceful shutdown handler extracted to boot/boot-shutdown.ts
-  registerShutdownHandler({
-    app,
-    ctx,
-    eventBus,
-    container,
-    metricsCache,
-    budgetTimer,
-    timers,
-    serverState,
-    lateRefs: shutdownLateRefs,
-  });
-
-  // Start monitor via dependency-aware service lifecycle.
-
-  // Start reaper (intervals already created above with stored refs for graceful shutdown)
-  logger.info({
-    component: 'server',
-    operation: 'session_reaper_active',
-    attributes: {
-      maxAgeHours: ctx.config.maxSessionAgeMs / 3600000,
-      intervalMinutes: ctx.config.reaperIntervalMs / 60000,
-    },
-  });
-
-  // Start zombie reaper (Issue #283)
-  logger.info({
-    component: 'server',
-    operation: 'zombie_reaper_active',
-    attributes: {
-      gracePeriodSeconds: ZOMBIE_REAP_DELAY_MS / 1000,
-      intervalSeconds: ZOMBIE_REAP_INTERVAL_MS / 1000,
-    },
-  });
-
   // #3154: Dashboard static serving extracted to plugins/dashboard-static.ts
-  // #3227: Capture prune interval handle for cleanup on shutdown
-staticPruneInterval = await registerDashboardStatic(app, { enabled: ctx.config.dashboardEnabled !== false });
-  if (staticPruneInterval) timers.track(staticPruneInterval);
+  // #3227, #140: Rate limiting via @fastify/rate-limit (replaces custom StaticRateLimiter)
+  const dashboardRegistered = await registerDashboardStatic(app, { enabled: ctx.config.dashboardEnabled !== false });
+  if (dashboardRegistered) {
+    logger.info({
+      component: "server",
+      operation: "dashboard_static_registered",
+    });
+  }
   await container.assertHealthy();
 await listenWithRetry(app, ctx.config.port, ctx.config.host, ctx.config.stateDir);
   logger.info({
