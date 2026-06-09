@@ -279,6 +279,36 @@ describe('handleOnMessage (#4621)', () => {
         expect((progress as any)[fileKey]).toContain('f.ts');
       }
     });
+    it.each([
+      ['edit', 'edits'],
+      ['create', 'creates'],
+      ['search', 'searches'],
+      ['command', 'commands'],
+    ] as const)('increments progress counter for category=%s in message.tool_result (edit/create hit dedup-rejected when file already in filesEdited)', async (category, counterKey) => {
+      const ctx = makeCtx();
+      // Pre-seed filesEdited to trigger the dedup-rejected branch in 'edit'/'create' cases
+      // (the `!progress.filesEdited.includes(tool.file)` guard returns false → push skipped).
+      if (category === 'edit' || category === 'create') {
+        (ctx.progress.get('s1') as SessionProgress).filesEdited = ['a.ts'];
+      }
+      const tool: ToolInfo = { icon: '🔧', label: 'op', file: 'a.ts', category };
+      ctx.pendingTool.set('s1', tool);
+      // Non-success detail so the `!^(success|ok|done|completed|passed)$` regex misses and the
+      // verbose=false branch runs to the progress counter switch (lines 130-133).
+      await handleOnMessage(ctx, makePayload('message.tool_result', 'partial output'));
+      const progress = ctx.progress.get('s1') as SessionProgress;
+      // Type-narrowed switch on the counterKey literal — avoids untyped cast.
+      switch (counterKey) {
+        case 'edits': expect(progress.edits).toBe(1); break;
+        case 'creates': expect(progress.creates).toBe(1); break;
+        case 'searches': expect(progress.searches).toBe(1); break;
+        case 'commands': expect(progress.commands).toBe(1); break;
+      }
+      if (category === 'edit' || category === 'create') {
+        // Dedup-guard rejected the second push: filesEdited is still ['a.ts']
+        expect(progress.filesEdited).toEqual(['a.ts']);
+      }
+    });
   });
 
   describe('message.tool_result', () => {
