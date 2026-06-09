@@ -563,6 +563,18 @@ describe('MeteringService', () => {
   });
   // ── getDailyTokenBreakdown (Issue #3282) ─────────────────────────
   describe('getDailyTokenBreakdown', () => {
+    beforeEach(() => {
+      // Disable auto-prune so backdated records survive the 30-day window.
+      metering.stop();
+      metering = new MeteringService(
+        eventBus,
+        (sessionId: string) => ownerMap.get(sessionId),
+        dataFile,
+        undefined,
+        { maxAgeMs: 0, maxRecords: 0 },
+      );
+    });
+
     it('returns empty array when no records exist', () => {
       expect(metering.getDailyTokenBreakdown()).toEqual([]);
     });
