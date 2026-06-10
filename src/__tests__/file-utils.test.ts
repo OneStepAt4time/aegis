@@ -9,6 +9,7 @@ vi.mock('node:fs/promises', async () => {
   return {
     ...actual,
     chmod: vi.fn(),
+    access: vi.fn(),
   };
 });
 
@@ -16,6 +17,7 @@ import { buildWindowsIcaclsArgs, secureFilePermissions } from '../file-utils.js'
 
 const mockExecFile = vi.mocked((await import('node:child_process')).execFile);
 const mockChmod = vi.mocked((await import('node:fs/promises')).chmod);
+const mockAccess = vi.mocked((await import('node:fs/promises')).access);
 
 describe('file-utils', () => {
   const originalUser = process.env.USERNAME;
@@ -30,18 +32,27 @@ describe('file-utils', () => {
     process.env.USERDOMAIN = originalDomain;
   });
 
-  it('applies chmod 600 on non-Windows platforms', async () => {
+  it('applies chmod 600 on non-Windows platforms when file exists', async () => {
+    mockAccess.mockResolvedValue(undefined);
     await secureFilePermissions('/tmp/sensitive.txt', 'linux');
+    expect(mockAccess).toHaveBeenCalledWith('/tmp/sensitive.txt');
     expect(mockChmod).toHaveBeenCalledWith('/tmp/sensitive.txt', 0o600);
   });
 
+  it('skips chmod when file does not exist', async () => {
+    mockAccess.mockRejectedValue(new Error('ENOENT'));
+    await secureFilePermissions('/tmp/missing.txt', 'linux');
+    expect(mockAccess).toHaveBeenCalledWith('/tmp/missing.txt');
+    expect(mockChmod).not.toHaveBeenCalled();
+  });
+
   it('builds icacls arguments for current user access', () => {
-    const args = buildWindowsIcaclsArgs('C:\\tmp\\secret.txt', 'DOMAIN\\alice');
+    const args = buildWindowsIcaclsArgs('C:\tmp\secret.txt', 'DOMAIN\alice');
     expect(args).toEqual([
-      'C:\\tmp\\secret.txt',
+      'C:\tmp\secret.txt',
       '/inheritance:r',
       '/grant:r',
-      'DOMAIN\\alice:(R,W)',
+      'DOMAIN\alice:(R,W)',
     ]);
   });
 
@@ -52,7 +63,7 @@ describe('file-utils', () => {
       (cb as (error: Error | null) => void)(new Error('icacls unavailable'));
     }) as never);
 
-    await expect(secureFilePermissions('C:\\tmp\\secret.txt', 'win32')).resolves.toBeUndefined();
+    await expect(secureFilePermissions('C:\tmp\secret.txt', 'win32')).resolves.toBeUndefined();
     expect(mockExecFile).toHaveBeenCalled();
   });
 });

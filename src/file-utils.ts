@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmod } from 'node:fs/promises';
+import { chmod, access } from 'node:fs/promises';
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 
@@ -25,6 +25,11 @@ function runIcacls(filePath: string, account: string): Promise<void> {
 
 export async function secureFilePermissions(filePath: string, platform: NodeJS.Platform = process.platform): Promise<void> {
   if (platform !== 'win32') {
+    try {
+      await access(filePath);
+    } catch {
+      return;
+    }
     await chmod(filePath, 0o600);
     return;
   }
