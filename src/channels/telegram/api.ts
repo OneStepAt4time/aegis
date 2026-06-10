@@ -51,7 +51,14 @@ export class TelegramApiClient {
       if (data.ok) return data.result;
 
       if (res.status === 429 && data.parameters?.retry_after) {
-        const retryAfter = data.parameters.retry_after;
+        let retryAfter = data.parameters.retry_after;
+        // #4627: clamp retry_after to 60s max to prevent a malicious or buggy
+        // upstream from blocking the channel for extended periods.
+        const MAX_RETRY_AFTER_S = 60;
+        if (retryAfter > MAX_RETRY_AFTER_S) {
+          log.warn({ component: 'telegram', operation: 'rateLimitRetryAfterClamped', attributes: { original: retryAfter, clamped: MAX_RETRY_AFTER_S } });
+          retryAfter = MAX_RETRY_AFTER_S;
+        }
         this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
         log.info({ component: 'telegram', operation: 'rateLimit429', attributes: { retryAfter, attempt: attempt + 1, maxAttempts: retries + 1 } });
         if (attempt < retries) {
