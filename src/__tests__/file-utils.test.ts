@@ -8,16 +8,26 @@ vi.mock('node:fs/promises', async () => {
   const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
   return {
     ...actual,
-    chmod: vi.fn(),
-    access: vi.fn(),
+    open: vi.fn(),
   };
 });
 
 import { buildWindowsIcaclsArgs, secureFilePermissions } from '../file-utils.js';
 
 const mockExecFile = vi.mocked((await import('node:child_process')).execFile);
-const mockChmod = vi.mocked((await import('node:fs/promises')).chmod);
-const mockAccess = vi.mocked((await import('node:fs/promises')).access);
+const mockOpen = vi.mocked((await import('node:fs/promises')).open);
+
+// Mock FileHandle factory for the TOCTOU fix: open() returns a handle with chmod() and close().
+// If chmodShouldThrow is provided, the handle's chmod() rejects with that error — simulates
+// the race where the file is deleted between open() succeeding and chmod() running.
+function makeMockHandle(chmodShouldThrow?: NodeJS.ErrnoException) {
+  return {
+    chmod: vi.fn().mockImplementation(() =>
+      chmodShouldThrow ? Promise.reject(chmodShouldThrow) : Promise.resolve()
+    ),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+}
 
 describe('file-utils', () => {
   const originalUser = process.env.USERNAME;
@@ -32,18 +42,45 @@ describe('file-utils', () => {
     process.env.USERDOMAIN = originalDomain;
   });
 
-  it('applies chmod 600 on non-Windows platforms when file exists', async () => {
-    mockAccess.mockResolvedValue(undefined);
+  // #4650 + #4652 follow-up: TOCTOU race in the prior access+chmod pattern.
+  // The fix uses fs.open() to acquire a file descriptor, then handle.chmod(0o600)
+  // on the descriptor (which survives unlink), then handle.close(). The descriptor
+  // is held for the duration of the chmod call, so a concurrent unlink does not
+  // produce ENOENT — this is the structural fix vs. the prior access+chmod band-aid.
+
+  it('opens file as descriptor and applies chmod 600 on non-Windows', async () => {
+    const handle = makeMockHandle();
+    mockOpen.mockResolvedValue(handle as never);
     await secureFilePermissions('/tmp/sensitive.txt', 'linux');
-    expect(mockAccess).toHaveBeenCalledWith('/tmp/sensitive.txt');
-    expect(mockChmod).toHaveBeenCalledWith('/tmp/sensitive.txt', 0o600);
+    expect(mockOpen).toHaveBeenCalledWith('/tmp/sensitive.txt', 'r');
+    expect(handle.chmod).toHaveBeenCalledWith(0o600);
+    expect(handle.close).toHaveBeenCalled();
   });
 
-  it('skips chmod when file does not exist', async () => {
-    mockAccess.mockRejectedValue(new Error('ENOENT'));
-    await secureFilePermissions('/tmp/missing.txt', 'linux');
-    expect(mockAccess).toHaveBeenCalledWith('/tmp/missing.txt');
-    expect(mockChmod).not.toHaveBeenCalled();
+  it('closes handle and swallows ENOENT when open fails (file already gone)', async () => {
+    const enoent = Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' as const });
+    mockOpen.mockRejectedValue(enoent);
+    await expect(secureFilePermissions('/tmp/missing.txt', 'linux')).resolves.toBeUndefined();
+    expect(mockOpen).toHaveBeenCalledWith('/tmp/missing.txt', 'r');
+  });
+
+  it('closes handle and swallows ENOENT from chmod (race: file deleted between open and chmod)', async () => {
+    // The race scenario the prior access+chmod pattern missed: open() succeeds, the
+    // file is deleted by test cleanup, then handle.chmod(0o600) throws ENOENT.
+    // With the descriptor-based pattern, the chmod call still throws ENOENT (the
+    // inode is gone), but we swallow it and close the handle cleanly — no
+    // unhandled rejection, no test step exit 1.
+    const enoent = Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' as const });
+    const handle = makeMockHandle(enoent);
+    mockOpen.mockResolvedValue(handle as never);
+    await expect(secureFilePermissions('/tmp/race.txt', 'linux')).resolves.toBeUndefined();
+    expect(handle.close).toHaveBeenCalled();
+  });
+
+  it('re-throws non-ENOENT errors from open (e.g., EACCES)', async () => {
+    const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' as const });
+    mockOpen.mockRejectedValue(eacces);
+    await expect(secureFilePermissions('/tmp/locked.txt', 'linux')).rejects.toThrow('EACCES');
   });
 
   it('builds icacls arguments for current user access', () => {
