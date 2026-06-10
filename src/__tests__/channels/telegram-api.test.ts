@@ -44,4 +44,36 @@ describe('TelegramApiClient', () => {
       'Telegram API sendMessage: Internal Server Error',
     );
   });
+
+  // #4629: red test — tgApi throw must redact bot token before propagating.
+  // The current implementation throws the raw error description, which may
+  // contain the bot token if the Telegram API response includes it (e.g.,
+  // 401 Unauthorized with the token in the error message). The fix injects
+  // redactError into TgApiConfig and applies it at every throw site.
+  it('redacts bot token from thrown error description', async () => {
+    const token = 'secret-bot-token-789';
+    // Simulate a 401 where the API helpfully echoes the token in the error
+    const description = `Unauthorized: bot token ${token} is invalid`;
+    global.fetch = vi.fn().mockResolvedValue({
+      status: 401,
+      json: () => Promise.resolve({ ok: false, description }),
+    } as any);
+
+    // The client must be constructed with a redactError that scrubs the token.
+    // This test will fail (red) until the fix injects redactError into TgApiConfig.
+    const redactingClient = new TelegramApiClient({
+      botToken: token,
+      hookTimeoutMs: 5_000,
+      redactError: (err: unknown) => {
+        const str = err instanceof Error ? err.message : String(err);
+        return str.includes(token)
+          ? new Error(str.replaceAll(token, 'REDACTED'))
+          : err;
+      },
+    });
+
+    await expect(redactingClient.tgApi('sendMessage', { chat_id: 1 }, 0)).rejects.toThrow(
+      'Telegram API sendMessage: Unauthorized: bot token REDACTED is invalid',
+    );
+  });
 });
