@@ -221,4 +221,25 @@ describe('Dashboard static serving (Issue #105)', () => {
       expect(pluginContent).toContain("connect-src 'self' ws: wss: https://registry.npmjs.org");
     });
   });
+
+  describe('9. Path traversal protection (Issue #4647)', () => {
+    // CodeQL js/path-injection finding: src/plugins/dashboard-static.ts:152-162
+    // constructed a filesystem path via path.join(dashboardRoot, rel) inside the
+    // setHeaders callback, with no validation of the user-controlled 'pathname'
+    // against '..' traversal. statSync(full) on the resolved path leaked file
+    // size via Content-Length. Fix (option 3 from the issue body, per Themis
+    // review): drop the manual statSync block entirely. @fastify/static already
+    // sets Content-Length from the streamed file. See git history: the manual
+    // statSync was added in 305ed7ad (PR #3154) as a forward-looking hedge, not
+    // a fix for a specific bug.
+    it('does not include manual statSync in the setHeaders callback (closes CodeQL js/path-injection)', async () => {
+      const pluginPath = join(process.cwd(), 'src', 'plugins', 'dashboard-static.ts');
+      const pluginContent = await readFile(pluginPath, 'utf-8');
+      // The import statement is `import { statSync } from 'node:fs';` which is
+      // a named import (no call-site parens). The regex requires a '(' after
+      // 'statSync', so the import doesn't match — only call-sites do.
+      expect(pluginContent).not.toMatch(/statSync\(/);
+    });
+  });
+
 });
