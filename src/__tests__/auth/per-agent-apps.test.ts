@@ -19,6 +19,10 @@ const SCRIPTS_DIR = resolve(
   '.openclaw/workspace/infra/github-apps',
 );
 
+// CI compatibility: skip all tests when infra scripts are not present
+// (they live outside the repo checkout and only exist on the dev host)
+const scriptsAvailable = existsSync(SCRIPTS_DIR);
+
 const ROLES = ['hermes', 'argus', 'hephaestus'] as const;
 
 // ADR-0030 permission matrix
@@ -28,7 +32,7 @@ const PERMISSION_MATRIX: Record<string, string[]> = {
   hephaestus: ['contents:write', 'issues:write', 'pull_requests:write'],
 };
 
-describe('Per-agent App identity scripts (#4665 §B)', () => {
+describe.skipIf(!scriptsAvailable)('Per-agent App identity scripts (#4665 §B)', () => {
   for (const role of ROLES) {
     describe(`aegis-${role}`, () => {
       const scriptPath = resolve(SCRIPTS_DIR, `get-installation-token-${role}.sh`);
@@ -68,7 +72,7 @@ describe('Per-agent App identity scripts (#4665 §B)', () => {
   }
 });
 
-describe('manage-aegis-apps.sh permission-matrix guard (#4665 §C)', () => {
+describe.skipIf(!scriptsAvailable)('manage-aegis-apps.sh permission-matrix guard (#4665 §C)', () => {
   const manageScript = resolve(SCRIPTS_DIR, 'manage-aegis-apps.sh');
 
   it('script exists and is executable', () => {
