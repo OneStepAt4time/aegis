@@ -28,7 +28,7 @@ const ROLES = ['hermes', 'argus', 'hephaestus'] as const;
 // ADR-0030 permission matrix
 const PERMISSION_MATRIX: Record<string, string[]> = {
   hermes: ['contents:write', 'issues:write', 'pull_requests:write', 'workflows:write', 'releases:write'],
-  argus: ['contents:read', 'issues:read', 'pull_requests:read'],
+  argus: ['contents:read', 'issues:read', 'pull_requests:read', 'reviews:write'],
   hephaestus: ['contents:write', 'issues:write', 'pull_requests:write'],
 };
 
