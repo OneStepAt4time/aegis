@@ -187,7 +187,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 ### CLI
 
 ```bash
-ag run --workdir /path/to/your/project
+ag run --cwd /path/to/your/project
 ```
 
 (`ag run` is the canonical "create + immediately start" CLI command; `ag init` is for project-level setup, not session creation.)
