@@ -161,7 +161,10 @@ export class TelegramChannel implements Channel, TelegramChannelInternals {
     if (this.topics.size > 0) {
       log.info({ component: 'telegram', operation: 'restoreTopics', attributes: { count: this.topics.size } });
     }
-    this.apiClient = new TelegramApiClient(config);
+    this.apiClient = new TelegramApiClient({
+      ...config,
+      redactError: this.redactError.bind(this),
+    });
     this.healthTracker = createHealthTracker();
   }
 

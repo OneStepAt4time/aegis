@@ -24,7 +24,7 @@ describe('TelegramApiClient', () => {
     const mockResult = { message_id: 42 };
     global.fetch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ ok: true, result: mockResult }),
-    } as any);
+    } as unknown as Response);
 
     const result = await client.tgApi('sendMessage', { chat_id: 1, text: 'hi' });
     expect(result).toEqual(mockResult);
@@ -38,7 +38,7 @@ describe('TelegramApiClient', () => {
     global.fetch = vi.fn().mockResolvedValue({
       status: 500,
       json: () => Promise.resolve({ ok: false, description: 'Internal Server Error' }),
-    } as any);
+    } as unknown as Response);
 
     await expect(client.tgApi('sendMessage', { chat_id: 1 }, 0)).rejects.toThrow(
       'Telegram API sendMessage: Internal Server Error',
@@ -57,7 +57,7 @@ describe('TelegramApiClient', () => {
     global.fetch = vi.fn().mockResolvedValue({
       status: 401,
       json: () => Promise.resolve({ ok: false, description }),
-    } as any);
+    } as unknown as Response);
 
     // The client must be constructed with a redactError that scrubs the token.
     // This test will fail (red) until the fix injects redactError into TgApiConfig.
