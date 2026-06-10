@@ -1,8 +1,7 @@
 /**
  * backend-errors.test.ts — Tests for ACP backend error classes.
- *
  * Covers AcpBackendLifecycleError and AcpBackendRuntimeUnavailableError
- * from src/services/acp/backend/errors.ts (currently at ~0% coverage).
+ * from src/services/acp/backend/errors.ts.
  */
 
 import { describe, it, expect } from 'vitest';
