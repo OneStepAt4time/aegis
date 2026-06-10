@@ -72,7 +72,7 @@ describe.skipIf(!scriptsAvailable)('manage-aegis-apps.sh permission-matrix guard
 
   it('contains the ADR-0030 permission matrix for all 3 roles', () => {
     const content = readFileSync(manageScript, 'utf-8');
-    for (const [role, perms] of Object.entries(PERMISSION_MATRIX)) {
+    for (const [_role, perms] of Object.entries(PERMISSION_MATRIX)) {
       for (const perm of perms) {
         expect(content).toContain(perm);
       }
