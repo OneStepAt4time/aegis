@@ -13,6 +13,8 @@ const log = new StructuredLogger();
 export interface TgApiConfig {
   botToken: string;
   hookTimeoutMs?: number;
+  /** Issue #4629: Redact sensitive fields (e.g., bot token) from error messages before throwing. */
+  redactError?: (err: unknown) => unknown;
 }
 
 export class TelegramApiClient {
@@ -59,10 +61,12 @@ export class TelegramApiClient {
       }
 
       if (attempt === retries) {
-        throw new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
+        const error = new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
+        throw this.config.redactError ? this.config.redactError(error) : error;
       }
       await sleep(1000 * (attempt + 1));
     }
-    throw new Error('Unreachable');
+    const unreachable = new Error('Unreachable');
+    throw this.config.redactError ? this.config.redactError(unreachable) : unreachable;
   }
 }
