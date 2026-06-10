@@ -17,7 +17,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fs from 'node:fs/promises';
-import { statSync } from 'node:fs';
+// statSync import removed in #4647 — see git history.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -149,17 +149,11 @@ export async function registerDashboardStatic(
       }
       reply.setHeader('Cache-Control', dashboardCacheControl(dashboardRoot, pathname));
 
-      // Defensive: ensure Content-Length is present and correct for static assets
-      try {
-        if (!reply.getHeader('Content-Length')) {
-          const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
-          const full = path.join(dashboardRoot, rel);
-          const st = statSync(full);
-          reply.setHeader('Content-Length', String(st.size));
-        }
-      } catch {
-        // ignore: let the static plugin handle headers if stat fails
-      }
+      // #4647: Manual statSync removed (was the CodeQL js/path-injection surface).
+      // @fastify/static already sets Content-Length from the streamed file via the
+      // `stat` object passed to this callback; the manual defensive lookup was a
+      // redundant second read that introduced directory-traversal risk if `pathname`
+      // ever contained '..' segments before @fastify/static's own validation ran.
     },
   });
 
