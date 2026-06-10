@@ -67,9 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OTEL PII redaction** — redact hostname and PID from resource attributes ([#4039](https://github.com/OneStepAt4time/aegis/pull/4039))
 - **Multi-agent security requirements** — documented review protocol and security requirements ([#3980](https://github.com/OneStepAt4time/aegis/pull/3980))
 - **Workdir redaction in Email + Slack channels** — `workDir` in outbound messages is masked (home → `~`, last 2 path segments) matching the existing Telegram pattern; closes audit §4.7 inconsistency ([#4641](https://github.com/OneStepAt4time/aegis/pull/4641), closes [#4630](https://github.com/OneStepAt4time/aegis/issues/4630))
+- **Dashboard static rate limiter rewritten with `@fastify/rate-limit`** — replaces the custom `StaticRateLimiter` with Fastify's official rate-limit plugin (600 req/min per IP, `429` with `Retry-After: 60`) to satisfy CodeQL `js/missing-rate-limiting` ([#4646](https://github.com/OneStepAt4time/aegis/pull/4646), closes [#140](https://github.com/OneStepAt4time/aegis/issues/140), [#138](https://github.com/OneStepAt4time/aegis/issues/138))
+- **Vitest + Hono security bump** — `vitest` → `^4.1.8` (closes CVE-2026-47429, CVSS 9.8) and `hono` → `^4.12.25` (closes 4 medium CVEs: GHSA-3hrh-pfw6-9m5x, GHSA-2gcr-mfcq-wcc3, GHSA-xrhx-7g5j-rcj5, GHSA-f577-qrjj-4474) ([#4648](https://github.com/OneStepAt4time/aegis/pull/4648), closes [#4643](https://github.com/OneStepAt4time/aegis/issues/4643), [#4644](https://github.com/OneStepAt4time/aegis/issues/4644))
 
 ### Bug Fixes
 
+- **Audit-log cleanup race** — `secureFilePermissions` now guards against `ENOENT` when the file was already removed by a concurrent `fs.unlink` ([#4652](https://github.com/OneStepAt4time/aegis/pull/4652), closes [#4649](https://github.com/OneStepAt4time/aegis/issues/4649))
 - **Rate-limit error guidance** — surface actionable guidance when Claude Code API rate limits are hit ([#3631](https://github.com/OneStepAt4time/aegis/pull/3631), [#3758](https://github.com/OneStepAt4time/aegis/pull/3758))
 - **Stream timeout tuning** — less aggressive timeout for `ag run` streaming ([#3733](https://github.com/OneStepAt4time/aegis/pull/3733))
 - **INVALID_WORKDIR error** — include allowed directories in error message for guidance ([#3734](https://github.com/OneStepAt4time/aegis/pull/3734), [#3799](https://github.com/OneStepAt4time/aegis/pull/3799))
