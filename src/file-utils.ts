@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmod, access } from 'node:fs/promises';
+import { open, type FileHandle } from 'node:fs/promises';
 import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 
@@ -25,12 +25,26 @@ function runIcacls(filePath: string, account: string): Promise<void> {
 
 export async function secureFilePermissions(filePath: string, platform: NodeJS.Platform = process.platform): Promise<void> {
   if (platform !== 'win32') {
+    // #4650 follow-up: use a held file descriptor to avoid the TOCTOU race that
+    // the prior access+chmod pattern had (the file could be deleted between
+    // access() succeeding and chmod() running, producing an unhandled ENOENT
+    // rejection that intermittently failed the CI test step). The descriptor
+    // survives unlink, so handle.chmod(0o600) either succeeds or throws
+    // ENOENT (which we swallow — the file is already gone, no action needed).
+    // Non-ENOENT errors (e.g., EACCES on a locked file) are re-thrown so the
+    // caller can react.
+    let handle: FileHandle | undefined;
     try {
-      await access(filePath);
-    } catch {
-      return;
+      handle = await open(filePath, 'r');
+      await handle.chmod(0o600);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') {
+        throw error;
+      }
+    } finally {
+      await handle?.close();
     }
-    await chmod(filePath, 0o600);
     return;
   }
 
