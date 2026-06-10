@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -31,6 +31,28 @@ const PERMISSION_MATRIX: Record<string, string[]> = {
   argus: ['contents:read', 'issues:read', 'pull_requests:read', 'reviews:write'],
   hephaestus: ['contents:write', 'issues:write', 'pull_requests:write'],
 };
+
+/**
+ * Run a child process and return combined stdout+stderr as a string.
+ *
+ * Replaces the previous `execSync(...) with 2>&1; true` shell-redirect
+ * pattern. `execFileSync` does NOT spawn a shell, so environment-derived
+ * paths (e.g. `process.env['HOME']`) cannot be interpreted as shell
+ * metacharacters — clears the CodeQL `js/shell-command-injection-from-
+ * environment-variable` alerts on this file.
+ *
+ * On non-zero exit, the thrown error carries `stdout` and `stderr`
+ * properties; we concatenate them so the assertion can match against
+ * either stream (matches the prior `2>&1` behavior).
+ */
+function execCapture(file: string, args: string[]): string {
+  try {
+    return execFileSync(file, args, { encoding: 'utf-8' });
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string };
+    return (e.stdout ?? '') + (e.stderr ?? '');
+  }
+}
 
 describe.skipIf(!scriptsAvailable)('Per-agent App identity scripts (#4665 §B)', () => {
   for (const role of ROLES) {
@@ -65,7 +87,7 @@ describe.skipIf(!scriptsAvailable)('Per-agent App identity scripts (#4665 §B)',
 
       it('script has bash syntax check', () => {
         // Verify the script parses without errors
-        const result = execSync(`bash -n ${scriptPath}`, { encoding: 'utf-8' });
+        const result = execCapture('bash', ['-n', scriptPath]);
         expect(result).toBe('');
       });
     });
@@ -96,7 +118,7 @@ describe.skipIf(!scriptsAvailable)('manage-aegis-apps.sh permission-matrix guard
   });
 
   it('check command runs and reports PEMs as pending', () => {
-    const result = execSync(`${manageScript} check`, { encoding: 'utf-8' });
+    const result = execCapture(manageScript, ['check']);
     expect(result).toContain('aegis-hermes');
     expect(result).toContain('aegis-argus');
     expect(result).toContain('aegis-hephaestus');
@@ -105,16 +127,15 @@ describe.skipIf(!scriptsAvailable)('manage-aegis-apps.sh permission-matrix guard
   });
 
   it('audit command runs and shows legacy fallback', () => {
-    const result = execSync(`${manageScript} audit`, { encoding: 'utf-8' });
+    const result = execCapture(manageScript, ['audit']);
     expect(result).toContain('aegis-gh-agent');
     expect(result).toMatch(/LEGACY|FALLBACK/);
   });
 
   it('mint command rejects unknown roles', () => {
-    const result = execSync(`${manageScript} mint unknown-role 2>&1; true`, {
-      encoding: 'utf-8',
-      shell: '/bin/bash',
-    });
+    // mint with unknown role should fail; execCapture catches the
+    // non-zero exit and returns combined stdout+stderr for assertion.
+    const result = execCapture(manageScript, ['mint', 'unknown-role']);
     expect(result).toMatch(/Unknown role|must be/i);
   });
 });
