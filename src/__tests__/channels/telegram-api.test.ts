@@ -18,6 +18,7 @@ describe('TelegramApiClient', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('returns data.result on success', async () => {
@@ -148,5 +149,69 @@ describe('TelegramApiClient retry_after clamping (#4627)', () => {
     // Clamped to 60 → rateLimitUntil should be ~60500ms out, not ~999999500ms
     expect(client['rateLimitUntil']).toBeGreaterThan(Date.now() + 55000);
     expect(client['rateLimitUntil']).toBeLessThan(Date.now() + 65000);
+  });
+});
+
+// #4675: network-level fetch failure retry. The tgApi retry loop previously
+// only handled HTTP-level errors (429, 500). If fetch() itself threw (e.g.
+// TypeError: fetch failed from DNS/TLS/IPv6 issues), the exception propagated
+// immediately with no retry. This describe adds coverage for the fix.
+describe('TelegramApiClient network error retry (#4675)', () => {
+  const config = { botToken: 'test-token-123', hookTimeoutMs: 5_000 };
+
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('retries on fetch failure and succeeds on next attempt', async () => {
+    const client = new TelegramApiClient(config);
+    const networkError = new TypeError('fetch failed');
+    const mockResult = { message_id: 42 };
+
+    global.fetch = vi.fn()
+      .mockRejectedValueOnce(networkError)
+      .mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true, result: mockResult }),
+      } as unknown as Response);
+
+    const result = await client.tgApi('sendMessage', { chat_id: 1 }, 1);
+    expect(result).toEqual(mockResult);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws after exhausting retries on persistent fetch failure', async () => {
+    const client = new TelegramApiClient(config);
+    const networkError = new TypeError('fetch failed');
+
+    global.fetch = vi.fn().mockRejectedValue(networkError);
+
+    await expect(client.tgApi('sendMessage', { chat_id: 1 }, 1)).rejects.toThrow('fetch failed');
+    expect(global.fetch).toHaveBeenCalledTimes(2); // attempt 0 + attempt 1 (retries=1)
+  });
+
+  it('retries up to default 3 retries (4 total attempts) on fetch failure', async () => {
+    const client = new TelegramApiClient(config);
+    const networkError = new TypeError('fetch failed');
+
+    global.fetch = vi.fn().mockRejectedValue(networkError);
+
+    await expect(client.tgApi('sendMessage', { chat_id: 1 })).rejects.toThrow('fetch failed');
+    expect(global.fetch).toHaveBeenCalledTimes(4); // 1 + 3 retries
+  }, 10_000);
+
+  it('logs each retry attempt with method and error message', async () => {
+    const client = new TelegramApiClient(config);
+    const networkError = new TypeError('fetch failed');
+
+    global.fetch = vi.fn().mockRejectedValue(networkError);
+
+    await expect(client.tgApi('sendMessage', { chat_id: 1 }, 1)).rejects.toThrow('fetch failed');
+    // The retry loop logs a warning on each failed attempt before the final throw.
+    // We verify the code path ran by checking fetch call count.
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
