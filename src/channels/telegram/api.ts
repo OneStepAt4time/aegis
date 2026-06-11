@@ -35,43 +35,57 @@ export class TelegramApiClient {
         await sleep(waitMs);
       }
 
-      const res = await fetch(`https://api.telegram.org/bot${this.config.botToken}/${method}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.config.hookTimeoutMs ?? 10_000),
-      });
-      const data = (await res.json()) as {
-        ok: boolean;
-        result?: unknown;
-        description?: string;
-        parameters?: { retry_after?: number };
-      };
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${this.config.botToken}/${method}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(this.config.hookTimeoutMs ?? 10_000),
+        });
+        const data = (await res.json()) as {
+          ok: boolean;
+          result?: unknown;
+          description?: string;
+          parameters?: { retry_after?: number };
+        };
 
-      if (data.ok) return data.result;
+        if (data.ok) return data.result;
 
-      if (res.status === 429 && data.parameters?.retry_after) {
-        let retryAfter = data.parameters.retry_after;
-        // #4627: clamp retry_after to 60s max to prevent a malicious or buggy
-        // upstream from blocking the channel for extended periods.
-        const MAX_RETRY_AFTER_S = 60;
-        if (retryAfter > MAX_RETRY_AFTER_S) {
-          log.warn({ component: 'telegram', operation: 'rateLimitRetryAfterClamped', attributes: { original: retryAfter, clamped: MAX_RETRY_AFTER_S } });
-          retryAfter = MAX_RETRY_AFTER_S;
+        if (res.status === 429 && data.parameters?.retry_after) {
+          let retryAfter = data.parameters.retry_after;
+          // #4627: clamp retry_after to 60s max to prevent a malicious or buggy
+          // upstream from blocking the channel for extended periods.
+          const MAX_RETRY_AFTER_S = 60;
+          if (retryAfter > MAX_RETRY_AFTER_S) {
+            log.warn({ component: 'telegram', operation: 'rateLimitRetryAfterClamped', attributes: { original: retryAfter, clamped: MAX_RETRY_AFTER_S } });
+            retryAfter = MAX_RETRY_AFTER_S;
+          }
+          this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
+          log.info({ component: 'telegram', operation: 'rateLimit429', attributes: { retryAfter, attempt: attempt + 1, maxAttempts: retries + 1 } });
+          if (attempt < retries) {
+            await sleep(retryAfter * 1000 + 500);
+            continue;
+          }
         }
-        this.rateLimitUntil = Date.now() + retryAfter * 1000 + 500;
-        log.info({ component: 'telegram', operation: 'rateLimit429', attributes: { retryAfter, attempt: attempt + 1, maxAttempts: retries + 1 } });
-        if (attempt < retries) {
-          await sleep(retryAfter * 1000 + 500);
-          continue;
-        }
-      }
 
-      if (attempt === retries) {
-        const error = new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
-        throw this.config.redactError ? this.config.redactError(error) : error;
+        if (attempt === retries) {
+          const error = new Error(`Telegram API ${method}: ${data.description || 'unknown error'}`);
+          throw this.config.redactError ? this.config.redactError(error) : error;
+        }
+        await sleep(1000 * (attempt + 1));
+      } catch (e) {
+        // Don't mask Telegram API errors we already constructed above.
+        if (e instanceof Error && e.message.startsWith(`Telegram API ${method}:`)) {
+          throw this.config.redactError ? this.config.redactError(e) : e;
+        }
+
+        // Network-level or parse error — retry with backoff.
+        if (attempt === retries) {
+          throw this.config.redactError ? this.config.redactError(e) : e;
+        }
+        log.warn({ component: 'telegram', operation: 'fetchRetry', attributes: { method, attempt: attempt + 1, maxAttempts: retries + 1, error: e instanceof Error ? e.message : String(e) } });
+        await sleep(1000 * (attempt + 1));
       }
-      await sleep(1000 * (attempt + 1));
     }
     const unreachable = new Error('Unreachable');
     throw this.config.redactError ? this.config.redactError(unreachable) : unreachable;
