@@ -48,14 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **cwd alias for workDir** — accept `cwd` as alias for `workDir` in POST /v1/sessions ([#3870](https://github.com/OneStepAt4time/aegis/pull/3870))
 - **SessionBoard column restructure** — split Other column into dedicated Running/Pending columns ([#4018](https://github.com/OneStepAt4time/aegis/pull/4018))
 - **Dashboard inbox** — structured notification feed with real-time updates ([#4515](https://github.com/OneStepAt4time/aegis/pull/4515))
-- **ag send** — mid-turn messaging command for sending to running sessions ([#4487](https://github.com/OneStepAt4time/aegis/pull/4487), closes [#4506](https://github.com/OneStepAt4time/aegis/issues/4506))
-- **Session metadata KV panel** — per-session metadata key-value store in dashboard and API ([#4484](https://github.com/OneStepAt4time/aegis/pull/4484), closes [#4500](https://github.com/OneStepAt4time/aegis/issues/4500))
-- **Webhook delivery history** — view delivery history with duration tracking in dashboard and API ([#4486](https://github.com/OneStepAt4time/aegis/pull/4486))
-- **Async session creation** — return immediately without blocking on agent handshake ([#4456](https://github.com/OneStepAt4time/aegis/pull/4456))
-- **Cross-session context bridge** — `CLAUDE_CODE_SESSION_ID` integration for MCP cross-session context ([#4455](https://github.com/OneStepAt4time/aegis/pull/4455))
-- **ag update --dry-run** — preview changes without applying, fix critical execPath bug ([#4483](https://github.com/OneStepAt4time/aegis/pull/4483))
-- **Stable actor resolver** — wire stable actor ID into approve/reject paths for relay-drift defense ([#4617](https://github.com/OneStepAt4time/aegis/pull/4617), closes [#4615](https://github.com/OneStepAt4time/aegis/issues/4615))
-- **Telegram retry on network failures** — automatic retry with exponential backoff for network-level fetch failures in tgApi ([#4675](https://github.com/OneStepAt4time/aegis/pull/4675))
 
 ### Security
 
@@ -82,7 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard static TOCTOU fix** — remove manual `statSync` in `dashboard-static` `setHeaders`, closing CodeQL `js/path-injection` ([#4653](https://github.com/OneStepAt4time/aegis/pull/4653), closes [#4647](https://github.com/OneStepAt4time/aegis/issues/4647))
 - **Traversal URL guard** — static-analysis guard against path-traversal URLs in dashboard static file serving ([#4654](https://github.com/OneStepAt4time/aegis/pull/4654), companion to [#4647](https://github.com/OneStepAt4time/aegis/issues/4647))
 - **Telegram retry clamp** — clamp `retry_after` to 60s max in tgApi to prevent excessive backoff from Telegram's rate-limit responses ([#4659](https://github.com/OneStepAt4time/aegis/pull/4659), closes [#4627](https://github.com/OneStepAt4time/aegis/issues/4627))
-- **Telegram token redaction** — inject `redactError` into `TgApiConfig` for automatic token redaction in error logs ([#4629](https://github.com/OneStepAt4time/aegis/pull/4629))
 - **qs CVE bump** — bump `qs` to 6.15.2 (closes CVE-2026-8723 DoS) ([#4517](https://github.com/OneStepAt4time/aegis/pull/4517))
 - **Error response sanitization** — redact internal details from 5xx error responses to prevent information leakage ([#4490](https://github.com/OneStepAt4time/aegis/pull/4490))
 
@@ -223,9 +214,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stats response docs** — total and totalKilled fields in /v1/sessions/stats ([#4164](https://github.com/OneStepAt4time/aegis/pull/4164), [#4167](https://github.com/OneStepAt4time/aegis/pull/4167))
 - **v0.7.0 DevRel deliverables** — draft release notes and positioning ([#4113](https://github.com/OneStepAt4time/aegis/pull/4113))
 - **Loop-detection user guide** — new guide for feedback loop recovery: symptoms, soft/hard recovery, dashboard/CLI/MCP/REST surfaces, prevention ([#4660](https://github.com/OneStepAt4time/aegis/pull/4660))
-- **Channel audit findings** — src/channels/ coverage, security, and refactor map ([#4619](https://github.com/OneStepAt4time/aegis/pull/4619))
-- **Agent Profiles onboarding guide** — new guide for agent profile configuration and usage ([#3971](https://github.com/OneStepAt4time/aegis/pull/3971))
-- **Multi-Agent Support PRD** — add PRD with env vars table, permission override, and worktree isolation ([#3180](https://github.com/OneStepAt4time/aegis/pull/3180))
 - **ag send documentation** — document mid-turn messaging command ([#4506](https://github.com/OneStepAt4time/aegis/pull/4506))
 - **Session metadata KV documentation** — document session metadata KV store and `ag update --dry-run` ([#4500](https://github.com/OneStepAt4time/aegis/pull/4500))
 - **ccSessionId + async session docs** — document `ccSessionId` field, async session creation, and `runtime_failed` status ([#4482](https://github.com/OneStepAt4time/aegis/pull/4482))
@@ -235,12 +223,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **StructuredLogger migration** — 168 console.* calls replaced with structured logger across backend, CLI, Telegram, and ACP ([#4172](https://github.com/OneStepAt4time/aegis/pull/4172), [#4174](https://github.com/OneStepAt4time/aegis/pull/4174), [#4175](https://github.com/OneStepAt4time/aegis/pull/4175), [#4182](https://github.com/OneStepAt4time/aegis/pull/4182), [#4181](https://github.com/OneStepAt4time/aegis/pull/4181))
 - **ACP SDK bump** — @agentclientprotocol/claude-agent-acp 0.35.0 → 0.37.0 ([#4173](https://github.com/OneStepAt4time/aegis/pull/4173))
 - **Post-merge auto-rebuild hook** — dist/ auto-rebuilds and server restarts on develop merge ([#4125](https://github.com/OneStepAt4time/aegis/pull/4125))
-- **Telegram refactor** — split god module `index.ts` into `api.ts` + `health.ts` for maintainability ([#4626](https://github.com/OneStepAt4time/aegis/pull/4626))
 - **ACP backend extraction** — extract ACP backend types, errors, and utils into separate modules ([#4519](https://github.com/OneStepAt4time/aegis/pull/4519))
 - **Backend refactoring** — split `backend.ts` and `local-storage.ts` into focused modules for gate:arch compliance ([#4545](https://github.com/OneStepAt4time/aegis/pull/4545), [#4549](https://github.com/OneStepAt4time/aegis/pull/4549))
-- **Server routes extraction** — extract routes + bootstrap from `server.ts` to reduce file size ([#4227](https://github.com/OneStepAt4time/aegis/pull/4227))
-- **OpenAPI spec split** — split 1296-line OpenAPI spec into per-domain modules ([#4485](https://github.com/OneStepAt4time/aegis/pull/4485))
-- **Circular dependency cleanup** — break 3 real circular dependencies (11→2 type-only) ([#4488](https://github.com/OneStepAt4time/aegis/pull/4488), [#4489](https://github.com/OneStepAt4time/aegis/pull/4489))
 
 ### Fixed
 
@@ -253,12 +237,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **v0.7.0 docs fix** — correct `ag setup telegram` to env-var / config setup in v0.7.0 docs ([#4606](https://github.com/OneStepAt4time/aegis/pull/4606))
 - **Graceful EADDRINUSE** — detect port-in-use with PID lockfile honored by direct invocations ([#4572](https://github.com/OneStepAt4time/aegis/pull/4572), closes [#4568](https://github.com/OneStepAt4time/aegis/issues/4568))
 - **CalendarGrid format patterns** — fix EEEE, EEE, d format patterns for date display ([#4532](https://github.com/OneStepAt4time/aegis/pull/4532))
-- **Permission-mode enforcement** — pass required env vars and enforce permission-mode on CC spawn ([#4524](https://github.com/OneStepAt4time/aegis/pull/4524))
-- **MCP JSON-RPC error responses** — stdio server sends proper JSON-RPC error responses for invalid messages ([#4460](https://github.com/OneStepAt4time/aegis/pull/4460))
 - **Missing aria-labels** — add missing aria-labels on interactive elements across 5 dashboard pages ([#4521](https://github.com/OneStepAt4time/aegis/pull/4521))
 - **TranscriptBubble nested button** — replace nested `<button>` in TranscriptBubble with accessible pattern ([#4514](https://github.com/OneStepAt4time/aegis/pull/4514))
 - **Stable actor ID for relay-drift** — derive stable actor ID for relay-drift defense in identity layer ([#4616](https://github.com/OneStepAt4time/aegis/pull/4616), closes [#4615](https://github.com/OneStepAt4time/aegis/issues/4615))
-- **Telegram retry on network failures** — automatic retry with exponential backoff for network-level fetch failures in tgApi ([#4675](https://github.com/OneStepAt4time/aegis/pull/4675))
+- **Telegram retry on network failures** — automatic retry with exponential backoff for network-level fetch failures in tgApi ([#4676](https://github.com/OneStepAt4time/aegis/pull/4676))
 
 ### CI
 
