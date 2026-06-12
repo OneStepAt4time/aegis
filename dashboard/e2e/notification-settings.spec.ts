@@ -37,7 +37,7 @@ test.describe('Notification Settings Page', () => {
 
   test('renders Slack or webhook section', async ({ page }) => {
     await expect(
-      page.getByText(/slack|webhook/i)
+      page.getByRole('heading', { name: 'Webhook Delivery History' })
     ).toBeVisible({ timeout: 10_000 });
   });
 });

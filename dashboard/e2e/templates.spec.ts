@@ -28,10 +28,7 @@ test.describe('Templates Page', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          templates: mockTemplates,
-          pagination: { page: 1, limit: 20, total: 2, totalPages: 1 },
-        }),
+        body: JSON.stringify(mockTemplates),
       });
     });
 
@@ -43,8 +40,8 @@ test.describe('Templates Page', () => {
   });
 
   test('renders template list', async ({ page }) => {
-    await expect(page.getByText('Code Review')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Bug Fix')).toBeVisible();
+    await expect(page.getByText('Code Review', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Bug Fix', { exact: true }).first()).toBeVisible();
   });
 
   test('renders template descriptions', async ({ page }) => {
@@ -62,10 +59,7 @@ test.describe('Templates Page', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          templates: [],
-          pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
-        }),
+        body: JSON.stringify([]),
       });
     });
     await page.reload();

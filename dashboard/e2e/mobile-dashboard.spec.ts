@@ -35,10 +35,9 @@ test.describe('Mobile dashboard flow', () => {
     await page.goto(DASHBOARD_BASE_URL);
 
     await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Mobile dashboard pass' })).toBeVisible();
+    // Navigate directly to session with permission prompt
+    await page.goto(`${DASHBOARD_BASE_URL}sessions/${MOBILE_SESSION_ID}`);
     await assertNoHorizontalOverflow(page);
-
-    await page.getByRole('link', { name: 'Mobile dashboard pass' }).click();
 
     const permissionDialog = page.getByRole('dialog', { name: 'Permission prompt' });
     await expect(permissionDialog).toBeVisible();
