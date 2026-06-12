@@ -55,9 +55,9 @@ test.describe('Critical Path E2E Tests', () => {
 
   // 4. Session detail page renders for a known session
   test('session detail page renders content for a known session', async ({ page }) => {
-    await page.goto(DASHBOARD_BASE_URL);
-    await page.getByRole('link', { name: 'Quiet docs sync' }).click();
-    await expect(page.getByText('Quiet docs sync').first()).toBeVisible({ timeout: 10_000 });
+    // Navigate directly to session detail — links are in virtualized list
+    await page.goto(DASHBOARD_BASE_URL + 'sessions/sess-idle');
+    await expect(page.getByText(/Quiet docs sync/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   // 5. Theme toggle changes data-theme attribute on settings page

@@ -22,8 +22,7 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     overrides: Record<string, unknown> = {},
   ) => ({
     id,
-    windowId: `@${id}`,
-    windowName: id === MOBILE_SESSION_ID
+    displayName: id === MOBILE_SESSION_ID
       ? 'Mobile dashboard pass'
       : id === QUESTION_SESSION_ID
         ? 'Answer product question'
@@ -38,7 +37,6 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     lastActivity: now - 45 * 1000,
     stallThresholdMs: 300000,
     permissionMode: 'default',
-    ownerKeyId: `${id}-owner`,
     ...overrides,
   });
 
@@ -362,6 +360,25 @@ export async function mockDashboardFixtures(page: Page): Promise<void> {
     const id = route.request().url().split('/').at(-2) as string;
     return json(route, sessionMetricsById[id]);
   });
+  await page.route('**/v1/analytics/summary', (route) =>
+    json(route, {
+      sessionVolume: [
+        { date: new Date(now - 24 * 60 * 60 * 1000).toISOString().split('T')[0], created: 3 },
+        { date: new Date(now).toISOString().split('T')[0], created: 1 },
+      ],
+      tokenUsageByModel: [
+        { model: 'claude-sonnet-4.6', inputTokens: 2800, outputTokens: 1600, cacheCreationTokens: 120, cacheReadTokens: 60, estimatedCostUsd: 0.42 },
+      ],
+      costTrends: [
+        { date: new Date(now - 24 * 60 * 60 * 1000).toISOString().split('T')[0], cost: 0.31, sessions: 1 },
+        { date: new Date(now).toISOString().split('T')[0], cost: 0.42, sessions: 1 },
+      ],
+      topApiKeys: [{ keyId: 'admin-key', keyName: 'Admin', sessions: 4, costUsd: 0.73 }],
+      durationTrends: [{ date: new Date(now).toISOString().split('T')[0], avgDurationSec: 1800, count: 4 }],
+      errorRates: { totalSessions: 4, failedSessions: 0, failureRate: 0, infraFailures: 0, adjustedFailureRate: 0, killedSessions: 0, permissionPrompts: 1, approvals: 3, autoApprovals: 1 },
+      generatedAt: new Date(now).toISOString(),
+    }),
+  );
   await page.route(/\/v1\/sessions\/sess-[^/]+\/latency$/, (route) => {
     const id = route.request().url().split('/').at(-2) as string;
     return json(route, latencyById[id]);
