@@ -14,6 +14,7 @@ import { AcpTerminalDebugView } from './AcpTerminalDebugView';
 import { TranscriptView } from './TranscriptView';
 import { StreamSplitView } from './StreamSplitView';
 import { useT } from '../../i18n/context';
+import { useSessionEvents } from '../../hooks/useSessionEvents';
 
 type ViewMode = 'terminal' | 'transcript' | 'split';
 
@@ -36,6 +37,9 @@ function detectDefaultView(): ViewMode {
 
 export function StreamTab({ sessionId, isDriver }: StreamTabProps) {
     const t = useT();
+
+  // Issue #4693: Ensure transcript entries are fetched when the stream tab is active
+  useSessionEvents(sessionId);
 
   const [searchParams, setSearchParams] = useSearchParams();
 

@@ -21,6 +21,13 @@ vi.mock("../StreamSplitView", () => ({
   ),
 }));
 
+vi.mock("../../../hooks/useSessionEvents", () => ({
+  useSessionEvents: () => ({
+    state: { entries: [], loading: false, error: null, status: null, approvalCount: 0, autoApprovalCount: 0, statusChangeCount: 0, metrics: null, lastUpdatedAt: 0, seekMs: null, seekNonce: 0, model: null },
+    counts: { messages: 0, userMessages: 0, assistantMessages: 0, toolCalls: 0, thinking: 0, approvals: 0, autoApprovals: 0, statusChanges: 0 },
+  }),
+}));
+
 vi.mock('../../../i18n/context', async () => {
   const { testT } = await import('../../../__tests__/i18n-test-helper');
   return { useT: () => testT };
