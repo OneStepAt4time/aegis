@@ -271,6 +271,32 @@ ag kill 5070c990    # Prefix match
 
 Sends `DELETE /v1/sessions/:id` and confirms termination. Sessions in terminal states (`killed`, `completed`, `crashed`) return `404`.
 
+### `ag approve <id>` — Approve Pending Permission
+
+Approve a pending tool-call permission request for a session. Supports prefix matching.
+
+```bash
+ag approve abc12345
+ag approve 5070c990     # Prefix match
+```
+
+Wraps `POST /v1/sessions/:id/permission/approve`. Reports success or the specific error (e.g., no pending permission, session not found).
+
+**RBAC:** Requires `operator` or `admin` role.
+
+### `ag reject <id>` — Reject Pending Permission
+
+Reject a pending tool-call permission request for a session. Supports prefix matching.
+
+```bash
+ag reject abc12345
+ag reject 5070c990      # Prefix match
+```
+
+Wraps `POST /v1/sessions/:id/permission/reject`. Reports success or the specific error.
+
+**RBAC:** Requires `operator` or `admin` role.
+
 ### `ag send <id> "message"` — Send Message to Running Session
 
 Inject a message into a running session without killing or restarting it. Supports prefix matching.
@@ -535,6 +561,8 @@ ag list --json         JSON output
 ag list --status idle  Filter by status
 ag read <id>           Read session output
 ag kill <id>           Terminate a session (prefix match)
+ag approve <id>        Approve pending permission (prefix match)
+ag reject <id>         Reject pending permission (prefix match)
 ag status [id]         Server health or session details (prefix match)
 ag tail <id>           Follow session events in real-time (prefix match)
 ag create "brief"      Create + send
