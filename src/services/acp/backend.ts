@@ -170,16 +170,10 @@ export class AcpBackend {
 
   /**
    * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
-   * Returns immediately with the durable session record while the child process
-   * spawn + initialize + session/new handshake runs in the background.
-   *
-   * Use this for HTTP endpoints where synchronous handshake causes client timeouts
-   * (e.g., POST /v1/sessions hanging for 2+ minutes).
    */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     const backendRunId = this.backendRunIdProvider();
-
     // Fire-and-forget the handshake — caller gets the session record immediately.
     // On success, session transitions to agent_ready. On failure, transitions to error.
     const ready = runtimeLifecycle.startNewRuntimeBackground(
@@ -312,13 +306,19 @@ export class AcpBackend {
 
   /**
    * Issue #3093: Direct prompt delivery to ACP runtime.
+   * Issue #4695: Auto-resume runtime when session is idle but resumable.
    */
   async sendPrompt(
     sessionId: string,
     text: string,
-    scope: AcpSessionScope
+    scope: AcpSessionScope,
+    cwd?: string
   ): Promise<{ delivered: boolean; attempts: number; error?: string }> {
-    const runtime = this.runtimes.get(sessionId);
+    let runtime = this.runtimes.get(sessionId);
+    if (!runtime && cwd) {
+      const resumed = await promptModule.autoResumeRuntime(this.getRuntimeDeps(), this.getPromptDeps(), sessionId, scope, cwd);
+      if (resumed) runtime = resumed;
+    }
     if (!runtime) {
       return { delivered: false, attempts: 0, error: 'no_acp_runtime' };
     }
