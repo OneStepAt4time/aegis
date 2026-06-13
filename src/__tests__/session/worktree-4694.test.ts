@@ -22,11 +22,11 @@ describe('Issue #4694: createSessionWorktree', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it('creates a worktree when in a git repo', () => {
-    vi.mocked(execFileSync).mockImplementation((cmd: string, args: string[], opts?: any) => {
+    vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[] | undefined, opts?: any): any => {
       const enc = typeof opts === 'object' && opts ? opts.encoding : undefined;
       const asStr = (s: string) => enc === 'utf8' ? s : Buffer.from(s);
-      if (cmd === 'git' && args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') return asStr('true\n');
-      if (cmd === 'git' && args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return asStr('develop\n');
+      if (cmd === 'git' && args?.[0] === 'rev-parse' && args?.[1] === '--is-inside-work-tree') return asStr('true\n');
+      if (cmd === 'git' && args?.[0] === 'rev-parse' && args?.[1] === '--abbrev-ref') return asStr('develop\n');
       return asStr('');
     });
     vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -47,11 +47,11 @@ describe('Issue #4694: createSessionWorktree', () => {
   });
 
   it('reuses existing worktree if path exists', () => {
-    vi.mocked(execFileSync).mockImplementation((cmd: string, args: string[], opts?: any) => {
+    vi.mocked(execFileSync).mockImplementation((cmd: string, args?: readonly string[] | undefined, opts?: any): any => {
       const enc = typeof opts === 'object' && opts ? opts.encoding : undefined;
       const asStr = (s: string) => enc === 'utf8' ? s : Buffer.from(s);
-      if (cmd === 'git' && args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') return asStr('true\n');
-      if (cmd === 'git' && args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return asStr('develop\n');
+      if (cmd === 'git' && args?.[0] === 'rev-parse' && args?.[1] === '--is-inside-work-tree') return asStr('true\n');
+      if (cmd === 'git' && args?.[0] === 'rev-parse' && args?.[1] === '--abbrev-ref') return asStr('develop\n');
       return asStr('');
     });
     vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -60,7 +60,7 @@ describe('Issue #4694: createSessionWorktree', () => {
 
     expect(result.path).toContain('.claude/worktrees/acc154fb-ec9');
     const worktreeCalls = vi.mocked(execFileSync).mock.calls.filter(
-      ([cmd, args]) => cmd === 'git' && args?.[0] === 'worktree'
+      ([cmd, args]) => cmd === 'git' && (args as readonly string[] | undefined)?.[0] === 'worktree'
     );
     expect(worktreeCalls.length).toBe(0);
   });
