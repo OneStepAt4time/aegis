@@ -437,7 +437,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
             }
           }
           promptDelivery = acpBackend && ctx.config.acpEnabled
-          ? await acpBackend.sendPrompt(existing.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' })
+          ? await acpBackend.sendPrompt(existing.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }, existing.workDir)
           : await sessions.sendInitialPrompt(existing.id, finalPrompt);
           metrics.promptSent(promptDelivery.delivered);
         }
@@ -537,7 +537,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
             throw e;
           }
         }
-        const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' });
+        const result = await acpBackend.sendPrompt(session.id, finalPrompt, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }, session.workDir);
         promptDelivery = { delivered: result.delivered, attempts: result.attempts, status: result.delivered ? 'delivered' : 'failed', error: result.error };
         session.promptDelivery = promptDelivery;
         metrics.promptSent(result.delivered);

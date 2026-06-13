@@ -9,6 +9,8 @@ import type { AcpSessionScope } from '../types.js';
 import { StructuredLogger } from '../../../logger.js';
 import { AcpBackendLifecycleError } from './errors.js';
 import type { AcpBackendRuntime } from './types.js';
+import * as runtimeLifecycle from './runtime.js';
+import type { AcpSessionRecord } from '../types.js';
 
 const log = new StructuredLogger();
 
@@ -84,5 +86,41 @@ export async function sendPrompt(
     return { delivered: false, attempts: 1, error: (err as Error).message };
   } finally {
     deps.inFlightPrompts.delete(sessionId);
+  }
+}
+
+// Issue #4695: Auto-resume helper for sendPrompt.
+// When no active runtime exists, attempt to resume the ACP session
+// so iterative prompts can be delivered to idle sessions.
+export async function autoResumeRuntime(
+  runtimeDeps: import('./runtime.js').RuntimeLifecycleDeps,
+  promptDeps: PromptDeps,
+  sessionId: string,
+  scope: AcpSessionScope,
+  cwd: string
+): Promise<AcpBackendRuntime | null> {
+  try {
+    const session = await promptDeps.sessionService.getSession(sessionId, scope);
+    if (!session.acpAgentSessionId) {
+      return null;
+    }
+    log.info({
+      component: 'acp-backend',
+      operation: 'autoResume',
+      attributes: { sessionId, reason: 'no_acp_runtime' },
+    });
+    await runtimeLifecycle.startResumeRuntime(
+      runtimeDeps,
+      session as AcpSessionRecord,
+      cwd,
+    );
+    return runtimeDeps.runtimes.get(sessionId) ?? null;
+  } catch (err) {
+    log.warn({
+      component: 'acp-backend',
+      operation: 'autoResumeFailed',
+      attributes: { sessionId, error: String(err) },
+    });
+    return null;
   }
 }
