@@ -101,11 +101,15 @@ export async function handleRead(args: string[], io: CliIO): Promise<number> {
 
   for (const msg of messages) {
     const role = msg.role ?? 'unknown';
+    const prefix = role === 'assistant' ? '🤖' : role === 'user' ? '👤' : '⚙️';
     // #3565: /read returns ParsedEntry { text } not { content }.
     // Handle both formats with null safety.
     const raw = msg.text ?? msg.content;
     const content = typeof raw === 'string' ? raw : JSON.stringify(raw ?? '') ?? '';
-    const prefix = role === 'assistant' ? '🤖' : role === 'user' ? '👤' : '⚙️';
+    if (typeof content !== 'string') {
+      writeLine(io.stdout, `  ${prefix} [non-text content]`);
+      continue;
+    }
     // Truncate long messages for terminal readability
     const lines = content.split('\n');
     const displayLines = lines.slice(0, 50);
