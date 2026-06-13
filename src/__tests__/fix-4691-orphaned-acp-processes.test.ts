@@ -13,14 +13,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { reapOrphanAcpRuntimes } from '../services/acp/orphan-reaper.js';
 import { shutdownRuntime } from '../services/acp/backend/runtime.js';
-import type { AcpBackendRuntime, RuntimeLifecycleDeps } from '../services/acp/backend/runtime.js';
-import type { AcpSessionRecord } from '../services/acp/backend.js';
+import type { RuntimeLifecycleDeps } from '../services/acp/backend/runtime.js';
+import type { AcpBackendRuntime } from '../services/acp/backend/types.js';
+import type { AcpSessionRecord } from '../services/acp/types.js';
+import type { StructuredLogger } from '../logger.js';
 
 const log = {
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
-};
+} as unknown as StructuredLogger;
 
 describe('Issue #4691 — orphaned claude-agent-acp processes after session kill', () => {
   describe('orphan reaper excludes terminal sessions', () => {
@@ -77,7 +79,7 @@ describe('Issue #4691 — orphaned claude-agent-acp processes after session kill
         backendRunId: 'run-1',
         client,
         disposers: [],
-      } as AcpBackendRuntime;
+      } as unknown as AcpBackendRuntime;
 
       const deps = {
         sessionService: {
@@ -118,7 +120,7 @@ describe('Issue #4691 — orphaned claude-agent-acp processes after session kill
         backendRunId: 'run-2',
         client,
         disposers: [],
-      } as AcpBackendRuntime;
+      } as unknown as AcpBackendRuntime;
 
       const deps = {
         sessionService: {
