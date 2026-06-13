@@ -17,13 +17,13 @@ vi.mock('node:child_process', async (importOriginal) => {
   };
 });
 
-vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs')>();
+vi.mock(import('node:fs'), async (importOriginal) => {
+  const actual = await importOriginal();
   return {
     ...actual,
     existsSync: vi.fn(),
     mkdirSync: vi.fn(),
-  };
+  } as any;
 });
 
 describe('Issue #4694: createSessionWorktree', () => {
@@ -47,11 +47,13 @@ describe('Issue #4694: createSessionWorktree', () => {
 
   it('returns repoRoot when not a git repo', () => {
     vi.mocked(execFileSync).mockImplementation(() => { throw new Error('not a git repo'); });
+    vi.mocked(fs.existsSync).mockReturnValue(false);
 
     const result = createSessionWorktree('/fake/dir', 'test12345');
 
     expect(result.path).toBe('/fake/dir');
     expect(result.branch).toBe('');
+    expect(fs.mkdirSync).not.toHaveBeenCalled();
   });
 
   it('reuses existing worktree if path exists', () => {

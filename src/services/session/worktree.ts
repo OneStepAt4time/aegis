@@ -36,11 +36,6 @@ export function createSessionWorktree(
   const branch = `session/${sessionId.slice(0, 8)}`;
   const worktreePath = join(worktreeDir, sessionId.slice(0, 12));
 
-  // Ensure the worktrees parent directory exists
-  if (!existsSync(worktreeDir)) {
-    mkdirSync(worktreeDir, { recursive: true });
-  }
-
   // Check if this is a git repo
   try {
     execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
@@ -56,6 +51,11 @@ export function createSessionWorktree(
     });
     // Not a git repo — can't create worktree, return original dir
     return { path: repoRoot, branch: '' };
+  }
+
+  // Ensure the worktrees parent directory exists (only after confirming git repo)
+  if (!existsSync(worktreeDir)) {
+    mkdirSync(worktreeDir, { recursive: true });
   }
 
   // Check if worktree already exists for this session
