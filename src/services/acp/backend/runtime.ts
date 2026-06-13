@@ -330,7 +330,15 @@ export async function shutdownRuntime(
     }
     const acpAgentSessionId = current.acpAgentSessionId;
     if (acpAgentSessionId) {
-      await runtime.client.request('session/close', { sessionId: acpAgentSessionId });
+      try {
+        await runtime.client.request('session/close', { sessionId: acpAgentSessionId });
+      } catch (closeError) {
+        log.warn({
+          component: 'acp-backend',
+          operation: 'sessionCloseRequestFailed',
+          attributes: { sessionId: session.id, error: String(closeError) },
+        });
+      }
     }
     exit = await runtime.client.shutdown();
     if (current.status === 'closing') {
@@ -340,12 +348,23 @@ export async function shutdownRuntime(
     } else {
       current = await deps.sessionService.getSession(session.id, runtime.scope);
     }
-    return { session: current, exit };
+  } catch (shutdownError) {
+    log.warn({
+      component: 'acp-backend',
+      operation: 'runtimeShutdownFailed',
+      attributes: { sessionId: session.id, error: String(shutdownError) },
+    });
+    try {
+      current = await deps.sessionService.getSession(session.id, runtime.scope);
+    } catch {
+      // Session may have been deleted; use the last known state
+    }
   } finally {
     disposeRuntime(deps, runtime);
     deps.runtimes.delete(session.id);
     deps.inFlightPrompts.delete(session.id);
   }
+  return { session: current, exit };
 }
 
 export async function handleRuntimeExit(

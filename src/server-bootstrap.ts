@@ -356,7 +356,7 @@ new JsonFileBackend(path.join(ctx.config.stateDir, 'analytics-cache.json')),
     if (!ctx.acpBackend) return;
     const { reapOrphanAcpRuntimes } = await import('./services/acp/orphan-reaper.js');
     await reapOrphanAcpRuntimes({
-      getActiveSessionIds: () => ctx.sessions.listSessions().map(s => s.id),
+      getActiveSessionIds: () => ctx.sessions.listSessions().filter(s => s.status !== 'killed' && s.status !== 'completed' && s.status !== 'crashed').map(s => s.id),
       getActiveAcpRuntimeIds: () => ctx.acpBackend!.getActiveRuntimeIds(),
       shutdownAcpRuntime: (id) => ctx.acpBackend!.shutdownSession({
         sessionId: id,

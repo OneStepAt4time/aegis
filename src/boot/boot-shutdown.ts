@@ -17,6 +17,8 @@ import type { MetricsCache } from '../services/metrics-cache.js';
 import type { TimerRegistry } from '../utils/timer-registry.js';
 import type { BudgetTimer } from '../budgets/timer.js';
 import { killAllSessions } from '../signal-cleanup-helper.js';
+import { shutdownAcpRuntime } from '../session-cleanup.js';
+import { SYSTEM_TENANT } from '../config.js';
 import { removePidFile } from '../startup.js';
 import { shutdownTracing } from '../tracing.js';
 import { getRateLimiter } from '../middleware/auth-setup.js';
@@ -151,6 +153,21 @@ export function registerShutdownHandler(deps: ShutdownDeps): void {
             errorCode: 'SHUTDOWN_STOP_MEMORY_BRIDGE_REAPER_FAILED',
             attributes: { error: e instanceof Error ? e.message : String(e) },
           });
+        }
+      }
+
+      // Issue #4691: Shut down ACP runtimes before killing sessions to prevent orphaned processes
+      if (ctx.acpBackend) {
+        for (const session of ctx.sessions.listSessions()) {
+          try {
+            await shutdownAcpRuntime(session.id, ctx);
+          } catch (e) {
+            logger.warn({
+              component: 'server',
+              operation: 'graceful_shutdown_acp_runtime',
+              attributes: { sessionId: session.id, error: e instanceof Error ? e.message : String(e) },
+            });
+          }
         }
       }
 
