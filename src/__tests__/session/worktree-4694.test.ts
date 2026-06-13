@@ -9,14 +9,22 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import { createSessionWorktree, removeSessionWorktree } from '../../services/session/worktree.js';
 
-vi.mock('node:child_process', () => ({
-  execFileSync: vi.fn(),
-}));
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    execFileSync: vi.fn(),
+  };
+});
 
-vi.mock('node:fs', () => ({
-  existsSync: vi.fn(),
-  mkdirSync: vi.fn(),
-}));
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
+  };
+});
 
 describe('Issue #4694: createSessionWorktree', () => {
   beforeEach(() => { vi.clearAllMocks(); });
