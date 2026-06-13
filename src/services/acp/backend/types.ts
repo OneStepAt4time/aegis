@@ -248,4 +248,9 @@ export interface AcpBackendRuntime {
   disposers: (() => void)[];
   cleanupPromise?: Promise<AcpBackendShutdownResult>;
   agentCapabilities?: AcpJsonValue;
+  /**
+   * Issue #4689: Session permission mode. Used by the onRequest handler
+   * to auto-approve permission requests when mode allows it.
+   */
+  permissionMode?: string;
 }

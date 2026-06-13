@@ -244,6 +244,7 @@ export async function createRuntime(
     backendRunId,
     client: deps.clientFactory(context),
     disposers: [],
+    permissionMode: session.permissionMode,
   });
 }
 
@@ -257,7 +258,17 @@ export function bindRuntime(
     }),
     runtime.client.onRequest((request) => {
       if (request.method === 'session/request_permission') {
-        trackPendingApproval(deps, runtime.sessionId, request);
+        // Issue #4689: Auto-approve permission requests for non-default
+        // permission modes to prevent deadlock. In acceptEdits/bypassPermissions/auto
+        // modes, CC should be allowed to proceed without manual approval.
+        const mode = runtime.permissionMode ?? 'default';
+        if (mode === 'acceptEdits' || mode === 'bypassPermissions' || mode === 'auto' || mode === 'dontAsk') {
+          void runtime.client.respond(request.id, {
+            outcome: { outcome: 'selected', optionId: 'allow-once' },
+          });
+        } else {
+          trackPendingApproval(deps, runtime.sessionId, request);
+        }
       }
       deps.options.onRawRequest?.(request);
     }),
