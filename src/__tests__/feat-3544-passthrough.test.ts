@@ -57,7 +57,7 @@ describe('Issue #3544: --passthrough flag', () => {
       const fs = await import('node:fs');
       const path = await import('node:path');
       const source = fs.readFileSync(
-        path.join(import.meta.dirname ?? __dirname, '..', 'cli.ts'),
+        path.join(import.meta.dirname ?? __dirname, '..', 'commands', 'create.ts'),
         'utf-8',
       );
       expect(source).toMatch(/args\.includes\(['"]--passthrough['"]\)/);

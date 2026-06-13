@@ -32,6 +32,8 @@ import { handleSend } from './commands/send.js';
 import { handleUpdate } from './commands/update.js';
 import { handleRead } from './commands/read.js';
 import { handleKill } from './commands/kill.js';
+import { handleApprove } from './commands/approve.js';
+import { handleReject } from './commands/reject.js';
 import { handleStatus } from './commands/status.js';
 import { handleTail } from './commands/tail.js';
 import {
@@ -41,6 +43,9 @@ import {
 import { getErrorMessage, parseIntSafe, validateEffort } from './validation.js';
 import { generateSessionName } from './utils/session-name.js';
 import { setJsonLogsEnabled } from './logger.js';
+import { CliIO, write, writeLine, resolveAuthToken } from './cli-http.js';
+import { handleCreate } from './commands/create.js';
+export type { CliIO };
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -48,11 +53,6 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')
 /** Current aegis version read from package.json at startup. */
 const VERSION: string = pkg.version;
 
-export interface CliIO {
-  stdin: NodeJS.ReadableStream;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-}
 
 const defaultCliIO: CliIO = {
   stdin: process.stdin,
@@ -60,13 +60,7 @@ const defaultCliIO: CliIO = {
   stderr: process.stderr,
 };
 
-function write(stream: NodeJS.WritableStream, text: string): void {
-  stream.write(text);
-}
 
-function writeLine(stream: NodeJS.WritableStream, text: string = ''): void {
-  stream.write(`${text}\n`);
-}
 
 /** Render the startup banner shown when launching the HTTP server. */
 export function printBanner(io: CliIO, port: number, host: string): void {
@@ -83,32 +77,6 @@ export function printBanner(io: CliIO, port: number, host: string): void {
   writeLine(io.stdout);
 }
 
-async function resolveAuthToken(): Promise<string> {
-  const envToken = process.env.AEGIS_AUTH_TOKEN || process.env.AEGIS_TOKEN;
-  if (envToken) return envToken;
-
-  const fileToken = readAuthTokenFile();
-  if (fileToken) return fileToken;
-
-  const config = await loadConfig();
-  if (config.clientAuthToken) return config.clientAuthToken;
-  if (config.authToken) return config.authToken;
-
-  const legacyPaths = [
-    join(homedir(), '.aegis', 'config.json'),
-    join(homedir(), '.manus', 'config.json'),
-  ];
-
-  for (const configPath of legacyPaths) {
-    try {
-      const raw = readFileSync(configPath, 'utf-8');
-      const parsed = JSON.parse(raw) as { authToken?: string };
-      if (parsed.authToken) return parsed.authToken;
-    } catch { /* file not found or invalid JSON — skip */ }
-  }
-
-  return '';
-}
 
 async function handleDoctor(args: string[], io: CliIO): Promise<number> {
   try {
@@ -129,159 +97,6 @@ async function handleDoctor(args: string[], io: CliIO): Promise<number> {
 }
 
 /** Issue #5 stretch: create a session from CLI. */
-async function handleCreate(args: string[], io: CliIO): Promise<number> {
-  let brief = '';
-  let cwd = process.cwd();
-  let portOverride: number | null = null;
-  let existingSessionId: string | undefined;
-  let model: string | undefined;
-  let effort: string | undefined;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--cwd' && args[i + 1]) {
-      cwd = args[++i]!;
-    } else if (args[i] === '--port' && args[i + 1]) {
-      portOverride = parseIntSafe(args[++i], 9100);
-    } else if (args[i] === '--model' && args[i + 1] && !args[i + 1]!.startsWith('-')) {
-      model = args[++i]!;
-    } else if (args[i] === '--effort' && args[i + 1]) {
-      const validated = validateEffort(args[++i]!);
-      if (validated === null) {
-        writeLine(io.stderr, '  \u274c Invalid --effort value.');
-        return 1;
-      }
-      effort = validated;
-  } else if (args[i] === '--session-id' && args[i + 1]) {
-    existingSessionId = args[++i]!;
-  } else if (args[i]?.startsWith('--session-id=')) {
-    existingSessionId = args[i]!.slice('--session-id='.length);
-    } else if (!args[i].startsWith('-')) {
-      brief = args[i];
-    }
-  }
-
-  const acceptPerms = args.includes('--accept-permissions') || args.includes('-y') || args.includes('--passthrough');
-
-  if (!brief) {
-    writeLine(io.stderr, '  ❌ Missing brief. Usage: ag create "Build a login page"');
-    return 1;
-  }
-
-  const config = await loadConfig();
-  const baseUrl = portOverride === null
-    ? getConfiguredBaseUrl(config)
-    : deriveBaseUrl('127.0.0.1', portOverride);
-  const sessionName = generateSessionName(brief);
-  const authToken = await resolveAuthToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-
-  // Issue #3306: Preflight auth check to prevent orphaned sessions.
-  if (authToken) {
-    try {
-      const authRes = await fetch(`${baseUrl}/v1/sessions/stats`, {
-        headers: { 'Authorization': `Bearer ${authToken}` },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (authRes.status === 401) {
-        writeLine(io.stderr, '  ❌ Unauthorized — the server rejected the auth token.');
-        writeLine(io.stderr, '  Run `ag init` or set AEGIS_AUTH_TOKEN=<your-key>.');
-        return 1;
-      }
-    } catch {
-      // Network error — proceed, session creation will fail anyway
-    }
-  }
-
-  let sessionId: string;
-  if (existingSessionId) {
-    // Issue #3760: --session-id sends to an existing session instead of creating a new one.
-    try {
-      const checkRes = await fetch(`${baseUrl}/v1/sessions/${existingSessionId}`, {
-        headers,
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (checkRes.status === 404) {
-        writeLine(io.stderr, `  ❌ Session ${existingSessionId.slice(0, 8)} not found.`);
-        writeLine(io.stderr, '     List sessions with: ag list');
-        return 1;
-      }
-      if (!checkRes.ok) {
-        const err = await checkRes.json().catch(() => ({ error: checkRes.statusText }));
-        writeLine(io.stderr, `  ❌ Failed to lookup session: ${(err as { error?: string }).error || checkRes.statusText}`);
-        return 1;
-      }
-      sessionId = existingSessionId;
-      writeLine(io.stdout, `  ✅ Using existing session: ${sessionId.slice(0, 8)}`);
-    } catch (e: unknown) {
-      writeLine(io.stderr, `  ❌ Cannot reach Aegis at ${baseUrl}: ${getErrorMessage(e)}`);
-      return 1;
-    }
-  } else {
-    try {
-      const res = await fetch(`${baseUrl}/v1/sessions`, {
-        signal: AbortSignal.timeout(30_000),
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ workDir: cwd, name: sessionName, model, effort, ...(acceptPerms ? { permissionMode: 'bypassPermissions' } : {}) }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        writeLine(io.stderr, `  ❌ Failed to create session: ${(err as { error?: string }).error || res.statusText}`);
-        return 1;
-      }
-
-      const session = await res.json() as { id: string; displayName: string };
-      sessionId = session.id;
-      writeLine(io.stdout, `  ✅ Session created: ${session.displayName}`);
-      writeLine(io.stdout, `     ID: ${sessionId}`);
-    } catch (e: unknown) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        writeLine(io.stderr, '  ❌ Session creation timed out after 30s.');
-        writeLine(io.stderr, '     The server may be slow to respond. Try again or check server health.');
-      } else {
-        const cause = (e as { cause?: { code?: string } }).cause;
-        if (cause?.code === 'ECONNREFUSED') {
-          writeLine(io.stderr, `  ❌ Cannot connect to Aegis at ${baseUrl}.`);
-          writeLine(io.stderr, '     Start the server first: ag');
-        } else {
-          writeLine(io.stderr, `  ❌ ${getErrorMessage(e)}`);
-        }
-      }
-      return 1;
-    }
-  }
-
-  try {
-    const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/send`, {
-      signal: AbortSignal.timeout(60_000),
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ text: brief }),
-    });
-
-    // Issue #3059: Don't show scary warning when agent hasn't started yet
-    const result = await res.json() as { delivered?: boolean; attempts?: number };
-    if (result.delivered) {
-      writeLine(io.stdout, `  ✅ Brief delivered (attempt ${result.attempts})`);
-    } else if ((result.attempts ?? 0) === 0) {
-      writeLine(io.stdout, `  ✅ Brief queued — agent will pick up shortly`);
-    } else {
-      writeLine(io.stdout, `  ⚠️  Brief sent but delivery not confirmed after ${result.attempts} attempts`);
-    }
-  } catch (e: unknown) {
-    writeLine(io.stderr, `  ⚠️  Failed to send brief: ${getErrorMessage(e)}`);
-  }
-
-  writeLine(io.stdout);
-  writeLine(io.stdout, '  Next steps:');
-  writeLine(io.stdout, `    Status:   ag status`);
-  writeLine(io.stdout, `    Read:     ag read ${sessionId}`);
-  writeLine(io.stdout, `    Tail:     ag tail ${sessionId}`);
-  writeLine(io.stdout, `    Kill:     ag kill ${sessionId}`);
-  return 0;
-}
 
 function printHelp(io: CliIO): void {
   const showOidc = process.env.AEGIS_FEATURE_OIDC === '1';
@@ -345,6 +160,8 @@ function printHelp(io: CliIO): void {
     ag tail <id>            Follow session output in real-time
     ag send <id> "msg"      Send message to a running session
     ag kill <id>            Terminate a session
+    ag approve <id>         Approve pending tool-call permission
+    ag reject <id>          Reject pending tool-call permission
     ag status               Show server health + session summary
 
   Update:
@@ -378,6 +195,8 @@ ${authBlock}  Flags:
     GET  /v1/sessions/:id/read    Read messages
     GET  /v1/sessions/:id/health  Health check
     DEL  /v1/sessions/:id         Kill session
+    POST /v1/sessions/:id/permission/approve  Approve permission
+    POST /v1/sessions/:id/permission/reject   Reject permission
     GET  /v1/health               Server health
 
   Docs: https://github.com/OneStepAt4time/aegis
@@ -388,7 +207,7 @@ ${authBlock}  Flags:
 export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO = defaultCliIO): Promise<number> {
   // Issue #3796: Only show generic help if no subcommand is provided.
   // Subcommands like 'run' handle their own --help with command-specific flags.
-  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'meta', 'update', 'version', 'setup'];
+  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'approve', 'reject', 'sessions', 'stop', 'send', 'meta', 'update', 'version', 'setup'];
   const hasKnownCommand = argv.length > 0 && knownCommands.includes(argv[0]);
   if ((argv.includes('--help') || argv.includes('-h')) && !hasKnownCommand) {
     printHelp(io);
@@ -468,6 +287,15 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     writeLine(io.stderr, '  Unknown auth subcommand. Usage: ag auth migrate');
     return 1;
   }
+
+  if (argv[0] === 'approve') {
+    return handleApprove(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'reject') {
+    return handleReject(argv.slice(1), io);
+  }
+
 
   if (argv[0] === 'tail') {
     return handleTail(argv.slice(1), io);

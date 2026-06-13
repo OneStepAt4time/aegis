@@ -10,24 +10,25 @@ import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 
 const CLI_PATH = join(import.meta.dirname ?? __dirname, '..', 'cli.ts');
+const CREATE_PATH = join(import.meta.dirname ?? __dirname, '..', 'commands', 'create.ts');
 
 // ── Static source checks ──
 
 describe('Issue #3760: --session-id flag in handleCreate', () => {
-  it('cli.ts parses --session-id flag', async () => {
-    const source = await readFile(CLI_PATH, 'utf-8');
+  it('create.ts parses --session-id flag', async () => {
+    const source = await readFile(CREATE_PATH, 'utf-8');
     expect(source).toMatch(/--session-id/);
     expect(source).toMatch(/existingSessionId/);
   });
 
   it('when --session-id is set, fetches existing session instead of POST /v1/sessions', async () => {
-    const source = await readFile(CLI_PATH, 'utf-8');
+    const source = await readFile(CREATE_PATH, 'utf-8');
     expect(source).toMatch(/if \(existingSessionId\)/);
     expect(source).toMatch(/\/v1\/sessions\/\$\{existingSessionId\}/);
   });
 
   it('handles 404 when session not found', async () => {
-    const source = await readFile(CLI_PATH, 'utf-8');
+    const source = await readFile(CREATE_PATH, 'utf-8');
     expect(source).toMatch(/checkRes\.status === 404/);
     expect(source).toMatch(/not found/);
   });
