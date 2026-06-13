@@ -32,6 +32,8 @@ import { handleSend } from './commands/send.js';
 import { handleUpdate } from './commands/update.js';
 import { handleRead } from './commands/read.js';
 import { handleKill } from './commands/kill.js';
+import { handleApprove } from './commands/approve.js';
+import { handleReject } from './commands/reject.js';
 import { handleStatus } from './commands/status.js';
 import { handleTail } from './commands/tail.js';
 import {
@@ -345,6 +347,8 @@ function printHelp(io: CliIO): void {
     ag tail <id>            Follow session output in real-time
     ag send <id> "msg"      Send message to a running session
     ag kill <id>            Terminate a session
+    ag approve <id>         Approve pending tool-call permission
+    ag reject <id>          Reject pending tool-call permission
     ag status               Show server health + session summary
 
   Update:
@@ -378,6 +382,8 @@ ${authBlock}  Flags:
     GET  /v1/sessions/:id/read    Read messages
     GET  /v1/sessions/:id/health  Health check
     DEL  /v1/sessions/:id         Kill session
+    POST /v1/sessions/:id/permission/approve  Approve permission
+    POST /v1/sessions/:id/permission/reject   Reject permission
     GET  /v1/health               Server health
 
   Docs: https://github.com/OneStepAt4time/aegis
@@ -388,7 +394,7 @@ ${authBlock}  Flags:
 export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO = defaultCliIO): Promise<number> {
   // Issue #3796: Only show generic help if no subcommand is provided.
   // Subcommands like 'run' handle their own --help with command-specific flags.
-  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'sessions', 'stop', 'send', 'meta', 'update', 'version', 'setup'];
+  const knownCommands = ['mcp', 'init', 'doctor', 'create', 'login', 'logout', 'whoami', 'run', 'list', 'read', 'status', 'kill', 'approve', 'reject', 'sessions', 'stop', 'send', 'meta', 'update', 'version', 'setup'];
   const hasKnownCommand = argv.length > 0 && knownCommands.includes(argv[0]);
   if ((argv.includes('--help') || argv.includes('-h')) && !hasKnownCommand) {
     printHelp(io);
@@ -468,6 +474,15 @@ export async function runCli(argv: string[] = process.argv.slice(2), io: CliIO =
     writeLine(io.stderr, '  Unknown auth subcommand. Usage: ag auth migrate');
     return 1;
   }
+
+  if (argv[0] === 'approve') {
+    return handleApprove(argv.slice(1), io);
+  }
+
+  if (argv[0] === 'reject') {
+    return handleReject(argv.slice(1), io);
+  }
+
 
   if (argv[0] === 'tail') {
     return handleTail(argv.slice(1), io);
