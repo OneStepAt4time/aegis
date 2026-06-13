@@ -341,7 +341,7 @@ After restart, permission prompts arrive on Telegram — approve or deny from yo
 | `401 Unauthorized` | On localhost with a fresh install, this shouldn't happen. If it does, delete `~/.aegis/` and retry |
 | `EADDRINUSE` | Port 9100 in use: `AEGIS_PORT=9200 ag run "..." --cwd ./project` |
 | Server won't start | `ag doctor` — checks ACP, port, Claude Code availability |
-| Session stuck on `permission_prompt` | `curl -X POST http://localhost:9100/v1/sessions/{id}/approve` |
+| Session stuck on `permission_prompt` | `curl -X POST http://localhost:9100/v1/sessions/{id}/permission/approve` |
 | Dashboard won't load | Check Aegis is running: `curl http://localhost:9100/v1/health` |
 
 See the [Troubleshooting](troubleshooting.md) guide for more.

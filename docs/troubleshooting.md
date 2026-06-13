@@ -175,7 +175,7 @@ curl http://localhost:9100/v1/sessions/<id>/health \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 
 # Send approval if using manual approval mode
-curl -X POST http://localhost:9100/v1/sessions/<id>/approve \
+curl -X POST http://localhost:9100/v1/sessions/<id>/permission/approve \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 

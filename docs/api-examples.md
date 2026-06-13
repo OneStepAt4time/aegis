@@ -501,7 +501,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/fork \
 ### Approve permission request
 
 ```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/approve \
+curl -X POST http://localhost:9100/v1/sessions/abc123/permission/approve \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 
@@ -517,7 +517,7 @@ Approves the currently pending permission prompt in the session.
 ### Reject permission request
 
 ```bash
-curl -X POST http://localhost:9100/v1/sessions/abc123/reject \
+curl -X POST http://localhost:9100/v1/sessions/abc123/permission/reject \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
 ```
 

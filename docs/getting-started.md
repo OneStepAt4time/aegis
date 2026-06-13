@@ -275,10 +275,10 @@ When Claude Code asks for approval (e.g., to run a shell command or write a file
 
 ```bash
 # Approve
-curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/approve
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/permission/approve
 
 # Reject
-curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/reject
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:9100/v1/sessions/a1b2c3d4/permission/reject
 ```
 
 You can also set `permissionMode` when creating a session to control approval behavior:

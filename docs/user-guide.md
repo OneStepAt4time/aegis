@@ -145,10 +145,10 @@ When a session pauses at a permission prompt, its status becomes `permission_pro
 
 ```bash
 # Approve the pending action
-curl -X POST http://localhost:9100/v1/sessions/<session-id>/approve
+curl -X POST http://localhost:9100/v1/sessions/<session-id>/permission/approve
 
 # Reject and stop the operation
-curl -X POST http://localhost:9100/v1/sessions/<session-id>/reject
+curl -X POST http://localhost:9100/v1/sessions/<session-id>/permission/reject
 ```
 
 ---
