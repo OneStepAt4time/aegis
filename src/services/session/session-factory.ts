@@ -22,6 +22,7 @@ import {
   detectIsolationMode,
   detectModelFromSettings,
 } from '../../session-helpers.js';
+import { createSessionWorktree } from './worktree.js';
 import type { SessionInfo, UIState } from '../../session-types.js';
 import { StructuredLogger } from '../../logger.js';
 
@@ -192,12 +193,27 @@ export async function buildSessionInfo(
     }
   }
 
+  // Issue #4694: Create git worktree for session isolation when mode is 'worktree'
+  let effectiveWorkDir = opts.workDir;
+  if (isolationMode === 'worktree') {
+    const worktreeResult = createSessionWorktree(opts.workDir, id);
+    if (worktreeResult.path !== opts.workDir) {
+      effectiveWorkDir = worktreeResult.path;
+      log.info({
+        component: 'session',
+        operation: 'worktreeIsolationActive',
+        sessionId: id,
+        attributes: { worktreePath: effectiveWorkDir, branch: worktreeResult.branch },
+      });
+    }
+  }
+
   // Step 9: Build the SessionInfo object
   const session: SessionInfo = {
     id,
     windowId: '',
     displayName,
-    workDir: opts.workDir,
+    workDir: effectiveWorkDir,
     claudeSessionId: undefined,
     byteOffset: 0,
     monitorOffset: 0,
