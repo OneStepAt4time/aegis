@@ -226,6 +226,8 @@ ag status <session-id>   # Get session status
 ag read <session-id>     # Read session output
 ag tail <session-id>     # Stream session output live
 ag kill <session-id>     # Kill a running session
+ag approve <session-id>  # Approve a pending permission prompt
+ag reject <session-id>   # Reject a pending permission prompt
 ```
 
 ## 5. Monitor Progress
@@ -289,6 +291,8 @@ You can also set `permissionMode` when creating a session to control approval be
 | `acceptEdits` | Auto-accepts non-destructive edits only |
 | `dontAsk` | Disables all permission prompts (fails on dangerous ops) |
 | `auto` | Claude decides when to prompt (context-dependent) |
+
+> **Note:** When a permission prompt is triggered, sessions with `permissionMode` set to `bypassPermissions`, `acceptEdits`, `dontAsk`, or `auto` automatically approve the request instead of entering `permission_prompt` status. Only `default` and `plan` modes leave permissions pending for manual approval.
 
 ## 9. Run Multiple Sessions in Parallel
 
