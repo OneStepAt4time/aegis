@@ -27,6 +27,8 @@ export interface DeadDetectorDeps {
   statusChange: (payload: SessionEventPayload) => void;
   /** Remove session from internal tracking (maps, sets, watchers). */
   removeSession: (sessionId: string) => void;
+  /** Issue #4691: Shut down ACP runtime before killing session. */
+  shutdownAcpRuntime?: (sessionId: string) => Promise<void>;
 }
 
 /**
@@ -99,6 +101,21 @@ export class DeadDetector {
       `Session "${session.displayName}" died unexpectedly: ${cause}`);
 
     this.deps.removeSession(session.id);
+
+    // Issue #4691: Shut down ACP runtime before killing session to prevent orphans
+    if (this.deps.shutdownAcpRuntime) {
+      try {
+        await this.deps.shutdownAcpRuntime(session.id);
+      } catch (e) {
+        logger.warn({
+          component: 'monitor',
+          operation: 'check_dead_sessions',
+          sessionId: session.id,
+          errorCode: 'ACP_SHUTDOWN_FAILED',
+          attributes: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+    }
 
     // #262: Also remove from SessionManager so dead sessions don't linger
     try {
