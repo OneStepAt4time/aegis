@@ -67,10 +67,18 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         session: { id: sessionId, name: '', workDir: '' },
         detail: text,
       });
-      const response: Record<string, unknown> = { ok: true, delivered: result.delivered, attempts: result.attempts };
+      // Issue #4705: Return 422 when prompt delivery fails so caller knows
+      // the message did not reach the CC runtime. Previously returned 200
+      // with delivered: false, causing silent failures.
       if (!result.delivered) {
-        response.reason = result.error ?? 'no_active_transport';
+        return reply.status(422).send({
+          error: 'PROMPT_DELIVERY_FAILED',
+          message: result.error ?? 'no_active_transport',
+          delivered: false,
+          attempts: result.attempts,
+        });
       }
+      const response: Record<string, unknown> = { ok: true, delivered: true, attempts: result.attempts };
       if (currentStallInfo.stalled) response.stall = currentStallInfo;
       return reply.send(response);
     } catch (e: unknown) {
