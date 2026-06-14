@@ -328,6 +328,24 @@ echo $AEGIS_AUTH_TOKEN
 
 ---
 
+### Session status suddenly changes to `runtime_failed`
+
+**Cause:** The Claude Code ACP runtime encountered a fatal error (e.g., `No onPostToolUseHook found for tool use ID` or an unhandled error in the `session/prompt` handler). Aegis detects these fatal stderr patterns and automatically shuts down the runtime to prevent the session from hanging indefinitely.
+
+**Fix:**
+```bash
+# Check the session transcript for the error
+ag read <session-id> | tail -20
+
+# Or via API
+curl http://localhost:9100/v1/sessions/<id>/transcript \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Once the root cause (e.g., a malformed tool call or CC version incompatibility) is fixed, create a new session. The `runtime_failed` state is terminal — the session cannot be resumed.
+
+---
+
 ## Performance Issues
 
 ### High memory usage with many sessions
