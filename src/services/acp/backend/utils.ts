@@ -17,7 +17,7 @@ import type {
   AcpSessionRecord,
   AcpSessionScope,
 } from '../types.js';
-import type { AcpChildProcessOptions } from '../child-process.js';
+import type { AcpChildProcess, AcpChildProcessOptions } from '../child-process.js';
 import type { AcpJsonRpcClientOptions } from '../json-rpc-client.js';
 import {
   AcpBackendLifecycleError,
@@ -30,20 +30,35 @@ import type {
   AcpBackendInitializeResult,
   AcpBackendSessionResult,
 } from './types.js';
-import { AcpChildProcess } from '../child-process.js';
+import { AcpChildProcess as AcpChildProcessCtor } from '../child-process.js';
 import { AcpJsonRpcClient } from '../json-rpc-client.js';
 import { StructuredLogger } from '../../../logger.js';
 
 const log = new StructuredLogger();
+
+/**
+ * Issue #4704: Fatal CC stderr patterns that indicate the runtime is in an
+ * unrecoverable state. When detected, Aegis shuts down the child process
+ * to trigger runtime_failed transition rather than letting the session hang.
+ */
+const FATAL_CC_STDERR_PATTERNS = [
+  /No onPostToolUseHook found for tool use ID/,
+  /Error handling request[\s\S]*session\/prompt/,
+];
 
 export function createDefaultAcpBackendClient(
   context: AcpBackendClientFactoryContext,
   options: {
     childProcessOptions?: Omit<AcpChildProcessOptions, 'cwd'>;
     jsonRpcClientOptions?: Omit<AcpJsonRpcClientOptions, 'child'>;
-  } = {}
+  } = {},
+  /**
+   * Optional injected child process for testing. When omitted, a real
+   * AcpChildProcess is spawned.
+   */
+  injectedChild?: AcpChildProcess
 ): AcpBackendClient {
-  const child = new AcpChildProcess({
+  const child = injectedChild ?? new AcpChildProcessCtor({
     ...options.childProcessOptions,
     cwd: context.cwd,
     // Issue #4522 AC #3: forward the session's effective permission mode from
@@ -58,7 +73,16 @@ export function createDefaultAcpBackendClient(
   // are silently discarded, making diagnosis impossible.
   child.on('stderr', (event) => {
     const text = typeof event.chunk === 'string' ? event.chunk.trim() : '';
-    if (text) {
+    if (!text) return;
+
+    // Issue #4704: Detect fatal CC errors and trigger shutdown.
+    const isFatal = FATAL_CC_STDERR_PATTERNS.some(pattern => pattern.test(text));
+    if (isFatal) {
+      log.error({ component: 'acp-backend', operation: 'fatalStderrDetected', attributes: { sessionId: context.durableSessionId.slice(0, 8), text, action: 'shutting_down_runtime' } });
+      void child.shutdown().catch(err => {
+        log.error({ component: 'acp-backend', operation: 'fatalStderrShutdownFailed', attributes: { sessionId: context.durableSessionId.slice(0, 8), error: String(err) } });
+      });
+    } else {
       log.error({ component: 'acp-backend', operation: 'childStderr', attributes: { sessionId: context.durableSessionId.slice(0, 8), text } });
     }
   });
@@ -193,4 +217,3 @@ export {
   AcpBackendLifecycleError,
   AcpBackendRuntimeUnavailableError,
 } from './errors.js';
-
