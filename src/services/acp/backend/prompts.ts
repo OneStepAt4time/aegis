@@ -27,6 +27,7 @@ export interface PromptDeps {
  * Issue #3093: Direct prompt delivery to ACP runtime.
  * Bypasses the action queue for immediate prompt delivery during session creation
  * and send_message API calls. Returns {delivered, attempts} matching the session.ts stub contract.
+ * Issue #4705: Timeout on session/prompt now returns delivered:false (was incorrectly returning true).
  */
 export async function sendPrompt(
   deps: PromptDeps,
@@ -54,13 +55,9 @@ export async function sendPrompt(
       return { delivered: false, attempts: 0, error: 'no_agent_session' };
     }
 
-    // #3479: Revert notify() back to request() with a short ack timeout.
-    // #3423's notify() fix silently swallowed CC's -32601 "Method not found"
-    // error because JSON-RPC notifications have no response. Using request()
-    // with a 5s timeout: if CC acks within 5s → confirmed delivered. If it
-    // times out → CC likely received it but hasn't responded yet → mark as
-    // delivered (same behavior as notify, but with a chance to catch errors).
-    // If CC returns an actual error (e.g. -32601) → surface it properly.
+    // Issue #4705: Fix timeout handling — timeout means CC did not ack,
+    // so the prompt was NOT delivered. Return delivered:false with timeout error.
+    // Actual JSON-RPC errors (e.g. -32601 Method not found) are thrown to caller.
     try {
       await runtime.client.request('session/prompt', {
         sessionId: acpSessionId,
@@ -68,20 +65,20 @@ export async function sendPrompt(
       }, { timeoutMs: ACP_PROMPT_ACK_TIMEOUT_MS });
     } catch (err) {
       if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
-        // Timeout is acceptable — CC likely received the prompt but hasn't
-        // responded yet. Log and continue as delivered.
         log.warn({ component: 'acp-backend', operation: 'promptAckTimeout', attributes: { sessionId } });
+        return { delivered: false, attempts: 1, error: 'prompt_ack_timeout' };
       } else {
-        // Actual error (e.g. -32601 Method not found) — surface it
         throw err;
       }
     }
     return { delivered: true, attempts: 1 };
   } catch (err) {
-    if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
-      // Handled above — should not reach here, but defensive
-      return { delivered: true, attempts: 1 };
+    // Issue #4705: Re-throw JSON-RPC errors (not timeouts) so caller can handle them
+    if (err instanceof Error && err.name !== 'AcpJsonRpcTimeoutError') {
+      log.warn({ component: 'acp-backend', operation: 'promptError', attributes: { sessionId, error: err.message } });
+      throw err;
     }
+    // This path handles non-JSON-RPC errors (e.g. session service failures)
     log.warn({ component: 'acp-backend', operation: 'promptError', attributes: { sessionId, error: (err as Error).message } });
     return { delivered: false, attempts: 1, error: (err as Error).message };
   } finally {
