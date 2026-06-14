@@ -72,8 +72,8 @@ Every session tracks its `ownerKeyId` — the API key that created it. Protected
 | Operation | Check |
 |-----------|-------|
 | `POST /v1/sessions/:id/send` | Key must own session |
-| `POST /v1/sessions/:id/approve` | Key must own session |
-| `POST /v1/sessions/:id/reject` | Key must own session |
+| `POST /v1/sessions/:id/permission/approve` | Key must own session |
+| `POST /v1/sessions/:id/permission/reject` | Key must own session |
 | `DELETE /v1/sessions/:id` | Key must own session |
 | `POST /v1/sessions/:id/interrupt` | Key must own session |
 | `POST /v1/sessions/:id/escape` | Key must own session |
