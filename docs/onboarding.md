@@ -269,8 +269,8 @@ All endpoints are under `/v1/`. Base URL: `http://localhost:9100`
 | `GET` | `/v1/sessions/:id/transcript` | Read transcript |
 | `DELETE` | `/v1/sessions/:id` | Kill session |
 | `GET` | `/v1/sessions/:id/sse` | SSE event stream |
-| `POST` | `/v1/sessions/:id/approve` | Approve permission |
-| `POST` | `/v1/sessions/:id/reject` | Reject permission |
+| `POST` | `/v1/sessions/:id/permission/approve` | Approve permission |
+| `POST` | `/v1/sessions/:id/permission/reject` | Reject permission |
 | `GET` | `/v1/metrics` | Prometheus metrics |
 | `GET` | `/v1/openapi.json` | OpenAPI 3.1 spec |
 
