@@ -49,7 +49,7 @@ When a session is created, Aegis sends a Telegram notification with inline Appro
 **New features:**
 - Session approval state machine: `pending_approval → approved → running` or `rejected`
 - Telegram inline keyboard buttons on session creation
-- New API endpoints: `POST /v1/sessions/:id/permission/approve` and `POST /v1/sessions/:id/permission/reject`
+- New API endpoints: `POST /v1/sessions/:id/session-approve` and `POST /v1/sessions/:id/session-reject`
 - Bot callback authentication with secret token verification
 - Configurable `sessionApproval` section with timeout auto-reject
 - Dashboard status indicators for pending approval sessions
