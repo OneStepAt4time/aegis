@@ -637,6 +637,7 @@ describe('AcpBackend session lifecycle', () => {
 
     // Should have used request() not notify()
     expect(result.delivered).toBe(true);
+    expect(result.error).toBeUndefined();
     expect(result.attempts).toBe(1);
     expect(client.requests.some(r => r.method === 'session/prompt')).toBe(true);
     const promptReq = client.requests.find(r => r.method === 'session/prompt');
@@ -646,7 +647,7 @@ describe('AcpBackend session lifecycle', () => {
     });
   });
 
-  it('sendPrompt treats ack timeout as delivered (#3479)', async () => {
+  it('sendPrompt treats ack timeout as delivered (#3479, #4705)', async () => {
     const service = new FakeSessionService();
     const client = new FakeTimeoutClient();
     client.setResult('initialize', {});
@@ -660,13 +661,13 @@ describe('AcpBackend session lifecycle', () => {
     await backend.createSession({ ...scope, cwd });
     const result = await backend.sendPrompt('session-1', 'hello', scope);
 
-    // Timeout is acceptable — CC likely received the prompt
-    expect(result.delivered).toBe(true);
+    // Issue #4705: timeout means CC did not ack → delivered:false
+    expect(result.delivered).toBe(false);
     expect(result.attempts).toBe(1);
-    expect(result.error).toBeUndefined();
+    expect(result.error).toBe('prompt_ack_timeout');
   });
 
-  it('sendPrompt surfaces -32601 Method not found errors (#3479)', async () => {
+  it('sendPrompt surfaces -32601 Method not found errors (#3479, #4705)', async () => {
     const service = new FakeSessionService();
     const client = new FakeErrorClient(new Error('Method not found: session/prompt'));
     client.setResult('initialize', {});
@@ -678,11 +679,8 @@ describe('AcpBackend session lifecycle', () => {
     });
 
     await backend.createSession({ ...scope, cwd });
-    const result = await backend.sendPrompt('session-1', 'hello', scope);
-
-    // Actual errors must be surfaced (not silently swallowed)
-    expect(result.delivered).toBe(false);
-    expect(result.error).toContain('Method not found');
+    // Issue #4705: actual JSON-RPC errors are thrown, not returned as delivered:false
+    await expect(backend.sendPrompt('session-1', 'hello', scope)).rejects.toThrow('Method not found');
   });
 });
 

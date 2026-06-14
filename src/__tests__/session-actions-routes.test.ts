@@ -196,11 +196,10 @@ describe('POST /v1/sessions/:id/send', () => {
       body: JSON.stringify({ text: 'hello' }),
     });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(422);
     const body = response.json();
-    expect(body.ok).toBe(true);
     expect(body.delivered).toBe(false);
-    expect(body.reason).toBe('no active pane');
+    expect(body.error).toBe('PROMPT_DELIVERY_FAILED');
   });
 });
 

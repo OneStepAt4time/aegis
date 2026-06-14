@@ -33,7 +33,7 @@ export async function handleSend(args: string[], io: CliIO): Promise<number> {
   const authToken = await resolveAuthToken();
   if (!(await requireServer(baseUrl, authToken, io))) return 1;
 
-  const headers = buildHeaders(authToken);
+  const headers = { ...buildHeaders(authToken), 'Content-Type': 'application/json' };
 
   // Resolve prefix to full UUID
   const resolvedId = await resolveSessionId(sessionId, baseUrl, headers, io);

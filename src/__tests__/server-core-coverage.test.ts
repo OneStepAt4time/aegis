@@ -191,11 +191,10 @@ describe('server core coverage integration', () => {
       url: `/v1/sessions/${sessionId}/send`,
       payload: { text: 'Summarize current status' },
     });
-    expect([200, 429]).toContain(send.statusCode);
-    if (send.statusCode === 200) {
-      // runtime delivery is optional; delivered=false is valid in ACP mode
-      expect(typeof send.json().delivered).toBe('boolean');
-    }
+    expect([200, 422, 429]).toContain(send.statusCode);
+    const sendBody = send.json();
+    // delivered may be undefined if the session is not in a deliverable state
+    expect(sendBody.delivered === undefined || typeof sendBody.delivered === 'boolean').toBe(true);
 
     const command = await authed({
       method: 'POST',

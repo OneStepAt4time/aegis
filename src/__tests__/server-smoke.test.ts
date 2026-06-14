@@ -406,10 +406,12 @@ describe('Server smoke test — full HTTP flow (Issue #1899)', () => {
       payload: { text: 'Hello from smoke test' },
     });
 
-    expect(sendRes.statusCode).toBe(200);
+    expect([200, 422]).toContain(sendRes.statusCode);
     const sendBody = sendRes.json();
-    expect(sendBody.ok).toBe(true);
     expect(typeof sendBody.delivered).toBe('boolean');
+    if (sendRes.statusCode === 422) {
+      expect(sendBody.error).toBe('PROMPT_DELIVERY_FAILED');
+    }
     expect(typeof sendBody.attempts).toBe('number');
   });
 

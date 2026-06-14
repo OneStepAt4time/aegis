@@ -601,12 +601,11 @@ describe('MCP Integration Smoke Tests (#1898)', () => {
         headers: AUTH_HEADER,
         payload: { text: 'Hello' },
       });
-      expect(sendRes.statusCode).toBe(200);
+      expect(sendRes.statusCode).toBe(422);
       const body = JSON.parse(sendRes.body);
-      expect(body.ok).toBe(true);
       expect(body.delivered).toBe(false);
       expect(body.attempts).toBe(0);
-      expect(body.reason).toBe('no_active_transport');
+      expect(body.error).toBe('PROMPT_DELIVERY_FAILED');
 
       // Restore default mock
       server.sessions.sendMessage = vi.fn(async (sid: string, _text: string) => {
