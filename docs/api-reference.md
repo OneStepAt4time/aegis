@@ -1627,7 +1627,7 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
 |-----------|------|----------|-------------|
 | `text` | string | **yes** | Message to send |
 
-**Response:**
+**Response (success — `200 OK`):**
 
 ```json
 {
@@ -1637,13 +1637,29 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
 }
 ```
 
+**Response (failure — `422 Unprocessable Entity`):**
+
+When the message cannot be delivered to the Claude Code runtime (e.g., timeout waiting for prompt acknowledgment, or no active transport).
+
+```json
+{
+  "error": "PROMPT_DELIVERY_FAILED",
+  "message": "prompt_ack_timeout",
+  "delivered": false,
+  "attempts": 3
+}
+```
+
+> **Error values:** `message` may be `prompt_ack_timeout` (ACP runtime did not acknowledge within the timeout), `no_active_transport` (session has no active ACP transport), or another backend-specific error string.
+
 **Errors:**
 
-| Status | Condition |
-|--------|-----------|
-| 400 | Invalid request body |
-| 404 | Session not found |
-| 429 | Per-key token/spend quota exceeded |
+| Status | Code | Condition |
+|--------|------|-----------|
+| 400 | — | Invalid request body |
+| 404 | — | Session not found |
+| 422 | `PROMPT_DELIVERY_FAILED` | Message could not be delivered to the CC runtime. Check `message` field for cause. |
+| 429 | — | Per-key token/spend quota exceeded |
 
 ---
 
