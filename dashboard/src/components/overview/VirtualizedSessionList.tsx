@@ -11,7 +11,7 @@ import { EffortIndicator } from '../shared/EffortIndicator';
 import type { ExtendedSessionInfo } from '../../types/session-extensions';
 import { IsolationModeBadge } from '../shared/IsolationModeBadge';
 import type { IsolationSessionInfo } from '../../types/session-isolation';
-import { type CSSProperties, type ReactElement, useMemo } from 'react';
+import { type CSSProperties, type ReactElement, useMemo, useRef } from 'react';
 import { List } from 'react-window';
 import { Link } from 'react-router-dom';
 import {
@@ -67,10 +67,24 @@ export interface VirtualizedSessionListProps {
 
 // ── Constants ───────────────────────────────────────────────
 
-const ROW_HEIGHT = 52;
-const GROUP_ROW_HEIGHT = 44;
+export const ROW_HEIGHT = 52;
+export const GROUP_ROW_HEIGHT = 44;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
+
+// Stable style objects reused across rows to avoid per-render allocations
+const SESSION_ROW_STABLE_STYLE: Pick<CSSProperties, 'minHeight' | 'contentVisibility' | 'containIntrinsicSize'> = {
+  minHeight: ROW_HEIGHT,
+  // hint browser to skip layout/paint for overscan rows outside the scroll viewport
+  contentVisibility: 'auto' as CSSProperties['contentVisibility'],
+  containIntrinsicSize: `0 ${ROW_HEIGHT}px` as unknown as CSSProperties['containIntrinsicSize'],
+};
+
+const GROUP_ROW_STABLE_STYLE: Pick<CSSProperties, 'minHeight' | 'contentVisibility' | 'containIntrinsicSize'> = {
+  minHeight: GROUP_ROW_HEIGHT,
+  contentVisibility: 'auto' as CSSProperties['contentVisibility'],
+  containIntrinsicSize: `0 ${GROUP_ROW_HEIGHT}px` as unknown as CSSProperties['containIntrinsicSize'],
+};
 
 const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 1fr 80px 60px 80px';
 
@@ -170,7 +184,7 @@ function VirtualizedRow(props: {
     const { dirKey, count, isCollapsed } = item;
     return (
       <div
-        style={style}
+        style={{ ...style, ...GROUP_ROW_STABLE_STYLE }}
         className="border-b border-[color:var(--color-overlay-border-faint)] bg-[color:var(--color-overlay-bg-faint)]"
         {...ariaAttributes}
       >
@@ -197,7 +211,7 @@ function VirtualizedRow(props: {
 
   return (
     <div
-      style={{ ...style, gridTemplateColumns: GRID_COLUMNS }}
+      style={{ ...style, ...SESSION_ROW_STABLE_STYLE, gridTemplateColumns: GRID_COLUMNS }}
       className={`grid border-b border-[var(--color-overlay-border)] transition-all duration-[var(--duration-slow)] ease-out ${
         isFocused
           ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
@@ -344,6 +358,14 @@ export function VirtualizedSessionList({
   );
   const listHeight = Math.min(totalHeight, maxVisibleRows * ROW_HEIGHT);
 
+  // Track the peak observed list height so the container never shrinks — prevents CLS
+  // when sessions are removed via SSE (content below the table would otherwise jump up).
+  const peakListHeightRef = useRef(0);
+  if (listHeight > peakListHeightRef.current) {
+    peakListHeightRef.current = listHeight;
+  }
+  const containerMinHeight = peakListHeightRef.current || listHeight;
+
   if (items.length === 0) return null;
 
   const rowProps: SessionRowExtraProps = {
@@ -357,7 +379,7 @@ export function VirtualizedSessionList({
   };
 
   return (
-    <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden">
+    <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden" style={{ minHeight: containerMinHeight }}>
       {showHeader && (
         <div
           className="grid border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
