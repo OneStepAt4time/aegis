@@ -96,6 +96,8 @@ export class AcpBackend {
   private readonly driverFences = new Map<string, number>();
   /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
   private readonly inFlightPrompts = new Map<string, AbortController>();
+  /** Issue #4738: Track in-flight background handshakes so sendPrompt can await them. */
+  private readonly pendingHandshakes = new Map<string, Promise<unknown>>();
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -131,6 +133,7 @@ export class AcpBackend {
     return {
       sessionService: this.sessionService,
       inFlightPrompts: this.inFlightPrompts,
+      pendingHandshakes: this.pendingHandshakes,
     };
   }
 
@@ -190,7 +193,11 @@ export class AcpBackend {
         { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
       );
       throw err;
+    }).finally(() => {
+      this.pendingHandshakes.delete(session.id);
     });
+
+    this.pendingHandshakes.set(session.id, ready);
 
     return { session, initializeResult: {}, backendRunId, ready };
   }
@@ -308,21 +315,14 @@ export class AcpBackend {
    * Issue #3093: Direct prompt delivery to ACP runtime.
    * Issue #4695: Auto-resume runtime when session is idle but resumable.
    */
-  async sendPrompt(
-    sessionId: string,
-    text: string,
-    scope: AcpSessionScope,
-    cwd?: string
-  ): Promise<{ delivered: boolean; attempts: number; error?: string }> {
-    let runtime = this.runtimes.get(sessionId);
-    if (!runtime && cwd) {
-      const resumed = await promptModule.autoResumeRuntime(this.getRuntimeDeps(), this.getPromptDeps(), sessionId, scope, cwd);
-      if (resumed) runtime = resumed;
-    }
-    if (!runtime) {
-      return { delivered: false, attempts: 0, error: 'no_acp_runtime' };
-    }
-    return promptModule.sendPrompt(this.getPromptDeps(), runtime, sessionId, text, scope);
+  async sendPrompt(sessionId: string, text: string, scope: AcpSessionScope, cwd?: string) {
+    return promptModule.sendPromptWithHandshakeWait(
+      this.getPromptDeps() as promptModule.PromptDeps,
+      this.runtimes as Map<string, unknown>,
+      async (dep: promptModule.PromptDeps, sid: string, sc: AcpSessionScope, c: string) =>
+        promptModule.autoResumeRuntime(this.getRuntimeDeps(), dep, sid, sc, c),
+      sessionId, text, scope, cwd
+    );
   }
 
   /**

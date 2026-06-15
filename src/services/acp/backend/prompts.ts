@@ -21,6 +21,49 @@ export interface PromptDeps {
     getSession(sessionId: string, scope: AcpSessionScope): Promise<{ acpAgentSessionId?: string | null }>;
   };
   inFlightPrompts: Map<string, AbortController>;
+  /** Issue #4738: Track in-flight background handshakes for sendPrompt race prevention. */
+  pendingHandshakes: Map<string, Promise<unknown>>;
+}
+
+/**
+ * Issue #4738: sendPrompt wrapper that awaits in-flight background handshakes
+ * before falling through to autoResume. Prevents session/resume conflicts
+ * with createSessionAsync's fire-and-forget handshake.
+ */
+export async function sendPromptWithHandshakeWait(
+  deps: PromptDeps,
+  runtimes: Map<string, unknown>,
+  autoResume: (deps: PromptDeps, sessionId: string, scope: AcpSessionScope, cwd: string) => Promise<import('./types.js').AcpBackendRuntime | null>,
+  sessionId: string,
+  text: string,
+  scope: AcpSessionScope,
+  cwd?: string
+): Promise<{ delivered: boolean; attempts: number; error?: string }> {
+  let runtime = (runtimes as Map<string, import('./types.js').AcpBackendRuntime>).get(sessionId);
+
+  // Issue #4738: Wait for in-flight background handshake before attempting autoResume.
+  if (!runtime) {
+    const pending = deps.pendingHandshakes.get(sessionId);
+    if (pending) {
+      try {
+        await pending;
+      } catch {
+        // Background handshake failed; fall through below.
+      }
+      runtime = (runtimes as Map<string, import('./types.js').AcpBackendRuntime>).get(sessionId);
+    }
+  }
+
+  // Only attempt autoResume if no handshake was ever started (session is truly idle).
+  if (!runtime && cwd && !deps.pendingHandshakes.has(sessionId)) {
+    await autoResume(deps, sessionId, scope, cwd);
+    runtime = (runtimes as Map<string, import('./types.js').AcpBackendRuntime>).get(sessionId);
+  }
+
+  if (!runtime) {
+    return { delivered: false, attempts: 0, error: 'no_acp_runtime' };
+  }
+  return sendPrompt(deps, runtime, sessionId, text, scope);
 }
 
 /**
