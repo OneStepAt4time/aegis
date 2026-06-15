@@ -7,7 +7,14 @@
  * Issue #503: Supports first-message handshake auth. When an authToken is
  * provided, it is sent as { type: "auth", token: "..." } immediately after
  * connection. The server validates it before accepting other messages.
+ *
+ * Issue #4683: Reports open/close/reconnect/giveUp events to perfRecorder
+ * for the Endurance Test dashboard-instrumentation surface. URL is the
+ * endpoint key (path-only, no query string) so we don't leak tokens.
  */
+
+import { perfRecorder } from '../utils/perfRecorder';
+import { endpointFromUrl } from './endpointUtils';
 
 const MAX_BACKOFF_MS = 30_000;
 const GIVE_UP_MS = 5 * 60 * 1000; // 5 minutes
@@ -20,6 +27,7 @@ export interface ResilientWebSocketCallbacks {
   onClose?: () => void;
 }
 
+
 export class ResilientWebSocket {
   private ws: WebSocket | null = null;
   private consecutiveFailures = 0;
@@ -27,11 +35,13 @@ export class ResilientWebSocket {
   private destroyed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
+  private endpoint: string;
   private authToken: string | undefined;
   private callbacks: ResilientWebSocketCallbacks;
 
   constructor(url: string, callbacks: ResilientWebSocketCallbacks, authToken?: string) {
     this.url = url;
+    this.endpoint = endpointFromUrl(url);
     this.authToken = authToken;
     this.callbacks = callbacks;
     this.connect();
@@ -57,6 +67,7 @@ export class ResilientWebSocket {
         this.ws.send(JSON.stringify({ type: 'auth', token: this.authToken }));
       }
 
+      perfRecorder.recordWsOpen(this.endpoint);
       this.callbacks.onOpen?.();
     };
 
@@ -73,6 +84,7 @@ export class ResilientWebSocket {
 
     this.ws.onclose = () => {
       if (this.destroyed) return;
+      perfRecorder.recordWsClose(this.endpoint);
       this.ws = null;
       this.scheduleReconnect();
     };
@@ -91,6 +103,7 @@ export class ResilientWebSocket {
     }
 
     if (Date.now() - this.failStartTime >= GIVE_UP_MS) {
+      perfRecorder.recordWsGiveUp(this.endpoint);
       this.callbacks.onGiveUp?.();
       this.callbacks.onClose?.();
       return;
@@ -98,6 +111,7 @@ export class ResilientWebSocket {
 
     this.consecutiveFailures++;
     const delay = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, this.consecutiveFailures - 1));
+    perfRecorder.recordWsReconnect(this.endpoint, delay);
     this.callbacks.onReconnecting?.(this.consecutiveFailures, delay);
     // Issue #640: Do NOT call onClose during reconnection — only in give-up / explicit close
 

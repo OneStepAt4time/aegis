@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { perfRecorder } from '../utils/perfRecorder';
 
 interface UseSseAwarePollingOptions {
   refresh: () => Promise<void>;
@@ -48,10 +49,20 @@ export function useSseAwarePolling({
     }
 
     inFlightRef.current = true;
+    // Issue #4683 — measure the full refresh cycle (network roundtrip
+    // + state mutation + render) to feed perfRecorder's
+    // apiRefreshToRender surface. Captured here rather than in the
+    // caller so we get a consistent measurement regardless of which
+    // page mounts the hook.
+    const startedAt = performance.now();
     try {
       await refresh();
     } finally {
       inFlightRef.current = false;
+
+      if (!disposedRef.current) {
+        perfRecorder.recordApiRefreshToRender(performance.now() - startedAt);
+      }
 
       if (queuedRefreshRef.current && !disposedRef.current) {
         queuedRefreshRef.current = false;

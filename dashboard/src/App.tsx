@@ -13,6 +13,8 @@ import { useDrawerStore } from './store/useDrawerStore';
 import { isTourCompleted, markTourCompleted } from './utils/tourState';
 
 import { useAuthStore } from './store/useAuthStore';
+import { usePerfPageLoad } from './hooks/usePerfPageLoad';
+import { PerfPanel } from './components/PerfPanel';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const MetricsPage = lazy(() => import('./pages/MetricsPage'));
@@ -67,6 +69,8 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   const tourDismissed = useRef(false);
   const newSessionOpen = useDrawerStore((s) => s.newSessionOpen);
+
+  usePerfPageLoad(location.pathname);
 
   useEffect(() => {
     if (!isAuthenticated || location.pathname === '/login') {
@@ -276,8 +280,10 @@ export default function App() {
       </Routes>
 
       <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
-      
+
       {showTour && <Suspense fallback={null}><FirstRunTour onComplete={() => { tourDismissed.current = true; setShowTour(false); }} /></Suspense>}
+
+      <PerfPanel />
     </ErrorBoundary>
   );
 }
