@@ -46,7 +46,7 @@ describe('perfRecorder', () => {
       fcpMs: 800,
       lcpMs: 1200,
       cls: 0.05,
-      inpMs: null,
+      longestEventDurationMs: null,
     });
   });
 

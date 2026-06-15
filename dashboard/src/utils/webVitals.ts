@@ -14,7 +14,7 @@
 
 import { perfRecorder } from './perfRecorder';
 
-type VitalsListener = (vitals: { fcpMs?: number; lcpMs?: number; cls?: number; inpMs?: number }) => void;
+type VitalsListener = (vitals: { fcpMs?: number; lcpMs?: number; cls?: number; longestEventDurationMs?: number }) => void;
 
 let started = false;
 
@@ -24,7 +24,7 @@ export function startWebVitalsCapture(onChange?: VitalsListener): () => void {
   }
   started = true;
 
-  const dispatch = (partial: { fcpMs?: number; lcpMs?: number; cls?: number; inpMs?: number }) => {
+  const dispatch = (partial: { fcpMs?: number; lcpMs?: number; cls?: number; longestEventDurationMs?: number }) => {
     perfRecorder.recordWebVitals(partial);
     onChange?.(partial);
   };
@@ -59,13 +59,15 @@ export function startWebVitalsCapture(onChange?: VitalsListener): () => void {
     });
     lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
 
-    // Finalize LCP on hidden (per spec).
+    // Finalize LCP on hidden (per spec).  Both pagehide and
+    // visibilitychange cover desktop + mobile + bfcache eviction.
     const finalize = () => {
       if (document.visibilityState === 'hidden' && lcpValue !== null) {
         lcpObserver.disconnect();
       }
     };
     document.addEventListener('visibilitychange', finalize);
+    window.addEventListener('pagehide', finalize);
   } catch {
     // Browser doesn't support LCP observer.
   }
@@ -100,7 +102,7 @@ export function startWebVitalsCapture(onChange?: VitalsListener): () => void {
         const e = entry as PerformanceEntry & { duration: number };
         if (e.duration > (inpValue ?? 0)) {
           inpValue = e.duration;
-          dispatch({ inpMs: e.duration });
+          dispatch({ longestEventDurationMs: e.duration });
         }
       }
     });
@@ -112,7 +114,7 @@ export function startWebVitalsCapture(onChange?: VitalsListener): () => void {
         for (const entry of list.getEntries()) {
           const e = entry as PerformanceEntry & { processingStart?: number; startTime: number };
           const fid = (e.processingStart ?? e.startTime) - e.startTime;
-          dispatch({ inpMs: fid });
+          dispatch({ longestEventDurationMs: fid });
           break;
         }
       });

@@ -102,7 +102,7 @@ webVitals
   fcp=${formatMs(snap.webVitals.fcpMs)}
   lcp=${formatMs(snap.webVitals.lcpMs)}
   cls=${snap.webVitals.cls ?? '—'}
-  inp=${formatMs(snap.webVitals.inpMs)}
+  inp=${formatMs(snap.webVitals.longestEventDurationMs)}
 
 page-load by route
 ${routeSummary(snap)}

@@ -57,7 +57,7 @@ export interface PerfSnapshot {
     fcpMs: number | null;
     lcpMs: number | null;
     cls: number | null;
-    inpMs: number | null;
+    longestEventDurationMs: number | null;
   };
   websocket: Record<string, EndpointState>;
   sse: Record<string, EndpointState>;
@@ -80,7 +80,7 @@ class PerfRecorder {
   private startedAt = Date.now();
   private pageLoadByRoute: Record<string, LatencyStat> = {};
   private recentPageLoads: PageLoadSample[] = [];
-  private webVitals = { fcpMs: null as number | null, lcpMs: null as number | null, cls: null as number | null, inpMs: null as number | null };
+  private webVitals = { fcpMs: null as number | null, lcpMs: null as number | null, cls: null as number | null, longestEventDurationMs: null as number | null };
   private websocket: Record<string, EndpointState> = {};
   private sse: Record<string, EndpointState> = {};
   private ssePushCount = 0;
@@ -109,11 +109,11 @@ class PerfRecorder {
     if (this.recentPageLoads.length > MAX_SAMPLES) this.recentPageLoads.shift();
   }
 
-  recordWebVitals(partial: Partial<{ fcpMs: number; lcpMs: number; cls: number; inpMs: number }>): void {
+  recordWebVitals(partial: Partial<{ fcpMs: number; lcpMs: number; cls: number; longestEventDurationMs: number }>): void {
     if (partial.fcpMs !== undefined) this.webVitals.fcpMs = partial.fcpMs;
     if (partial.lcpMs !== undefined) this.webVitals.lcpMs = partial.lcpMs;
     if (partial.cls !== undefined) this.webVitals.cls = partial.cls;
-    if (partial.inpMs !== undefined) this.webVitals.inpMs = partial.inpMs;
+    if (partial.longestEventDurationMs !== undefined) this.webVitals.longestEventDurationMs = partial.longestEventDurationMs;
   }
 
   recordWsOpen(endpoint: string): void {
@@ -220,7 +220,7 @@ class PerfRecorder {
     this.startedAt = Date.now();
     this.pageLoadByRoute = {};
     this.recentPageLoads = [];
-    this.webVitals = { fcpMs: null, lcpMs: null, cls: null, inpMs: null };
+    this.webVitals = { fcpMs: null, lcpMs: null, cls: null, longestEventDurationMs: null };
     this.websocket = {};
     this.sse = {};
     this.ssePushCount = 0;

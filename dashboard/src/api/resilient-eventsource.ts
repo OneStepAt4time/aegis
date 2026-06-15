@@ -9,6 +9,7 @@
  */
 
 import { perfRecorder } from '../utils/perfRecorder';
+import { endpointFromUrl } from './endpointUtils';
 
 const MAX_BACKOFF_MS = 30_000;
 const GIVE_UP_MS = 5 * 60 * 1000; // 5 minutes
@@ -20,16 +21,6 @@ export interface ResilientCallbacks {
   onClose?: () => void;
 }
 
-function endpointFromUrl(url: string): string {
-  // Strip protocol + host + query string so we don't leak tokens in
-  // the recorder snapshot.
-  try {
-    const u = new URL(url, window.location.href);
-    return u.pathname;
-  } catch {
-    return url;
-  }
-}
 
 export class ResilientEventSource {
   private eventSource: EventSource | null = null;
