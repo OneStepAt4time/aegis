@@ -73,7 +73,7 @@ export default function App() {
   // We measure from the moment a route starts loading (the navigation
   // tick on this render) until the next paint, plus a fallback for
   // routes that have already settled.
-  const routeChangeAt = useRef<number>(Date.now());
+  const routeChangeAt = useRef<number>(performance.now());
   useEffect(() => {
     const route = location.pathname;
     const startedAt = routeChangeAt.current;

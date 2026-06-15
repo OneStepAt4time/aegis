@@ -64,7 +64,10 @@ export class ResilientEventSource {
       this.eventSource = null;
     }
 
-    this.eventSource = new EventSource(this.url);
+    // #4723: withCredentials: true so cookie-based dashboard sessions
+    // (set by /v1/auth/verify, see #1924) are sent to /v1/events.
+    // The token-in-URL path is unaffected — both credentials can coexist.
+    this.eventSource = new EventSource(this.url, { withCredentials: true });
     this.eventSource.onmessage = this.onMessage;
     this.eventSource.onopen = () => {
       if (this.destroyed) return;
