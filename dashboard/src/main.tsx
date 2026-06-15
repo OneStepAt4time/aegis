@@ -3,7 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { I18nProvider } from './i18n/context';
+import { startWebVitalsCapture } from './utils/webVitals';
 import './index.css';
+
+// Start Web Vitals capture as early as possible so FCP is observed.
+startWebVitalsCapture();
 
 // Register service worker
 if ('serviceWorker' in navigator) {

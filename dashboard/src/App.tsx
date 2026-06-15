@@ -11,8 +11,10 @@ import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useDrawerStore } from './store/useDrawerStore';
 import { isTourCompleted } from './utils/tourState';
+import { perfRecorder } from './utils/perfRecorder';
 
 import { useAuthStore } from './store/useAuthStore';
+import { PerfPanel } from './components/PerfPanel';
 
 const AuditPage = lazy(() => import('./pages/AuditPage'));
 const MetricsPage = lazy(() => import('./pages/MetricsPage'));
@@ -66,6 +68,38 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   const tourDismissed = useRef(false);
   const newSessionOpen = useDrawerStore((s) => s.newSessionOpen);
+
+  // Issue #4683 — record page-load timing per route change.
+  // We measure from the moment a route starts loading (the navigation
+  // tick on this render) until the next paint, plus a fallback for
+  // routes that have already settled.
+  const routeChangeAt = useRef<number>(Date.now());
+  useEffect(() => {
+    const route = location.pathname;
+    const startedAt = routeChangeAt.current;
+    let cancelled = false;
+    const finalize = () => {
+      if (cancelled) return;
+      const ms = performance.now() - startedAt;
+      // Mark the route as fully interactive (paint observed) once the
+      // first frame after navigation completes.
+      perfRecorder.recordPageLoad(route, ms, true);
+      routeChangeAt.current = performance.now();
+    };
+    // Use rAF + small timeout to capture first-paint timing for the
+    // lazy chunk. Two rAFs is the standard pattern for "after paint".
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // requestAnimationFrame timestamps are relative to the same
+        // epoch as performance.now() in modern browsers.
+        finalize();
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated || location.pathname === '/login') {
@@ -265,8 +299,10 @@ export default function App() {
       </Routes>
 
       <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
-      
+
       {showTour && <Suspense fallback={null}><FirstRunTour onComplete={() => { tourDismissed.current = true; setShowTour(false); }} /></Suspense>}
+
+      <PerfPanel />
     </ErrorBoundary>
   );
 }

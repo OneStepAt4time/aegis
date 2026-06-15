@@ -3,7 +3,12 @@
  *
  * Issue #308: Prevents indefinite reconnection when server is permanently down.
  * Implements exponential backoff, total give-up timeout, and failure counter reset.
+ *
+ * Issue #4683: Reports open/close/reconnect/giveUp events to perfRecorder
+ * for the Endurance Test dashboard-instrumentation surface.
  */
+
+import { perfRecorder } from '../utils/perfRecorder';
 
 const MAX_BACKOFF_MS = 30_000;
 const GIVE_UP_MS = 5 * 60 * 1000; // 5 minutes
@@ -15,6 +20,17 @@ export interface ResilientCallbacks {
   onClose?: () => void;
 }
 
+function endpointFromUrl(url: string): string {
+  // Strip protocol + host + query string so we don't leak tokens in
+  // the recorder snapshot.
+  try {
+    const u = new URL(url, window.location.href);
+    return u.pathname;
+  } catch {
+    return url;
+  }
+}
+
 export class ResilientEventSource {
   private eventSource: EventSource | null = null;
   private consecutiveFailures = 0;
@@ -23,11 +39,13 @@ export class ResilientEventSource {
   private gaveUp = false; // Issue #640: guard against multiple onClose calls
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
+  private endpoint: string;
   private callbacks: ResilientCallbacks;
   private onMessage: (e: MessageEvent) => void;
 
   constructor(url: string, onMessage: (e: MessageEvent) => void, callbacks: ResilientCallbacks = {}) {
     this.url = url;
+    this.endpoint = endpointFromUrl(url);
     this.onMessage = onMessage;
     this.callbacks = callbacks;
     this.connect();
@@ -53,6 +71,7 @@ export class ResilientEventSource {
       this.consecutiveFailures = 0;
       this.failStartTime = null;
       this.gaveUp = false;
+      perfRecorder.recordSseOpen(this.endpoint);
       this.callbacks.onOpen?.();
     };
     this.eventSource.onerror = () => {
@@ -68,6 +87,7 @@ export class ResilientEventSource {
       if (Date.now() - this.failStartTime >= GIVE_UP_MS) {
         if (!this.gaveUp) {
           this.gaveUp = true;
+          perfRecorder.recordSseGiveUp(this.endpoint);
           this.callbacks.onGiveUp?.();
           this.callbacks.onClose?.();
         }
@@ -76,6 +96,7 @@ export class ResilientEventSource {
 
       this.consecutiveFailures++;
       const delay = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, this.consecutiveFailures - 1));
+      perfRecorder.recordSseReconnect(this.endpoint, delay);
       this.callbacks.onReconnecting?.(this.consecutiveFailures, delay);
       // Issue #640: Do NOT call onClose during reconnection — only in give-up / explicit close
 

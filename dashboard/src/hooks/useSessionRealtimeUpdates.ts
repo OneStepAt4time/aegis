@@ -6,12 +6,19 @@
  * and session_dead events from the activity stream and updates the store's sessions
  * array and health map immediately. The periodic refetch from useSseAwarePolling
  * (in SessionTable / HomeStatusPanel) serves as a consistency backstop.
+ *
+ * Issue #4683: Reports SSE-push to store-commit latency to perfRecorder for
+ * the Endurance Test "session list responsiveness" surface. The recorded
+ * value is the time the effect body took to walk events and dispatch
+ * setSessions/setHealth — a tight upper bound on the user-visible
+ * push-to-render delay (React reconciliation is sub-frame in this app).
  */
 
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { useApprovalStore } from '../store/useApprovalStore';
 import { useToastStore } from '../store/useToastStore';
+import { perfRecorder } from '../utils/perfRecorder';
 import type { UIState, SessionHealthState } from '../types';
 
 const SESSION_RELEVANT_EVENTS: ReadonlySet<string> = new Set([
@@ -32,6 +39,12 @@ export function useSessionRealtimeUpdates(): void {
   const lastProcessedKey = useRef<string | null>(null);
 
   useEffect(() => {
+    // Issue #4683 — start the push-to-render timer at the moment this
+    // effect is scheduled, which is the moment React observed a new
+    // event in the activities array. We compare to performance.now()
+    // at setSessions/setHealth below to record the latency.
+    const startedAt = performance.now();
+
     // Collect new events since last render (activities are newest-first).
     const newEvents = [];
     for (const activity of activities) {
@@ -126,6 +139,12 @@ export function useSessionRealtimeUpdates(): void {
     }
     if (healthChanged) {
       setHealth(updatedHealthMap);
+    }
+
+    // Issue #4683 — record the latency for any batch that actually
+    // changed the list. A no-op batch is uninteresting; ignore it.
+    if (sessionsChanged || healthChanged) {
+      perfRecorder.recordSsePushToRender(performance.now() - startedAt);
     }
   }, [activities]);
 }
