@@ -343,6 +343,71 @@ ci: add concurrency group to cancel overlapping runs
 
    **Exceptions:** Pure documentation PRs, version bumps, i18n-only changes to already-tested components.
 
+## Path (b) Fallback: Boss approves via CLI on bot-authored PRs
+
+> **Why this exists:** GitHub blocks a bot from approving its own PR. Bot-authored
+> PRs (Dependabot auto-merges, release-please release PRs, `aegis-gh-agent[bot]`
+> pre-checks) therefore cannot self-approve and would otherwise sit until a human
+> reviewer clicks the button. The structural fix is tracked in
+> [#4725](https://github.com/OneStepAt4time/aegis/issues/4725) (reviewer App/PAT as
+> required reviewer) and the unattended-merge hardening is in
+> [#4728](https://github.com/OneStepAt4time/aegis/issues/4728) (fallback approver chain).
+> This Path (b) is the documented workaround for **bot-authored PRs that need a
+> human approval click while Ema is available**.
+
+### The convention
+
+When a bot-authored PR is green, has all required checks passing, and is
+otherwise ready to merge, but blocked on the self-approval constraint:
+
+1. **Ema runs the approval from their machine** (NOT a bot, NOT a CI runner):
+
+   ```bash
+   gh pr review --approve <PR_NUMBER>
+   ```
+
+2. The approval is attributed to Ema's GitHub identity (`OneStepAt4time`),
+   not the bot author. GitHub's self-approval check is `author == approver`:
+   since the bot authored and Ema approved, the constraint is satisfied.
+3. Argus's pre-stage review and squash-merge happen normally afterwards.
+
+### When to use
+
+- The PR is **bot-authored** (the author is `aegis-gh-agent[bot]`,
+  `dependabot[bot]`, or a per-agent App once registered).
+- All required CI checks are green.
+- Ema is available and willing to click the button.
+- The PR is not security-sensitive (for security-sensitive bot PRs, use
+  Path (a) — the reviewer App/PAT — once it's deployed, or escalate to
+  Themis for an explicit sign-off click).
+
+### When NOT to use
+
+- The PR is human-authored — let the human request their own review from
+  Argus through the normal flow.
+- The PR needs unattended merge (overnight, hotfix window) — use
+  [#4728](https://github.com/OneStepAt4time/aegis/issues/4728)'s fallback approver chain
+  instead, which adds an owner-overridable bot approver.
+- The PR is to `main` and represents a release — Ema's go/no-go on the
+  **release PR** (the one opened by release-please with the version bump)
+  is a separate gate. The Path (b) here covers bot PRs to `develop`; the
+  release-please PR to `main` follows the v0.6.6 / v0.6.7 precedent of an
+  explicit Ema click after reviewing the version bump.
+
+### Audit trail
+
+The `gh pr review --approve` call logs to the PR's timeline with Ema's
+identity, the timestamp, and the action. This is the audit trail. For
+releases, this is the **explicit** go/no-go — never assume release-please
+will auto-merge.
+
+### References
+
+- [#4725](https://github.com/OneStepAt4time/aegis/issues/4725) — Path (a) structural fix (reviewer App/PAT)
+- [#4728](https://github.com/OneStepAt4time/aegis/issues/4728) — Fallback approver chain (post-#4683)
+- [`docs/devops/per-agent-identities.md`](./docs/devops/per-agent-identities.md) — Per-agent App identity model
+- [`docs/devops/branch-protection-checklist.md`](./docs/devops/branch-protection-checklist.md) — Branch protection rules
+
 ## Documentation PRs
 
 Documentation-only PRs follow the same process as code PRs with one addition:
