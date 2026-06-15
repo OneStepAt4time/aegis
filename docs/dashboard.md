@@ -102,6 +102,39 @@ Below the analytics zones, the page shows the **System Health** panel and a **Re
 | `R` | Refresh analytics data |
 | `Esc` | Close modal / navigate back |
 
+### Performance Instrumentation
+
+The dashboard includes built-in performance instrumentation designed for long-running endurance tests (issue #4683). All metrics are held in bounded ring buffers (200 entries each) so a 4-hour run does not leak memory, and a JSON snapshot is exposed for scraping.
+
+**Metrics captured:**
+
+- **Per-route page load** — `usePerfPageLoad` uses a double-`requestAnimationFrame` pattern to measure time from route change to first paint. The start time is captured inside the effect so the first sample is never a giant negative number.
+- **Web Vitals** — `webVitals.ts` captures FCP, LCP, CLS, and `longestEventDurationMs` (raw event duration, not strict INP per spec). The recorder stops observing after the page is hidden for 5+ seconds to keep CPU idle during long runs.
+- **Connection counters** — open, close, reconnect, and give-up counters per endpoint for both WebSocket and SSE connections.
+- **Session-list latency** — SSE-push-to-render and API-refresh-to-render latency with p50/p95/max.
+- **Memory** — JS heap size in MB (Chromium-only; `null` on other browsers).
+
+**Snapshot API:**
+
+The recorder is exposed globally for test scraping:
+
+```js
+window.__aegisPerf__.snapshot()   // → PerfSnapshot JSON
+window.__aegisPerf__.reset()      // clear for test isolation
+```
+
+**Dev overlay:**
+
+Append `?perf=1` to the URL to show a floating live panel (dev builds only) that polls every second:
+
+```
+https://localhost:9100/dashboard/?perf=1
+```
+
+**Shared utility:**
+
+`endpointFromUrl(url)` in `api/endpointUtils.ts` strips protocol, host, query, and hash so tokens never leak into recorder snapshots. It is used by both `resilient-websocket.ts` and `resilient-eventsource.ts`.
+
 ### ACP Chat & Approval Integration
 
 The dashboard integrates with ACP (Agent Control Protocol) sessions for real-time chat and approval workflows:
