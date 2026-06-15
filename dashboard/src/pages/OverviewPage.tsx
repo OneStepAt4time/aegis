@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback, Suspense, lazy } from 'react';
-import { Plus, Loader2, BarChart3 } from 'lucide-react';
+import { Plus, BarChart3 } from 'lucide-react';
 
 const OverviewCostChart = lazy(() =>
   import('../components/overview/OverviewCostChart').then((m) => ({ default: m.OverviewCostChart }))
@@ -216,9 +216,19 @@ export default function OverviewPage() {
         <KPIBanner items={buildKPIItems(analytics)} />
       )}
       {analyticsLoading && (
-        <div className="flex items-center justify-center py-4" role="status" aria-busy="true">
-          <Loader2 className="h-4 w-4 animate-spin text-[var(--color-accent-cyan)]" />
-          <span className="ml-2 text-sm text-[var(--color-text-muted)]">{t('overview.loadingMetrics')}</span>
+        <div
+          className="grid min-h-[52px] divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] animate-pulse"
+          style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}
+          role="status"
+          aria-busy="true"
+          aria-label={t('overview.loadingMetrics')}
+        >
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center justify-center gap-1 px-3 py-3">
+              <div className="h-2 w-12 rounded bg-[var(--color-void-lighter)]" />
+              <div className="h-4 w-16 rounded bg-[var(--color-void-dark)]" />
+            </div>
+          ))}
         </div>
       )}
 

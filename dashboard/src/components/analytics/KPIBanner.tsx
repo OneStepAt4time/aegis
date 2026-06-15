@@ -72,7 +72,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
 
   return (
     <div
-      className={`grid divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] ${className}`}
+      className={`grid divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] min-h-[52px] ${className}`}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       role="list"
       aria-label={t("aria.keyPerformanceIndicators")}
