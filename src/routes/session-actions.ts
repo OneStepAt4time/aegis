@@ -53,10 +53,27 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
         });
       }
     }
+    // Issue #4738: Inner try/catch wraps prompt delivery only. Delivery
+    // failures (e.g. real-CC JSON-RPC errors re-thrown by inner sendPrompt
+    // per #4705) map to 422 to match the !result.delivered path below. The
+    // previous generic catch returned 404 for any error, masking legitimate
+    // delivery failures as "not found" and breaking the
+    // server-core-coverage smoke test when the handshake can complete in
+    // CI environments that have a real CC binary.
+    let result;
     try {
-      const result = acpBackend && config.acpEnabled
+      result = acpBackend && config.acpEnabled
         ? await acpBackend.sendPrompt(sessionId, text, { tenantId: req.tenantId ?? SYSTEM_TENANT, ownerKeyId: req.authKeyId ?? 'master' }, session.workDir)
         : await sessions.sendMessage(sessionId, text);
+    } catch (deliveryError) {
+      return reply.status(422).send({
+        error: 'PROMPT_DELIVERY_FAILED',
+        message: deliveryError instanceof Error ? deliveryError.message : String(deliveryError),
+        delivered: false,
+        attempts: 0,
+      });
+    }
+    try {
       // Issue #1809: Re-fetch stall info AFTER delivery to avoid false-positive.
       // Previously we called getStallInfo BEFORE send, capturing a stale state
       // (session was temporarily quiet but became active after message delivery).
@@ -82,7 +99,10 @@ export function registerSessionActionRoutes(app: FastifyInstance, ctx: RouteCont
       if (currentStallInfo.stalled) response.stall = currentStallInfo;
       return reply.send(response);
     } catch (e: unknown) {
-      return reply.status(404).send({ error: e instanceof Error ? e.message : String(e) });
+      // Internal error after successful delivery (e.g. monitor/channels
+      // threw). Return 500, not 404 — the previous 404 was a generic
+      // catch-all that conflated internal errors with delivery failures.
+      return reply.status(500).send({ error: e instanceof Error ? e.message : String(e) });
     }
   }, 'send');
 
