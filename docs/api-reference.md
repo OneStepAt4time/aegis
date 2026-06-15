@@ -1639,7 +1639,9 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/send \
 
 **Response (failure — `422 Unprocessable Entity`):**
 
-When the message cannot be delivered to the Claude Code runtime (e.g., timeout waiting for prompt acknowledgment, or no active transport).
+Returned in two cases with the same response shape:
+1. The CC runtime acknowledged but reported the message as not delivered (`result.delivered === false`).
+2. The inner delivery call threw (e.g., JSON-RPC error from the runtime during a handshake race, no active transport, or a backend-specific failure).
 
 ```json
 {
@@ -1650,16 +1652,17 @@ When the message cannot be delivered to the Claude Code runtime (e.g., timeout w
 }
 ```
 
-> **Error values:** `message` may be `prompt_ack_timeout` (ACP runtime did not acknowledge within the timeout), `no_active_transport` (session has no active ACP transport), or another backend-specific error string.
+> **Error values:** `message` may be `prompt_ack_timeout` (ACP runtime did not acknowledge within the timeout), `no_active_transport` (session has no active ACP transport), a JSON-RPC error code (e.g. `-32601 Method not found`), or another backend-specific error string. `attempts` is the number of delivery attempts the backend made before giving up.
 
 **Errors:**
 
 | Status | Code | Condition |
 |--------|------|-----------|
 | 400 | — | Invalid request body |
-| 404 | — | Session not found |
+| 404 | — | Session not found (returned by the ownership check upstream of delivery) |
 | 422 | `PROMPT_DELIVERY_FAILED` | Message could not be delivered to the CC runtime. Check `message` field for cause. |
 | 429 | — | Per-key token/spend quota exceeded |
+| 500 | — | Internal error after successful delivery (e.g. monitor or channels threw). Delivery itself succeeded; the failure is in post-delivery bookkeeping. |
 
 ---
 
@@ -1932,7 +1935,36 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/command \
 |-----------|------|----------|-------------|
 | `command` | string | **yes** | Slash command to send |
 
-**Response:** `{ "ok": true }`
+**Response (`200 OK`):**
+
+```json
+{
+  "ok": true,
+  "delivered": true,
+  "attempts": 1
+}
+```
+
+> **Soft-fail contract:** Slash-command delivery failures (handshake race, JSON-RPC error from the runtime, no active transport) do **not** return an error status. The HTTP request succeeds with `200 OK` and `delivered: false` so the caller knows the command did not reach CC. This matches the pre-`/send`-split behavior and is the contract the CLI `ag command` and MCP `send_command` callers depend on.
+
+**Response (soft-fail — `200 OK` with `delivered: false`):**
+
+```json
+{
+  "ok": true,
+  "delivered": false,
+  "attempts": 0,
+  "error": "no_active_transport"
+}
+```
+
+**Errors:**
+
+| Status | Code | Condition |
+|--------|------|-----------|
+| 400 | — | Invalid request body |
+| 404 | — | Session not found (returned by the ownership check upstream of delivery) |
+| 429 | — | Per-key token/spend quota exceeded |
 
 ---
 

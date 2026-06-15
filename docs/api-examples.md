@@ -362,10 +362,17 @@ curl -X POST http://localhost:9100/v1/sessions/abc123/command \
 
 Sends a slash command. Prefix with `/` if not provided.
 
-**Response `200`:**
+**Response `200` (success):**
 ```json
-{"ok": true}
+{"ok": true, "delivered": true, "attempts": 1}
 ```
+
+**Response `200` (soft-fail — command did not reach CC):**
+```json
+{"ok": true, "delivered": false, "attempts": 0, "error": "no_active_transport"}
+```
+
+> **Soft-fail contract:** Delivery failures return `200` with `delivered: false`, not a 4xx. Always check `delivered` in the response, not just the HTTP status.
 
 ---
 
