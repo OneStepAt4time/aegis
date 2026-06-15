@@ -90,4 +90,42 @@ describe('ag send command', () => {
     const result = await handleSend(['aaaaaaaa', 'hello'], io);
     expect(result).toBe(1);
   });
+
+  it('should return 1 and surface error message on 422 Unprocessable Entity', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: () => Promise.resolve({ error: 'Invalid message payload' }),
+    });
+
+    const result = await handleSend(['aaaaaaaa', 'bad', 'payload'], io);
+
+    expect(result).toBe(1);
+    expect(writeLine).toHaveBeenCalledWith(
+      expect.objectContaining({ write: expect.any(Function) }),
+      expect.stringContaining('Invalid message payload'),
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/v1/sessions/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/send',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('should include Content-Type: application/json header in the request', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ delivered: true, attempts: 1 }),
+    });
+
+    await handleSend(['aaaaaaaa', 'hello'], io);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+      }),
+    );
+  });
 });
