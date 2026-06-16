@@ -18,7 +18,10 @@ describe('Screenshot capability', () => {
   });
 
   describe('captureScreenshot — error handling', () => {
-    it('should throw when capture fails (playwright missing or browser unavailable)', async () => {
+    it(
+      'should throw when capture fails (playwright missing or browser unavailable)',
+      { timeout: 30_000 }, // #4736: real browser launch + page.goto; inner page.goto timeout is 30s (src/screenshot.ts:62). Outer 5s aborts under test:serial system load. Match inner.
+      async () => {
       try {
         const { captureScreenshot } = await import('../screenshot.js');
         await captureScreenshot({ url: 'https://example.com' });
