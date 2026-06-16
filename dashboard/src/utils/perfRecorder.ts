@@ -271,9 +271,23 @@ function readMemory(): { usedJsHeapMb: number | null; totalJsHeapMb: number | nu
 export const perfRecorder = new PerfRecorder();
 
 // Expose for scraping by the test runner. Intentionally read-only.
+// In dev builds, also exposes a test-only injection point for the
+// mock SSE producer rig (#4740) — drives `recordSsePushToRender`
+// directly without a live CC session. The dev-only guard is the
+// contract: production builds MUST NOT expose this hook.
 if (typeof window !== 'undefined') {
+  const isDev = import.meta.env.DEV;
   (window as unknown as { __aegisPerf__?: unknown }).__aegisPerf__ = {
     snapshot: () => perfRecorder.snapshot(),
     reset: () => perfRecorder.reset(),
+    ...(isDev
+      ? {
+          // Test-only: drive `recordSsePushToRender` from the mock SSE
+          // producer (scripts/perf/mock-sse-producer.mjs) without a
+          // live CC session. Underscore prefix + dev-only guard are
+          // the contract: production code MUST NOT call this.
+          _testInjectSsePush: (ms: number) => perfRecorder.recordSsePushToRender(ms),
+        }
+      : {}),
   };
 }

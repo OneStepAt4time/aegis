@@ -135,4 +135,17 @@ describe('perfRecorder', () => {
     expect(Object.keys(snap.sse)).toHaveLength(0);
     expect(snap.sessionList.ssePushToRenderCount).toBe(0);
   });
+
+  it('exposes _testInjectSsePush on window.__aegisPerf__ for the mock SSE producer rig (#4740)', async () => {
+    const { perfRecorder } = await import('../perfRecorder');
+    const w = window as unknown as { __aegisPerf__?: { _testInjectSsePush?(ms: number): void } };
+    expect(w.__aegisPerf__?._testInjectSsePush).toBeDefined();
+    w.__aegisPerf__!._testInjectSsePush!(75);
+    w.__aegisPerf__!._testInjectSsePush!(125);
+    w.__aegisPerf__!._testInjectSsePush!(200);
+    const snap = perfRecorder.snapshot();
+    expect(snap.sessionList.ssePushToRenderCount).toBe(3);
+    expect(snap.sessionList.ssePushToRenderLastMs).toBe(200);
+    expect(snap.sessionList.ssePushToRenderMaxMs).toBe(200);
+  });
 });
