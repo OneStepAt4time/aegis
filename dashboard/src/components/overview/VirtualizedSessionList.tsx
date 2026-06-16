@@ -212,7 +212,7 @@ function VirtualizedRow(props: {
   return (
     <div
       style={{ ...style, ...SESSION_ROW_STABLE_STYLE, gridTemplateColumns: GRID_COLUMNS }}
-      className={`grid border-b border-[var(--color-overlay-border)] transition-all duration-[var(--duration-slow)] ease-out ${
+      className={`grid border-b border-[var(--color-overlay-border)] transition-[background-color,border-color,box-shadow,transform,opacity,color] duration-150 ease-out ${
         isFocused
           ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
           : 'hover:bg-[var(--color-overlay-bg)] hover:scale-[1.002] cursor-pointer'
@@ -379,7 +379,7 @@ export function VirtualizedSessionList({
   };
 
   return (
-    <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden" style={{ minHeight: containerMinHeight }}>
+    <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden" style={{ minHeight: containerMinHeight, containLayout: true, contain: 'layout' } as CSSProperties}>
       {showHeader && (
         <div
           className="grid border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
