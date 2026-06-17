@@ -135,7 +135,7 @@
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "optionalDependencies": {
     "@opentelemetry/resources": "^2.7.1",
