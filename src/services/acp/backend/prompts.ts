@@ -8,7 +8,7 @@ import type { AcpJsonValue } from '../json-rpc-client.js';
 import type { AcpSessionScope } from '../types.js';
 import { StructuredLogger } from '../../../logger.js';
 import { AcpBackendLifecycleError } from './errors.js';
-import type { AcpBackendRuntime } from './types.js';
+import type { AcpBackendRuntime, AcpBackendStartResult } from './types.js';
 import * as runtimeLifecycle from './runtime.js';
 import type { AcpSessionRecord } from '../types.js';
 
@@ -21,8 +21,8 @@ export interface PromptDeps {
     getSession(sessionId: string, scope: AcpSessionScope): Promise<{ acpAgentSessionId?: string | null }>;
   };
   inFlightPrompts: Map<string, AbortController>;
-  /** Issue #4738: Track in-flight background handshakes for sendPrompt race prevention. */
-  pendingHandshakes: Map<string, Promise<unknown>>;
+  /** Issue #4738: Track in-flight background handshakes for sendPrompt race prevention. Issue #4760: value is the full outer shape (session+backendRunId+ready) so dedup returns the first call's references. */
+  pendingHandshakes: Map<string, { session: AcpSessionRecord; backendRunId: string; ready: Promise<AcpBackendStartResult> }>;
 }
 
 /**
@@ -46,7 +46,7 @@ export async function sendPromptWithHandshakeWait(
     const pending = deps.pendingHandshakes.get(sessionId);
     if (pending) {
       try {
-        await pending;
+        await pending.ready;
       } catch {
         // Background handshake failed; fall through below.
       }

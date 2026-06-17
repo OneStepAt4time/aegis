@@ -96,8 +96,8 @@ export class AcpBackend {
   private readonly driverFences = new Map<string, number>();
   /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
   private readonly inFlightPrompts = new Map<string, AbortController>();
-  /** Issue #4738: Track in-flight background handshakes so sendPrompt can await them. */
-  private readonly pendingHandshakes = new Map<string, Promise<unknown>>();
+  /** Issue #4738: Track in-flight background handshakes so sendPrompt can await them. Issue #4760: per-session dedup — value stores the full outer shape (session+backendRunId+ready) so dedup returns the FIRST call's references. */
+  private readonly pendingHandshakes = new Map<string, { session: AcpSessionRecord; backendRunId: string; ready: Promise<AcpBackendStartResult> }>();
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -176,19 +176,16 @@ export class AcpBackend {
    */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    // #4760: dedup — return existing in-flight handshake if present; check-then-set is atomic (no await between).
+    // #4760: dedup — return the FIRST call's outer shape (session/backendRunId/ready). Check-then-set is atomic (no await between).
     const existing = this.pendingHandshakes.get(session.id);
     if (existing) {
-      return { session, initializeResult: {}, backendRunId: this.backendRunIdProvider(), ready: existing as Promise<AcpBackendStartResult> };
+      return { session: existing.session, initializeResult: {}, backendRunId: existing.backendRunId, ready: existing.ready };
     }
     return this.launchBackgroundHandshake(session, input);
   }
 
-  /** #4760: launch a new background handshake; sets pendingHandshakes[session.id] and clears it on settle. */
-  private launchBackgroundHandshake(
-    session: AcpSessionRecord,
-    input: AcpBackendCreateSessionInput,
-  ): AcpBackendStartResult {
+  /** #4760: launch a new background handshake; stores outer shape in pendingHandshakes; .finally() clears on settle. */
+  private launchBackgroundHandshake(session: AcpSessionRecord, input: AcpBackendCreateSessionInput): AcpBackendStartResult {
     const backendRunId = this.backendRunIdProvider();
     const ready = runtimeLifecycle.startNewRuntimeBackground(
       this.getRuntimeDeps(), session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId,
@@ -198,7 +195,7 @@ export class AcpBackend {
         throw err;
       })
       .finally(() => { this.pendingHandshakes.delete(session.id); });
-    this.pendingHandshakes.set(session.id, ready);
+    this.pendingHandshakes.set(session.id, { session, backendRunId, ready });
     return { session, initializeResult: {}, backendRunId, ready };
   }
 

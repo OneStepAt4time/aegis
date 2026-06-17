@@ -52,10 +52,10 @@ describe('#4738 — sendPrompt awaits in-flight background handshake', () => {
 
     // Simulate: createSessionAsync registered a pending handshake
     const backendInternal = backend as unknown as {
-      pendingHandshakes: Map<string, Promise<unknown>>;
+      pendingHandshakes: Map<string, { session: unknown; backendRunId: string; ready: Promise<unknown> }>;
       runtimes: Map<string, unknown>;
     };
-    backendInternal.pendingHandshakes.set('s1', handshakePromise);
+    backendInternal.pendingHandshakes.set('s1', { session: { id: 's1' }, backendRunId: 'test-run-id', ready: handshakePromise });
 
     // Start sendPrompt (it should block on the handshake)
     const sendPromise = backend.sendPrompt('s1', 'hello', { tenantId: '_system', ownerKeyId: 'master' }, '/tmp');
@@ -85,10 +85,10 @@ describe('#4738 — sendPrompt awaits in-flight background handshake', () => {
     const backend = new AcpBackend(makeBackendOptions(sessionService));
 
     const backendInternal = backend as unknown as {
-      pendingHandshakes: Map<string, Promise<unknown>>;
+      pendingHandshakes: Map<string, { session: unknown; backendRunId: string; ready: Promise<unknown> }>;
       runtimes: Map<string, unknown>;
     };
-    backendInternal.pendingHandshakes.set('s1', Promise.reject(new Error('handshake failed')));
+    backendInternal.pendingHandshakes.set('s1', { session: { id: 's1' }, backendRunId: 'test-run-id', ready: Promise.reject(new Error('handshake failed')) });
 
     const result = await backend.sendPrompt('s1', 'hello', { tenantId: '_system', ownerKeyId: 'master' }, '/tmp');
     expect(result.delivered).toBe(false);
@@ -106,10 +106,10 @@ describe('#4738 — sendPrompt awaits in-flight background handshake', () => {
     // Simulate a completed handshake that registered the runtime
     const resolvedPromise = Promise.resolve();
     const backendInternal = backend as unknown as {
-      pendingHandshakes: Map<string, Promise<unknown>>;
+      pendingHandshakes: Map<string, { session: unknown; backendRunId: string; ready: Promise<unknown> }>;
       runtimes: Map<string, unknown>;
     };
-    backendInternal.pendingHandshakes.set('s1', resolvedPromise);
+    backendInternal.pendingHandshakes.set('s1', { session: { id: 's1' }, backendRunId: 'test-run-id', ready: resolvedPromise });
     backendInternal.runtimes.set('s1', mockRuntime);
     await resolvedPromise;
 

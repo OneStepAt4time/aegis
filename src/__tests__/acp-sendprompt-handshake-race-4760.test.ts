@@ -98,6 +98,64 @@ describe('#4760 — race regression: concurrent createSessionAsync preserves ded
     expect(resultA.ready).toBe(resultB.ready);
   });
 
+  it('dedup returns the FIRST call\'s session and backendRunId, not fresh ones (Themis review)', async () => {
+    const { AcpBackend } = await import('../services/acp/backend.js');
+
+    let resolveHandshake!: () => void;
+    const handshakePromise = new Promise<void>((resolve) => { resolveHandshake = resolve; });
+    startNewRuntimeBackgroundMock.mockReturnValue(handshakePromise);
+
+    // Mock sessionService.createSession to return a UNIQUE object on each call
+    // so the test can verify the dedup returns the FIRST call's reference, not
+    // a freshly-synthesized one from the second call. The first call's object
+    // is captured so we can assert identity.
+    let createCallCount = 0;
+    const firstSession = { id: 's1', _call: 1 } as { id: string; _call: number };
+    const sessionService = {
+      getSession: vi.fn().mockResolvedValue({ id: 's1', acpAgentSessionId: null }),
+      createSession: vi.fn().mockImplementation(() => {
+        createCallCount += 1;
+        return Promise.resolve(createCallCount === 1 ? firstSession : { id: 's1', _call: createCallCount });
+      }),
+      attachAgentSession: vi.fn(),
+      transition: vi.fn(),
+      recordBackendRestart: vi.fn(),
+    };
+
+    const backend = new AcpBackend({ sessionService, clientFactory: vi.fn() } as AcpBackendOptions);
+
+    const callA = backend.createSessionAsync(makeInput());
+    const callB = backend.createSessionAsync(makeInput());
+
+    const [resultA, resultB] = await Promise.all([callA, callB]);
+
+    // sessionService.createSession was called twice (each call went through).
+    expect(sessionService.createSession).toHaveBeenCalledTimes(2);
+    expect(createCallCount).toBe(2);
+
+    // CRITICAL: resultA.session and resultB.session must be the SAME OBJECT REFERENCE.
+    // The dedup path must return the FIRST call\'s session (stored in the Map),
+    // not the second call's freshly-created session. Pre-fix bug: the dedup
+    // returned the second call's `session` because we awaited sessionService.createSession
+    // before the dedup check, breaking the identity contract for downstream consumers.
+    expect(resultA.session).toBe(resultB.session);
+    expect(resultA.session).toBe(firstSession);
+
+    // CRITICAL: resultA.backendRunId and resultB.backendRunId must be the SAME STRING.
+    // The dedup path must return the FIRST call's backendRunId (stored in the Map),
+    // not a freshly-synthesized one via this.backendRunIdProvider(). Pre-fix bug:
+    // downstream getBackendRunId(backendRunId) lookups keyed on the second call's
+    // backendRunId would miss because the first call's runtime is registered under
+    // the first call's backendRunId.
+    expect(resultA.backendRunId).toBe(resultB.backendRunId);
+
+    // ready identity is the contract tested in test 2; included here for completeness.
+    expect(resultA.ready).toBe(resultB.ready);
+
+    // Cleanup: resolve so the dangling handshake doesn't keep the test process alive.
+    resolveHandshake();
+  });
+
   it('after first handshake settles, sendPrompt during in-flight second handshake still awaits it', async () => {
     const { AcpBackend } = await import('../services/acp/backend.js');
 
