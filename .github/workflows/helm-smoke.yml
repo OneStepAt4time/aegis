@@ -37,6 +37,14 @@ jobs:
         run: helm template aegis deploy/helm/aegis --set image.repository=aegis-helm-smoke --set image.tag=ci
       - name: Create k3d cluster
         uses: AbsaOSS/k3d-action@v2
+        # k3d-version pin is REQUIRED: without it, the action defaults to
+        # v5.4.6, whose install.sh URL 404s on the k3d-io/k3d repo. Verified
+        # by 3 red dependabot PRs (#4747, #4748, #4749) on 2026-06-16/17
+        # that hit `curl: (22) 404` from the install step. Pinned in #4560
+        # on develop; backported here so wrong-base dependabot PRs (against
+        # main) also pass — see HEARTBEAT 2026-06-17 for the 5/30 wrong-base
+        # pattern. Do NOT remove this line without re-pinning on all
+        # branches that run helm-smoke (currently main + develop).
         with:
           cluster-name: aegis-helm-smoke
           args: --agents 1
