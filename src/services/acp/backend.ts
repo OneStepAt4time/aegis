@@ -176,29 +176,29 @@ export class AcpBackend {
    */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
+    // #4760: dedup — return existing in-flight handshake if present; check-then-set is atomic (no await between).
+    const existing = this.pendingHandshakes.get(session.id);
+    if (existing) {
+      return { session, initializeResult: {}, backendRunId: this.backendRunIdProvider(), ready: existing as Promise<AcpBackendStartResult> };
+    }
+    return this.launchBackgroundHandshake(session, input);
+  }
+
+  /** #4760: launch a new background handshake; sets pendingHandshakes[session.id] and clears it on settle. */
+  private launchBackgroundHandshake(
+    session: AcpSessionRecord,
+    input: AcpBackendCreateSessionInput,
+  ): AcpBackendStartResult {
     const backendRunId = this.backendRunIdProvider();
-    // Fire-and-forget the handshake — caller gets the session record immediately.
-    // On success, session transitions to agent_ready. On failure, transitions to error.
     const ready = runtimeLifecycle.startNewRuntimeBackground(
-      this.getRuntimeDeps(),
-      session,
-      input.cwd,
-      input.mcpServers,
-      input.systemPrompt,
-      backendRunId
-    ).then(() => {
-      return { session, initializeResult: {}, backendRunId };
-    }).catch((err) => {
-      log.error(
-        { component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } }
-      );
-      throw err;
-    }).finally(() => {
-      this.pendingHandshakes.delete(session.id);
-    });
-
+      this.getRuntimeDeps(), session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId,
+    ).then(() => ({ session, initializeResult: {}, backendRunId }))
+      .catch((err) => {
+        log.error({ component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } });
+        throw err;
+      })
+      .finally(() => { this.pendingHandshakes.delete(session.id); });
     this.pendingHandshakes.set(session.id, ready);
-
     return { session, initializeResult: {}, backendRunId, ready };
   }
 
