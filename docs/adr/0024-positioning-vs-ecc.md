@@ -45,6 +45,28 @@ The "operator in your terminal" angle is not for us. If you want operator
 ergonomics, use ECC. If you want governance + audit + team orchestration,
 use Aegis. Trying to be both dilutes both.
 
+### 1.5 Differentiation — the team is the product
+
+Aegis is a production platform where the **team is the product**: agents
+using Aegis to build Aegis, with defined roles (Scribe, Hephaestus, Daedalus,
+Argus, Athena, Orpheus, Hermes, Themis, Boss), review gates, and a server
+that orchestrates the work. ECC is a power-user config surface where the
+**operator is the product**: one person running their whole stack from a
+terminal. Both are valid. Only one scales to orgs with governance needs.
+
+> "Agent team using its own product daily — the team is the product, not the
+> solo config." — Boss Manudis, 2026-06-20 13:05, ratified in #aegis-devs.
+
+**Source:** [`references/ecc-battle-card-2026-06-20.md`](../../references/ecc-battle-card-2026-06-20.md)
+§1 Executive Summary, refined in channel. The card §10 next-steps line
+bakes in the Scribe docs-verification gap (a runbook routing API-drift
+checks through `ag run`) as the concrete "we dogfood what matters" example.
+
+**Consequence:** README's positioning copy leads with the team, not the
+solo operator. Hiring posts, conference talks, and OSS README all reflect
+that the product is the team-and-server, not the terminal. The pull-quote
+above is approved for external use.
+
 ### 2. Hermes name disambiguation — Boss-decided: Option 1 for Q3 2026
 
 ECC 2.0's "Hermes operator" persona is a direct naming collision with our
@@ -156,6 +178,9 @@ The canonical-channel list is added to README as a small follow-up.
   and [ADR-0029](0029-solo-dev-first-phase-4-deferred.md). It does not replace
   either. The Aegis-as-middleware stance, the solo-dev-first scope, and the
   MIT-licensed single-edition all hold.
+- **Positioning copy**: the team-as-product framing in §1.5 is approved
+  for external use (README, conference talks, hiring posts). The
+  pull-quote is Boss-ratified; reuse without re-asking.
 - **Hermes name**: **Option 1 (disambiguate) adopted for Q3 2026.**
   "Hermes [Aegis]" in hiring posts, public release notes, README badges.
   End-of-Q3 review determines if Option 2 (rename) escalates. Option 3
@@ -191,4 +216,6 @@ framing by <@1494469941074591924> (Hermes) 12:52; dogfooding one-liner
 ("agent team using its own product daily") by <@1494469505647382549> (Orpheus)
 12:55, ratified by Boss 12:55 and Athena 13:00; scope call by Boss 12:58.
 **Decision ratification (Hermes Option 1, no-fly list policy):** Boss
-Manudis 2026-06-20 13:02.*
+Manudis 2026-06-20 13:02. **Differentiation pull-quote ("the team is the
+product"):** Boss Manudis 2026-06-20 13:05, in #aegis-devs. Path decision
+(0024 vs 0033) pending Boss tie-break.*
