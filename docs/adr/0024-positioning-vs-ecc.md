@@ -45,20 +45,12 @@ The "operator in your terminal" angle is not for us. If you want operator
 ergonomics, use ECC. If you want governance + audit + team orchestration,
 use Aegis. Trying to be both dilutes both.
 
-### 2. Hermes name disambiguation — Boss call needed
+### 2. Hermes name disambiguation — Boss-decided: Option 1 for Q3 2026
 
 ECC 2.0's "Hermes operator" persona is a direct naming collision with our
 <@1494469941074591924>. As ECC scales, "Hermes" will default to their
 operator shell in community discourse; ours becomes invisible or confusing
 in search.
-
-This ADR captures the options but does not decide. Ema decides.
-
-| Option | Scope | Cost | Risk | Verdict |
-|---|---|---|---|---|
-| A. Disambiguate ("Hermes [Aegis]") | Short term | Near-zero: 1 line in docs + comms habit | Doesn't solve, just manages | Boss call |
-| B. Rename to Iris / Nike / Tyche | Long term | High: AGENTS.md, all docs, Discord roles, GitHub refs, memory | Transition confusion | Boss call |
-| C. Do nothing | None | Zero | Lose the name as ECC scales | Boss call |
 
 **Trigger context** (from <@1494469941074591924>'s release-notes hygiene
 framing): their "Hermes" appears in ECC 2.0 release notes + `HERMES-SETUP.md`
@@ -66,14 +58,34 @@ framing): their "Hermes" appears in ECC 2.0 release notes + `HERMES-SETUP.md`
 + release-process docs. At 211K⭐, "Hermes CC operator" search will dominate
 to their meaning; the cost of conflating is high.
 
-**Short-term recommendation** (in this ADR, not awaiting Boss): adopt
-disambiguation discipline. Always use "Hermes [Aegis]" in public channels.
-Add a footnote in `README.md` + `AGENTS.md`. Cost is near-zero; reversibility
-is high. Long-term rename is a separate decision.
+**Decision (Boss Manudis, 2026-06-20 13:02):** Adopt **Option 1 (disambiguate)**
+for Q3 2026. Use "Hermes [Aegis]" in docs/comms wherever the collision hurts
+most: **hiring posts, public release notes, README badges.** Add a footnote
+in `README.md` + `AGENTS.md`. Cost is near-zero; reversibility is high.
 
-### 3. What we DON'T copy — discipline
+**Q3 review trigger:** if ECC continues accelerating on weekly shipping
+cadence + star count growth, escalate to **Option 2 (rename)** at end of
+Q3 2026. Shortlist (in priority order, Ema picks): **Iris** (messenger
+goddess, fits release/communications), **Nike** (victory, fits
+release-success themes), **Tyche** (fortune, fits CI/CD luck).
 
-The card's §6 enumerates 6 items we explicitly do NOT adopt:
+**Option 3 (do nothing) is off the table.** At 211K⭐ + weekly shipping,
+"Hermes" defaults to their meaning by community consensus; we lose the
+name by default.
+
+| Option | Scope | Cost | Risk | Verdict |
+|---|---|---|---|---|
+| A. Disambiguate ("Hermes [Aegis]") | Q3 2026 | Near-zero: 1 line in docs + comms habit | Doesn't solve, just manages | **Adopted** |
+| B. Rename to Iris / Nike / Tyche | End of Q3 (escalation if ECC accelerates) | High: AGENTS.md, all docs, Discord roles, GitHub refs, memory | Transition confusion | Conditional |
+| C. Do nothing | None | Zero | Lose the name as ECC scales | **Rejected** |
+
+### 3. What we won't do — policy no-fly list
+
+The card's §6 enumerates 6 items we explicitly will NOT adopt. These are
+**policy, not suggestions**, ratified by Boss Manudis 2026-06-20 13:02.
+Argus bakes them into the PR review checklist; deviations require Ema
+approval. The default answer is "no" until the strategic case is
+overwhelming and the alternative is shipped elsewhere.
 
 1. **Weekly shipping without review gates.** Argus reviews; 18 CI checks +
    CodeQL + dashboard-e2e + `npm run gate` are mandatory. PR #4761 sat open
@@ -144,8 +156,14 @@ The canonical-channel list is added to README as a small follow-up.
   and [ADR-0029](0029-solo-dev-first-phase-4-deferred.md). It does not replace
   either. The Aegis-as-middleware stance, the solo-dev-first scope, and the
   MIT-licensed single-edition all hold.
-- **Hermes name**: short-term disambiguation adopted in this PR. Long-term
-  rename is Boss call.
+- **Hermes name**: **Option 1 (disambiguate) adopted for Q3 2026.**
+  "Hermes [Aegis]" in hiring posts, public release notes, README badges.
+  End-of-Q3 review determines if Option 2 (rename) escalates. Option 3
+  (do nothing) rejected.
+- **No-fly list policy**: the 6 don't-copy items in §3 are policy, baked
+  into Argus's PR review checklist. Deviations require Ema approval. The
+  default answer to "should we copy X from ECC" is "no" until the case is
+  overwhelming.
 
 ## Related
 
@@ -167,8 +185,10 @@ The canonical-channel list is added to README as a small follow-up.
 
 *Proposed by Emanuele Santonastaso, 2026-06-20. Drafted by Scribe.*
 
-*Sources: Boss Manudis directive in #aegis-devs 2026-06-20 12:50;
-battle card by <@1494469505647382549> (Orpheus) 13:01; Hermes-disambiguation
+*Sources: Boss Manudis directive in #aegis-devs 2026-06-20 12:50; battle
+card by <@1494469505647382549> (Orpheus) 13:01; Hermes-disambiguation
 framing by <@1494469941074591924> (Hermes) 12:52; dogfooding one-liner
 ("agent team using its own product daily") by <@1494469505647382549> (Orpheus)
-12:55, ratified by Boss 12:55 and Athena 13:00; scope call by Boss 12:58.*
+12:55, ratified by Boss 12:55 and Athena 13:00; scope call by Boss 12:58.
+**Decision ratification (Hermes Option 1, no-fly list policy):** Boss
+Manudis 2026-06-20 13:02.*
