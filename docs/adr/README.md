@@ -27,6 +27,14 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0026](0026-oidc-trust-model.md) | OIDC Trust Model for Dashboard SSO | Proposed | — | #1942 |
 | [ADR-0027](0027-acp-feasibility-spike-verdict.md) | ACP Feasibility Spike Verdict | Proposed | — | #2576 |
 | [ADR-0028](0028-acp-native-session-identity-model.md) | ACP-Native Session Identity Model | Proposed | 2026-05-04 | #2584 |
+| [ADR-0029](0029-solo-dev-first-phase-4-deferred.md) | Strategic Refocus — Solo Developer First, Phase 4 Deferred | Proposed | 2026-05-16 | — |
+| [ADR-0030](0030-network-isolation-scope-by-deployment-tier.md) | Network Isolation Scope by Deployment Tier | Accepted | 2026-05-22 | #3998, #3980 |
+| [ADR-0030](0030-agent-auth-rfc.md) | Agent Auth — Per-agent PAT vs Second GitHub App (RFC) | Proposed | 2026-06-05 | — |
+| [ADR-0031](0031-budgets-api-design.md) | /v1/budgets API Design for Cost Alerts | Proposed | 2026-05-25 | #4196 |
+| [ADR-0032](0032-multi-agent-architecture.md) | Multi-Agent Support — Architecture Design | Approved | 2026-05-30 | #3180 |
+| [ADR-0033](0033-positioning-vs-ecc.md) | Positioning vs ECC (affaan-m) — Aegis = Production Platform, ECC = Power-User Config | Proposed | 2026-06-20 | — |
+
+> **Note on duplicate numbers:** ADR-0030 currently has two files (`0030-network-isolation-scope-by-deployment-tier.md` and `0030-agent-auth-rfc.md`). Both are linked above with disambiguated titles. A follow-up renumbering PR is needed (Boss decision pending). The older duplicates at ADR-0024 and ADR-0025 (pre-existing) are also pending renumbering and out of scope for this index catch-up.
 
 ## Creating a New ADR
 
