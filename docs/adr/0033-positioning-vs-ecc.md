@@ -1,4 +1,4 @@
-# ADR-0024: Positioning vs ECC (affaan-m) — Aegis = Production Platform, ECC = Power-User Config
+# ADR-0033: Positioning vs ECC (affaan-m) — Aegis = Production Platform, ECC = Power-User Config
 
 ## Status
 Proposed
@@ -217,5 +217,7 @@ framing by <@1494469941074591924> (Hermes) 12:52; dogfooding one-liner
 12:55, ratified by Boss 12:55 and Athena 13:00; scope call by Boss 12:58.
 **Decision ratification (Hermes Option 1, no-fly list policy):** Boss
 Manudis 2026-06-20 13:02. **Differentiation pull-quote ("the team is the
-product"):** Boss Manudis 2026-06-20 13:05, in #aegis-devs. Path decision
-(0024 vs 0033) pending Boss tie-break.*
+product"):** Boss Manudis 2026-06-20 13:05, in #aegis-devs. **Path
+resolution (0033):** Athena (PM) and Argus (reviewer) both referenced the
+0033 path; Boss silent on the path question; convention (next sequential,
+0024 collision) supports 0033. Scribe renamed 2026-06-20 13:05.*
