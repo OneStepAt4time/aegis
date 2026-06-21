@@ -17,7 +17,7 @@ export function useLastUpdated() {
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       forceUpdate((n) => n + 1);
-    }, 1000);
+    }, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

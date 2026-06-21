@@ -2,7 +2,7 @@
  * components/overview/SessionTable.tsx — Live session table with filtering, search, and bulk actions.
  */
 
-import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { SessionMobileCard } from './SessionMobileCard';
 import type { SessionsPaginationState, SessionRowViewModel } from './sessionTableUtils';
 import { matchesSearch, formatStatusLabel } from './sessionTableUtils';
@@ -96,7 +96,7 @@ interface SessionTableProps {
   maxRows?: number;
 }
 
-export default function SessionTable({ maxRows }: SessionTableProps = {}) {
+export default React.memo(function SessionTable({ maxRows }: SessionTableProps = {}) {
     const t = useT();
 
   const sessions = useStore((s) => s.sessions);
@@ -480,7 +480,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
   if (isLoading && sessions.length === 0 && !loadError) {
     return (
-      <div className="card-glass p-16 text-center animate-bento-reveal flex flex-col items-center justify-center min-h-[400px]">
+      <div className="card-glass p-16 text-center  flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
         <h3 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] drop-shadow-md">{t('sessionTable.wakingAgents')}</h3>
         <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessionTable.wakingAgentsDescription')}</p>
@@ -514,7 +514,7 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
   return (
     <div className="space-y-6 relative">
-      <div className="card-glass w-full animate-bento-reveal shadow-[var(--shadow-card)]">
+      <div className="card-glass w-full  shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-4 border-b border-[var(--color-overlay-border)] bg-[var(--color-overlay-bg)] p-4 backdrop-blur-md xl:flex-row xl:items-start xl:justify-between">
           <div className="flex-1 space-y-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -686,13 +686,13 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
 
       {isLoading && sessions.length === 0 ? (
         /* Bento-style Loading Skeleton */
-        <div className="card-glass relative overflow-hidden p-12 flex flex-col items-center justify-center min-h-[420px] border border-[var(--color-overlay-border)] animate-pulse">
+        <div className="card-glass relative overflow-hidden p-12 flex flex-col items-center justify-center h-[420px] overflow-hidden border border-[var(--color-overlay-border)] ">
            <div className="w-16 h-16 rounded-2xl bg-[var(--color-overlay-bg)] mb-6" />
            <div className="w-48 h-4 bg-[var(--color-overlay-bg-hover)] rounded-full mb-3" />
            <div className="w-64 h-3 bg-[var(--color-overlay-bg)] rounded-full" />
         </div>
       ) : sessions.length === 0 ? (
-        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center min-h-[420px] border border-[var(--color-overlay-border)] animate-bento-reveal shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
+        <div className="card-glass relative overflow-hidden p-12 text-center flex flex-col items-center justify-center h-[420px] overflow-hidden border border-[var(--color-overlay-border)]  shadow-[inset_0_0_60px_rgba(var(--color-void-rgb, 0,0,0), 0.5)]">
           {/* Ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.06),transparent_60%)] pointer-events-none" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[var(--color-accent-cyan)]/30 to-transparent" />
@@ -907,4 +907,4 @@ export default function SessionTable({ maxRows }: SessionTableProps = {}) {
       )}
     </div>
   );
-}
+});

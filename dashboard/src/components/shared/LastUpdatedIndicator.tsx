@@ -11,7 +11,7 @@ interface LastUpdatedIndicatorProps {
 export function LastUpdatedIndicator({ relativeTime, isStale }: LastUpdatedIndicatorProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs tabular-nums transition-colors ${
+      className={`flex items-center gap-1.5 text-xs tabular-nums transition-colors w-[100px] ${
         isStale
           ? 'text-[var(--color-warning-glow)]'
           : 'text-[var(--color-text-muted)]'
@@ -20,13 +20,13 @@ export function LastUpdatedIndicator({ relativeTime, isStale }: LastUpdatedIndic
       aria-label={`Last updated ${relativeTime}`}
     >
       <span
-        className={`inline-block h-1.5 w-1.5 rounded-full ${
+        className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${
           isStale
             ? 'bg-[var(--color-warning-glow)] animate-pulse'
             : 'bg-[var(--color-success-glow)]'
         }`}
       />
-      Updated {relativeTime}
+      <span className="truncate">Updated {relativeTime}</span>
     </span>
   );
 }

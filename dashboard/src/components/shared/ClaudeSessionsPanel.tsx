@@ -80,7 +80,7 @@ export function ClaudeSessionsPanel({ pollInterval = 30_000, maxItems = 20 }: Cl
   const displaySessions = sessions.slice(0, maxItems);
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 min-h-[120px]">
       {/* Header */}
       <div className="flex items-center gap-1.5 px-2 py-1">
         <Terminal className="h-3 w-3 text-[var(--color-text-muted)]" aria-hidden="true" />
