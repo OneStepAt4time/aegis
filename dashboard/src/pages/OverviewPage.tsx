@@ -217,7 +217,7 @@ export default function OverviewPage() {
       )}
       {analyticsLoading && (
         <div
-          className="grid min-h-[52px] divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] animate-pulse"
+          className="grid min-h-[52px] divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] "
           style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}
           role="status"
           aria-busy="true"
@@ -271,7 +271,7 @@ export default function OverviewPage() {
         <section className="lg:col-span-2 rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-5" aria-label={t("aria.dailyCostChart")}>
           <h3 className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">{t('overview.costPerDay')}</h3>
           {analytics && (analytics.costTrends ?? []).length > 0 ? (
-            <Suspense fallback={<div className="h-[220px] animate-pulse rounded bg-[var(--color-void-lighter)]/20" />}>
+            <Suspense fallback={<div className="h-[220px]  rounded bg-[var(--color-void-lighter)]/20" />}>
               <OverviewCostChart data={analytics.costTrends} />
             </Suspense>
           ) : (
