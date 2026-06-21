@@ -15,6 +15,7 @@ Error: listen EADDRINUSE :::9100
 **Cause:** Another process is using port 9100.
 
 **Fix:**
+
 ```bash
 # Find the process
 lsof -i :9100
@@ -35,6 +36,7 @@ AEGIS_PORT=9200 ag
 **Cause:** `claude-agent-acp` binary not found. Aegis bundles this dependency but it may be missing if installed from an incomplete build.
 
 **Fix:**
+
 ```bash
 # Reinstall Aegis to restore bundled claude-agent-acp
 npm install -g @onestepat4time/aegis
@@ -53,6 +55,7 @@ ag doctor
 **Cause:** `workDir` is not accessible or doesn't exist.
 
 **Fix:**
+
 - Verify the directory exists: `ls /path/to/workdir`
 - Check `AEGIS_ALLOWED_WORKDIRS` includes the path (default: `$HOME` and `cwd`)
 - `allowedWorkDirs` changes in config are hot-reloaded without restart
@@ -66,6 +69,7 @@ ag doctor
 **Cause:** Auth is enabled but no token provided, or token is wrong.
 
 **Fix:**
+
 ```bash
 # Verify token is set
 echo $AEGIS_AUTH_TOKEN
@@ -82,6 +86,7 @@ curl -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
 **Cause:** Non-admin keys have limited scopes. Some endpoints require `admin` role.
 
 **Fix:** Create an admin key:
+
 ```bash
 curl -X POST http://localhost:9100/v1/auth/keys \
   -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
@@ -96,6 +101,7 @@ curl -X POST http://localhost:9100/v1/auth/keys \
 **Cause:** Most config fields are read only at startup. `allowedWorkDirs` is hot-reloaded via file watcher.
 
 **Fix:** For `allowedWorkDirs`, edits take effect automatically within ~1 second. For other fields, restart the server after editing config:
+
 ```bash
 # Find and kill the process
 pkill -f "aegis" && sleep 2
@@ -112,6 +118,7 @@ ag
 **Cause:** Missing required field `workDir`.
 
 **Fix:**
+
 ```bash
 # workDir is required
 curl -X POST http://localhost:9100/v1/sessions \
@@ -121,11 +128,58 @@ curl -X POST http://localhost:9100/v1/sessions \
 
 ---
 
+### Session stuck in "pending" (handshake timeout)
+
+**Symptom:** Session status stays `pending` for 60 seconds or more after creation. `sendPrompt` may time out or return `no_acp_runtime`.
+
+**Cause:** The ACP backend handshake — the initial JSON-RPC negotiation between Aegis and the Claude Code agent process — did not complete within the timeout window.
+
+**What happens automatically:**
+
+- After **60 seconds** (default), Aegis emits an `acp_handshake_stuck` structured log event and removes the stalled handshake from the pending queue.
+- The `sendPrompt` call that was blocked on the handshake will fall through and return `no_acp_runtime` (HTTP 422 or 200 with `delivered: false`, depending on the endpoint).
+- The session record remains in `pending` state until explicitly killed or the runtime recovers.
+
+**How to observe:**
+Look for this log line in your Aegis server output:
+
+```json
+{
+  "component": "acp-backend",
+  "operation": "acp_handshake_stuck",
+  "attributes": {
+    "sessionId": "...",
+    "backendRunId": "...",
+    "ageMs": 60000,
+    "lastKnownState": "pending"
+  }
+}
+```
+
+**Fix:**
+
+```bash
+# Kill the stuck session and recreate
+curl -X POST http://localhost:9100/v1/sessions/<id>/kill \
+  -H "Authorization: Bearer $AEGIS_AUTH_TOKEN"
+
+# Check if the ACP binary is healthy
+ag doctor
+
+# If the issue is recurring, check Claude Code CLI health
+curl http://localhost:9100/v1/health
+```
+
+**Note for programmatic users:** If you are constructing `AcpBackend` directly (not via the Aegis server), you can customize the timeout via `handshakeTimeoutMs` in `AcpBackendOptions` (default: `60_000`). You can also wire `onHandshakeStuck` to receive a typed callback with `{ sessionId, backendRunId, ageMs, lastKnownState }` for custom alerting or metrics.
+
+---
+
 ### Session stuck in "stalled" state
 
 **Cause:** Claude Code is not producing output (idle or blocked).
 
 **Fix:**
+
 ```bash
 # Interrupt the session
 curl -X POST http://localhost:9100/v1/sessions/<id>/interrupt \
@@ -151,6 +205,7 @@ curl -X POST http://localhost:9100/v1/sessions/<id>/kill \
 **Cause:** JSONL file is being written but byte offset tracking may be stale.
 
 **Fix:**
+
 ```bash
 # Check if JSONL file exists
 ls -la ~/.aegis/sessions/<id>/*.jsonl
@@ -169,6 +224,7 @@ curl "http://localhost:9100/v1/sessions/<id>/read?offset=0"
 **Cause:** No approval channel configured, or approval not sent.
 
 **Fix:**
+
 ```bash
 # Check session status
 curl http://localhost:9100/v1/sessions/<id>/health \
@@ -210,6 +266,7 @@ Creating a worker from 'blob:http://127.0.0.1:9100/...' violates the following C
 **Cause:** MCP server can't reach Aegis, or session ID is wrong.
 
 **Fix:**
+
 ```bash
 # Verify Aegis is running
 curl http://localhost:9100/v1/health
@@ -226,6 +283,7 @@ curl -H "Authorization: Bearer $AEGIS_AUTH_TOKEN" \
 **Cause:** Aegis not running or wrong port.
 
 **Fix:**
+
 ```bash
 # Verify Aegis is listening
 curl http://localhost:9100/v1/health
@@ -243,6 +301,7 @@ curl http://localhost:9100/v1/health
 **Cause:** Webhook URL not configured, or endpoint unreachable.
 
 **Fix:**
+
 ```bash
 # Configure webhooks
 AEGIS_WEBHOOKS="https://example.com/hook" ag
@@ -263,6 +322,7 @@ curl http://localhost:9100/v1/alerts/stats \
 **Cause:** `AEGIS_SLACK_WEBHOOK_URL` not set, or webhook URL expired.
 
 **Fix:**
+
 ```bash
 # Set Slack webhook
 export AEGIS_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
@@ -284,6 +344,7 @@ ag doctor --json
 ```
 
 `ag doctor` checks:
+
 - config loading
 - Node.js version
 - ACP binary resolution (`claude-agent-acp`)
@@ -305,6 +366,7 @@ scripts, or support bundles.
 **Cause:** Aegis server not running, or network connectivity issue.
 
 **Fix:**
+
 ```bash
 # Verify server is running
 curl http://localhost:9100/v1/health
@@ -320,6 +382,7 @@ AEGIS_BASE_URL=http://localhost:9100 ag sessions list
 **Cause:** Token not passed to server, or token mismatch.
 
 **Fix:**
+
 ```bash
 # Verify token matches
 echo $AEGIS_AUTH_TOKEN
@@ -333,6 +396,7 @@ echo $AEGIS_AUTH_TOKEN
 **Cause:** The Claude Code ACP runtime encountered a fatal error (e.g., `No onPostToolUseHook found for tool use ID` or an unhandled error in the `session/prompt` handler). Aegis detects these fatal stderr patterns and automatically shuts down the runtime to prevent the session from hanging indefinitely.
 
 **Fix:**
+
 ```bash
 # Check the session transcript for the error
 ag read <session-id> | tail -20
@@ -353,6 +417,7 @@ Once the root cause (e.g., a malformed tool call or CC version incompatibility) 
 **Cause:** Sessions accumulate without cleanup. Session age limit not configured.
 
 **Fix:**
+
 ```bash
 # Set max session age (default: 2 hours)
 AEGIS_MAX_SESSION_AGE_MS=7200000 ag
@@ -365,6 +430,7 @@ AEGIS_MAX_SESSION_AGE_MS=7200000 ag
 **Cause:** Cold start of Claude Code, or network latency.
 
 **Fix:**
+
 - First session after server start is always slower (CLI initialization)
 - Subsequent sessions are faster
 - Check network latency to Anthropic API
@@ -378,6 +444,7 @@ AEGIS_MAX_SESSION_AGE_MS=7200000 ag
 **Cause:** Claude Code CLI not installed or not authenticated inside the container.
 
 **Fix:** Ensure Claude Code is available in the container image:
+
 ```bash
 docker run --network=host \
   -v /var/run/docker.sock:/var/run/docker.sock \
