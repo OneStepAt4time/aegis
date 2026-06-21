@@ -276,7 +276,7 @@ export const perfRecorder = new PerfRecorder();
 // directly without a live CC session. The dev-only guard is the
 // contract: production builds MUST NOT expose this hook.
 if (typeof window !== 'undefined') {
-  const isDev = import.meta.env.DEV;
+  const isDev = import.meta.env.DEV || import.meta.env.VITE_ENABLE_PERF_HOOK === 'true';
   (window as unknown as { __aegisPerf__?: unknown }).__aegisPerf__ = {
     snapshot: () => perfRecorder.snapshot(),
     reset: () => perfRecorder.reset(),
