@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_ENABLE_PERF_HOOK": JSON.stringify(process.env.VITE_ENABLE_PERF_HOOK || "false"),
+  },
   resolve: {
     alias: {
       'open-dyslexic': path.resolve(__dirname, 'node_modules/open-dyslexic'),
