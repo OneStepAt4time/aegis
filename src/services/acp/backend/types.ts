@@ -250,6 +250,17 @@ export interface AcpBackendOptions {
    * the Map without bound until OOM or memory pressure.
    */
   maxPendingHandshakes?: number;
+  /** Issue #4778: TTL for background handshakes (default: 60_000 ms). */
+  handshakeTimeoutMs?: number;
+  /** Issue #4778: Called when a handshake TTL fires before ready settles. */
+  onHandshakeStuck?: (event: AcpBackendHandshakeStuckEvent) => void;
+}
+
+export interface AcpBackendHandshakeStuckEvent {
+  sessionId: string;
+  backendRunId: string;
+  ageMs: number;
+  lastKnownState: 'pending';
 }
 
 export interface AcpBackendRuntime {

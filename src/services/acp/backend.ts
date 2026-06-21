@@ -71,25 +71,21 @@ import {
 } from './backend/pending-handshakes-cap.js';
 import * as driverModule from './backend/drivers.js';
 import * as actionModule from './backend/actions.js';
-
 const log = new StructuredLogger();
-
 const DEFAULT_PROTOCOL_VERSION = 1;
 const ACP_PROMPT_REQUEST_TIMEOUT_MS = 60_000;
 const ACP_PROMPT_ACK_TIMEOUT_MS = 5_000;
 const PACKAGE_VERSION = readPackageVersion();
-
 export { hasLoadSessionCapability } from './backend/utils.js';
-
 export class AcpBackend {
   private readonly sessionService: AcpBackendOptions['sessionService'];
   private readonly clientFactory: (context: AcpBackendClientFactoryContext) => AcpBackendClient;
   private readonly backendRunIdProvider: () => string;
   private readonly clientInfo: AcpJsonObject;
   private readonly clientCapabilities: AcpJsonObject;
-  /** Issue #3900: Enforce validation warnings as errors. */
+  /** #3900: validation warnings as errors. */
   private readonly strictValidation: boolean;
-  /** Emit validation_warning transitions for monitoring. */
+  /** #3897: emit validation_warning transitions. */
   private readonly emitValidationWarnings: boolean;
   private readonly runtimes = new Map<string, AcpBackendRuntime>();
   private readonly restartAttempts = new Map<string, number>();
@@ -189,19 +185,26 @@ export class AcpBackend {
     return this.launchBackgroundHandshake(session, input);
   }
 
-  /** #4760: launch a new background handshake; .finally() clears on settle. #4777: enforces pendingHandshakes cap (rejects at cap; no runtime spawned for rejected calls). */
+  /** #4760: launch a new background handshake; .finally() clears on settle. #4777: enforces pendingHandshakes cap (rejects at cap; no runtime spawned for rejected calls). #4778: TTL timer added. */
   private launchBackgroundHandshake(session: AcpSessionRecord, input: AcpBackendCreateSessionInput): AcpBackendStartResult {
     enforcePendingHandshakesCap(this.pendingHandshakesInternal, this.maxPendingHandshakes, session.id);
     const backendRunId = this.backendRunIdProvider();
+    const ttlMs = this.options.handshakeTimeoutMs ?? 60_000;
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
     const ready = runtimeLifecycle.startNewRuntimeBackground(
       this.getRuntimeDeps(), session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId,
-    ).then(() => ({ session, initializeResult: {}, backendRunId }))
-      .catch((err) => {
-        log.error({ component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } });
-        throw err;
-      })
-      .finally(() => { this.pendingHandshakesInternal.delete(session.id); });
+    ).then(() => ({ session, initializeResult: {}, backendRunId })).catch((err) => {
+      log.error({ component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } });
+      throw err;
+    }).finally(() => { clearTimeout(timer); this.pendingHandshakesInternal.delete(session.id); });
     this.pendingHandshakesInternal.set(session.id, { session, backendRunId, ready });
+    timer = setTimeout(() => {
+      if (this.pendingHandshakesInternal.has(session.id)) {
+        const evt = { sessionId: session.id, backendRunId, ageMs: Date.now() - startedAt, lastKnownState: 'pending' as const };
+        log.warn({ component: 'acp-backend', operation: 'acp_handshake_stuck', attributes: evt }); this.options.onHandshakeStuck?.(evt); this.pendingHandshakesInternal.delete(session.id);
+      }
+    }, ttlMs);
     return { session, initializeResult: {}, backendRunId, ready };
   }
 
