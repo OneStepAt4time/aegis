@@ -238,6 +238,17 @@ export interface AcpBackendOptions {
   /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
   strictValidation?: boolean;
   onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
+  /** Issue #4778: TTL for background handshakes (default: 60_000 ms). */
+  handshakeTimeoutMs?: number;
+  /** Issue #4778: Called when a handshake TTL fires before ready settles. */
+  onHandshakeStuck?: (event: AcpBackendHandshakeStuckEvent) => void;
+}
+
+export interface AcpBackendHandshakeStuckEvent {
+  sessionId: string;
+  backendRunId: string;
+  ageMs: number;
+  lastKnownState: 'pending';
 }
 
 export interface AcpBackendRuntime {
