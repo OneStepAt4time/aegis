@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 
 describe('useLastUpdated', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
   afterEach(() => {
@@ -21,10 +21,7 @@ describe('useLastUpdated', () => {
     vi.resetModules();
     const { useLastUpdated } = await import('../useLastUpdated');
     const { result } = renderHook(() => useLastUpdated());
-    vi.advanceTimersByTime(10000);
-    // Force re-render by advancing timer tick
-    act(() => { vi.advanceTimersByTime(1000); });
-    // After ~11s, should show "10s ago" or similar
+    act(() => { vi.advanceTimersByTime(11000); });
     expect(result.current.relativeTime).toMatch(/\ds ago/);
   });
 
