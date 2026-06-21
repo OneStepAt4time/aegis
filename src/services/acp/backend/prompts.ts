@@ -8,7 +8,7 @@ import type { AcpJsonValue } from '../json-rpc-client.js';
 import type { AcpSessionScope } from '../types.js';
 import { StructuredLogger } from '../../../logger.js';
 import { AcpBackendLifecycleError } from './errors.js';
-import type { AcpBackendRuntime, AcpBackendStartResult } from './types.js';
+import type { AcpBackendRuntime, AcpBackendStartResult, PendingHandshake } from './types.js';
 import * as runtimeLifecycle from './runtime.js';
 import type { AcpSessionRecord } from '../types.js';
 
@@ -21,8 +21,16 @@ export interface PromptDeps {
     getSession(sessionId: string, scope: AcpSessionScope): Promise<{ acpAgentSessionId?: string | null }>;
   };
   inFlightPrompts: Map<string, AbortController>;
-  /** Issue #4738: Track in-flight background handshakes for sendPrompt race prevention. Issue #4760: value is the full outer shape (session+backendRunId+ready) so dedup returns the first call's references. */
-  pendingHandshakes: Map<string, { session: AcpSessionRecord; backendRunId: string; ready: Promise<AcpBackendStartResult> }>;
+  /**
+   * Issue #4779: ReadonlyMap view of in-flight background handshakes. Owned by
+   * `AcpBackend`; mutations (`.set` / `.delete`) are producer-only (see
+   * `backend.ts:launchBackgroundHandshake`). Compile-time invariant verified
+   * by `acp-pendinghandshakes-readonly-4779.test.ts`.
+   *
+   * History: #4738 introduced the Map; #4760 widened the value type from
+   * `Promise<unknown>` to the full outer shape for per-session dedup.
+   */
+  pendingHandshakes: ReadonlyMap<string, PendingHandshake>;
 }
 
 /**

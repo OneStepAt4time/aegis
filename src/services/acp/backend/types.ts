@@ -254,3 +254,20 @@ export interface AcpBackendRuntime {
    */
   permissionMode?: string;
 }
+
+/**
+ * Issue #4779: Shape of an in-flight background handshake stored in
+ * `AcpBackend.pendingHandshakes`. Producer: `AcpBackend.launchBackgroundHandshake`
+ * (mutates the internal Map). Consumer: `backend/prompts.ts` `PromptDeps`
+ * (read-only via the `pendingHandshakes` field, which is typed
+ * `ReadonlyMap<...>` post-#4779).
+ *
+ * Centralizing the shape here avoids the inline-shape duplication that
+ * existed pre-#4779 (where the same `{ session, backendRunId, ready }`
+ * literal appeared in both `backend.ts` and `backend/prompts.ts`).
+ */
+export type PendingHandshake = {
+  session: AcpSessionRecord;
+  backendRunId: string;
+  ready: Promise<AcpBackendStartResult>;
+};

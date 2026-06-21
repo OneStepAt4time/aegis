@@ -52,6 +52,7 @@ import type {
   AcpBackendResumeSessionInput,
   AcpBackendLoadSessionInput,
   AcpBackendAdoptRuntimeInput,
+  PendingHandshake,
 } from './backend/types.js';
 import {
   createDefaultAcpBackendClient,
@@ -96,8 +97,10 @@ export class AcpBackend {
   private readonly driverFences = new Map<string, number>();
   /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
   private readonly inFlightPrompts = new Map<string, AbortController>();
-  /** Issue #4738: Track in-flight background handshakes so sendPrompt can await them. Issue #4760: per-session dedup — value stores the full outer shape (session+backendRunId+ready) so dedup returns the FIRST call's references. */
-  private readonly pendingHandshakes = new Map<string, { session: AcpSessionRecord; backendRunId: string; ready: Promise<AcpBackendStartResult> }>();
+  // #4779: Producer-only mutable storage (set/delete in launchBackgroundHandshake).
+  private readonly pendingHandshakesInternal = new Map<string, PendingHandshake>();
+  // #4779: ReadonlyMap view exposed to PromptDeps (no public .set/.delete/.clear).
+  private readonly pendingHandshakes: ReadonlyMap<string, PendingHandshake> = this.pendingHandshakesInternal;
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
@@ -194,8 +197,8 @@ export class AcpBackend {
         log.error({ component: 'acp-backend', operation: 'asyncStartFailed', attributes: { sessionId: session.id, error: String(err) } });
         throw err;
       })
-      .finally(() => { this.pendingHandshakes.delete(session.id); });
-    this.pendingHandshakes.set(session.id, { session, backendRunId, ready });
+      .finally(() => { this.pendingHandshakesInternal.delete(session.id); });
+    this.pendingHandshakesInternal.set(session.id, { session, backendRunId, ready });
     return { session, initializeResult: {}, backendRunId, ready };
   }
 
@@ -364,11 +367,7 @@ export class AcpBackend {
     return actionModule.dispatchAction(this.getActionDeps(), runtime, action);
   }
 
-  /**
-   * Gracefully shut down an ACP runtime: transitions status, sends session/close,
-   * kills the child process, and cleans up internal state.
-   * No-op if no runtime exists for the session.
-   */
+  /** Gracefully shut down an ACP runtime: transitions status, sends session/close, kills the child process, and cleans up internal state. No-op if no runtime exists. */
   async shutdownSession(input: AcpBackendShutdownSessionInput): Promise<AcpBackendShutdownResult> {
     const scope = scopeFromInput(input);
     const session = await this.sessionService.getSession(input.sessionId, scope);
@@ -472,6 +471,7 @@ export {
 
 export type {
   AcpBackendAdoptRuntimeInput,
+  PendingHandshake,
   AcpBackendCancelResult,
   AcpBackendCancelSessionInput,
   AcpBackendClient,
