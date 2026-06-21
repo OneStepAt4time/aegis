@@ -23,7 +23,7 @@ describe('useLastUpdated', () => {
     const { result } = renderHook(() => useLastUpdated());
     vi.advanceTimersByTime(10000);
     // Force re-render by advancing timer tick
-    act(() => { vi.advanceTimersByTime(1000); });
+    act(() => { vi.advanceTimersByTime(5000); });
     // After ~11s, should show "10s ago" or similar
     expect(result.current.relativeTime).toMatch(/\ds ago/);
   });
