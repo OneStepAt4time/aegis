@@ -2,10 +2,7 @@
  * backend.ts — ACP Backend core class.
  *
  * Issue #4534: Split from monolithic backend.ts for gate:arch compliance.
- * Types moved to backend/types.ts, errors to backend/errors.ts,
- * utilities to backend/utils.ts, runtime lifecycle to backend/runtime.ts,
- * prompt delivery to backend/prompts.ts, drivers to backend/drivers.ts,
- * action dispatch to backend/actions.ts.
+ * Types/errors/utilities/runtime/prompts/drivers/actions extracted.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -68,6 +65,10 @@ import {
 } from './backend/utils.js';
 import * as runtimeLifecycle from './backend/runtime.js';
 import * as promptModule from './backend/prompts.js';
+import {
+  DEFAULT_MAX_PENDING_HANDSHAKES,
+  enforcePendingHandshakesCap,
+} from './backend/pending-handshakes-cap.js';
 import * as driverModule from './backend/drivers.js';
 import * as actionModule from './backend/actions.js';
 
@@ -95,17 +96,23 @@ export class AcpBackend {
   private readonly pendingApprovals = new Map<string, AcpPendingApproval>();
   private readonly participants = new Map<string, AcpBackendParticipantsResult>();
   private readonly driverFences = new Map<string, number>();
-  /** Issue #2805: Track in-flight prompt requests per session to reject concurrent sends (CC blocks on background terminals). */
+  /** #2805: reject concurrent sends. */
   private readonly inFlightPrompts = new Map<string, AbortController>();
-  // #4779: Producer-only mutable storage (set/delete in launchBackgroundHandshake).
+  // #4779: mutable producer + ReadonlyMap consumer.
   private readonly pendingHandshakesInternal = new Map<string, PendingHandshake>();
-  // #4779: ReadonlyMap view exposed to PromptDeps (no public .set/.delete/.clear).
   private readonly pendingHandshakes: ReadonlyMap<string, PendingHandshake> = this.pendingHandshakesInternal;
+  /** #4777: cap on pendingHandshakes size (see pending-handshakes-cap.ts). */
+  private readonly maxPendingHandshakes: number;
 
   constructor(private readonly options: AcpBackendOptions) {
     this.sessionService = options.sessionService;
     this.strictValidation = options.strictValidation ?? false;
     this.emitValidationWarnings = options.emitValidationWarnings ?? false;
+    const configuredMax = options.maxPendingHandshakes ?? DEFAULT_MAX_PENDING_HANDSHAKES;
+    if (!Number.isFinite(configuredMax) || configuredMax <= 0) {
+      throw new TypeError(`AcpBackendOptions.maxPendingHandshakes must be a positive finite number, got ${options.maxPendingHandshakes}`);
+    }
+    this.maxPendingHandshakes = configuredMax;
     this.clientFactory =
       options.clientFactory ??
       (context =>
@@ -159,10 +166,7 @@ export class AcpBackend {
     };
   }
 
-  /**
-   * Create a new ACP session: durable record → child process → initialize → session/new.
-   * @throws {AcpBackendLifecycleError} on handshake or session/new failure
-   */
+  /** Create a new ACP session. @throws {AcpBackendLifecycleError} on handshake failure. */
   async createSession(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
     return runtimeLifecycle.startNewRuntime(
@@ -174,12 +178,10 @@ export class AcpBackend {
     );
   }
 
-  /**
-   * Issue #4456: Create a new ACP session without blocking on the runtime handshake.
-   */
+  /** Create a new ACP session. @throws {AcpBackendLifecycleError} on handshake failure. */
   async createSessionAsync(input: AcpBackendCreateSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.createSession(toCreateSessionInput(input));
-    // #4760: dedup — return the FIRST call's outer shape (session/backendRunId/ready). Check-then-set is atomic (no await between).
+    // #4760: dedup — return FIRST call's references.
     const existing = this.pendingHandshakes.get(session.id);
     if (existing) {
       return { session: existing.session, initializeResult: {}, backendRunId: existing.backendRunId, ready: existing.ready };
@@ -187,8 +189,9 @@ export class AcpBackend {
     return this.launchBackgroundHandshake(session, input);
   }
 
-  /** #4760: launch a new background handshake; stores outer shape in pendingHandshakes; .finally() clears on settle. */
+  /** #4760: launch a new background handshake; .finally() clears on settle. #4777: enforces pendingHandshakes cap (rejects at cap; no runtime spawned for rejected calls). */
   private launchBackgroundHandshake(session: AcpSessionRecord, input: AcpBackendCreateSessionInput): AcpBackendStartResult {
+    enforcePendingHandshakesCap(this.pendingHandshakesInternal, this.maxPendingHandshakes, session.id);
     const backendRunId = this.backendRunIdProvider();
     const ready = runtimeLifecycle.startNewRuntimeBackground(
       this.getRuntimeDeps(), session, input.cwd, input.mcpServers, input.systemPrompt, backendRunId,
@@ -202,10 +205,7 @@ export class AcpBackend {
     return { session, initializeResult: {}, backendRunId, ready };
   }
 
-  /**
-   * Resume an existing ACP session by spawning a fresh child process and calling session/resume.
-   * Requires an existing acpAgentSessionId on the session record.
-   */
+  /** Resume an existing ACP session (needs acpAgentSessionId). */
   async resumeSession(input: AcpBackendResumeSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
     if (!session.acpAgentSessionId) {

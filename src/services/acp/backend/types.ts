@@ -238,6 +238,18 @@ export interface AcpBackendOptions {
   /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
   strictValidation?: boolean;
   onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
+  /**
+   * Issue #4777: Cap on concurrent in-flight background handshakes. When the cap
+   * is reached, the (cap+1)th unique createSessionAsync is rejected with
+   * AcpBackendPendingHandshakesCapExceededError (a typed precondition violation,
+   * not a lifecycle error). Dedup of EXISTING sessionIds bypasses the cap (the
+   * dedup path returns the existing entry without consuming cap space).
+   *
+   * Default: 1000 (per DoR). A pathological caller pattern (N concurrent unique
+   * createSessionAsync with each handshake hung) without this cap could grow
+   * the Map without bound until OOM or memory pressure.
+   */
+  maxPendingHandshakes?: number;
 }
 
 export interface AcpBackendRuntime {
