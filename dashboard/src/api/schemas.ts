@@ -368,9 +368,10 @@ const SSEEventTypes = z.enum([
   'subagent_stop',
   'verification',
   'permission_denied',
+  'status.stall.typed',
 ]);
 
-export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
+export const SessionSSEEventDataSchema = z.object({
   event: SSEEventTypes,
   sessionId: z.string(),
   timestamp: z.string(),
@@ -380,7 +381,7 @@ export const SessionSSEEventDataSchema: z.ZodType<SessionSSEEvent> = z.object({
 }).transform((event) => ({
   ...event,
   data: event.data ?? {},
-}));
+})) as unknown as z.ZodType<SessionSSEEvent>;
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
 
@@ -440,3 +441,59 @@ export const WsInboundMessageSchema = z.discriminatedUnion('type', [
   WsStreamMessageSchema,
   WsErrorMessageSchema,
 ]);
+
+// ── Stall Event Payload (Issue #4802) ────────────────────────────
+
+/**
+ * Bounded ErrorClass enum mirroring server `src/stall-events.ts`.
+ * Renderer maps these to the dashboard pill label. Adding a new value is a
+ * schema PR that gets reviewed — schema drift cannot grow unchecked.
+ *
+ * Server-side isErrorClass() rejects unknown values, defending against
+ * prompt-injection inputs that try to inject new errorClass values.
+ */
+export const ErrorClassSchema = z.enum([
+  'transient_5xx',
+  'permission_timeout',
+  'jsonl_stall',
+  'thinking_stall',
+  'unknown_stall',
+  'extended_working',
+]);
+
+/** TypeScript type for the ErrorClass bounded enum (derived from ErrorClassSchema). */
+export type ErrorClass = z.infer<typeof ErrorClassSchema>;
+
+/**
+ * Zod schema for StallEventPayload, mirroring server `src/stall-events.ts`.
+ *
+ * Path 2 defensive defaults: all fields are `.optional()` with safe fallbacks.
+ * - Pre-F-9 (typed payload not yet wired to SSE bus): fields are missing, the
+ *   renderer falls back to a generic "Stalled" pill with no sub-label or
+ *   AC3b button. Safe default.
+ * - Post-F-9 (typed payload wired to SSE bus): fields populate, full pill
+ *   (errorClass label + sub-label + AC3b button) renders.
+ *
+ * `recoveryExhausted` is NOT in the server's StallEventPayload yet — the
+ * renderer computes "exhausted" locally from
+ * `recoveryAttemptCount >= recoveryMaxAttempts` (when both > 0).
+ */
+export const StallEventPayloadSchema = z.object({
+  errorClass: ErrorClassSchema.optional(),
+  statusCode: z.number().int().min(100).max(599).optional(),
+  lastErrorAt: z.string().optional(),
+  stallDurationMs: z.number().nonnegative().optional(),
+  recoveryAttemptCount: z.number().int().nonnegative().optional(),
+  recoveryMaxAttempts: z.number().int().nonnegative().optional(),
+  recoveryDisabled: z.boolean().optional(),
+}).transform((p) => ({
+  errorClass: p.errorClass,
+  statusCode: p.statusCode,
+  lastErrorAt: p.lastErrorAt,
+  stallDurationMs: p.stallDurationMs ?? 0,
+  recoveryAttemptCount: p.recoveryAttemptCount ?? 0,
+  recoveryMaxAttempts: p.recoveryMaxAttempts ?? 0,
+  recoveryDisabled: p.recoveryDisabled ?? false,
+}));
+
+export type StallEventPayload = z.infer<typeof StallEventPayloadSchema>;
