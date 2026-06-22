@@ -173,7 +173,7 @@ export function SessionHeader({
             <SessionStateBadge status={badgeStatus} />
 
             {/* Issue #4802: typed stall pill — renders generic fallback when payload missing */}
-            <StallBadge payload={stallPayload ?? {}} />
+            {stallPayload && <StallBadge payload={stallPayload} />}
           </div>
           <div className="mt-0.5 truncate text-xs font-mono text-[var(--color-text-muted)]">
             {truncateMiddle(session.workDir, 48)}

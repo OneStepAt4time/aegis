@@ -382,6 +382,14 @@ export const SessionSSEEventDataSchema = z.object({
   ...event,
   data: event.data ?? {},
 })) as unknown as z.ZodType<SessionSSEEvent>;
+// TODO(#4802 F-9 follow-up): Remove the `as unknown as z.ZodType<SessionSSEEvent>`
+// cast once the backend's `SessionSSEEvent` type (src/api-contracts.ts) includes
+// `'status.stall.typed'` in its `event` field union. At that point, F-9 has
+// wired `buildStallEventPayload()` into the 12 emit sites, the typed stall
+// payload flows in the wire, and the Zod enum in this file matches the
+// backend's TypeScript union. The cast was needed because the new
+// `'status.stall.typed'` event name was added to the local Zod enum
+// ahead of the backend type update (forward-compatibility for the renderer).
 
 // ── Global SSE Event (Issue #410) ──────────────────────────────
 

@@ -12,9 +12,12 @@ import { StallBadge } from '../components/session/StallBadge';
 import type { StallEventPayload } from '../api/schemas';
 
 describe('Issue #4802: StallBadge', () => {
-  it('renders generic "Stalled" label when payload is empty (Path 2 default)', () => {
-    render(<StallBadge payload={{}} />);
-    expect(screen.getByText('Stalled')).toBeDefined();
+  it('returns null when payload is empty (always-conditional guard, Argus review feedback)', () => {
+    // Empty payload has no useful stall data: no errorClass, no kill-switch,
+    // no recovery counter. StallBadge must NOT render a misleading
+    // 'Stalled' pill for healthy sessions. Mirrors SendContinueButton L36.
+    const { container } = render(<StallBadge payload={{}} />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('renders typed errorClass label when present', () => {

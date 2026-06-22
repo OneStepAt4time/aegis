@@ -61,10 +61,25 @@ function KillSwitchIcon({ className }: { className?: string }) {
 /**
  * Stall pill with errorClass label + sub-label + kill-switch overlay.
  *
- * Renders nothing useful (returns null) when no payload is provided — caller
- * should guard with a presence check on the upstream event.
+ * Returns null when the payload has no useful stall data to display
+ * (no errorClass AND no recoveryDisabled AND no recovery counter). This
+ * mirrors the SendContinueButton L36 pattern: always-conditional component
+ * integration — never render a "Stalled" pill for healthy sessions.
+ *
+ * Caller should still guard with a presence check on the upstream event
+ * (e.g. `{stallPayload && <StallBadge .../>}` in SessionHeader), but the
+ * component itself is defensive against empty payloads.
  */
 export function StallBadge({ payload, className }: StallBadgeProps) {
+  // No useful stall data: empty payload, no errorClass, no kill-switch,
+  // and no recovery counter → do not render a misleading "Stalled" pill.
+  const hasErrorClass = payload.errorClass !== undefined && payload.errorClass !== null;
+  const hasRecoveryCounter =
+    (payload.recoveryAttemptCount ?? 0) > 0 || (payload.recoveryMaxAttempts ?? 0) > 0;
+  const hasMeaningfulData =
+    hasErrorClass || payload.recoveryDisabled === true || hasRecoveryCounter;
+  if (!hasMeaningfulData) return null;
+
   const label = formatStallClassLabel(payload.errorClass);
   const subLabel = formatStallSubLabel(payload);
   const exhausted = isRecoveryExhausted(payload);
