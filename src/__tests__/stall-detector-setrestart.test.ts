@@ -20,6 +20,7 @@ function makeDeps(): StallDetectorDeps {
   return {
     rejectSession: vi.fn(),
     emitStall: vi.fn(),
+    emitStallTyped: vi.fn(),
     statusChange: vi.fn(),
     makePayload: vi.fn().mockReturnValue({}),
   };

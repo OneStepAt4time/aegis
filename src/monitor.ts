@@ -186,6 +186,9 @@ export class SessionMonitor {
         statusChange: (payload) => { void this.channels.statusChange(payload); },
         alertFailure: (type, detail) => this.alertManager?.recordFailure(type, detail),
         metricsFailed: (sid) => this.metrics?.sessionFailed(sid),
+        // F-9: typed transient_5xx emit on rate-limit signal — flows to
+        // SessionEventBus.emitStallTyped → SSE 'status.stall.typed' event.
+        emitStallTyped: (sid, payload) => this.eventBus?.emitStallTyped(sid, payload),
         markRateLimited: (sid) => { this.stallDetector.rateLimitedSessions.add(sid); },
         unmarkRateLimited: (sid) => { this.stallDetector.rateLimitedSessions.delete(sid); },
       },
@@ -209,6 +212,7 @@ export class SessionMonitor {
       {
         rejectSession: (sid) => this.sessions.reject(sid),
         emitStall: (sid, type, detail) => this.eventBus?.emitStall(sid, type, detail),
+        emitStallTyped: (sid, payload) => this.eventBus?.emitStallTyped(sid, payload),
         statusChange: (payload) => { void this.channels.statusChange(payload); },
         makePayload: (event, session, detail) => this.makePayload(event, session, detail),
         alertFailure: (type, detail) => this.alertManager?.recordFailure(type as import('./alerting.js').AlertType, detail),
@@ -232,6 +236,7 @@ export class SessionMonitor {
     });
     this.stallDetector.updateDeps({
       emitStall: (sid, type, detail) => bus.emitStall(sid, type, detail),
+      emitStallTyped: (sid, payload) => bus.emitStallTyped(sid, payload),
     });
   }
 

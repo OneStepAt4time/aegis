@@ -15,6 +15,15 @@ import { type SessionEventPayload, type SessionEvent } from './channels/index.js
 import { SYSTEM_TENANT } from './config.js';
 import { retryWithJitter } from './retry.js';
 import { logger } from './logger.js';
+import {
+  type ErrorClass,
+  type StallEventPayload,
+} from './stall-events.js';
+import {
+  buildStallPayload,
+  emitStallEvent as emitStallEventHelper,
+  errorClassForStallType,
+} from './stall-detector-typed-emit.js';
 
 /** Stub: parse "Cogitated for Xm Ys" from status text. Returns duration in ms or null. */
 function parseCogitatedDuration(_statusText: string): number | null {
@@ -41,6 +50,14 @@ export interface StallDetectorConfig {
 export interface StallDetectorDeps {
   rejectSession: (sessionId: string) => Promise<void>;
   emitStall: (sessionId: string, stallType: string, detail: string) => void;
+  /**
+   * Issue #4802 (F-9): Emit a typed StallEventPayload for downstream
+   * consumers (dashboard, channel fanout). Distinct from `emitStall` —
+   * which ships free-form detail for backward compat. Callers should
+   * invoke BOTH: `emitStall` for legacy SSE consumers and
+   * `emitStallTyped` for typed metadata consumers (Path 1).
+   */
+  emitStallTyped: (sessionId: string, payload: StallEventPayload) => void;
   statusChange: (payload: SessionEventPayload) => void;
   makePayload: (event: SessionEvent, session: SessionInfo, detail: string) => SessionEventPayload;
   alertFailure?: (type: string, detail: string) => void;
@@ -70,6 +87,15 @@ export class StallDetector {
   readonly stallRecovering = new Set<string>();
   /** Sessions in rate-limit backoff (exempt from JSONL stall detection). */
   readonly rateLimitedSessions = new Set<string>();
+  /**
+   * Issue #4802 (F-9): Per-session recovery attempt counter. Incremented
+   * in `retryWithJitter.onRetry` callback during stall recovery. Reset
+   * to 0 (deleted) on successful recovery or idle transition. The
+   * running value is reflected as `recoveryAttemptCount` in the typed
+   * `StallEventPayload` so the dashboard can compute `recoveryExhausted`
+   * (= attemptCount >= maxAttempts && maxAttempts > 0).
+   */
+  readonly recoveryAttempts = new Map<string, number>();
 
   constructor(
     private config: StallDetectorConfig,
@@ -129,6 +155,49 @@ export class StallDetector {
     this.stallDeleteAll(sessionId);
     this.stateSince.delete(sessionId);
     this.prevStatusForStall.delete(sessionId);
+    this.recoveryAttempts.delete(sessionId);
+  }
+
+  /**
+   * Issue #4802 (F-9): Build a typed StallEventPayload — thin wrapper that
+   * injects live recovery counter + cap from this detector's state.
+   * Implementation lives in `src/stall-detector-typed-emit.ts`.
+   */
+  private buildPayload(
+    session: SessionInfo,
+    errorClass: ErrorClass,
+    stallDurationMs: number,
+  ): StallEventPayload {
+    return buildStallPayload(
+      { recoveryAttempts: this.recoveryAttempts, recoveryMaxAttempts: this.config.stallRecoveryMaxRetries },
+      session,
+      errorClass,
+      stallDurationMs,
+    );
+  }
+
+  /**
+   * Issue #4802 (F-9): Combined emit — fires all three downstream paths
+   * (free-form SSE, typed SSE, channel fanout) for one stall event.
+   */
+  private emitStallEvent(
+    session: SessionInfo,
+    stallType: string,
+    errorClass: ErrorClass,
+    durationMs: number,
+    detail: string,
+    statusEvent: SessionEvent = 'status.stall',
+  ): void {
+    emitStallEventHelper(
+      this.deps as unknown as Parameters<typeof emitStallEventHelper>[0],
+      { recoveryAttempts: this.recoveryAttempts, recoveryMaxAttempts: this.config.stallRecoveryMaxRetries },
+      session,
+      stallType,
+      errorClass,
+      durationMs,
+      detail,
+      statusEvent,
+    );
   }
 
   /**
@@ -197,10 +266,7 @@ export class StallDetector {
               const minutes = Math.round(thinkingDuration / 60000);
               const detail = `Session stalled: CC extended thinking for ${minutes}min with no output. ` +
                   `Status: "${statusText}". Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
-              this.deps.emitStall(session.id, 'thinking', detail);
-              this.deps.statusChange(
-                this.deps.makePayload('status.stall', session, detail),
-              );
+              this.emitStallEvent(session, 'thinking', 'thinking_stall', stallDuration, detail);
             }
           } else {
             // Normal JSONL stall detection
@@ -209,10 +275,7 @@ export class StallDetector {
               const minutes = Math.round(stallDuration / 60000);
               const detail = `Session stalled: "working" for ${minutes}min with no new output. ` +
                   `Last activity: ${new Date(session.lastActivity).toISOString()}`;
-              this.deps.emitStall(session.id, 'jsonl', detail);
-              this.deps.statusChange(
-                this.deps.makePayload('status.stall', session, detail),
-              );
+              this.emitStallEvent(session, 'jsonl', 'jsonl_stall', stallDuration, detail);
               // Issue #3752: Attempt auto-recovery for JSONL stall
               this.attemptStallRecovery(session, 'jsonl');
             }
@@ -234,10 +297,7 @@ export class StallDetector {
             const minutes = Math.round(permDuration / 60000);
             const detail = `Session stalled: waiting for permission approval for ${minutes}min. ` +
                 `Auto-approve this session or POST /v1/sessions/${session.id}/approve`;
-            this.deps.emitStall(session.id, 'permission', detail);
-            this.deps.statusChange(
-              this.deps.makePayload('status.stall', session, detail),
-            );
+            this.emitStallEvent(session, 'permission', 'permission_timeout', permDuration, detail);
           }
         }
         // L9: Auto-reject permission after timeout
@@ -255,10 +315,7 @@ export class StallDetector {
             try {
               await this.deps.rejectSession(session.id);
               const detail = `Permission auto-rejected after ${minutes}min timeout (session ${session.displayName})`;
-              this.deps.emitStall(session.id, 'permission_timeout', detail);
-              this.deps.statusChange(
-                this.deps.makePayload('status.permission_timeout', session, detail),
-              );
+              this.emitStallEvent(session, 'permission_timeout', 'permission_timeout', permDuration, detail, 'status.permission_timeout');
             } catch (e: unknown) {
               logger.error({
                 component: 'stall-detector',
@@ -282,10 +339,7 @@ export class StallDetector {
             const minutes = Math.round(unkDuration / 60000);
             const detail = `Session stalled: in "unknown" state for ${minutes}min. ` +
                 `CC may be stuck. Try: POST /v1/sessions/${session.id}/interrupt or /kill`;
-            this.deps.emitStall(session.id, 'unknown', detail);
-            this.deps.statusChange(
-              this.deps.makePayload('status.stall', session, detail),
-            );
+            this.emitStallEvent(session, 'unknown', 'unknown_stall', unkDuration, detail);
           }
         }
       }
@@ -301,10 +355,11 @@ export class StallDetector {
             const minutes = Math.round(stateDuration / 60000);
             const detail = `Session stalled: "${currentStatus}" state for ${minutes}min. ` +
                 `May need intervention: /interrupt, /approve, or /kill`;
-            this.deps.emitStall(session.id, 'extended', detail);
-            this.deps.statusChange(
-              this.deps.makePayload('status.stall', session, detail),
-            );
+            // 'extended' maps to unknown_stall in the bounded enum — the
+            // session is in an unusual non-working state; the dashboard
+            // renders the generic 'Unknown stall' pill until a more
+            // specific enum value is added (schema PR).
+            this.emitStallEvent(session, 'extended', 'unknown_stall', stateDuration, detail);
           }
         }
       }
@@ -321,10 +376,7 @@ export class StallDetector {
             const minutes = Math.round(workingDuration / 60000);
             const detail = `Session stalled: in "working" state for ${minutes}min. ` +
               `CC may be stuck in an internal loop (e.g., Misting). Consider: POST /v1/sessions/${session.id}/interrupt or /kill`;
-            this.deps.emitStall(session.id, 'extended_working', detail);
-            this.deps.statusChange(
-              this.deps.makePayload('status.stall', session, detail),
-            );
+            this.emitStallEvent(session, 'extended_working', 'extended_working', workingDuration, detail);
             // Issue #3752: Attempt auto-recovery for extended working stall
             this.attemptStallRecovery(session, 'extended_working');
           }
@@ -350,6 +402,9 @@ export class StallDetector {
         this.stateSince.delete(session.id);
         // Clean stall notifications (session recovered) — O(1) with Map
         this.stallDeleteAll(session.id);
+        // Issue #4802 (F-9): Clear recovery attempt counter on idle — the
+        // session recovered and is no longer in a stall-recovery loop.
+        this.recoveryAttempts.delete(session.id);
         // Notify monitor to clean up its own non-stall state (e.g. contextWarningCompacted)
         this.deps.onSessionIdle?.(session.id);
       }
@@ -363,22 +418,13 @@ export class StallDetector {
     }
   }
 
-  /**
-   * Issue #3752: Attempt stall recovery via ACP backend restart.
-   * Issue #4802 (F-4): Per-session kill-switch — when session.recoveryDisabled
-   *   is true, skip the restart and surface an audit log/notification so the
-   *   operator can see the recovery was paused (not silently swallowed).
-   * Uses retryWithJitter for the restart attempt.
-   * Fire-and-forget to avoid blocking the monitor loop.
-   */
+  /** #3752: Attempt stall recovery via ACP backend restart. #4802 F-4 kill-switch. */
   attemptStallRecovery(session: SessionInfo, stallType: string): void {
     if (!this.config.stallRecoveryEnabled) return;
     if (!this.deps.restartSession) return;
     if (this.stallRecovering.has(session.id)) return; // Already recovering
 
-    // F-4: per-session kill-switch. Survives restart via SessionInfo persistence
-    // (per Daedalus Cycle-1.5). When true, no recovery fires; we surface the
-    // paused state to the operator instead.
+    // F-4: per-session kill-switch — when true, skip restart + surface paused state.
     if (session.recoveryDisabled) {
       logger.info({
         component: 'stall-detector',
@@ -386,6 +432,12 @@ export class StallDetector {
         sessionId: session.id,
         attributes: { stallType, displayName: session.displayName },
       });
+      // F-9: typed emit so the dashboard renders the kill-switch overlay
+      // icon on the existing pill (recoveryDisabled=true in payload).
+      this.deps.emitStallTyped(
+        session.id,
+        this.buildPayload(session, errorClassForStallType(stallType), 0),
+      );
       this.deps.statusChange(
         this.deps.makePayload('status.stall', session,
           `Stall recovery skipped (${stallType}): per-session kill-switch active. Recovery disabled on this session.`),
@@ -410,6 +462,11 @@ export class StallDetector {
       attributes: { stallType, displayName },
     });
 
+    // F-9: typed emit on recovery start so the dashboard shows attempt count.
+    this.deps.emitStallTyped(
+      sid,
+      this.buildPayload(session, errorClassForStallType(stallType), 0),
+    );
     this.deps.statusChange(
       this.deps.makePayload('status.stall', session,
         `Stall recovery (${stallType}): restarting...`),
@@ -429,6 +486,9 @@ export class StallDetector {
         baseDelayMs: 2_000,
         maxDelayMs: 10_000,
         onRetry: (_err: unknown, attempt: number, delayMs: number) => {
+          // F-9: bump the recoveryAttempts counter so the dashboard's
+          // recoveryAttemptCount field tracks the live retry count.
+          this.recoveryAttempts.set(sid, attempt);
           logger.info({
             component: 'stall-detector',
             operation: 'stall_recovery_retry',
@@ -447,6 +507,17 @@ export class StallDetector {
       this.rateLimitedSessions.delete(sid);
       this.stallRecovering.delete(sid);
       this.stallDeleteAll(sid);
+      // F-9: clear recoveryAttempts on success — session is recovered.
+      this.recoveryAttempts.delete(sid);
+      // F-9: emit typed 'success' state to the dashboard.
+      this.deps.emitStallTyped(
+        sid,
+        this.buildPayload(
+          { ...session, status: 'idle' } as SessionInfo,
+          errorClassForStallType(stallType),
+          0,
+        ),
+      );
       this.deps.statusChange(
         this.deps.makePayload('status.stall', { ...session, status: 'idle' } as SessionInfo,
           `Stall recovery OK — session restarted.`),
@@ -461,6 +532,12 @@ export class StallDetector {
         attributes: { error: errMsg },
       });
       this.stallRecovering.delete(sid);
+      // F-9: typed emit on failure so the dashboard sees attemptCount >=
+      // maxAttempts (recoveryExhausted=true in the renderer).
+      this.deps.emitStallTyped(
+        sid,
+        this.buildPayload(session, errorClassForStallType(stallType), 0),
+      );
       this.deps.statusChange(
         this.deps.makePayload('status.stall', session,
           `Stall recovery failed: ${errMsg}`),
@@ -470,4 +547,5 @@ export class StallDetector {
       this.deps.metricsFailed?.(sid);
     });
   }
+
 }
