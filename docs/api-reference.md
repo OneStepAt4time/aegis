@@ -1444,7 +1444,75 @@ curl -N "http://localhost:9100/v1/sessions/abc123/events?token=$SSE_TOKEN"
 
 > **`approval_resolved`** — emitted after an approval or rejection via `POST /v1/sessions/:id/approval/approve` or `/reject`. Payload: `{ action: "approved" | "rejected", approvalId: string }`.
 
+> **`status.stall.typed`** — Issue #4802 (F-9). Typed superset of the legacy free-form `stall` event. Carries a bounded `StallEventPayload` so renderers can subscribe via Zod schema instead of parsing free-form strings. Both events ship in parallel; consumers should migrate to `status.stall.typed`. See [Typed Stall Payload](#typed-stall-payload-statusstalltyped) below for the full schema.
+
 Supports `Last-Event-ID` header for replay of missed events.
+
+---
+
+### Typed Stall Payload (`status.stall.typed`)
+
+Issue #4802 (F-9) adds a typed alternative to the legacy free-form `stall` SSE event. The typed event ships a bounded `StallEventPayload` so dashboards, scripts, and channel integrations never have to parse free-form `detail` strings.
+
+**Wire format** (per-session SSE, `/v1/sessions/:id/events`):
+
+```json
+{
+  "event": "status.stall.typed",
+  "sessionId": "abc123",
+  "timestamp": "2026-06-22T17:42:18.000Z",
+  "data": {
+    "errorClass": "transient_5xx",
+    "statusCode": 529,
+    "lastErrorAt": "2026-06-22T17:42:15.000Z",
+    "stallDurationMs": 12500,
+    "recoveryAttemptCount": 1,
+    "recoveryMaxAttempts": 3,
+    "recoveryDisabled": false
+  }
+}
+```
+
+**Field reference:**
+
+| Field | Type | Always present? | Description |
+|-------|------|-----------------|-------------|
+| `errorClass` | enum (see below) | yes | Bounded operational category — drives the dashboard pill label. Adding a new value is a schema PR. |
+| `statusCode` | integer | only when `errorClass === 'transient_5xx'` | HTTP status code extracted from CC `stopReason` (e.g. `'529_overloaded'` → `529`). Scoped to upstream 5xx only — other categories reject it at the validator. |
+| `lastErrorAt` | string (ISO 8601) | yes | Timestamp of the last detected error or activity signal. |
+| `stallDurationMs` | integer | yes | Milliseconds since the stall was first detected. |
+| `recoveryAttemptCount` | integer | yes | Current recovery attempt number (`0` if recovery not yet attempted). Reset on successful recovery or idle transition. |
+| `recoveryMaxAttempts` | integer | yes | Server-side cap on recovery attempts for this stall event. |
+| `recoveryDisabled` | boolean | yes | Per-session kill-switch state. `true` means an operator paused auto-recovery via the dashboard stall pill. See `recoveryDisabled` on `SessionInfo`. |
+
+**`errorClass` values** (bounded enum — `ERROR_CLASS_VALUES` in `src/stall-events.ts`):
+
+| Value | Meaning |
+|-------|---------|
+| `transient_5xx` | Upstream 5xx (rate-limit, overloaded, service unavailable). Retry-eligible. Only category that carries `statusCode`. |
+| `permission_timeout` | `permission_prompt` or `bash_approval` stalled past the timeout. |
+| `jsonl_stall` | Session reported as "working" but no new JSONL bytes observed. |
+| `thinking_stall` | Claude Code extended thinking past the stall threshold. |
+| `unknown_stall` | Unknown stall state past the threshold. Also used as the mapping target for the legacy `extended` stall type until a dedicated enum lands. |
+| `extended_working` | Session has been "working" for 3× the stall threshold (Claude Code internal loop). |
+
+**Backward compatibility:**
+
+The legacy free-form `stall` event (`{ stallType, detail }`) continues to ship alongside `status.stall.typed`. Both events are emitted at every stall-detector site; consumers that need rich metadata should migrate to `status.stall.typed`. The free-form event is the `Path 2 fallback` for renderers that haven't wired the typed schema yet.
+
+**Channel fanout (Telegram, Slack, Email):**
+
+When `status.stall.typed` is forwarded to channel transports, `statusCode` is stripped via `toChannelFanoutPayload()` because HTTP status codes are fingerprint-y (530 vs 529 reveals upstream API variant and adds noise to operator notifications). Operator surfaces (dashboard, in-app tooltip, API consumers) receive the full payload including `statusCode`.
+
+**Migration recipe** for consumers on the legacy `stall` event:
+
+```bash
+# Subscribe to typed events only (curl, filter on event name)
+curl -N "http://localhost:9100/v1/sessions/abc123/events?token=$SSE_TOKEN" \
+  | jq 'select(.event == "status.stall.typed")'
+```
+
+TypeScript consumers should validate `data` against the `StallEventPayload` schema from `src/stall-events.ts` (re-exported from `@aegis/sdk` in a future minor release).
 
 ---
 
