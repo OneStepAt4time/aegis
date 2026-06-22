@@ -27,7 +27,7 @@ jobs:
       short_sha: ${{ steps.resolve.outputs.short_sha }}
       main_pr_url: ${{ steps.main_pr.outputs.pull-request-url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -82,7 +82,7 @@ jobs:
     needs: prepare-main-rollback
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
