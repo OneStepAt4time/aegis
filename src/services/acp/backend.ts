@@ -41,6 +41,7 @@ import type {
   AcpBackendDriverResult,
   AcpBackendParticipantsResult,
   AcpBackendRuntimeExitEvent,
+  AcpBackendSessionRestartedEvent,
   AcpBackendOptions,
   AcpBackendRuntime,
   AcpBackendShutdownSessionInput,
@@ -439,6 +440,17 @@ export class AcpBackend {
       input.cwd,
       backendRunId
     );
+    // Issue #4802 (F-3): Emit session_restarted event after successful respawn.
+    // Subscribers (e.g. /goal driver, dashboard) use this to detect recovery
+    // completion. Typed metadata only — no transcript. NOT emitted on failure
+    // (the throw propagates to the caller of restartSession).
+    this.options.onSessionRestarted?.({
+      sessionId: input.sessionId,
+      scope,
+      backendRunId,
+      recoveryReason: input.reason,
+      completedAt: new Date().toISOString(),
+    });
     return { ...result, backoffDelayMs };
   }
 
@@ -490,6 +502,7 @@ export type {
   AcpBackendRestartSessionInput,
   AcpBackendResumeSessionInput,
   AcpBackendRuntimeExitEvent,
+  AcpBackendSessionRestartedEvent,
   AcpBackendScopedRuntimeInput,
   AcpBackendSessionResult,
   AcpBackendSessionService,

@@ -110,8 +110,8 @@ describe('Issue #4802 (F-3): session_restarted event on successful restart', () 
 
     await backend.restartSession({
       sessionId: record.id,
-      scope: record.scope,
-      cwd: record.cwd,
+      ...(record as unknown as { scope: { tenantId: string; ownerKeyId: string } }).scope,
+      cwd: (record as unknown as { cwd: string }).cwd,
       reason: 'rate_limit_retry_1',
     });
 
@@ -147,8 +147,8 @@ describe('Issue #4802 (F-3): session_restarted event on successful restart', () 
 
     await expect(backend.restartSession({
       sessionId: record.id,
-      scope: record.scope,
-      cwd: record.cwd,
+      ...(record as unknown as { scope: { tenantId: string; ownerKeyId: string } }).scope,
+      cwd: (record as unknown as { cwd: string }).cwd,
       reason: 'rate_limit_retry_1',
     })).rejects.toThrow('DB write failed');
 
@@ -180,8 +180,8 @@ describe('Issue #4802 (F-3): session_restarted event on successful restart', () 
 
     await expect(backend.restartSession({
       sessionId: record.id,
-      scope: record.scope,
-      cwd: record.cwd,
+      ...(record as unknown as { scope: { tenantId: string; ownerKeyId: string } }).scope,
+      cwd: (record as unknown as { cwd: string }).cwd,
       reason: 'stall_recovery_jsonl',
     })).rejects.toThrow('session/resume failed');
 
@@ -195,8 +195,8 @@ describe('Issue #4802 (F-3): session_restarted event on successful restart', () 
     // Should not throw when callback is omitted
     await expect(backend.restartSession({
       sessionId: record.id,
-      scope: record.scope,
-      cwd: record.cwd,
+      ...(record as unknown as { scope: { tenantId: string; ownerKeyId: string } }).scope,
+      cwd: (record as unknown as { cwd: string }).cwd,
       reason: 'rate_limit_retry_1',
     })).resolves.toBeDefined();
   });
@@ -209,8 +209,8 @@ describe('Issue #4802 (F-3): session_restarted event on successful restart', () 
 
     await backend.restartSession({
       sessionId: record.id,
-      scope: record.scope,
-      cwd: record.cwd,
+      ...(record as unknown as { scope: { tenantId: string; ownerKeyId: string } }).scope,
+      cwd: (record as unknown as { cwd: string }).cwd,
       reason: 'rate_limit_retry_1',
     });
 

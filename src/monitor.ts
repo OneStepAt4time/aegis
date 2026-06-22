@@ -25,6 +25,7 @@ import { type AcpBackend } from './services/acp/backend.js';
 import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
+import { redactSecretsFromText } from './services/acp/event-mapper.js';
 
 import { StallDetector, type StallDetectorConfig, type StallDetectorDeps } from './stall-detector.js';
 
@@ -594,7 +595,18 @@ export class SessionMonitor {
     this.channels.message(this.makePayload(event, session, msg.text));
   }
 
-  /** Build a standard event payload. */
+  /**
+   * Build a standard event payload.
+   *
+   * Issue #4802 (F-6): Server-side redaction of stall/error payloads.
+   * detail is a free-form string assembled from upstream-derived text
+   * (statusText, errorDetail, raw transcript strings). Any secret pattern
+   * in those strings would otherwise ship unredacted to channels (Telegram,
+   * webhooks). Apply redactSecretsFromText BEFORE the length slice so
+   * secrets near the 2000-char boundary are still caught.
+   *
+   * The length slice remains as defense-in-depth — redaction is the rule.
+   */
   makePayload(event: SessionEvent, session: SessionInfo, detail: string): SessionEventPayload {
     return {
       event,
@@ -604,7 +616,7 @@ export class SessionMonitor {
         name: session.displayName,
         workDir: session.workDir,
       },
-      detail: detail.slice(0, 2000),
+      detail: redactSecretsFromText(detail).slice(0, 2000),
     };
   }
 
