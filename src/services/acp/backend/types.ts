@@ -221,6 +221,28 @@ export interface AcpBackendRestartBackoffEvent extends AcpBackendRestartBackoffC
   delayMs: number;
 }
 
+/**
+ * Issue #4802 (F-3): Emitted after startResumeRuntime completes successfully
+ * inside restartSession(). Typed metadata only — no transcript.
+ *
+ * Subscribers (e.g. /goal driver, dashboard) use this to detect recovery
+ * completion. Before this, restartSession was fire-and-forget: the /goal
+ * driver could not detect that the respawn finished, so a recovery that
+ * succeeded looked identical to one that was still in flight.
+ */
+export interface AcpBackendSessionRestartedEvent {
+  sessionId: string;
+  /** Scope propagated from the restarted session record — preserved for
+   * tenant-scoped audit / cross-tenant safety checks. */
+  scope: AcpSessionScope;
+  backendRunId: string;
+  /** The reason string passed to restartSession (e.g. 'rate_limit_retry_1',
+   * 'stall_recovery_jsonl', 'unexpected-exit'). */
+  recoveryReason: string;
+  /** ISO8601 timestamp when the restart completed. */
+  completedAt: string;
+}
+
 export interface AcpBackendOptions {
   /** Issue #3897: Emit validation_warning transitions for monitoring (default: false). */
   emitValidationWarnings?: boolean;
@@ -238,6 +260,10 @@ export interface AcpBackendOptions {
   /** Issue #3900: When true, validation warnings from prompt output cause action failure. */
   strictValidation?: boolean;
   onRestartBackoff?: (event: AcpBackendRestartBackoffEvent) => void;
+  /** Issue #4802 (F-3): Called after restartSession completes successfully.
+   *  NOT called on failure (errors propagate to the caller of restartSession).
+   *  Subscribers include the /goal driver, dashboard, and recovery-metrics. */
+  onSessionRestarted?: (event: AcpBackendSessionRestartedEvent) => void;
   /**
    * Issue #4777: Cap on concurrent in-flight background handshakes. When the cap
    * is reached, the (cap+1)th unique createSessionAsync is rejected with

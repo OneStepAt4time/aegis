@@ -84,6 +84,11 @@ export interface SessionInfo {
   prematureTermination?: boolean;       // True when session ended with suspiciously low tool use
   // Issue #4027: Pinned session flag — reaper skips pinned sessions.
   isPinned?: boolean;
+  // Issue #4802 (F-4): Per-session kill-switch for stall auto-recovery. When true,
+  // attemptStallRecovery() skips the restart and emits an audit log/notification.
+  // Survives restart via the session record (per Daedalus Cycle-1.5: column on the
+  // session record, NOT a process-local flag). Default false when unset.
+  recoveryDisabled?: boolean;
 }
 
 /** Persisted session store keyed by Aegis session ID. */

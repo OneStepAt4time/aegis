@@ -365,6 +365,9 @@ export class StallDetector {
 
   /**
    * Issue #3752: Attempt stall recovery via ACP backend restart.
+   * Issue #4802 (F-4): Per-session kill-switch — when session.recoveryDisabled
+   *   is true, skip the restart and surface an audit log/notification so the
+   *   operator can see the recovery was paused (not silently swallowed).
    * Uses retryWithJitter for the restart attempt.
    * Fire-and-forget to avoid blocking the monitor loop.
    */
@@ -372,6 +375,23 @@ export class StallDetector {
     if (!this.config.stallRecoveryEnabled) return;
     if (!this.deps.restartSession) return;
     if (this.stallRecovering.has(session.id)) return; // Already recovering
+
+    // F-4: per-session kill-switch. Survives restart via SessionInfo persistence
+    // (per Daedalus Cycle-1.5). When true, no recovery fires; we surface the
+    // paused state to the operator instead.
+    if (session.recoveryDisabled) {
+      logger.info({
+        component: 'stall-detector',
+        operation: 'stall_recovery_skipped_killswitch',
+        sessionId: session.id,
+        attributes: { stallType, displayName: session.displayName },
+      });
+      this.deps.statusChange(
+        this.deps.makePayload('status.stall', session,
+          `Stall recovery skipped (${stallType}): per-session kill-switch active. Recovery disabled on this session.`),
+      );
+      return;
+    }
 
     this.stallRecovering.add(session.id);
 

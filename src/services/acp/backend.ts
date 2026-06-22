@@ -41,6 +41,7 @@ import type {
   AcpBackendDriverResult,
   AcpBackendParticipantsResult,
   AcpBackendRuntimeExitEvent,
+  AcpBackendSessionRestartedEvent,
   AcpBackendOptions,
   AcpBackendRuntime,
   AcpBackendShutdownSessionInput,
@@ -219,10 +220,7 @@ export class AcpBackend {
     return runtimeLifecycle.startResumeRuntime(this.getRuntimeDeps(), session, input.cwd);
   }
 
-  /**
-   * Load an existing ACP session into a fresh runtime, calling session/load
-   * to restore context. Used when reconnecting to a previously active session.
-   */
+  /** Load an existing ACP session into a fresh runtime via session/load. */
   async loadSession(input: AcpBackendLoadSessionInput): Promise<AcpBackendStartResult> {
     const session = await this.sessionService.getSession(input.sessionId, scopeFromInput(input));
     if (!session.acpAgentSessionId) {
@@ -238,10 +236,7 @@ export class AcpBackend {
     );
   }
 
-  /**
-   * Send session/cancel to the ACP agent for the given session.
-   * The agent decides how to handle cancellation (stop current work, rollback, etc).
-   */
+  /** Send session/cancel to the ACP agent. */
   async cancelSession(input: AcpBackendCancelSessionInput): Promise<AcpBackendCancelResult> {
     const scope = scopeFromInput(input);
     const session = await this.sessionService.getSession(input.sessionId, scope);
@@ -388,10 +383,7 @@ export class AcpBackend {
     return runtime.cleanupPromise;
   }
 
-  /**
-   * Restart an ACP session: kill existing runtime, create fresh child process,
-   * and call session/resume. Includes configurable backoff delay.
-   */
+  /** Restart an ACP session: kill runtime, fresh child, session/resume. */
   async restartSession(input: AcpBackendRestartSessionInput): Promise<AcpBackendRestartResult> {
     const scope = scopeFromInput(input);
     const verified = await this.sessionService.getSession(input.sessionId, scope);
@@ -439,6 +431,11 @@ export class AcpBackend {
       input.cwd,
       backendRunId
     );
+    // Issue #4802 (F-3): emit session_restarted after successful respawn — typed metadata only, not on failure.
+    this.options.onSessionRestarted?.({
+      sessionId: input.sessionId, scope, backendRunId,
+      recoveryReason: input.reason, completedAt: new Date().toISOString(),
+    });
     return { ...result, backoffDelayMs };
   }
 
@@ -490,6 +487,7 @@ export type {
   AcpBackendRestartSessionInput,
   AcpBackendResumeSessionInput,
   AcpBackendRuntimeExitEvent,
+  AcpBackendSessionRestartedEvent,
   AcpBackendScopedRuntimeInput,
   AcpBackendSessionResult,
   AcpBackendSessionService,

@@ -25,7 +25,7 @@ import { type AcpBackend } from './services/acp/backend.js';
 import { suppressedCatch } from './suppress.js';
 import { logger } from './logger.js';
 import { maybeInjectFault } from './fault-injection.js';
-
+import { redactStallDetail } from './utils/redact-stall-detail.js';
 import { StallDetector, type StallDetectorConfig, type StallDetectorDeps } from './stall-detector.js';
 
 import { type AlertManager } from './alerting.js';
@@ -594,7 +594,7 @@ export class SessionMonitor {
     this.channels.message(this.makePayload(event, session, msg.text));
   }
 
-  /** Build a standard event payload. */
+  /** Build a standard event payload — Issue #4802 (F-6): redacts secrets before shipping. */
   makePayload(event: SessionEvent, session: SessionInfo, detail: string): SessionEventPayload {
     return {
       event,
@@ -604,7 +604,7 @@ export class SessionMonitor {
         name: session.displayName,
         workDir: session.workDir,
       },
-      detail: detail.slice(0, 2000),
+      detail: redactStallDetail(detail),
     };
   }
 
