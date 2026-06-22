@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 import { GitFork, MoreHorizontal } from 'lucide-react';
 import type { SessionHealth, SessionInfo } from '../../types';
 import { SessionStateBadge, uiStateToSessionBadgeStatus } from './SessionStateBadge';
+import { StallBadge } from './StallBadge';
+import { useStore } from '../../store/useStore';
 import { HoldButton } from '../shared/HoldButton';
 import { CopyButton } from '../shared/CopyButton';
 import { TimelineScrubber, type TimelineEvent } from './TimelineScrubber';
@@ -144,6 +146,7 @@ export function SessionHeader({
   onFork,
 }: SessionHeaderProps) {
   const t = useT();
+  const stallPayload = useStore((s: { stallMap: Record<string, import('../../api/schemas').StallEventPayload> }) => s.stallMap[session.id]);
 
   const needsApproval = health.status === 'permission_prompt' || health.status === 'bash_approval';
   const badgeStatus = uiStateToSessionBadgeStatus(health.status, health.alive);
@@ -168,6 +171,9 @@ export function SessionHeader({
               {formatSessionName(session.displayName)}
             </h1>
             <SessionStateBadge status={badgeStatus} />
+
+            {/* Issue #4802: typed stall pill — renders generic fallback when payload missing */}
+            {stallPayload && <StallBadge payload={stallPayload} />}
           </div>
           <div className="mt-0.5 truncate text-xs font-mono text-[var(--color-text-muted)]">
             {truncateMiddle(session.workDir, 48)}

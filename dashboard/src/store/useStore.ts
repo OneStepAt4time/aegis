@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import type { SessionInfo, GlobalMetrics, GlobalSSEEvent, GlobalSSEEventType, RowHealth } from '../types';
+import type { StallEventPayload } from '../api/schemas';
 
 export interface ActivityListItem extends GlobalSSEEvent {
   renderKey: string;
@@ -97,6 +98,12 @@ export interface AppState {
   setSessionsAndHealth: (sessions: SessionInfo[], healthMap: Record<string, RowHealth>) => void;
   setHealth: (healthMap: Record<string, RowHealth>) => void;
 
+  // Issue #4802: Per-session typed stall payloads (mirror of src/stall-events.ts).
+  // Keyed by session ID. The most recent typed stall event for a session.
+  stallMap: Record<string, StallEventPayload>;
+  setStallMap: (stallMap: Record<string, StallEventPayload>) => void;
+  clearStallEntry: (sessionId: string) => void;
+
   // Global metrics
   metrics: GlobalMetrics | null;
   setMetrics: (metrics: GlobalMetrics) => void;
@@ -142,6 +149,16 @@ export const useStore = create<AppState>((set) => ({
   setHealth: (healthMap) => set((state) => (
     areHealthMapsEqual(state.healthMap, healthMap) ? state : { healthMap }
   )),
+
+  // Issue #4802: typed stall map
+  stallMap: {},
+  setStallMap: (stallMap: Record<string, import('../api/schemas').StallEventPayload>) => set({ stallMap }),
+  clearStallEntry: (sessionId) => set((state) => {
+    if (!(sessionId in state.stallMap)) return state;
+    const next = { ...state.stallMap };
+    delete next[sessionId];
+    return { stallMap: next };
+  }),
 
   // Metrics
   metrics: null,

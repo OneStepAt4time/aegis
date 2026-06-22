@@ -23,6 +23,7 @@ import { useSessionApproval } from '../hooks/useSessionApproval';
 import { SessionHeader } from '../components/session/SessionHeader';
 import { CliShortcutsPanel } from '../components/session/CliShortcutsPanel';
 import { PauseControlBar } from '../components/session/PauseControlBar';
+import { SendContinueButton } from '../components/session/SendContinueButton';
 import { DriverControlBar } from '../components/session/DriverControlBar';
 import { useSessionParticipants } from '../hooks/useSessionParticipants';
 import { useSessionTimeline } from '../hooks/useSessionTimeline';
@@ -321,6 +322,10 @@ export default function SessionDetailPage() {
             onCompleteIntervention={(guidance) => completeIntervention({ guidance })}
             onResume={() => resume()}
           />
+
+          {id && (
+            <SendContinueButton sessionId={id} />
+          )}
 
           <DriverControlBar
             participants={participants}
