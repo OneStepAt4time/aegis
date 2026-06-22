@@ -10,10 +10,14 @@ import { StructuredLogger } from './logger.js';
 const log = new StructuredLogger();
 
 import { EventEmitter } from 'node:events';
+import type { StallEventPayload } from './stall-events.js';
 import { CircularBuffer } from './utils/circular-buffer.js';
 
 export interface SessionSSEEvent {
-  event: 'status' | 'message' | 'system' | 'approval' | 'approval_resolved' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification' | 'permission_denied' | 'circuit_breaker' | 'message_display';
+  event: 'status' | 'message' | 'system' | 'approval' | 'approval_resolved' | 'ended' | 'heartbeat' | 'stall' | 'dead' | 'hook' | 'subagent_start' | 'subagent_stop' | 'verification' | 'permission_denied' | 'circuit_breaker' | 'message_display'
+    // Issue #4802 (F-9): typed stall event — supersedes free-form 'stall'
+    // for typed consumers. Carries `StallEventPayload` in `data`.
+    | 'status.stall.typed';
   sessionId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -357,6 +361,30 @@ export class SessionEventBus {
       sessionId,
       timestamp: new Date().toISOString(),
       data: { stallType, detail },
+    });
+  }
+
+  /**
+   * Issue #4802 (F-9): Emit a typed stall event with structured
+   * `StallEventPayload`. The SSE event name is `status.stall.typed` so the
+   * renderer can subscribe to it via Zod schema validation (no free-form
+   * string parsing). Distinct from `emitStall` which ships free-form
+   * detail for backward compat (Path 2 fallback).
+   *
+   * The `data` field carries the full `StallEventPayload` — bounded
+   * `errorClass` enum, `statusCode` (transient_5xx only), `recoveryAttemptCount`,
+   * `recoveryMaxAttempts`, `recoveryDisabled`, `stallDurationMs`, `lastErrorAt`.
+   */
+  emitStallTyped(sessionId: string, payload: StallEventPayload): void {
+    this.emit(sessionId, {
+      event: 'status.stall.typed',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      // Cast: SessionSSEEvent.data is Record<string, unknown>; StallEventPayload
+      // has a fixed shape (no index signature). Both serialize to the same wire
+      // format — JSON object with the same field names. The dashboard validates
+      // against the typed Zod schema on the receiving end.
+      data: payload as unknown as Record<string, unknown>,
     });
   }
 

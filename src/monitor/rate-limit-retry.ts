@@ -15,6 +15,7 @@ import { SYSTEM_TENANT } from '../config.js';
 import { computeDelayMs } from '../retry.js';
 import { RateLimitCoordinator } from '../rate-limit-coordinator.js';
 import { logger } from '../logger.js';
+import { buildStallEventPayload } from '../stall-events.js';
 
 /** Dependencies needed by RateLimitRetryHandler. */
 export interface RateLimitRetryDeps {
@@ -22,6 +23,12 @@ export interface RateLimitRetryDeps {
   makePayload: (event: SessionEvent, session: SessionInfo, detail: string) => SessionEventPayload;
   /** Notify channels of status change. */
   statusChange: (payload: SessionEventPayload) => void;
+  /**
+   * Issue #4802 (F-9): Emit a typed `transient_5xx` StallEventPayload
+   * when a rate-limit signal is received. Carries `statusCode` (e.g. 529,
+   * 503) so the dashboard renders the correct pill label.
+   */
+  emitStallTyped?: (sessionId: string, payload: import('../stall-events.js').StallEventPayload) => void;
   /** Record a failure for alerting. */
   alertFailure?: (type: AlertType, detail: string) => void;
   /** Track session failure in metrics. */
@@ -85,6 +92,19 @@ export class RateLimitRetryHandler {
       this.deps.statusChange(
         this.deps.makePayload('status.rate_limited', session,
           `Claude API rate limited (${stopReason}). Retrying (${retryAttempt}/${maxRetries}) in ${Math.round(delayMs / 1000)}s…`),
+      );
+      // F-9: emit typed transient_5xx payload (statusCode extracted from
+      // stopReason — typical patterns: '529_overloaded', '503_unavailable').
+      this.deps.emitStallTyped?.(
+        session.id,
+        buildStallEventPayload({
+          errorClass: 'transient_5xx',
+          statusCode: extractStatusCode(stopReason),
+          stallDurationMs: 0,
+          recoveryAttemptCount: retryAttempt,
+          recoveryMaxAttempts: maxRetries,
+          recoveryDisabled: false,
+        }),
       );
 
       logger.info({
@@ -167,4 +187,22 @@ export class RateLimitRetryHandler {
     this.retryAttempts.delete(sessionId);
     this.coordinator.dequeue(sessionId);
   }
+}
+
+/**
+ * Issue #4802 (F-9): Extract HTTP status code from a rate-limit stop reason
+ * string. CC surfaces rate-limit signals with strings like '529_overloaded'
+ * or '503_service_unavailable'. We extract the leading 3-digit prefix and
+ * validate it's a 5xx transient code.
+ *
+ * Returns undefined when the prefix doesn't parse — caller passes undefined
+ * to `buildStallEventPayload`, which already validates scope (statusCode is
+ * only valid for `errorClass: 'transient_5xx'`).
+ */
+function extractStatusCode(stopReason: string): number | undefined {
+  const match = /^(\d{3})/.exec(stopReason);
+  if (!match) return undefined;
+  const code = Number.parseInt(match[1], 10);
+  if (code < 500 || code > 599) return undefined;
+  return code;
 }
