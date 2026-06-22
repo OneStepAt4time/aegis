@@ -1,3 +1,4 @@
+// aegis:allow-credential-scan — test fixtures for redaction (F-6 #4802)
 /**
  * monitor-payload-redaction-4802.test.ts — Issue #4802: server-side redaction
  * of stall payload detail strings (Themis F-6 finding).
