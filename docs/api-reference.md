@@ -864,12 +864,13 @@ curl http://localhost:9100/v1/sessions/abc123 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:** Session object with `actionHints` for current interactive state, `latestActivityText` for live agent activity, `ccSessionId` when correlated with a Claude Code session, and `telegramTopicId` when a Telegram topic is linked.
+**Response:** Session object with `actionHints` for current interactive state, `latestActivityText` for live agent activity, `ccSessionId` when correlated with a Claude Code session, `telegramTopicId` when a Telegram topic is linked, and `recoveryDisabled` when stall auto-recovery is paused on this session.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `latestActivityText` | string | Human-readable description of current agent activity (e.g. `"Running: npm test"`, `"Editing: server.ts"`, `"Idle"`, `"Waiting for input"`, `"Compacting context"`). Updated in real-time from CC hook events. |
 | `ccSessionId` | string | Claude Code session ID correlated with this Aegis session via the `CLAUDE_CODE_SESSION_ID` environment variable. Only present when the CC→Aegis mapping has been established through MCP tool usage. |
+| `recoveryDisabled` | boolean | Per-session kill-switch for stall auto-recovery. When `true`, Aegis will not auto-restart a stalled session — the operator has paused recovery. Persists across Aegis restarts. Only present when explicitly set (defaults to `false`). Currently toggled via the dashboard stall pill; no REST endpoint to set it directly. |
 
 **Errors:**
 
