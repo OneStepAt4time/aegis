@@ -120,7 +120,7 @@ export function ClaudeSessionsPanel({ pollInterval = 30_000, maxItems = 20 }: Cl
           {displaySessions.map((session) => (
             <li
               key={session.sessionId}
-              className="flex items-center gap-2 rounded px-2 py-1 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors"
+              className="flex items-center gap-2 rounded px-2 py-1 text-[10px] transition-colors"
             >
               {/* Status indicator */}
               <Circle
