@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openclaw.dev/schemas/config.json",
+  "name": "aegis-cron-timeout-shim",
+  "description": "Reference OpenClaw config snippet demonstrating the models.providers.<provider>.timeoutSeconds knob that #4808 uses to raise the per-provider timeout ceiling for non-trivial isolated agentTurn cron payloads. Apply with scripts/devops/add-cron-timeout-overrides.sh.",
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "minimax-portal": {
+        "timeoutSeconds": 600
+      },
+      "kimi": {
+        "timeoutSeconds": 600
+      },
+      "zai": {
+        "timeoutSeconds": 600
+      }
+    }
+  }
+}
