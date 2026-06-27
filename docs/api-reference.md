@@ -1721,7 +1721,9 @@ Returned in two cases with the same response shape:
 }
 ```
 
-> **Error values:** `message` may be `prompt_ack_timeout` (ACP runtime did not acknowledge within the timeout), `no_active_transport` (session has no active ACP transport), a JSON-RPC error code (e.g. `-32601 Method not found`), or another backend-specific error string. `attempts` is the number of delivery attempts the backend made before giving up.
+> **Error values:** `message` may be `prompt_ack_timeout` (ACP runtime acknowledged slowly — the prompt was still written to the live JSON-RPC pipe and processed; the ack merely lagged past the 5 s window on idle or cold-resumed sessions), `no_active_transport` (session has no active ACP transport), a JSON-RPC error code (e.g. `-32601 Method not found`), or another backend-specific error string. `attempts` is the number of delivery attempts the backend made before giving up.
+
+> **Note on `prompt_ack_timeout`:** As of PR #4812, a timeout on `session/prompt` is treated as `delivered: true` at the backend level — the request is written to a live pipe and claude-agent-acp processes it in order. The 422 response with `prompt_ack_timeout` only surfaces when the runtime itself reports `delivered: false` (e.g., a genuine transport failure or a dead pipe). The transcript remains the source of truth for whether the prompt was actually processed.
 
 **Errors:**
 
