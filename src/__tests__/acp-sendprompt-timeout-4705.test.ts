@@ -3,12 +3,15 @@
  *
  * Issue #4705: API /v1/sessions/:id/send accepts message but never forwards to CC runtime.
  *
- * Root cause: sendPrompt treats AcpJsonRpcTimeoutError as "delivered: true" when the
- * JSON-RPC request to session/prompt times out. The timeout means CC did not acknowledge
- * the prompt within 5s — the message may not have been delivered.
+ * Original fix (#4705): a session/prompt timeout → delivered:false (CC did not ack).
+ * Revised 2026-06-26: empirically the request IS written to a live JSON-RPC pipe and
+ * claude-agent-acp (single-threaded, in-order) processes it; the ack merely lags past
+ * the window on idle/cold-resumed sessions, and the reply always appears in the
+ * transcript. A dead pipe rejects with a transport error, never a timeout. So a
+ * timeout is now treated as a slow ack, not a non-delivery.
  *
  * Acceptance criteria:
- * - Timeout on session/prompt → delivered: false with error 'prompt_ack_timeout'
+ * - Timeout on session/prompt → delivered: true (slow ack; transcript is source of truth)
  * - Actual error (e.g. -32601 Method not found) → thrown as AcpBackendLifecycleError
  * - Successful ack → delivered: true
  */
@@ -41,12 +44,12 @@ const scope: AcpSessionScope = {
 const cwd = '/tmp/test-workspace';
 
 describe('Issue #4705: sendPrompt timeout handling', () => {
-  it('returns delivered:false when session/prompt times out', async () => {
+  it('returns delivered:true when session/prompt times out (slow ack, not non-delivery)', async () => {
     const service = new FakeSessionService();
     const client = new FakeBackendClient();
     client.setResult('initialize', {});
     client.setResult('session/new', { sessionId: 'acp-agent-session-1' });
-    // session/prompt will timeout
+    // session/prompt will timeout — request was still written to a live pipe.
     client.setTimeout('session/prompt', 50);
 
     const backend = new AcpBackend({
@@ -59,11 +62,9 @@ describe('Issue #4705: sendPrompt timeout handling', () => {
 
     const result = await backend.sendPrompt('session-1', 'hello', scope, cwd);
 
-    // BUG: currently returns delivered: true on timeout
-    // FIX: should return delivered: false with timeout error
-    expect(result.delivered).toBe(false);
+    expect(result.delivered).toBe(true);
     expect(result.attempts).toBe(1);
-    expect(result.error).toBe('prompt_ack_timeout');
+    expect(result.error).toBeUndefined();
   }, 10000);
 
   it('returns delivered:true when session/prompt acks within timeout', async () => {
@@ -105,6 +106,33 @@ describe('Issue #4705: sendPrompt timeout handling', () => {
 
     await expect(backend.sendPrompt('session-1', 'hello', scope, cwd)).rejects.toThrow('Method not found');
   });
+});
+
+/**
+ * Direct sendPrompt: a session/prompt timeout on a live runtime surfaces as
+ * delivered:true (the request was written to a live JSON-RPC pipe; the ack
+ * merely lagged). This covers the continue-conversation case where an idle
+ * session acks slowly — the dashboard must not show a false error toast.
+ */
+describe('sendPrompt timeout on a live runtime', () => {
+  it('returns delivered:true when session/prompt times out', async () => {
+    const client = new FakeBackendClient();
+    client.setTimeout('session/prompt', 50);
+    const runtime = { client } as unknown as import('../services/acp/backend/types.js').AcpBackendRuntime;
+    const deps = {
+      sessionService: { getSession: async () => ({ acpAgentSessionId: 'acp-agent-session-1' }) },
+      inFlightPrompts: new Map<string, AbortController>(),
+      pendingHandshakes: new Map<string, unknown>(),
+    } as unknown as import('../services/acp/backend/prompts.js').PromptDeps;
+
+    const { sendPrompt } = await import('../services/acp/backend/prompts.js');
+
+    const result = await sendPrompt(deps, runtime, 'session-1', 'hello', scope);
+
+    expect(result.delivered).toBe(true);
+    expect(result.attempts).toBe(1);
+    expect(result.error).toBeUndefined();
+  }, 10000);
 });
 
 // Fake client that supports timeout and error simulation

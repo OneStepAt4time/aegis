@@ -661,10 +661,11 @@ describe('AcpBackend session lifecycle', () => {
     await backend.createSession({ ...scope, cwd });
     const result = await backend.sendPrompt('session-1', 'hello', scope);
 
-    // Issue #4705: timeout means CC did not ack → delivered:false
-    expect(result.delivered).toBe(false);
+    // Timeout = slow ack on a live pipe, not non-delivery (request was written;
+    // claude-agent-acp processes it in order). Transcript is source of truth.
+    expect(result.delivered).toBe(true);
     expect(result.attempts).toBe(1);
-    expect(result.error).toBe('prompt_ack_timeout');
+    expect(result.error).toBeUndefined();
   });
 
   it('sendPrompt surfaces -32601 Method not found errors (#3479, #4705)', async () => {
