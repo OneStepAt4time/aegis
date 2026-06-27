@@ -1,8 +1,15 @@
 /**
- * service worker — cache-first for app shell, network-first for API.
+ * service worker — network-first for navigations, cache-first for hashed
+ * static assets, network-only for API/auth.
+ *
+ * #4812: app shell was cache-first with a never-bumped version, so a new
+ * deploy kept serving the stale index.html → old hashed bundles → dashboard
+ * looped on login forever. Navigations are now network-first so index.html
+ * always re-fetches (picking up new asset hashes); hashed assets stay
+ * cache-first because their filenames are content-addressed.
  */
 
-const CACHE_NAME = 'aegis-dashboard-v1';
+const CACHE_NAME = 'aegis-dashboard-v2';
 const APP_SHELL = [
   '/dashboard',
   '/dashboard/',
@@ -33,8 +40,25 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Network-first for API calls
-  if (url.pathname.startsWith('/api/')) {
+  // Only handle same-origin GET.
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+    return;
+  }
+
+  const pathname = url.pathname;
+
+  // API, auth, SSE, and events are never cached (live data).
+  if (
+    pathname.startsWith('/v1/') ||
+    pathname.startsWith('/auth/') ||
+    pathname.endsWith('/events')
+  ) {
+    return;
+  }
+
+  // Navigations (HTML): network-first so a fresh deploy's index.html wins,
+  // falling back to cache only when offline.
+  if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -44,12 +68,14 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached || new Response('Offline', { status: 503 })))
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match('/dashboard/index.html'))
+        )
     );
     return;
   }
 
-  // Cache-first for app shell
+  // Static assets: cache-first (filenames are content-hashed → immutable).
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request))
   );

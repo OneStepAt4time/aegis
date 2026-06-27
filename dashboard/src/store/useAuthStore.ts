@@ -240,6 +240,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return true;
         }
       }
+      // No-auth (zero-config) mode: authMode is null and there is no token to
+      // re-validate. Authentication was established by probePublicAccess in
+      // init(); there is nothing to refresh here, so clearing state would
+      // cause a spurious logout / login flash. Preserve the authenticated state.
+      if (state.authMode === null) {
+        return state.isAuthenticated;
+      }
       clearAuthState(set, { oidcAvailable: state.oidcAvailable });
       return false;
     }
