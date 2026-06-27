@@ -106,9 +106,15 @@ export async function sendPrompt(
       return { delivered: false, attempts: 0, error: 'no_agent_session' };
     }
 
-    // Issue #4705: Fix timeout handling — timeout means CC did not ack,
-    // so the prompt was NOT delivered. Return delivered:false with timeout error.
-    // Actual JSON-RPC errors (e.g. -32601 Method not found) are thrown to caller.
+    // Issue #4705: a session/prompt timeout originally meant "CC did not ack,
+    // treat as not delivered". In practice the request is written to a live
+    // JSON-RPC pipe and claude-agent-acp (single-threaded, in-order) DOES
+    // process it — the ack simply lags past the window on idle/cold-resumed
+    // sessions (verified: the reply appears in the transcript on every
+    // observed timeout). A dead pipe rejects with a transport error, never a
+    // timeout. So a timeout is a slow ack, not a non-delivery: surface
+    // delivered:true and let the transcript be the source of truth. Actual
+    // JSON-RPC errors (e.g. -32601 Method not found) are still thrown.
     try {
       await runtime.client.request('session/prompt', {
         sessionId: acpSessionId,
@@ -116,8 +122,8 @@ export async function sendPrompt(
       }, { timeoutMs: ACP_PROMPT_ACK_TIMEOUT_MS });
     } catch (err) {
       if (err instanceof Error && err.name === 'AcpJsonRpcTimeoutError') {
-        log.warn({ component: 'acp-backend', operation: 'promptAckTimeout', attributes: { sessionId } });
-        return { delivered: false, attempts: 1, error: 'prompt_ack_timeout' };
+        log.warn({ component: 'acp-backend', operation: 'promptAckTimeoutAccepted', attributes: { sessionId } });
+        return { delivered: true, attempts: 1 };
       } else {
         throw err;
       }
