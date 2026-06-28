@@ -259,10 +259,10 @@ function VirtualizedRow(props: {
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.createdAt)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.lastActivity)}
       </div>
       <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)] truncate" title={session.latestActivityText ?? ''}>
@@ -282,7 +282,7 @@ function VirtualizedRow(props: {
           </span>
         )}
       </div>
-      <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)]">
+      <div className="flex items-center px-3 font-mono text-xs text-[var(--color-text-muted)]">
         {estimatedCostUsd != null ? `$${estimatedCostUsd.toFixed(2)}` : '—'}
       </div>
       <div className="flex items-center gap-1 px-3">

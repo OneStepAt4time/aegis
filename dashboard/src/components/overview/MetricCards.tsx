@@ -192,19 +192,19 @@ export default function MetricCards() {
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.delivered')}</p>
                   </div>
                 )}
                 {promptsFailed > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.failed')}</p>
                   </div>
                 )}
                 {promptsSent > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.totalSent')}</p>
                   </div>
                 )}

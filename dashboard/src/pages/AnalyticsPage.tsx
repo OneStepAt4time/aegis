@@ -410,7 +410,7 @@ export default function AnalyticsPage() {
                 <div key={key.keyId} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                   <div>
                     <div className="text-sm font-medium text-[var(--color-text-primary)]">{key.keyName}</div>
-                    <div className="text-xs text-[var(--color-text-muted)]">{key.sessions} session{key.sessions !== 1 ? 's' : ''} &middot; {key.messages} message{key.messages !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-[var(--color-text-muted)]"><span className="font-mono">{key.sessions}</span> session{key.sessions !== 1 ? 's' : ''} &middot; <span className="font-mono">{key.messages}</span> message{key.messages !== 1 ? 's' : ''}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-mono font-medium text-[var(--color-text-primary)]">{formatCurrency(key.estimatedCostUsd)}</div>

@@ -184,8 +184,8 @@ export function SessionHeader({
       {/* Metadata row — permission mode lives here as a small muted chip
            (epic 03.2), not as a primary badge in the title row. */}
       <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-muted)]">
-        <span>Created: {formatDate(session.createdAt)}</span>
-        <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
+        <span>Created: <span className="font-mono">{formatDate(session.createdAt)}</span></span>
+        <span className="hidden sm:inline">Last activity: <span className="font-mono">{formatDate(session.lastActivity)}</span></span>
         <span className="group inline-flex items-center gap-1 font-mono">
           <span className="hidden sm:inline">{t('sessionDetail.idLabel')}</span>
           {truncateMiddle(session.id, 16)}

@@ -248,7 +248,7 @@ export default function MetricsPage() {
                       {a.sessionId.slice(0, 12)}
                     </span>
                     <span className="text-[var(--color-warning)]/80">
-                      {formatCurrency(a.tokenCostUsd)} — {a.reason}
+                      <span className="font-mono">{formatCurrency(a.tokenCostUsd)}</span> — {a.reason}
                     </span>
                   </div>
                 ))}

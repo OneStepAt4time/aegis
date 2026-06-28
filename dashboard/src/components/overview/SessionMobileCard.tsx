@@ -108,8 +108,8 @@ export const SessionMobileCard = memo(function SessionMobileCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
-        <span>Age: {formatTimeAgo(session.createdAt)}</span>
-        <span>Active: {formatTimeAgo(session.lastActivity)}</span>
+        <span>Age: <span className="font-mono">{formatTimeAgo(session.createdAt)}</span></span>
+        <span>Active: <span className="font-mono">{formatTimeAgo(session.lastActivity)}</span></span>
         {session.latestActivityText && (
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-cyan)]/10 px-2 py-0.5 text-[10px] text-[var(--color-accent-cyan)] truncate max-w-[180px]">
             {session.latestActivityText}

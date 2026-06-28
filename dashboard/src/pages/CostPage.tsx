@@ -434,7 +434,7 @@ export default function CostPage() {
                       <div className="text-sm font-mono font-medium text-[var(--color-text-primary)]">
                         {formatCurrency(model.estimatedCostUsd)}
                       </div>
-                      <div className="text-xs text-[var(--color-text-muted)]">
+                      <div className="font-mono text-xs text-[var(--color-text-muted)]">
                         {pct.toFixed(1)}%
                       </div>
                     </div>
