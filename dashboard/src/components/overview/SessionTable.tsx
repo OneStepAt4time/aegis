@@ -481,7 +481,7 @@ export default React.memo(function SessionTable({ maxRows }: SessionTableProps =
   if (isLoading && sessions.length === 0 && !loadError) {
     return (
       <div className="card-glass p-16 text-center  flex flex-col items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent-cyan)]/20 border-t-[var(--color-accent-cyan)] animate-spin mb-6 shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+        <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] animate-spin mb-6 shadow-[0_0_15px_rgba(255,184,0,0.4)]" />
         <h3 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] drop-shadow-md">{t('sessionTable.wakingAgents')}</h3>
         <p className="mt-2 text-sm text-[var(--color-text-muted)]">{t('sessionTable.wakingAgentsDescription')}</p>
       </div>

@@ -937,15 +937,11 @@ button:active:not(:disabled) {
   box-shadow: 0 0 10px currentColor; /* Smooth bleed */
 }
 .status-dot--idle { color: var(--color-success); background-color: var(--color-success); }
-.status-dot--working { color: var(--color-warning); background-color: var(--color-warning); animation: pulse-intense 1.5s infinite; }
-.status-dot--permission_prompt { color: var(--color-danger); background-color: var(--color-danger); animation: pulse-intense 1s infinite; }
 .status-dot--unknown { color: #475569; background-color: #475569; box-shadow: none; }
-
-@keyframes pulse-intense {
-  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(var(--color-warning), 0.6); }
-  70% { transform: scale(1.2); opacity: 0.7; box-shadow: 0 0 0 6px rgba(var(--color-warning), 0); }
-  100% { transform: scale(1); opacity: 1; }
-}
+/* Live session/agent status dots — including the calm amber "working" pulse
+ * (opacity 1→0.4→1, DESIGN §5) — are owned by the canonical StatusDot
+ * component (components/overview/StatusDot.tsx). The old `.status-dot--working`
+ * / `--permission_prompt` modifiers used a bouncy scale pulse and were unused. */
 
 /* ── Syntax Highlighting Tokens ────────────────────────────── */
 .syn-keyword  { color: var(--color-syn-keyword, #ff7b72); }

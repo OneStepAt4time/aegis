@@ -221,7 +221,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
                   onKeyDown={handleInputKeyDown}
                   placeholder={t('commandPalette.searchPlaceholder')}
-                  className="min-h-8 flex-1 bg-transparent text-sm text-white placeholder:text-[var(--color-text-muted)] outline-none"
+                  className="min-h-8 flex-1 rounded-sm bg-transparent text-sm text-white placeholder:text-[var(--color-text-muted)]"
                 />
                 <kbd className="shrink-0 rounded border border-[var(--color-overlay-border-strong)] bg-[var(--color-overlay-bg)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
                   ESC
