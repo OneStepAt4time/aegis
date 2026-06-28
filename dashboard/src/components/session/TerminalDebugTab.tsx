@@ -235,7 +235,7 @@ export function TerminalDebugTab({
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t('sessionDetail.commandPlaceholder')}
-              className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus-visible:outline-none"
+              className="flex-1 rounded-sm bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
               disabled={!isConnected}
               autoFocus
               aria-label={t("aria.terminalInput")}

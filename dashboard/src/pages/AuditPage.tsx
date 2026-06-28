@@ -190,7 +190,7 @@ function AuditRow({ record, index, onClick }: { record: AuditRecord; index: numb
       }}
       className="border-b border-[var(--color-void-lighter)] transition-colors hover:bg-[var(--color-void-light)]/40 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
-      <td className="whitespace-nowrap px-4 py-3 text-sm text-[var(--color-text-muted)]">
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-sm text-[var(--color-text-muted)]">
         {formatTimestamp(record.ts)}
       </td>
       <td className="max-w-[120px] truncate px-4 py-3 font-mono text-sm text-[var(--color-text-primary)]" title={record.actor}>

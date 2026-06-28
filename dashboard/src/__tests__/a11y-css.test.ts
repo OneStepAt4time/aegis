@@ -23,10 +23,13 @@ describe('index.css — focus ring tokens', () => {
     expect(css).toContain('--focus-ring-offset:');
   });
 
-  it('applies focus ring via :focus-visible', () => {
+  it('applies an amber focus ring via :focus-visible', () => {
+    // DESIGN §1: the focus ring is brand amber (--color-accent), applied as a
+    // 2px outline with a 1px offset (see index.css :focus-visible rule).
     expect(css).toContain(':focus-visible');
     // Command Center redesign uses outline-based focus ring (DESIGN.md §1)
     expect(css).toContain('outline: 2px solid var(--color-accent)');
+    expect(css).toContain('outline-offset: 1px');
   });
 
   it('removes outline for :focus:not(:focus-visible)', () => {

@@ -65,7 +65,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-void)]">
-      <div className="w-full max-w-sm rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] p-4 sm:p-8">
+      <div className="w-full max-w-sm rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4 sm:p-8">
         {/* Logo / Title */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <Shield className="h-10 w-10 text-[var(--color-cta-bg)]" />
@@ -83,7 +83,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleOidcLogin}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-cta-bg)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-cta-bg)]"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-cta-bg)] px-4 py-2.5 text-sm font-medium text-[var(--color-cta-text)] hover:bg-[var(--color-cta-bg-hover)]"
           >
             <LogIn className="h-4 w-4" />
             <span>{t('login.signInWithSSO')}</span>
@@ -120,7 +120,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !token.trim()}
-              className="min-h-[44px] rounded-lg bg-[var(--color-cta-bg)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-cta-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] rounded-lg bg-[var(--color-cta-bg)] px-4 py-2.5 text-sm font-medium text-[var(--color-cta-text)] hover:bg-[var(--color-cta-bg-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? t('login.verifying') : t('login.signInButton')}
             </button>

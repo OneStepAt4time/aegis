@@ -247,8 +247,8 @@ export default function PipelinesPage() {
                   <PipelineStatusBadge status={pipeline.status} />
                 </div>
                 <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] shrink-0 ml-4">
-                  <span>{pipeline.stages.length} step{pipeline.stages.length !== 1 ? 's' : ''}</span>
-                  <span>{formatTimeAgo(pipeline.createdAt)}</span>
+                  <span><span className="font-mono">{pipeline.stages.length}</span> step{pipeline.stages.length !== 1 ? 's' : ''}</span>
+                  <span className="font-mono">{formatTimeAgo(pipeline.createdAt)}</span>
                 </div>
               </div>
             </Link>

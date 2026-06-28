@@ -95,7 +95,7 @@ export default function ActivityPage() {
             </span>
           )}
         </div>
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           {heatmapLoading ? (
             <div className="flex h-20 items-center justify-center">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />

@@ -87,7 +87,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
           type="button"
           onClick={handleApprove}
           disabled={isApproving || isRejecting}
-          className="min-h-[44px] inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-success)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-success)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] inline-flex items-center gap-1.5 rounded border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-4 py-2 text-[13px] font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cta-bg)] disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={`Approve session ${sessionName ?? sessionId}`}
         >
           {isApproving ? (
@@ -101,7 +101,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
           type="button"
           onClick={handleReject}
           disabled={isApproving || isRejecting}
-          className="min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-error-bg)]/20 px-4 py-2 text-sm font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-error-bg)]/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] inline-flex items-center gap-1.5 rounded border border-[var(--color-danger)] bg-transparent px-4 py-2 text-[13px] font-semibold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={`Reject session ${sessionName ?? sessionId}`}
         >
           {isRejecting ? (
