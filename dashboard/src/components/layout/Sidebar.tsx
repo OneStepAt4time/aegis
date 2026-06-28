@@ -61,7 +61,7 @@ export function Sidebar({
     <aside
       aria-label={t("aria.primarySidebar")}
       className={`
-        fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[var(--color-overlay-border)] bg-transparent backdrop-blur-xl
+        fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[var(--color-border)] bg-[var(--color-void-deep)]
         transition-all duration-300 ease-in-out
         ${sidebarWidth}
         ${isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -71,9 +71,8 @@ export function Sidebar({
       `}
       aria-hidden={isMobileSidebarHidden ? 'true' : undefined}
       inert={isMobileSidebarHidden ? true : undefined}
-      style={{ backgroundImage: 'var(--sidebar-glow)' }}
     >
-      <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-[var(--color-overlay-border)]">
+      <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-[var(--color-border)]">
         <ShieldWordmark size="md" collapsed={isCollapsed} />
         <button
           type="button"
@@ -106,8 +105,8 @@ export function Sidebar({
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all min-h-[44px] ${
                     isActive
-                      ? 'border-l-2 border-[var(--color-accent-on-light)] bg-[var(--color-accent-on-light)]/10 text-[var(--color-accent-on-light)] dark:border-[var(--color-accent-cyan)] dark:bg-[var(--color-cta-bg)]/10 dark:text-[var(--color-accent-cyan)] glow-nav-active'
-                      : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-void-lighter)] dark:hover:text-[var(--color-text-primary)]'
+                      ? 'border-l-2 border-[var(--color-accent)] bg-[var(--color-surface-hover)] text-[var(--color-accent)] dark:border-[var(--color-accent)] dark:bg-[var(--color-surface-hover)] dark:text-[var(--color-accent)]'
+                      : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border-l-2 border-transparent dark:text-[var(--color-text-muted)] dark:hover:bg-[var(--color-surface-hover)] dark:hover:text-[var(--color-text-primary)]'
                   } ${isCollapsed ? 'justify-center' : ''}`
                 }
                 title={isCollapsed ? label : undefined}
@@ -122,7 +121,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="border-t border-[var(--color-overlay-border)] px-3 py-4 flex flex-col gap-2">
+      <div className="border-t border-[var(--color-border)] px-3 py-4 flex flex-col gap-2">
         {identityLabel && identityDetailLabel && !isCollapsed && (
           <div className="px-3 py-2" aria-label={t("aria.signedInUser")}>
             <p className="truncate text-xs font-medium text-[var(--color-text-primary)] dark:text-[var(--color-text-primary)]">{identityLabel}</p>
