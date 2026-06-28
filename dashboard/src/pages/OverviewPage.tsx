@@ -29,6 +29,8 @@ import GettingStartedCard from '../components/shared/GettingStartedCard';
 import WelcomeScreen from '../components/shared/WelcomeScreen';
 import { useStore } from '../store/useStore';
 import { getAnalyticsSummary } from '../api/client';
+import { getHealth } from '../api/health';
+import { TelemetryStrip, type SystemStatus } from '../components/overview/TelemetryStrip';
 import { formatCurrency, formatNumber } from '../utils/formatNumber';
 import { formatDateShort } from '../utils/formatDate';
 import type { AnalyticsSummary } from '../types';
@@ -54,10 +56,12 @@ export default function OverviewPage() {
   const t = useT();
   const [modalOpen, setModalOpen] = useState(false);
   const sseError = useStore((s) => s.sseError);
+  const sessions = useStore((s) => s.sessions);
 
   // Analytics data for CCMeter zones
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [serverUptime, setServerUptime] = useState<number | undefined>(undefined);
   
 
   // Real-time SSE updates
@@ -80,6 +84,22 @@ export default function OverviewPage() {
   }, []);
 
   useEffect(() => { void fetchAnalytics(); }, [fetchAnalytics]);
+
+  // Server uptime for the telemetry strip (polled; non-critical).
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const h = await getHealth();
+        if (!cancelled) setServerUptime(h.uptime);
+      } catch {
+        /* health fetch failed — strip hides the cell */
+      }
+    };
+    void tick();
+    const id = setInterval(tick, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -117,6 +137,13 @@ export default function OverviewPage() {
   const totalSessions = analytics?.errorRates?.totalSessions ?? 0;
   const activeDays = (analytics?.sessionVolume ?? []).length ?? 0;
   const avgCostPerDay = activeDays > 0 ? totalCost / activeDays : 0;
+
+  // Telemetry strip inputs — live/awaiting counts from the session store.
+  const LIVE: readonly string[] = ['idle', 'working', 'compacting', 'context_warning', 'plan_mode', 'settings', 'unknown'];
+  const AWAITING: readonly string[] = ['permission_prompt', 'waiting_for_input', 'bash_approval', 'ask_question'];
+  const agentsRunning = sessions.filter((s) => LIVE.includes(s.status)).length;
+  const awaitingApproval = sessions.filter((s) => AWAITING.includes(s.status)).length;
+  const systemStatus: SystemStatus = sseError ? 'degraded' : 'nominal';
 
   // Build KPI items
   function buildKPIItems(analytics: AnalyticsSummary): KPIItem[] {
@@ -170,6 +197,17 @@ export default function OverviewPage() {
       {!analyticsLoading && totalSessions === 0 ? (
         <WelcomeScreen />
       ) : (<>
+      {/* Telemetry strip — the command-center status bar */}
+      <TelemetryStrip
+        agentsRunning={agentsRunning}
+        awaitingApproval={awaitingApproval}
+        totalSessions={totalSessions}
+        totalTokens={totalTokens}
+        totalCostUsd={totalCost}
+        systemStatus={systemStatus}
+        serverUptimeSec={serverUptime}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
@@ -189,7 +227,7 @@ export default function OverviewPage() {
         </div>
         <button type="button"
           onClick={() => setModalOpen(true)}
-          className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 px-4 py-2 text-xs font-semibold text-[var(--color-accent-cyan)] transition-all hover:bg-[var(--color-accent-cyan)]/20 hover:border-[var(--color-accent-cyan)]/50"
+          className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-transparent bg-[var(--color-cta-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-accent)]"
           aria-label={t("aria.createNewSession")}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -199,14 +237,6 @@ export default function OverviewPage() {
 
       {/* Session Health Alert */}
       <SessionHealthBanner errorRates={analytics?.errorRates} loading={analyticsLoading} />
-
-      {/* Zone A: Heatmap Cards (4-column) — needs daily token breakdown from backend */}
-      <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-        <h3 className="mb-3 text-sm font-medium text-[var(--color-text-muted)]">{t('overview.activityHeatmap')}</h3>
-        <div className="flex h-[60px] items-center justify-center text-xs text-[var(--color-text-muted)]">
-          {t('overview.heatmapPending')}
-        </div>
-      </div>
 
       {/* Getting Started — new users */}
       <GettingStartedCard totalSessions={totalSessions} onCreateSession={() => setModalOpen(true)} />
