@@ -813,35 +813,7 @@ export default React.memo(function SessionTable({ maxRows }: SessionTableProps =
             }
           </div>
 
-          <div className="hidden overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
-            <table className="w-full text-left text-sm" aria-label={t("aria.sessionsTable")}>
-              <thead>
-                <tr className="border-b border-[var(--color-void-lighter)] bg-[var(--color-void)]">
-                  <th scope="col" className="px-4 py-2.5">
-                    <input
-                      type="checkbox"
-                      aria-label={t("aria.selectAll")}
-                      checked={allVisibleSelected}
-                      onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
-                    />
-                  </th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.status')}</th>
-                  <th scope="col" className="hidden md:table-cell px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.createdBy')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.name')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.workDir')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.age')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.lastActivity')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.permission')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.cost')}</th>
-                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="sr-only">
-                {/* Kept for accessibility: screen readers associate headers with the table */}
-                <tr><td colSpan={10}>Virtualized session list rendered below via react-window</td></tr>
-              </tbody>
-            </table>
+          <div className="hidden md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
             <VirtualizedSessionList
               rowViewModels={rowViewModels as VirtualizedRowData[]}
               groupedRowModels={groupedRowModels as Map<string, VirtualizedRowData[]> | null}
@@ -854,7 +826,7 @@ export default React.memo(function SessionTable({ maxRows }: SessionTableProps =
               onReject={handleReject}
               onInterrupt={handleInterrupt}
               onKill={handleKill}
-              showHeader={false}
+              showHeader
             />
           </div>
 

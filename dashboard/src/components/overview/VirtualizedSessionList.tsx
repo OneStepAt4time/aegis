@@ -16,7 +16,6 @@ import { List } from 'react-window';
 import { Link } from 'react-router-dom';
 import {
   Ban,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   FolderOpen,
@@ -68,9 +67,9 @@ export interface VirtualizedSessionListProps {
 
 // ── Constants ───────────────────────────────────────────────
 
-export const ROW_HEIGHT = 40;
+export const ROW_HEIGHT = 56;
 export const GROUP_ROW_HEIGHT = 36;
-const DEFAULT_MAX_VISIBLE_ROWS = 12;
+const DEFAULT_MAX_VISIBLE_ROWS = 10;
 const OVERSCAN_COUNT = 5;
 
 // Stable style objects reused across rows to avoid per-render allocations
@@ -87,7 +86,8 @@ const GROUP_ROW_STABLE_STYLE: Pick<CSSProperties, 'minHeight' | 'contentVisibili
   containIntrinsicSize: `0 ${GROUP_ROW_HEIGHT}px` as unknown as CSSProperties['containIntrinsicSize'],
 };
 
-const GRID_COLUMNS = '36px 128px 80px 1fr 150px 80px 90px 1fr 80px 60px 80px';
+// 6 readable columns: select · status · name(1fr) · activity · cost · actions
+const GRID_COLUMNS = '44px 150px 1fr 210px 88px 116px';
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -231,64 +231,61 @@ function VirtualizedRow(props: {
           className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
         />
       </div>
-      <div className="flex min-w-0 items-center gap-2 px-2">
+      {/* status — prominent, colored label */}
+      <div className="flex min-w-0 items-center gap-2 px-3">
         <span className={`shrink-0 ${needsApproval(session) ? 'relative' : ''}`}>
           <StatusDot status={session.status} health={health} />
           {needsApproval(session) && (
             <span className="absolute -inset-1 animate-pulse rounded-full bg-[var(--color-warning)]/20" aria-hidden="true" />
           )}
         </span>
-        <span className="truncate font-mono text-xs" style={{ color: statusStyle.dotColor }}>
+        <span className="truncate text-[13px] font-medium" style={{ color: statusStyle.dotColor }}>
           {statusStyle.label}
         </span>
         {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-danger)]" />}
       </div>
-      <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-[var(--color-text-muted)]">
-        {session.ownerKeyId
-          ? `${session.ownerKeyId.slice(0, 8)}${session.ownerKeyId.length > 8 ? '…' : ''}`
-          : '—'}
+
+      {/* name — primary; two lines: name + badges / workdir · owner · permission */}
+      <div className="flex min-w-0 flex-col justify-center gap-0.5 px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            to={`/sessions/${encodeURIComponent(session.id)}`}
+            className="inline-flex min-h-[36px] min-w-0 items-center truncate text-[14px] font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent)]"
+            title={session.displayName || session.id}
+          >
+            {formatSessionName(session.displayName, session.id.slice(0, 8))}
+          </Link>
+          <AgentBadge runnerName={session.runnerName} model={session.model} compact />
+          <ModelBadge model={session.model} />
+          <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
+          <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} />
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] text-[var(--color-text-muted)]" title={session.workDir}>
+          <span className="truncate">{truncateDir(session.workDir)}</span>
+          {session.ownerKeyId && (
+            <span className="shrink-0 opacity-70">· {session.ownerKeyId.slice(0, 8)}{session.ownerKeyId.length > 8 ? '…' : ''}</span>
+          )}
+          {session.permissionMode && session.permissionMode !== 'default' && (
+            <span className="shrink-0 text-[var(--color-success)]">· {session.permissionMode}</span>
+          )}
+        </div>
       </div>
-      <div className="flex min-w-0 items-center px-3">
-        <Link
-          to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="inline-flex min-h-[36px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)]"
-          title={session.displayName || session.id}
-        >
-          {formatSessionName(session.displayName, session.id.slice(0, 8))}
-        </Link>
-        <AgentBadge runnerName={session.runnerName} model={session.model} compact />
-        <ModelBadge model={session.model} />
-        <EffortIndicator effort={(session as ExtendedSessionInfo).effort} />
-        <IsolationModeBadge isolationMode={(session as IsolationSessionInfo).isolationMode} />
+
+      {/* activity — the live signal: latest action + times */}
+      <div className="flex min-w-0 flex-col justify-center gap-0.5 px-3">
+        <span className="truncate text-[13px] text-[var(--color-text-primary)]" title={session.latestActivityText ?? ''}>
+          {session.latestActivityText ?? <span className="text-[var(--color-text-muted)]">—</span>}
+        </span>
+        <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+          {formatTimeAgo(session.lastActivity)}
+          <span className="mx-1 opacity-50">·</span>
+          <span title={`created ${formatTimeAgo(session.createdAt)}`}>{formatTimeAgo(session.createdAt)}</span>
+        </span>
       </div>
-      <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
-        {truncateDir(session.workDir)}
-      </div>
-      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
-        {formatTimeAgo(session.createdAt)}
-      </div>
-      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
-        {formatTimeAgo(session.lastActivity)}
-      </div>
-      <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)] truncate" title={session.latestActivityText ?? ''}>
-        {session.latestActivityText
-          ? <span className="truncate max-w-[120px] inline-block align-bottom">{session.latestActivityText}</span>
-          : <span className="text-[var(--color-text-muted)]/40">—</span>}
-      </div>
-      <div className="flex items-center px-3">
-        {session.permissionMode && session.permissionMode !== 'default' ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)]/15 px-2 py-0.5 text-xs text-[var(--color-success)]">
-            <CheckCircle2 className="h-3 w-3" />
-            {session.permissionMode}
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-[var(--color-void-lighter)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
-            default
-          </span>
-        )}
-      </div>
-      <div className="flex items-center px-3 font-mono text-xs text-[var(--color-text-muted)]">
-        {estimatedCostUsd != null ? `$${estimatedCostUsd.toFixed(2)}` : '—'}
+
+      {/* cost */}
+      <div className="flex items-center px-3 font-mono text-[13px] text-[var(--color-text-primary)]">
+        {estimatedCostUsd != null ? `$${estimatedCostUsd.toFixed(2)}` : <span className="text-[var(--color-text-muted)]">—</span>}
       </div>
       <div className="flex items-center gap-1 px-3">
         {currentAction === 'working' && (
@@ -399,14 +396,9 @@ export function VirtualizedSessionList({
               className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
             />
           </div>
-          <div className="px-2 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.status')}</div>
-          <div className="hidden md:flex px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.createdBy')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.status')}</div>
           <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.name')}</div>
-          <div className="flex px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.workDir')}</div>
-          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.age')}</div>
-          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.lastActivity')}</div>
           <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.activity')}</div>
-          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.permission')}</div>
           <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.cost')}</div>
           <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.actions')}</div>
         </div>
