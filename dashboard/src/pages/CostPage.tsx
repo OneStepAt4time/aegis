@@ -44,7 +44,7 @@ import { getBudgetSettings, type BudgetSettings } from '../utils/budgetSettings'
 
 const MODEL_COLORS: Record<string, string> = {
   'claude-sonnet-4.6': 'var(--color-accent-cyan)',
-  'claude-opus-4.7': 'var(--color-accent-purple)',
+  'claude-opus-4.7': 'var(--color-accent)',
   'claude-haiku-4.5': 'var(--color-success)',
   'gpt-5.4': 'var(--color-warning)',
   'gpt-4.1': 'var(--color-info)',

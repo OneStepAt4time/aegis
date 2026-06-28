@@ -407,7 +407,7 @@ export default function AnalyticsPage() {
           {(data.topApiKeys ?? []).length > 0 ? (
             <div className="space-y-3">
               {(data.topApiKeys ?? []).map((key) => (
-                <div key={key.keyId} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                <div key={key.keyId} className="flex items-center justify-between rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2">
                   <div>
                     <div className="text-sm font-medium text-[var(--color-text-primary)]">{key.keyName}</div>
                     <div className="text-xs text-[var(--color-text-muted)]"><span className="font-mono">{key.sessions}</span> session{key.sessions !== 1 ? 's' : ''} &middot; <span className="font-mono">{key.messages}</span> message{key.messages !== 1 ? 's' : ''}</div>
@@ -482,7 +482,7 @@ function EmptyChart() {
 
 function MetricBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+    <div className="rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-3 py-2">
       <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
       <div className="mt-1 text-lg font-bold font-mono text-[var(--color-text-primary)]">{value}</div>
     </div>

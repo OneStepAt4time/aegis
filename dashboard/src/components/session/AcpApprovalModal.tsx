@@ -108,7 +108,7 @@ export function AcpApprovalModal({
               ref={trapRef}
         aria-modal="true"
       aria-label={t("aria.toolApprovalRequired")}
-      className="flex flex-col gap-3 rounded-xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
+      className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)] bg-[var(--color-surface)] p-4 shadow-2xl"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
@@ -181,7 +181,7 @@ export function AcpApprovalModal({
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={t("aria.approveTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
@@ -191,7 +191,7 @@ export function AcpApprovalModal({
                 type="button"
                 onClick={() => setShowRejectReason(true)}
                 disabled={isLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-danger)] bg-transparent px-4 py-3 text-sm font-semibold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={t("aria.rejectTool")}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldX className="h-4 w-4" />}

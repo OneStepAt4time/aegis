@@ -188,7 +188,7 @@ export default function MetricsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="rounded-[10px] border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div
             className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
             style={{ fontWeight: 590, letterSpacing: '0.08em' }}
@@ -201,7 +201,7 @@ export default function MetricsPage() {
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="rounded-[10px] border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div
             className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
             style={{ fontWeight: 590, letterSpacing: '0.08em' }}
@@ -214,7 +214,7 @@ export default function MetricsPage() {
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="rounded-[10px] border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div
             className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
             style={{ fontWeight: 590, letterSpacing: '0.08em' }}
@@ -227,7 +227,7 @@ export default function MetricsPage() {
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="rounded-[10px] border border-[var(--color-void-lighter)] bg-[var(--color-surface)] p-4">
           <div
             className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
             style={{ fontWeight: 590, letterSpacing: '0.08em' }}

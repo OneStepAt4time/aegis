@@ -65,7 +65,7 @@ export function PermissionPromptSheet({
               ref={trapRef}
         aria-modal="true"
       aria-label={t("aria.permissionPrompt")}
-      className="rounded-t-2xl border border-[var(--color-warning)]/35 bg-[var(--color-surface)] p-4 shadow-2xl"
+      className="rounded-t-2xl border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)] bg-[var(--color-surface)] p-4 shadow-2xl"
     >
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[var(--color-void-lighter)]" />
 
@@ -99,14 +99,14 @@ export function PermissionPromptSheet({
         <button
           type="button"
           onClick={onApprove}
-          className="min-h-[48px] rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)]"
+          className="min-h-[48px] rounded-xl border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)]"
         >
           {t('sessionDetail.approve')}
         </button>
         <button
           type="button"
           onClick={onReject}
-          className="min-h-[48px] rounded-xl border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)]"
+          className="min-h-[48px] rounded-xl border border-[var(--color-danger)] bg-transparent px-4 py-3 text-sm font-semibold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10"
         >
           {t('sessionDetail.reject')}
         </button>
