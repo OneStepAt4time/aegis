@@ -61,7 +61,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
   if (items.length === 0) {
     return (
       <div
-        className="flex h-[52px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-muted)]"
+        className="flex h-[52px] items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-muted)]"
         role="status"
         aria-label={t("aria.noKpiData")}
       >
@@ -72,7 +72,7 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
 
   return (
     <div
-      className={`grid divide-x divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] min-h-[52px] ${className}`}
+      className={`grid divide-x divide-[var(--color-border)] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] min-h-[52px] ${className}`}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       role="list"
       aria-label={t("aria.keyPerformanceIndicators")}
@@ -84,7 +84,10 @@ export function KPIBanner({ items, className = '' }: KPIBannerProps) {
           role="listitem"
           aria-label={`${item.label}: ${item.value}`}
         >
-          <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+          <span
+            className="text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             {item.label}
           </span>
           <span className={`font-mono text-lg font-semibold tabular-nums ${COLOR_MAP[item.color]}`}>

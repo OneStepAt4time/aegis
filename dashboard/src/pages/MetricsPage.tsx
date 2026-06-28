@@ -188,42 +188,54 @@ export default function MetricsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <div
+            className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             <BarChart3 className="h-3 w-3" />
             {t('metrics.totalSessions')}
           </div>
-          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+          <div className="text-2xl font-bold font-mono tabular-nums text-[var(--color-text-primary)]">
             {(summary?.totalSessions ?? 0).toLocaleString()}
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <div
+            className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             <Clock className="h-3 w-3" />
             {t('metrics.avgDuration')}
           </div>
-          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+          <div className="text-2xl font-bold font-mono tabular-nums text-[var(--color-text-primary)]">
             {summary ? formatDuration(summary.avgDurationSeconds) : '—'}
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <div
+            className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             <DollarSign className="h-3 w-3" />
             {t('metrics.totalCost')}
           </div>
-          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+          <div className="text-2xl font-bold font-mono tabular-nums text-[var(--color-text-primary)]">
             {summary ? formatCurrency(summary.totalTokenCostUsd) : '—'}
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-strong)] p-4">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+        <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <div
+            className="mb-1 flex items-center gap-1 text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             <CheckCircle className="h-3 w-3" />
             {t('metrics.approvalRate')}
           </div>
-          <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+          <div className="text-2xl font-bold font-mono tabular-nums text-[var(--color-text-primary)]">
             {summary?.permissionApprovalRate != null ? `${summary.permissionApprovalRate}%` : '—'}
           </div>
         </div>
