@@ -816,8 +816,8 @@ export default React.memo(function SessionTable({ maxRows }: SessionTableProps =
           <div className="hidden overflow-x-auto rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] md:block" tabIndex={0} aria-label={t("aria.sessionsTableScroll")}>
             <table className="w-full text-left text-sm" aria-label={t("aria.sessionsTable")}>
               <thead>
-                <tr className="border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)]">
-                  <th scope="col" className="px-4 py-3 font-medium">
+                <tr className="border-b border-[var(--color-void-lighter)] bg-[var(--color-void)]">
+                  <th scope="col" className="px-4 py-2.5">
                     <input
                       type="checkbox"
                       aria-label={t("aria.selectAll")}
@@ -826,15 +826,15 @@ export default React.memo(function SessionTable({ maxRows }: SessionTableProps =
                       className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
                     />
                   </th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.status')}</th>
-                  <th scope="col" className="hidden md:table-cell px-4 py-3 font-medium">{t('sessionTable.createdBy')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.name')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.workDir')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.age')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.lastActivity')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.permission')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.cost')}</th>
-                  <th scope="col" className="px-4 py-3 font-medium">{t('sessionTable.actions')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.status')}</th>
+                  <th scope="col" className="hidden md:table-cell px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.createdBy')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.name')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.workDir')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.age')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.lastActivity')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.permission')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.cost')}</th>
+                  <th scope="col" className="px-4 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">{t('sessionTable.actions')}</th>
                 </tr>
               </thead>
               <tbody className="sr-only">
