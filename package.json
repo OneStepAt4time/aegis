@@ -142,7 +142,7 @@
     "@opentelemetry/semantic-conventions": "^1.36.0",
     "ioredis": "^5.11.1",
     "open": "^11.0.0",
-    "pg": "^8.21.0",
+    "pg": "^8.22.0",
     "playwright": "^1.61.1"
   }
 }
