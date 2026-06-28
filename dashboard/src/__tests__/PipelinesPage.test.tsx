@@ -118,7 +118,12 @@ describe('PipelinesPage', () => {
     mockGetPipelines.mockResolvedValue(mockPipelines);
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/2 steps/)).toBeDefined();
+      // After Command Center redesign, the number is wrapped in font-mono span
+      // so text is split across elements: <span><span class="font-mono">2</span> steps</span>
+      const stepCount = screen.getByText((_content, element) =>
+        element?.textContent === "2 steps"
+      );
+      expect(stepCount).toBeDefined();
     });
   });
 
