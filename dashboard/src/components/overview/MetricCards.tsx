@@ -151,12 +151,15 @@ export default function MetricCards() {
         />
       )}
       {failedSessions > 0 && (
-        <div className="card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
+        <div className="animate-bento-reveal flex flex-col gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-surface-hover)]">
+          <div
+            className="flex items-center gap-2 text-[11px] uppercase text-[var(--color-text-muted)]"
+            style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+          >
             <AlertTriangle className="h-4 w-4 text-[var(--color-danger)]" />
             {t('metricCards.failedSessions')}
           </div>
-          <p className="font-mono text-2xl text-[var(--color-danger)] font-bold">{failedSessions}</p>
+          <p className="font-mono text-2xl tabular-nums text-[var(--color-danger)] font-bold">{failedSessions}</p>
           <NavLink
             to="/audit"
             className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-danger)] hover:text-[var(--color-danger-glow)] transition-colors"
@@ -169,8 +172,11 @@ export default function MetricCards() {
 
 
       {/* ── Prompt Delivery ──────────────────────────────── */}
-      <div className="col-span-2 lg:col-span-4 card-glass card-glass-interactive animate-bento-reveal p-4 sm:p-5 flex flex-col">
-        <div className="mb-1 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
+      <div className="col-span-2 lg:col-span-4 animate-bento-reveal flex flex-col rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-surface-hover)]">
+        <div
+          className="mb-1 flex items-center gap-2 text-[11px] uppercase text-[var(--color-text-muted)]"
+          style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+        >
           <Zap className="h-4 w-4" />
           {t('metricCards.deliveryRate')}
         </div>
@@ -183,7 +189,7 @@ export default function MetricCards() {
           />
           <div className="flex-1 space-y-3 text-center sm:text-left">
             <div>
-              <p className="text-2xl font-mono font-bold text-white">
+              <p className="text-2xl font-mono font-bold tabular-nums text-[var(--color-text-primary)]">
                 {deliveryRate_ !== null ? `${deliveryRate_.toFixed(1)}%` : '—'}
               </p>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('metricsOverview.trailingAverage')}</p>
@@ -192,19 +198,19 @@ export default function MetricCards() {
               <div className="flex gap-4">
                 {promptsDelivered > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-success-glow)]">{promptsDelivered}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.delivered')}</p>
                   </div>
                 )}
                 {promptsFailed > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-danger)]">{promptsFailed}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.failed')}</p>
                   </div>
                 )}
                 {promptsSent > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
+                    <p className="font-mono text-sm font-semibold text-[var(--color-text-muted)]">{promptsSent}</p>
                     <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('metricsOverview.totalSent')}</p>
                   </div>
                 )}

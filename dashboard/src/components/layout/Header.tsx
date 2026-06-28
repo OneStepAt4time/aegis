@@ -42,7 +42,7 @@ export function Header({
 
   return (
     <>
-      <header className="shrink-0 border-b border-[var(--color-overlay-border)] bg-transparent backdrop-blur-md px-4 py-4 sm:px-8">
+      <header className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-void)] px-4 py-4 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button

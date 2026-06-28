@@ -105,7 +105,7 @@ export function SpendSummary({ dailyTrends }: SpendSummaryProps) {
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
             {stat.label}
           </p>
-          <p className="mt-1 text-lg font-semibold text-[var(--color-text-primary)]">
+          <p className="mt-1 font-mono text-lg font-semibold text-[var(--color-text-primary)]">
             {stat.value}
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">

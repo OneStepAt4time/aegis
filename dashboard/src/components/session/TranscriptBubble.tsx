@@ -314,7 +314,7 @@ export function TranscriptBubble({ entry, index, onFocus, focused }: TranscriptB
           </div>
           <RenderWithCodeBlocks text={entry.text} />
           {entry.timestamp && (
-            <div className={`text-[10px] mt-1 ${isUser ? 'text-[var(--color-void)]/60' : 'text-[var(--color-text-muted)]'}`}>
+            <div className={`text-[10px] mt-1 font-mono ${isUser ? 'text-[var(--color-void)]/60' : 'text-[var(--color-text-muted)]'}`}>
               {absoluteTime}
             </div>
           )}

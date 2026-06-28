@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.2.8",
     "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tanstack/react-virtual": "^3.14.3",
     "canvas-confetti": "^1.9.4",

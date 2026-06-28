@@ -55,13 +55,18 @@ interface StatTileProps {
 
 function StatTile({ icon, label, value, color = 'text-[var(--color-cta-bg)]' }: StatTileProps) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-[var(--color-void-lighter)] bg-[var(--color-surface)] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--color-void-dark)] text-[var(--color-text-muted)]">
         {icon}
       </div>
       <div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className={`font-mono text-lg font-semibold ${color}`}>{value}</div>
+        <div
+          className="text-[11px] uppercase text-[var(--color-text-muted)]"
+          style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+        >
+          {label}
+        </div>
+        <div className={`font-mono text-lg font-semibold tabular-nums ${color}`}>{value}</div>
       </div>
     </div>
   );
@@ -161,7 +166,7 @@ export default function MetricsPanel() {
           icon={<Clock className="h-4 w-4" />}
           label={t('metricsPanel.uptime')}
           value={formatUptime(d.uptime)}
-          color="text-[var(--color-accent-violet)]"
+          color="text-[var(--color-text-primary)]"
         />
       </div>
     </div>

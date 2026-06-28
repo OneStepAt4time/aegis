@@ -184,8 +184,8 @@ export function SessionHeader({
       {/* Metadata row — permission mode lives here as a small muted chip
            (epic 03.2), not as a primary badge in the title row. */}
       <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-muted)]">
-        <span>Created: {formatDate(session.createdAt)}</span>
-        <span className="hidden sm:inline">Last activity: {formatDate(session.lastActivity)}</span>
+        <span>Created: <span className="font-mono">{formatDate(session.createdAt)}</span></span>
+        <span className="hidden sm:inline">Last activity: <span className="font-mono">{formatDate(session.lastActivity)}</span></span>
         <span className="group inline-flex items-center gap-1 font-mono">
           <span className="hidden sm:inline">{t('sessionDetail.idLabel')}</span>
           {truncateMiddle(session.id, 16)}
@@ -225,14 +225,14 @@ export function SessionHeader({
             <button
               type="button"
               onClick={onApprove}
-              className="hidden min-h-[44px] rounded border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)] sm:inline-flex"
+              className="hidden min-h-[44px] rounded border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] sm:inline-flex"
             >
               Approve
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="hidden min-h-[44px] rounded border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-3 py-2 text-xs font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] sm:inline-flex"
+              className="hidden min-h-[44px] rounded border border-[var(--color-danger)] bg-transparent px-3 py-2 text-xs font-semibold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10 sm:inline-flex"
             >
               Reject
             </button>

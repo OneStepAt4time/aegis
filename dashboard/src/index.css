@@ -7,7 +7,7 @@
  * Self-hosted fonts via npm packages (no CDN) so the dashboard's
  * strict CSP stays quiet on first load.
  * ================================================================ */
-@import "@fontsource/dm-sans/latin.css";
+@import "@fontsource/inter/latin.css";
 @import "@fontsource/jetbrains-mono/latin.css";
 @import "@fontsource/atkinson-hyperlegible/index.css";
 
@@ -22,61 +22,64 @@
 }
 
 @theme {
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', "Cascadia Code", "Consolas", monospace;
 
-  /* Deep SaaS Dark Mode Palette */
-  --color-void: #020617; /* Background */
-  --color-void-deep: #000000;
-  --color-void-dark: #0f172a; /* Primary */
-  --color-void-light: #1e293b; /* Secondary */
-  --color-void-lighter: #334155;
-  --color-surface: #0f172a;
-  --color-surface-hover: #1e293b;
+  /* Command Center — deep-space navy surfaces (DESIGN.md §1) */
+  --color-void: #0B1120; /* Page canvas — deep-space navy */
+  --color-void-deep: #060912; /* App shell / off-screen depth */
+  --color-void-dark: #111827; /* Panels, cards, elevated areas */
+  --color-void-light: #1A2535; /* Interactive surface hover */
+  --color-void-lighter: #1E3A5F; /* Panel dividers, grid lines */
+  --color-surface: #111827; /* alias of --color-void-dark */
+  --color-surface-hover: #1A2535; /* alias of --color-void-light */
+  --color-surface-active: #1E3A5F; /* Selected / active panel */
+  --color-border-subtle: #162035; /* Inner dividers, minor separation */
   
-  --color-text-primary: #f8fafc;
-  --color-text-muted: #94a3b8;
-   --color-placeholder: #94a3b8; /* slate-400 — placeholder text (WCAG AA 6.96:1 on dark) */
+  --color-text-primary: #E8F0FE; /* cool white (DESIGN.md §1) */
+  --color-text-muted: #8BA3C7; /* labels, secondary copy */
+  --color-placeholder: #4A6080; /* timestamps, metadata, placeholders */
   
   /* Primary Gradients and Accents */
-  --color-accent: #3b82f6; /* Modern Blue */
-  --color-accent-dim: #3b82f620;
-  --color-accent-cyan: #06b6d4;
-  --color-accent-cyan-rgb: 6, 182, 212;
+  --color-accent: #FFB800; /* Primary telemetry / brand amber (DESIGN.md §1) */
+  --color-accent-dim: #FFB80020; /* amber @ ~12% — dim accent wash */
+  --color-accent-cyan: #00D4FF; /* healthy / active / links */
+  --color-accent-cyan-rgb: 0, 212, 255;
   --color-accent-cyan-glow: #67e8f9; /* cyan-300 — glow/shadow color */
-  --color-accent-purple: #8b5cf6;
-  --color-accent-purple-rgb: 139, 92, 246;
+  --color-accent-purple: var(--color-accent); /* deprecated: use --color-accent */
+  --color-accent-purple-rgb: 255, 184, 0; /* deprecated: amber mirror of --color-accent */
   /* Accent tuned for light-mode contrast (blue-600 ≥ 4.5:1 on #f8fafc). */
   --color-accent-on-light: #2563eb;
 
   /* Brand wordmark color (dark fallback = text-primary, overridden per theme). */
   --color-brand: #f8fafc;
 
-  /* Surfaces (strong = fully-opaque card surface for light theme). */
-  --color-surface-strong: #0f172a;
-  --color-border-strong: #334155;
+  /* Surfaces (strong = fully-opaque card surface). */
+  --color-surface-strong: #111827;
+  --color-border-strong: #1E3A5F;
 
-  /* Primary CTA pair. Dark-mode stays accent-cyan; light-mode uses emerald-600. */
-  --color-cta-bg: var(--color-accent-cyan);
+  /* Primary CTA pair — amber bg, navy text (DESIGN.md §1). Light-mode overrides below. */
+  --color-cta-bg: var(--color-accent);
   --color-cta-text: var(--color-void);
-  --color-cta-bg-hover: var(--color-accent-cyan);
+  --color-cta-bg-hover: #FFC933;
 
-  /* Status Colors */
-  --color-danger: #ef4444;
-  --color-danger-rgb: 239, 68, 68;
-  --color-success: #22c55e;
-  --color-success-rgb: 34, 197, 94;
-  --color-warning: #f59e0b;
-  --color-warning-rgb: 245, 158, 11;
-  --color-dot-pending: #f0ad4e;
-  --color-dot-unknown: #666;
-  --color-dot-killed: #888;
-  --color-dot-completed: #4CAF50;
-  --color-dot-crashed: #F44336;
-  --color-dot-orange: #f97316;
-  --color-dot-red: #ef4444;
-  --color-dot-awaiting-approval: #f59e0b;
-  --color-info: #3b82f6;
+  /* Status colors (DESIGN.md §1 data palette) */
+  --color-danger: #FF4757;
+  --color-danger-rgb: 255, 71, 87;
+  --color-success: #26DE81;
+  --color-success-rgb: 38, 222, 129;
+  --color-warning: #FF9F43;
+  --color-warning-rgb: 255, 159, 67;
+  /* Status dots — single source map (DESIGN.md §4) */
+  --color-dot-pending: #FF9F43; /* awaiting → warning */
+  --color-dot-unknown: #4A6080; /* unknown → muted */
+  --color-dot-killed: #FF4757; /* killed → danger */
+  --color-dot-completed: #26DE81; /* completed → success */
+  --color-dot-crashed: #FF4757; /* crashed → danger */
+  --color-dot-orange: #FF9F43; /* degraded → warning */
+  --color-dot-red: #FF4757; /* error → danger */
+  --color-dot-awaiting-approval: #FF9F43; /* awaiting approval → warning */
+  --color-info: #3B82F6;
 
 
   /* Syntax Highlighting (CodeBlock) */
@@ -192,15 +195,15 @@
 @media (color-gamut: p3) {
   @supports (color: color(display-p3 0 0 0)) {
     :root {
-      /* P3-enhanced CTA green — more vivid than sRGB #06b6d4 */
-      --color-accent-cyan: color(display-p3 0.08 0.75 0.85);
+      /* P3-enhanced cyan — more vivid than sRGB #00D4FF */
+      --color-accent-cyan: color(display-p3 0.1 0.82 1);
       
-      /* P3-enhanced accent blue — wider gamut than sRGB #3b82f6 */
-      --color-accent: color(display-p3 0.28 0.55 0.98);
+      /* P3-enhanced brand amber — wider gamut than sRGB #FFB800 */
+      --color-accent: color(display-p3 1 0.72 0);
       
-      /* P3-enhanced void background — deeper, richer black with subtle blue cast */
-      --color-void: color(display-p3 0.008 0.02 0.04);
-      --color-void-dark: color(display-p3 0.06 0.09 0.16);
+      /* P3-enhanced deep-space navy — richer than sRGB #0B1120 / #111827 */
+      --color-void: color(display-p3 0.043 0.067 0.122);
+      --color-void-dark: color(display-p3 0.066 0.094 0.15);
     }
   }
 }
@@ -376,8 +379,8 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.4s ease, color 0.4s ease;
-  /* OpenType features: contextual alternates + ligatures for prose */
-  font-feature-settings: 'calt' 1, 'liga' 1;
+  /* OpenType features: Inter stylistic sets (DESIGN.md §2) + alternates/ligatures */
+  font-feature-settings: 'cv01' 1, 'ss03' 1, 'cv11' 1, 'calt' 1, 'liga' 1;
 }
 
 /* ================================================================
@@ -1041,9 +1044,10 @@ button:active:not(:disabled) {
 }
 
 /* ── Focus ring — keyboard/programmatic only (resolves #3687) ─── */
+/* Amber focus ring (DESIGN.md §1) — overridden per-component / forced-colors where set. */
 :focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring-offset), var(--focus-ring);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 /* Remove default browser outline for mouse focus; keep for older browsers */

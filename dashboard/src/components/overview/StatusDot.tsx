@@ -9,32 +9,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { UIState } from '../../types';
 import { useT } from '../../i18n/context';
 import type { SessionHealthState } from '../../types';
+import { getStatusStyle } from '../../utils/statusStyles';
 
-const STATUS_COLORS: Record<UIState, string> = {
-  idle: 'var(--color-success)',
-  working: 'var(--color-cta-bg)',
-  permission_prompt: 'var(--color-warning)',
-  bash_approval: 'var(--color-warning)',
-  plan_mode: 'var(--color-dot-orange)',
-  ask_question: 'var(--color-error)',
-  settings: 'var(--color-cta-bg)',
-  error: 'var(--color-dot-red)',
-  rate_limit: 'var(--color-dot-red)',
-  compacting: 'var(--color-warning)',
-  context_warning: 'var(--color-warning)',
-  waiting_for_input: 'var(--color-warning)',
-  pending: 'var(--color-dot-pending)',
-  awaiting_approval: 'var(--color-dot-awaiting-approval)',
-  unknown: 'var(--color-dot-unknown)',
-  killed: 'var(--color-dot-killed)',
-  completed: 'var(--color-dot-completed)',
-  crashed: 'var(--color-dot-crashed)',
-};
-
-const HEALTH_COLORS: Record<SessionHealthState, string> = {
-  stall: 'var(--color-warning)',
-  dead: 'var(--color-dot-red)',
-};
+// Dead is a health state (not a UIState) with no row in the §4 status map.
+// It keeps its own danger token; all UIState colors come from getStatusStyle.
+const DEAD_DOT_COLOR = 'var(--color-dot-red)';
 
 const PULSE_STATUSES: ReadonlySet<UIState> = new Set([
   'working',
@@ -86,10 +65,10 @@ export default function StatusDot({ status, health }: StatusDotProps) {
   const isDead = health === 'dead';
 
   const baseColor = isDead
-    ? HEALTH_COLORS.dead
+    ? DEAD_DOT_COLOR
     : isStall
-    ? HEALTH_COLORS.stall
-    : STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
+    ? getStatusStyle('stalled').dotColor
+    : getStatusStyle(status).dotColor;
 
   const shouldPulse = isStall || PULSE_STATUSES.has(status);
   // Dead uses faster pulse to signal urgency

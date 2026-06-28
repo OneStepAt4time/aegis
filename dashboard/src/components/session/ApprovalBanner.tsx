@@ -52,22 +52,13 @@ export function ApprovalBanner({
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.98, background: 'rgba(var(--color-warning-rgb, 245,158,11), 0.05)' }}
-      animate={{ 
-        opacity: 1, 
-        scale: 1,
-        boxShadow: ['0 0 0px rgba(var(--color-warning-rgb, 245,158,11), 0)', '0 0 15px rgba(var(--color-warning-rgb, 245,158,11), 0.2)', '0 0 0px rgba(var(--color-warning-rgb, 245,158,11), 0)'],
-        borderColor: ['rgba(var(--color-warning-rgb, 245,158,11), 0.2)', 'rgba(var(--color-warning-rgb, 245,158,11), 0.5)', 'rgba(var(--color-warning-rgb, 245,158,11), 0.2)']
-      }}
-      transition={{ 
-        boxShadow: { repeat: Infinity, duration: 3, ease: 'easeInOut' },
-        borderColor: { repeat: Infinity, duration: 3, ease: 'easeInOut' },
-        scale: { type: "spring", bounce: 0.4, duration: 0.6 }
-      }}
-      className="flex flex-col gap-3 rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-void-dark)]/90 backdrop-blur-md px-4 py-4 sm:flex-row sm:items-center sm:justify-between shadow-lg relative overflow-hidden"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between shadow-lg relative overflow-hidden"
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-warning)]/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none" />
 
       <div className="min-w-0 flex-1 relative z-10">
         <div className="flex flex-wrap items-center gap-3">
@@ -108,7 +99,7 @@ export function ApprovalBanner({
           type="button"
           onClick={handleApprove}
           disabled={isLoading}
-          className="min-h-[44px] rounded-lg border border-[var(--color-success)]/40 bg-[var(--color-success)]/20 px-4 py-2 text-xs font-semibold tracking-wide text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/30 hover:border-[var(--color-success)]/60 shadow-[0_0_15px_rgba(34,197,94,0.15)] hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] rounded border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-4 py-2 text-[13px] font-semibold tracking-wide text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? '…' : 'APPROVE'}
         </motion.button>
@@ -118,7 +109,7 @@ export function ApprovalBanner({
           type="button"
           onClick={handleReject}
           disabled={isLoading}
-          className="min-h-[44px] rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 px-4 py-2 text-xs font-semibold tracking-wide text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/20 hover:border-[var(--color-danger)]/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] rounded border border-[var(--color-danger)] bg-transparent px-4 py-2 text-[13px] font-semibold tracking-wide text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? '…' : 'REJECT'}
         </motion.button>

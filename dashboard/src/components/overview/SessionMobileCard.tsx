@@ -35,7 +35,7 @@ export const SessionMobileCard = memo(function SessionMobileCard({
 }: SessionRowProps) {
   const t = useT();
   return (
-    <div className={`card-glass p-5 animate-bento-reveal transition-all ${isFocused ? 'border-[var(--color-accent-cyan)] ring-1 ring-[var(--color-accent-cyan)]/30' : ''}${needsApproval(session) ? ' approval-pending-row' : ''}`}>
+    <div className={`card-glass p-5 animate-bento-reveal transition-colors ${isFocused ? 'bg-[var(--color-surface-hover)] shadow-[inset_2px_0_0_var(--color-accent)]' : ''}${needsApproval(session) ? ' approval-pending-row' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-[var(--color-text-primary)]">
           <input
@@ -108,8 +108,8 @@ export const SessionMobileCard = memo(function SessionMobileCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
-        <span>Age: {formatTimeAgo(session.createdAt)}</span>
-        <span>Active: {formatTimeAgo(session.lastActivity)}</span>
+        <span>Age: <span className="font-mono">{formatTimeAgo(session.createdAt)}</span></span>
+        <span>Active: <span className="font-mono">{formatTimeAgo(session.lastActivity)}</span></span>
         {session.latestActivityText && (
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-cyan)]/10 px-2 py-0.5 text-[10px] text-[var(--color-accent-cyan)] truncate max-w-[180px]">
             {session.latestActivityText}

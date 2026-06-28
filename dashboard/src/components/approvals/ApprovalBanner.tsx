@@ -69,7 +69,7 @@ export function ApprovalBanner({ sessionId, sessionName }: ApprovalBannerProps) 
 
   return (
     <div
-      className="flex flex-col gap-3 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-warning)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
       aria-label={t('aria.sessionAwaitingApproval')}
     >

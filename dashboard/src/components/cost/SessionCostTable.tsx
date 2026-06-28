@@ -145,8 +145,8 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
           Session Cost Breakdown
         </h3>
         <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-          <span>{totalSessions} sessions</span>
-          <span>Total: {formatUsd(totalCost)}</span>
+          <span><span className="font-mono">{totalSessions}</span> sessions</span>
+          <span>Total: <span className="font-mono">{formatUsd(totalCost)}</span></span>
           {loadedCount < totalSessions && (
             <span className="flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -229,12 +229,12 @@ export function SessionCostTable({ sessions, concurrency = 5 }: SessionCostTable
             </div>
 
             {/* Duration */}
-            <div className="w-20 hidden md:block text-right text-[var(--color-text-muted)]" role="cell">
+            <div className="w-20 hidden md:block text-right font-mono text-[var(--color-text-muted)]" role="cell">
               {row.loading ? '—' : formatDuration(row.cost?.durationMinutes ?? null)}
             </div>
 
             {/* Cache hit */}
-            <div className="w-20 hidden lg:block text-right text-[var(--color-text-muted)]" role="cell">
+            <div className="w-20 hidden lg:block text-right font-mono text-[var(--color-text-muted)]" role="cell">
               {row.loading ? '—' : (
                 row.cost ? `${(row.cost.cacheHitRate * 100).toFixed(0)}%` : '—'
               )}

@@ -37,12 +37,12 @@ const KPI_ITEMS: KPIItem[] = [
 // ── 1. Row height constants ─────────────────────────────────
 
 describe('VirtualizedSessionList row height constants (CLS regression #4726)', () => {
-  it('ROW_HEIGHT is 52px — changing this breaks CLS budget', () => {
-    expect(ROW_HEIGHT).toBe(52);
+  it('ROW_HEIGHT is 40px — changing this breaks CLS budget', () => {
+    expect(ROW_HEIGHT).toBe(40);
   });
 
-  it('GROUP_ROW_HEIGHT is 44px — changing this breaks CLS budget', () => {
-    expect(GROUP_ROW_HEIGHT).toBe(44);
+  it('GROUP_ROW_HEIGHT is 36px — changing this breaks CLS budget', () => {
+    expect(GROUP_ROW_HEIGHT).toBe(36);
   });
 });
 
@@ -125,23 +125,16 @@ describe('VirtualizedSessionList row transitions (CLS regression #4739)', () => 
     expect(rowClassName).not.toContain('duration-[var(--duration-slow)]');
   });
 
-  it('row className uses a precise transition list restricted to paint/composite properties', () => {
-    // Must declare a precise transition directive (Tailwind arbitrary value list).
-    expect(rowClassName).toMatch(/transition-\[/);
+  it('row className uses transition-colors restricted to paint/composite properties', () => {
+    // Uses transition-colors (shorthand for background-color, border-color, color)
+    expect(rowClassName).toContain('transition-colors');
 
-    // The list must not animate layout-triggering keywords.
-    // Acceptable list content examples: background-color, border-color, box-shadow,
-    // transform, opacity, color. Disallowed: width, height, padding, margin.
-    const listMatch = rowClassName.match(/transition-\[([^\]]+)\]/);
-    expect(listMatch, 'expected a transition-[...] directive on the row').toBeTruthy();
-    if (listMatch) {
-      const properties = listMatch[1].split(',').map((p) => p.trim().toLowerCase());
-      for (const forbidden of ['width', 'height', 'padding', 'margin']) {
-        expect(
-          properties.includes(forbidden),
-          `row transition list must not include layout property "${forbidden}" — found: ${properties.join(', ')}`,
-        ).toBe(false);
-      }
+    // transition-colors is safe (only color-related properties)
+    for (const forbidden of ['transition-all', 'transition-[']) {
+      expect(
+        rowClassName.includes(forbidden),
+        `row must not use broad transition "${forbidden}"`,
+      ).toBe(false);
     }
   });
 

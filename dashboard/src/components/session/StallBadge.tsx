@@ -24,16 +24,12 @@ import {
   isRecoveryDisabled,
   formatStallTooltip,
 } from '../../utils/stallClassLabels';
+import { getStatusStyle } from '../../utils/statusStyles';
 
 export interface StallBadgeProps {
   payload: Partial<StallEventPayload>;
   className?: string;
 }
-
-const STALL_COLOR_CLASSES: Record<'amber' | 'red', string> = {
-  amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
-  red: 'border-red-500/40 bg-red-500/10 text-red-200',
-};
 
 /**
  * Compact "kill-switch" indicator icon (operator paused auto-recovery for
@@ -86,10 +82,12 @@ export function StallBadge({ payload, className }: StallBadgeProps) {
   const disabled = isRecoveryDisabled(payload);
   const tooltip = formatStallTooltip(payload);
 
-  // Color: amber for transient_5xx (retry-eligible), red for others (more severe).
-  const colorKey: 'amber' | 'red' =
-    payload.errorClass === 'transient_5xx' ? 'amber' : 'red';
-  const colorClasses = STALL_COLOR_CLASSES[colorKey];
+  // Color from the centralized §4 status map: transient_5xx is retry-eligible
+  // (warning/amber, mapped via `stalled`); other classes are more severe (danger/red).
+  const colorClasses =
+    payload.errorClass === 'transient_5xx'
+      ? getStatusStyle('stalled').className
+      : getStatusStyle('error').className;
 
   // Subtle visual cue when cap is reached: slight ring outline.
   const ringClass = exhausted ? 'ring-1 ring-amber-400/40' : '';

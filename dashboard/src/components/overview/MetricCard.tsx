@@ -80,7 +80,7 @@ export default function MetricCard({
     <div
       role="article"
       aria-label={`${label}: ${value}${suffix ?? ''}`}
-      className={`card-glass card-glass-interactive animate-bento-reveal p-5 flex flex-col metric-card${expanded ? ' metric-card--expanded' : ''} ${className}`}
+      className={`animate-bento-reveal flex flex-col rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:bg-[var(--color-surface-hover)] metric-card${expanded ? ' metric-card--expanded' : ''} ${className}`}
       {...(hasDetail
         ? {
             onClick: () => setExpanded((e) => !e),
@@ -94,7 +94,10 @@ export default function MetricCard({
           }
         : {})}
     >
-      <div className="mb-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
+      <div
+        className="mb-2 flex items-center gap-2 text-[11px] uppercase text-[var(--color-text-muted)]"
+        style={{ fontWeight: 590, letterSpacing: '0.08em' }}
+      >
         {icon}
         {label}
       </div>
@@ -105,7 +108,7 @@ export default function MetricCard({
         </div>
       ) : (
         <>
-          <div className={`font-mono text-2xl ${colorMap[color]}`}>
+          <div className={`font-mono text-2xl tabular-nums ${colorMap[color]}`}>
             {animated && isNumeric ? (
               <AnimatedNumber
                 value={numericValue}
@@ -116,7 +119,7 @@ export default function MetricCard({
             ) : (
               <>
                 {value}
-                {suffix && <span className="ml-1 text-base text-muted-foreground">{suffix}</span>}
+                {suffix && <span className="ml-1 text-base text-[var(--color-text-muted)]">{suffix}</span>}
               </>
             )}
           </div>
@@ -153,7 +156,7 @@ export default function MetricCard({
       )}
 
       {subLabel && !customVisual && (
-        <div className="mt-1.5 text-xs text-muted-foreground">{subLabel}</div>
+        <div className="mt-1.5 text-xs text-[var(--color-text-muted)]">{subLabel}</div>
       )}
     </div>
   );

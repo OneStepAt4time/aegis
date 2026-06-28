@@ -26,6 +26,7 @@ import {
 import type { SessionHealthState, SessionInfo } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 import StatusDot from './StatusDot';
+import { getStatusStyle } from '../../utils/statusStyles';
 import { useT } from '../../i18n/context';
 
 const needsApproval = (session: SessionInfo): boolean =>
@@ -67,8 +68,8 @@ export interface VirtualizedSessionListProps {
 
 // ── Constants ───────────────────────────────────────────────
 
-export const ROW_HEIGHT = 52;
-export const GROUP_ROW_HEIGHT = 44;
+export const ROW_HEIGHT = 40;
+export const GROUP_ROW_HEIGHT = 36;
 const DEFAULT_MAX_VISIBLE_ROWS = 12;
 const OVERSCAN_COUNT = 5;
 
@@ -86,7 +87,7 @@ const GROUP_ROW_STABLE_STYLE: Pick<CSSProperties, 'minHeight' | 'contentVisibili
   containIntrinsicSize: `0 ${GROUP_ROW_HEIGHT}px` as unknown as CSSProperties['containIntrinsicSize'],
 };
 
-const GRID_COLUMNS = '36px 40px 80px 1fr 150px 80px 90px 1fr 80px 60px 80px';
+const GRID_COLUMNS = '36px 128px 80px 1fr 150px 80px 90px 1fr 80px 60px 80px';
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ function ApproveButton({
       onClick={(e) => onApprove(e, session.id)}
       disabled={currentAction === 'approve'}
       aria-label={`Approve session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-success)]/15 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
+      className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-[var(--color-success)]/15 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success)]/25 disabled:pointer-events-none disabled:opacity-40"
       title={t('aria.approve')}
     >
       <Play className="h-3 w-3" />
@@ -161,7 +162,7 @@ function RejectButton({
       onClick={(e) => onReject(e, session.id)}
       disabled={currentAction === 'reject'}
       aria-label={`Reject session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
+      className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md bg-[var(--color-danger)]/15 text-xs font-medium text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/25 disabled:pointer-events-none disabled:opacity-40"
       title={t('aria.reject')}
     >
       <XCircle className="h-3 w-3" />
@@ -185,12 +186,12 @@ function VirtualizedRow(props: {
     return (
       <div
         style={{ ...style, ...GROUP_ROW_STABLE_STYLE }}
-        className="border-b border-[color:var(--color-overlay-border-faint)] bg-[color:var(--color-overlay-bg-faint)]"
+        className="border-b border-[var(--color-border-subtle)] bg-[var(--color-void)]"
         {...ariaAttributes}
       >
         <button
           type="button"
-          className="flex h-full min-h-[44px] w-full items-center gap-2 px-4 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-overlay-bg)]"
+          className="flex h-full min-h-[36px] w-full items-center gap-2 px-4 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)]"
           onClick={() => onToggleGroup(dirKey)}
           aria-expanded={!isCollapsed}
           aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${dirKey} group, ${count} sessions`}
@@ -208,14 +209,15 @@ function VirtualizedRow(props: {
 
   const { data } = item;
   const { session, isAlive, health, selected, currentAction, estimatedCostUsd, isFocused } = data;
+  const statusStyle = getStatusStyle(session.status);
 
   return (
     <div
       style={{ ...style, ...SESSION_ROW_STABLE_STYLE, gridTemplateColumns: GRID_COLUMNS }}
-      className={`grid border-b border-[var(--color-overlay-border)] transition-[background-color,border-color,box-shadow,transform,opacity,color] duration-150 ease-out ${
+      className={`grid border-b border-[var(--color-border-subtle)] transition-colors duration-150 ease-out ${
         isFocused
-          ? 'bg-[var(--color-accent-cyan)]/10 ring-1 ring-inset ring-[var(--color-accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-          : 'hover:bg-[var(--color-overlay-bg)] hover:scale-[1.002] cursor-pointer'
+          ? 'bg-[var(--color-surface-hover)] shadow-[inset_2px_0_0_var(--color-accent)]'
+          : 'hover:bg-[var(--color-surface-hover)] cursor-pointer'
       }${needsApproval(session) ? ' approval-pending-row' : ''}`}
       data-session-id={session.id}
       {...ariaAttributes}
@@ -229,14 +231,17 @@ function VirtualizedRow(props: {
           className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
         />
       </div>
-      <div className="flex items-center px-2">
-        <span className={needsApproval(session) ? 'relative' : ''}>
+      <div className="flex min-w-0 items-center gap-2 px-2">
+        <span className={`shrink-0 ${needsApproval(session) ? 'relative' : ''}`}>
           <StatusDot status={session.status} health={health} />
           {needsApproval(session) && (
             <span className="absolute -inset-1 animate-pulse rounded-full bg-[var(--color-warning)]/20" aria-hidden="true" />
           )}
         </span>
-        {!isAlive && <XCircle className="h-3.5 w-3.5 text-[var(--color-danger)]" />}
+        <span className="truncate font-mono text-xs" style={{ color: statusStyle.dotColor }}>
+          {statusStyle.label}
+        </span>
+        {!isAlive && <XCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-danger)]" />}
       </div>
       <div className="hidden md:flex items-center whitespace-nowrap px-3 font-mono text-xs text-[var(--color-text-muted)]">
         {session.ownerKeyId
@@ -246,7 +251,7 @@ function VirtualizedRow(props: {
       <div className="flex min-w-0 items-center px-3">
         <Link
           to={`/sessions/${encodeURIComponent(session.id)}`}
-          className="inline-flex min-h-[44px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)]"
+          className="inline-flex min-h-[36px] min-w-0 items-center truncate font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-accent-cyan)]"
           title={session.displayName || session.id}
         >
           {formatSessionName(session.displayName, session.id.slice(0, 8))}
@@ -259,10 +264,10 @@ function VirtualizedRow(props: {
       <div className="flex items-center max-w-[150px] truncate px-3 font-mono text-xs text-[var(--color-text-muted)]" title={session.workDir}>
         {truncateDir(session.workDir)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.createdAt)}
       </div>
-      <div className="flex items-center whitespace-nowrap px-3 text-[var(--color-text-muted)] text-sm">
+      <div className="flex items-center whitespace-nowrap px-3 font-mono text-[var(--color-text-muted)] text-sm">
         {formatTimeAgo(session.lastActivity)}
       </div>
       <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)] truncate" title={session.latestActivityText ?? ''}>
@@ -282,7 +287,7 @@ function VirtualizedRow(props: {
           </span>
         )}
       </div>
-      <div className="flex items-center px-3 text-xs text-[var(--color-text-muted)]">
+      <div className="flex items-center px-3 font-mono text-xs text-[var(--color-text-muted)]">
         {estimatedCostUsd != null ? `$${estimatedCostUsd.toFixed(2)}` : '—'}
       </div>
       <div className="flex items-center gap-1 px-3">
@@ -298,7 +303,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onInterrupt(e, session.id)}
           aria-label={`Interrupt session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
+          className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 transition-colors"
           title={t('aria.interrupt')}
         >
           <Ban className="h-3.5 w-3.5" />
@@ -307,7 +312,7 @@ function VirtualizedRow(props: {
           type="button"
           onClick={(e) => onKill(e, session.id)}
           aria-label={`Kill session ${formatSessionName(session.displayName, session.id.slice(0, 8))}`}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
+          className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
           title={t('aria.kill')}
         >
           <XCircle className="h-3.5 w-3.5" />
@@ -382,10 +387,10 @@ export function VirtualizedSessionList({
     <div className="rounded-lg border border-[var(--color-void-lighter)] overflow-hidden" style={{ minHeight: containerMinHeight, containLayout: true, contain: 'layout' } as CSSProperties}>
       {showHeader && (
         <div
-          className="grid border-b border-[var(--color-void-lighter)] text-[var(--color-text-muted)] text-sm text-left bg-[var(--color-surface)]"
+          className="grid border-b border-[var(--color-void-lighter)] text-left bg-[var(--color-void)]"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
         >
-          <div className="px-3 py-3 font-medium">
+          <div className="px-3 py-2.5">
             <input
               type="checkbox"
               aria-label={t("aria.selectAll")}
@@ -394,16 +399,16 @@ export function VirtualizedSessionList({
               className="h-4 w-4 rounded border border-[var(--color-void-lighter)] bg-[var(--color-void-dark)] text-[var(--color-accent-cyan)] focus:ring-1 focus:ring-[var(--color-accent-cyan)]"
             />
           </div>
-          <div className="px-2 py-3 font-medium" role="columnheader">{t('sessionTable.status')}</div>
-          <div className="hidden md:flex px-3 py-3 font-medium" role="columnheader">{t('sessionTable.createdBy')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.name')}</div>
-          <div className="flex px-3 py-3 font-medium" role="columnheader">{t('sessionTable.workDir')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.age')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.lastActivity')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.activity')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.permission')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.cost')}</div>
-          <div className="px-3 py-3 font-medium" role="columnheader">{t('sessionTable.actions')}</div>
+          <div className="px-2 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.status')}</div>
+          <div className="hidden md:flex px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.createdBy')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.name')}</div>
+          <div className="flex px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.workDir')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.age')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.lastActivity')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.activity')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.permission')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.cost')}</div>
+          <div className="px-3 py-2.5 text-[11px] font-[590] uppercase tracking-[0.08em] text-[var(--color-text-muted)]" role="columnheader">{t('sessionTable.actions')}</div>
         </div>
       )}
 
