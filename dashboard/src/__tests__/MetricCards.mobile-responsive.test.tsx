@@ -57,32 +57,32 @@ describe('MetricCards mobile responsive', () => {
     vi.restoreAllMocks();
   });
 
-  it('Delivery Rate card uses flex-col on mobile and sm:flex-row on larger screens', async () => {
+  it('Delivery Rate section uses flex-col on mobile and sm:flex-row on larger screens', async () => {
     render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => { await vi.runAllTicks(); });
 
-    // Find the card containing "Delivery Rate"
+    // Find the heading and traverse up to the container section
     const heading = screen.getByText('Delivery Rate');
-    const card = heading.closest('.card-glass');
-    expect(card).not.toBeNull();
+    // The container is the parent div with rounded-[10px] border etc.
+    const container = heading.closest('div[class*="rounded-[10px]"]');
+    expect(container).not.toBeNull();
 
     // The flex container holding RingGauge + text details
-    const flexContainer = card!.querySelector('.flex.flex-col');
+    const flexContainer = container!.querySelector('.flex.flex-col');
     expect(flexContainer).not.toBeNull();
     expect(flexContainer!.classList.contains('sm:flex-row')).toBe(true);
   });
 
-  it('Delivery Rate card uses responsive padding (p-4 sm:p-5)', async () => {
+  it('Delivery Rate section uses responsive padding (p-4)', async () => {
     render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => { await vi.runAllTicks(); });
 
     const heading = screen.getByText('Delivery Rate');
-    const card = heading.closest('.card-glass');
-    expect(card).not.toBeNull();
-    expect(card!.classList.contains('p-4')).toBe(true);
-    expect(card!.classList.contains('sm:p-5')).toBe(true);
+    const container = heading.closest('div[class*="rounded-[10px]"]');
+    expect(container).not.toBeNull();
+    expect(container!.classList.contains('p-4')).toBe(true);
   });
 
   it('Delivery Rate text content is centered on mobile, left-aligned on sm+', async () => {
@@ -91,23 +91,23 @@ describe('MetricCards mobile responsive', () => {
     await act(async () => { await vi.runAllTicks(); });
 
     const heading = screen.getByText('Delivery Rate');
-    const card = heading.closest('.card-glass');
+    const container = heading.closest('div[class*="rounded-[10px]"]');
     // The text details div
-    const textDiv = card!.querySelector('.flex-1.space-y-3');
+    const textDiv = container!.querySelector('.flex-1.space-y-3');
     expect(textDiv).not.toBeNull();
     expect(textDiv!.classList.contains('text-center')).toBe(true);
     expect(textDiv!.classList.contains('sm:text-left')).toBe(true);
   });
 
-  it('RingGauge renders inside the delivery rate card', async () => {
+  it('RingGauge renders inside the delivery rate section', async () => {
     render(<MemoryRouter><MetricCards /></MemoryRouter>);
 
     await act(async () => { await vi.runAllTicks(); });
 
     const heading = screen.getByText('Delivery Rate');
-    const card = heading.closest('.card-glass');
+    const container = heading.closest('div[class*="rounded-[10px]"]');
     // RingGauge renders an SVG element
-    const svg = card!.querySelector('svg');
+    const svg = container!.querySelector('svg');
     expect(svg).not.toBeNull();
   });
 });

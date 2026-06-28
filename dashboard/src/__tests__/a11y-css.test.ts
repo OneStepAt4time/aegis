@@ -25,7 +25,8 @@ describe('index.css — focus ring tokens', () => {
 
   it('applies focus ring via :focus-visible', () => {
     expect(css).toContain(':focus-visible');
-    expect(css).toContain('box-shadow: var(--focus-ring-offset), var(--focus-ring)');
+    // Command Center redesign uses outline-based focus ring (DESIGN.md §1)
+    expect(css).toContain('outline: 2px solid var(--color-accent)');
   });
 
   it('removes outline for :focus:not(:focus-visible)', () => {

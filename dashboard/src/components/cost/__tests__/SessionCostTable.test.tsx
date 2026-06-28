@@ -59,7 +59,8 @@ describe('SessionCostTable', () => {
     render(<SessionCostTable sessions={[mockSession]} />);
     await act(async () => { resolve!(mockCost as SessionCostEntry); });
 
-    expect(screen.getByText('$1.25')).not.toBeNull();
+    // $1.25 appears in both header total and row, use getAllByText
+    expect(screen.getAllByText('$1.25').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('67%')).not.toBeNull();
   });
 
@@ -99,6 +100,13 @@ describe('SessionCostTable', () => {
     render(<SessionCostTable sessions={[mockSession]} />);
     await act(async () => { resolve!(mockCost as SessionCostEntry); });
 
-    expect(screen.getByText('Total: $1.25')).not.toBeNull();
+    // The header now renders "Total: " and "$1.25" in separate spans
+    // $1.25 appears in both header and row, so use getAllByText
+    const costElements = screen.getAllByText('$1.25');
+    expect(costElements.length).toBeGreaterThanOrEqual(1);
+    // Verify the total cost value is displayed in the header area
+    const header = screen.getByText('Session Cost Breakdown').closest('div');
+    expect(header!.textContent).toContain('Total:');
+    expect(header!.textContent).toContain('$1.25');
   });
 });
