@@ -50,9 +50,9 @@ export function SendContinueButton({ sessionId, className }: SendContinueButtonP
         disabled={isLoading}
         aria-label="Send continue (manual recovery after auto-recovery gave up)"
         className={[
-          'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium',
-          'border-amber-500/40 bg-amber-500/10 text-amber-200',
-          'hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/40',
+          'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold',
+          'border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] text-[var(--color-cta-text)]',
+          'hover:bg-[var(--color-cta-bg-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cta-bg)]/40',
           'disabled:cursor-not-allowed disabled:opacity-60',
         ].join(' ')}
       >

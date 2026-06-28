@@ -262,14 +262,14 @@ export function MessageFooter({
             onKeyDown={handleKeyDown}
             placeholder={t('sessionDetail.sendPlaceholder')}
             disabled={sending || !h.alive}
-            className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none disabled:opacity-50"
+            className="flex-1 min-h-[44px] rounded border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-2.5 font-sans text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-cta-bg)] focus-visible:outline-none disabled:opacity-50"
           />
 
           <button
             type="button"
             onClick={handleSend}
             disabled={sending || !msgInput.trim() || !h.alive}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)]/50 bg-[var(--color-cta-bg)]/15 p-2.5 text-[var(--color-cta-bg)] transition-all hover:bg-[var(--color-cta-bg)]/30 disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] p-2.5 text-[var(--color-cta-text)] transition-all hover:bg-[var(--color-cta-bg-hover)] disabled:cursor-not-allowed disabled:opacity-30"
             aria-label={t('sessionDetail.sessionSendMessageCmd')}
           >
             <Send className="h-4 w-4" />
@@ -396,14 +396,14 @@ export function MessageFooter({
                 onKeyDown={handleKeyDown}
                 placeholder={t('sessionDetail.sendPlaceholder')}
                 disabled={sending || !h.alive}
-                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-mono text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50"
+                className="flex-1 min-h-[48px] rounded-xl border border-[var(--color-void-lighter)] bg-[var(--color-void)] px-3 py-3 font-sans text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-placeholder)] focus:border-[var(--color-accent-cyan)] focus-visible:outline-none disabled:opacity-50"
               />
 
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={sending || !msgInput.trim() || !h.alive}
-                className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-accent-cyan)]/30 bg-[var(--color-accent-cyan)]/10 p-3 text-[var(--color-accent-cyan)] transition-colors hover:bg-[var(--color-accent-cyan)]/20 disabled:cursor-not-allowed disabled:opacity-30"
+                className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] p-3 text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] disabled:cursor-not-allowed disabled:opacity-30"
                 aria-label={t('sessionDetail.sessionSendMessage')}
               >
                 <Send className="h-4 w-4" />

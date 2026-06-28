@@ -225,14 +225,14 @@ export function SessionHeader({
             <button
               type="button"
               onClick={onApprove}
-              className="hidden min-h-[44px] rounded border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2 text-xs font-medium text-[var(--color-success)] transition-colors hover:bg-[var(--color-success-bg-hover)] sm:inline-flex"
+              className="hidden min-h-[44px] rounded border border-[var(--color-cta-bg)] bg-[var(--color-cta-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-cta-text)] transition-colors hover:bg-[var(--color-cta-bg-hover)] sm:inline-flex"
             >
               Approve
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="hidden min-h-[44px] rounded border border-[var(--color-error)]/30 bg-[var(--color-error-bg)] px-3 py-2 text-xs font-medium text-[var(--color-error)] transition-colors hover:bg-[var(--color-error-bg-hover)] sm:inline-flex"
+              className="hidden min-h-[44px] rounded border border-[var(--color-danger)] bg-transparent px-3 py-2 text-xs font-semibold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/10 sm:inline-flex"
             >
               Reject
             </button>
