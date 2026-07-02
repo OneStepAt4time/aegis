@@ -40,7 +40,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.96.1",
+    "@hey-api/openapi-ts": "^0.97.3",
     "typescript": "^5.7.0"
   }
 }
