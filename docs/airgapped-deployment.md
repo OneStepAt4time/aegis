@@ -26,7 +26,7 @@ The simplest method — download once, transfer via sneakernet or one-way data d
 
 ```bash
 # Download the release tarball and checksums
-VERSION="0.6.0-preview"
+VERSION="0.6.7"
 curl -LO "https://github.com/OneStepAt4time/aegis/releases/download/v${VERSION}/aegis-${VERSION}.tgz"
 curl -LO "https://github.com/OneStepAt4time/aegis/releases/download/v${VERSION}/SHA256SUMS"
 
@@ -44,7 +44,7 @@ gh release download "v${VERSION}" --pattern '*.sigstore' --dir /tmp
 ```bash
 # Extract and install
 mkdir -p /opt/aegis
-tar xzf aegis-0.6.0-preview.tgz -C /opt/aegis --strip-components=1
+tar xzf aegis-0.6.7.tgz -C /opt/aegis --strip-components=1
 cd /opt/aegis
 
 # Install dependencies from bundled node_modules (if included)
@@ -77,12 +77,12 @@ npm install @onestepat4time/aegis --global-style --dry-run 2>&1 | tee install-ma
 
 ```bash
 # Verdaccio example
-npm publish aegis-0.6.0-preview.tgz --registry https://npm.internal.example.com
+npm publish aegis-0.6.7.tgz --registry https://npm.internal.example.com
 
 # Or Artifactory
 curl -u user:token -X PUT \
-  "https://artifactory.internal/example/npm-local/aegis/-/aegis-0.6.0-preview.tgz" \
-  -T aegis-0.6.0-preview.tgz
+  "https://artifactory.internal/example/npm-local/aegis/-/aegis-0.6.7.tgz" \
+  -T aegis-0.6.7.tgz
 ```
 
 **On the air-gapped machine:**
@@ -105,17 +105,17 @@ For environments without a registry server — copy the full dependency tree as 
 # Clone and install everything
 git clone https://github.com/OneStepAt4time/aegis.git /tmp/aegis-mirror
 cd /tmp/aegis-mirror
-git checkout v0.6.0-preview
+git checkout v0.6.7
 npm install
 
 # Archive the entire directory including node_modules
-tar czf aegis-full-0.6.0-preview.tar.gz -C /tmp aegis-mirror/
+tar czf aegis-full-0.6.7.tar.gz -C /tmp aegis-mirror/
 ```
 
 **On the air-gapped machine:**
 
 ```bash
-tar xzf aegis-full-0.6.0-preview.tar.gz -C /opt/
+tar xzf aegis-full-0.6.7.tar.gz -C /opt/
 cd /opt/aegis-mirror
 
 # Build and run (node_modules already present)
@@ -136,7 +136,7 @@ npm install --production=false   # include devDependencies for build step
 tar czf node_modules.tar.gz node_modules/
 
 # Transfer both archives to air-gapped machine:
-#   aegis-0.6.0-preview.tgz
+#   aegis-0.6.7.tgz
 #   node_modules.tar.gz
 
 # On air-gapped machine
@@ -154,19 +154,19 @@ For containerized air-gapped deployments, save and load images manually:
 
 ```bash
 # Pull and save
-docker pull ghcr.io/onestepat4time/aegis:0.6.0-preview
-docker save ghcr.io/onestepat4time/aegis:0.6.0-preview \
-  -o aegis-image-0.6.0-preview.tar
+docker pull ghcr.io/onestepat4time/aegis:0.6.7
+docker save ghcr.io/onestepat4time/aegis:0.6.7 \
+  -o aegis-image-0.6.7.tar
 
 # Optional: compress
-gzip aegis-image-0.6.0-preview.tar
+gzip aegis-image-0.6.7.tar
 ```
 
 **On the air-gapped machine:**
 
 ```bash
 # Load into local container runtime
-docker load -o aegis-image-0.6.0-preview.tar
+docker load -o aegis-image-0.6.7.tar
 
 # Run with internal-only networking
 docker run -d \
@@ -176,7 +176,7 @@ docker run -d \
   -e AEGIS_AUTH_TOKEN=your-secure-token \
   -v aegis-data:/root/.aegis \
   -v claude-data:/root/.claude \
-  ghcr.io/onestepat4time/aegis:0.6.0-preview
+  ghcr.io/onestepat4time/aegis:0.6.7
 ```
 
 For Docker Compose, use the same saved image and reference it in your compose file:
@@ -184,7 +184,7 @@ For Docker Compose, use the same saved image and reference it in your compose fi
 ```yaml
 services:
   aegis:
-    image: ghcr.io/onestepat4time/aegis:0.6.0-preview
+    image: ghcr.io/onestepat4time/aegis:0.6.7
     # Rest of config as in deployment.md
 ```
 
@@ -196,15 +196,15 @@ For Kubernetes deployments on isolated clusters:
 
 ```bash
 # Pull the chart
-helm pull aegis/aegis --version 0.6.0-preview --destination /tmp/
+helm pull aegis/aegis --version 0.6.7 --destination /tmp/
 
 # Or from the repo directly
-helm template aegis aegis/aegis --version 0.6.0-preview > /tmp/aegis-manifest.yaml
+helm template aegis aegis/aegis --version 0.6.7 > /tmp/aegis-manifest.yaml
 
 # Save both the chart and the container image
-helm pull aegis/aegis --version 0.6.0-preview --destination /tmp/
-docker pull ghcr.io/onestepat4time/aegis:0.6.0-preview
-docker save ghcr.io/onestepat4time/aegis:0.6.0-preview -o /tmp/aegis-image.tar
+helm pull aegis/aegis --version 0.6.7 --destination /tmp/
+docker pull ghcr.io/onestepat4time/aegis:0.6.7
+docker save ghcr.io/onestepat4time/aegis:0.6.7 -o /tmp/aegis-image.tar
 ```
 
 **On the air-gapped cluster:**
@@ -215,11 +215,11 @@ docker save ghcr.io/onestepat4time/aegis:0.6.0-preview -o /tmp/aegis-image.tar
 ctr -n k8s.io images import aegis-image.tar
 
 # Install from local chart archive
-helm upgrade --install aegis ./aegis-0.6.0-preview.tgz \
+helm upgrade --install aegis ./aegis-0.6.7.tgz \
   --namespace aegis \
   --create-namespace \
   --set image.repository=ghcr.io/onestepat4time/aegis \
-  --set image.tag=0.6.0-preview \
+  --set image.tag=0.6.7 \
   --set aegis.authToken=your-secure-token
 ```
 
@@ -341,13 +341,13 @@ If an update fails, roll back to the previous version:
 ```bash
 # Systemd — restore previous build
 cd /opt/aegis
-tar xzf aegis-0.6.0-preview.tgz --strip-components=1
+tar xzf aegis-0.6.7.tgz --strip-components=1
 npm run build
 sudo systemctl restart aegis
 
 # Docker — re-run with previous image
 docker stop aegis && docker rm aegis
-docker run -d --name aegis ... ghcr.io/onestepat4time/aegis:0.6.0-preview
+docker run -d --name aegis ... ghcr.io/onestepat4time/aegis:0.6.7
 
 # Helm
 helm rollback aegis --namespace aegis
