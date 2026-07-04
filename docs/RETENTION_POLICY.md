@@ -136,7 +136,7 @@ legal obligations.
 
 ### 3.3 Current Aegis Retention Behavior
 
-As of version 0.6.0-preview:
+As of version 0.6.7:
 
 | Data | Auto-Deletion | Behavior |
 |------|--------------|----------|
