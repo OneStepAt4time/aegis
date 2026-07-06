@@ -234,6 +234,12 @@ All contributors, including AI agents, must run the local quality gate before an
 npm run gate
 ```
 
+On a single dev machine the full gate can pin CPU/RAM for several minutes
+(686-file serial vitest + tsc + vite dashboard build) and freeze the OS.
+`npm run gate:safe` runs the **same** gate — nothing skipped — with a
+2 GB per-process heap cap and below-normal CPU priority so the machine
+stays responsive. Pass a custom heap cap in MB, e.g. `npm run gate:safe -- 3072`.
+
 Current gate baseline:
 
 1. `npm run security-check`

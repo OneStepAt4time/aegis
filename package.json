@@ -45,6 +45,7 @@
     "hooks:install": "git config core.hooksPath .githooks",
     "docs": "typedoc",
     "gate": "npm run gate:arch && npm run hygiene-check && npm run security-check && npm run token-check && npm run audit-check && npm run lint && npm run dashboard:tokens:gate && npm run dashboard:clickable:gate && npx tsc --noEmit && npm run build && npm run check-bundle-size && npm run test:serial",
+    "gate:safe": "node scripts/gate-safe.mjs",
     "start": "node dist/cli.js",
     "dev": "tsc && node dist/cli.js",
     "prepublishOnly": "bash scripts/check-merge-conflicts.sh && npm run build",
