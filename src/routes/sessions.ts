@@ -62,6 +62,11 @@ function buildCreateSessionSchema(ctx: RouteContext) {
     systemPrompt: z.string().max(100_000).optional(),
     // Issue #3613: per-session isolation policy override.
     isolationPolicy: z.enum(['respect-cc', 'enforce-worktree', 'enforce-direct']).optional(),
+    // Phase 3.6 / ADR-0034: agent runner. 'claude-code' (default, reference)
+    // or 'kimi' (native ACP). The client factory resolves an AcpRunnerProfile
+    // per runner (binary, auth env, permission strategy). Unknown values are
+    // rejected at the API boundary.
+    runnerName: z.enum(['claude-code', 'kimi']).default('claude-code'),
   }).strict();
 }
 
@@ -370,7 +375,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
    */
   async function createSessionHandler(req: FastifyRequest, reply: FastifyReply, data: z.infer<typeof createSessionSchema>): Promise<unknown> {
     if (!requirePermission(auth, req, reply, 'create')) return;
-    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt, effort, isolationPolicy } = data;
+    const { workDir, prompt, prd, resumeSessionId, claudeCommand, env, stallThresholdMs, permissionMode, autoApprove, parentId, memoryKeys, model, systemPrompt, effort, isolationPolicy, runnerName } = data;
     // Issue #2530: `label` is an alias for `name`; normalise so downstream only sees `name`.
     const name = data.name ?? data.label;
     if (!workDir) return reply.status(400).send({ error: 'workDir is required' });
@@ -453,13 +458,6 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
         sessions.releaseSessionClaim(existing.id);
       }
     }
-
-    // Phase 3.6 / ADR-0034: runner selection. The create-session request
-    // schema will accept `runnerName` in a follow-up PR; for now every session
-    // is Claude Code (the default + hard-installed reference runner). Threaded
-    // into backendMetadata so the client factory resolves the right
-    // AcpRunnerProfile (binary, auth env, permission strategy).
-    const runnerName = 'claude-code';
 
     let session: import('../session.js').SessionInfo;
     let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
