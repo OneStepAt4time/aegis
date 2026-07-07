@@ -32,6 +32,7 @@ import type {
 } from './types.js';
 import { AcpChildProcess as AcpChildProcessCtor } from '../child-process.js';
 import { AcpJsonRpcClient } from '../json-rpc-client.js';
+import { resolveAcpRunnerProfile } from '../runner-profile.js';
 import { StructuredLogger } from '../../../logger.js';
 
 const log = new StructuredLogger();
@@ -46,6 +47,28 @@ const FATAL_CC_STDERR_PATTERNS = [
   /Error handling request[\s\S]*session\/prompt/,
 ];
 
+/**
+ * Phase 3.6 / ADR-0034: Merge the shared child-process options with the
+ * per-session AcpRunnerProfile resolved from `context.runnerName`. Profile
+ * fields fill in only when the shared base doesn't override them, so boot-time
+ * `childProcessOptions` (if any) still win. Claude Code is the default profile
+ * when runnerName is undefined/empty — preserving prior behavior exactly.
+ */
+export function resolveRunnerChildProcessOptions(
+  base: Omit<AcpChildProcessOptions, 'cwd'> | undefined,
+  context: AcpBackendClientFactoryContext
+): Omit<AcpChildProcessOptions, 'cwd'> {
+  const profile = resolveAcpRunnerProfile(context.runnerName);
+  return {
+    ...base,
+    // Issue #4522 AC #3: session permission mode → --permission-mode argv.
+    permissionMode: base?.permissionMode ?? context.permissionMode,
+    resolveCommand: base?.resolveCommand ?? profile.resolveCommand,
+    permissionModeStrategy: base?.permissionModeStrategy ?? profile.permissionModeStrategy,
+    authEnvPrefixes: base?.authEnvPrefixes ?? profile.envPrefixes,
+  };
+}
+
 export function createDefaultAcpBackendClient(
   context: AcpBackendClientFactoryContext,
   options: {
@@ -59,14 +82,8 @@ export function createDefaultAcpBackendClient(
   injectedChild?: AcpChildProcess
 ): AcpBackendClient {
   const child = injectedChild ?? new AcpChildProcessCtor({
-    ...options.childProcessOptions,
+    ...resolveRunnerChildProcessOptions(options.childProcessOptions, context),
     cwd: context.cwd,
-    // Issue #4522 AC #3: forward the session's effective permission mode from
-    // the clientFactory context. options.childProcessOptions (if provided) takes
-    // precedence via spread; the context value fills in when the caller didn't
-    // override. The downstream resolveCommand() passes this to
-    // applyPermissionModeArgs(), which injects --permission-mode at spawn.
-    permissionMode: options.childProcessOptions?.permissionMode ?? context.permissionMode,
   });
   // Issue #3135: Forward ACP child process stderr for debugging.
   // Without this, errors from claude-agent-acp (API key issues, crashes)
