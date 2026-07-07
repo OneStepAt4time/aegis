@@ -17,6 +17,7 @@ import {
   AcpBackendLifecycleError,
   AcpBackendRuntimeUnavailableError,
 } from './errors.js';
+import { resolveAcpRunnerProfile } from '../runner-profile.js';
 import type {
   AcpBackendClient,
   AcpBackendClientFactoryContext,
@@ -222,10 +223,28 @@ export async function createRuntime(
   // idempotent (settings already correct from buildSessionInfo);
   // for resume/load paths it closes the actual P0 gap.
   const effectivePermissionMode = session.permissionMode ?? 'default';
-  if (effectivePermissionMode === 'bypassPermissions') {
-    await activateBypassPermissions(cwd);
-  } else {
-    await neutralizeBypassPermissions(cwd, effectivePermissionMode);
+  // Phase 3.6 / ADR-0034: resolve the runner profile once. The
+  // settings.local.json patch below is a Claude-Code-only guard (CC v2.1.143
+  // reads permissions.defaultMode from it on startup); non-CC runners (kimi)
+  // govern permissions via ACP session/request_permission, so the patch is
+  // skipped to avoid polluting their workDir with a CC settings file.
+  const runnerName =
+    typeof session.backendMetadata?.runnerName === 'string'
+      ? session.backendMetadata.runnerName
+      : undefined;
+  const profile = resolveAcpRunnerProfile(runnerName);
+  if (profile.guards.patchClaudeSettings) {
+    // Issue #4575 P0: Apply permission-guard at the runtime boundary so
+    // resume/load paths (which do NOT go through buildSessionInfo) get the
+    // same settings.local.json protection as createSession. CC v2.1.143 reads
+    // permissions.defaultMode from <workDir>/.claude/settings.local.json on
+    // startup and OVERRIDES the --permission-mode argv, so the file MUST be
+    // patched before the child process spawns.
+    if (effectivePermissionMode === 'bypassPermissions') {
+      await activateBypassPermissions(cwd);
+    } else {
+      await neutralizeBypassPermissions(cwd, effectivePermissionMode);
+    }
   }
 
   const context: AcpBackendClientFactoryContext = {
@@ -239,11 +258,8 @@ export async function createRuntime(
     permissionMode: session.permissionMode,
     // Phase 3.6 / ADR-0034: propagate the runner name so the client factory
     // resolves the right AcpRunnerProfile (binary, auth env, permission
-    // strategy). Carried via backendMetadata from SessionInfo.runnerName.
-    runnerName:
-      typeof session.backendMetadata?.runnerName === 'string'
-        ? session.backendMetadata.runnerName
-        : undefined,
+    // strategy).
+    runnerName,
   };
   return bindRuntime(deps, {
     sessionId: session.id,
