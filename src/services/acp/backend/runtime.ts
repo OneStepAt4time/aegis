@@ -237,6 +237,13 @@ export async function createRuntime(
     // Issue #4522 AC #3: propagate the session's effective permission mode
     // so the AcpChildProcess can inject --permission-mode at spawn time.
     permissionMode: session.permissionMode,
+    // Phase 3.6 / ADR-0034: propagate the runner name so the client factory
+    // resolves the right AcpRunnerProfile (binary, auth env, permission
+    // strategy). Carried via backendMetadata from SessionInfo.runnerName.
+    runnerName:
+      typeof session.backendMetadata?.runnerName === 'string'
+        ? session.backendMetadata.runnerName
+        : undefined,
   };
   return bindRuntime(deps, {
     sessionId: session.id,

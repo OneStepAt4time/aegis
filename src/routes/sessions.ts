@@ -454,6 +454,13 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
     }
 
+    // Phase 3.6 / ADR-0034: runner selection. The create-session request
+    // schema will accept `runnerName` in a follow-up PR; for now every session
+    // is Claude Code (the default + hard-installed reference runner). Threaded
+    // into backendMetadata so the client factory resolves the right
+    // AcpRunnerProfile (binary, auth env, permission strategy).
+    const runnerName = 'claude-code';
+
     let session: import('../session.js').SessionInfo;
     let acpResult: import('../services/acp/backend.js').AcpBackendStartResult | undefined;
     if (acpBackend && ctx.config.acpEnabled) {
@@ -466,7 +473,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
           cwd: safeWorkDir,
           parentSessionId: parentId,
           resumeFromSessionId: resumeSessionId,
-          backendMetadata: model ? { model } : undefined,
+          backendMetadata: { ...(model ? { model } : {}), runnerName },
           systemPrompt,
           env: env as Record<string, string> | undefined,
           permissionMode,
@@ -478,7 +485,7 @@ export function registerSessionRoutes(app: FastifyInstance, ctx: RouteContext): 
       }
       try {
         if (!acpResult) throw new Error('ACP session creation returned no result');
-        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: acpOwnerKeyId, tenantId: acpTenantId, model, effort, isolationPolicy, runnerName: 'claude-code' });
+        session = await sessions.createSession({ id: acpResult.session.id, workDir: safeWorkDir, name, prd, resumeSessionId, claudeCommand, env: env as Record<string, string> | undefined, stallThresholdMs, permissionMode, autoApprove, parentId, ownerKeyId: acpOwnerKeyId, tenantId: acpTenantId, model, effort, isolationPolicy, runnerName });
         const mappedStatus = mapAcpStatusToUI(acpResult.session.status);
         if (mappedStatus) {
           session.status = mappedStatus;
