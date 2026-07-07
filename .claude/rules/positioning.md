@@ -1,17 +1,20 @@
 # Positioning (what Aegis is and is not)
 
-Authoritative source: [ADR-0023](../../docs/adr/0023-positioning-claude-code-control-plane.md)
+Authoritative source: [ADR-0034](../../docs/adr/0034-positioning-multi-cli-agent-runtime.md)
+(supersedes [ADR-0023](../../docs/adr/0023-positioning-claude-code-control-plane.md))
 and [docs/enterprise/00-gap-analysis.md §15](../../docs/enterprise/00-gap-analysis.md).
 
 ## What Aegis is
 
-- **The control plane of Claude Code.** REST, MCP, SSE, WebSocket, CLI, and
-  notification channels on a single self-hosted server.
-- **A bridge, not an orchestrator.** Claude Code does the agent work. Aegis
+- **The control plane for ACP-compatible coding-agent CLIs** — Claude Code
+  (default), plus Kimi Code and Gemini CLI. REST, MCP, SSE, WebSocket, CLI, and
+  notification channels on a single self-hosted server. See [ADR-0034](../../docs/adr/0034-positioning-multi-cli-agent-runtime.md).
+- **A bridge, not an orchestrator.** The agent CLI does the work. Aegis
   exposes, governs, observes, and approves it.
 - **MIT, single edition.** No open-core, no BUSL, no paid tier flag.
-- **BYO LLM first-class.** Claude Code can point at Anthropic, z.ai GLM,
-  OpenRouter, LM Studio, Ollama, Azure OpenAI, etc. Aegis owns no LLM cost.
+- **BYO LLM first-class, per runner.** Each runner points at its own provider
+  (Claude Code → Anthropic/GLM/OpenRouter/Ollama; Kimi → Moonshot; Gemini →
+  Vertex/Gemini API). Aegis owns no LLM cost.
 
 ## Target users (in order of priority)
 
@@ -26,8 +29,11 @@ Same architecture at every scale. No fork, no edition split, no rewrite.
 
 - Not an agent framework. We do not write agents, prompts, or LLM calls.
 - Not a SaaS. Self-hosted first; SaaS is off the table until demand + funding.
-- Not Claude-only at runtime. The LLM endpoint is configurable.
-- Not a general-purpose tmux manager. tmux is an implementation detail.
+- Not Claude-Code-only at the runtime layer — any ACP-compatible CLI can be a
+  runner (Claude Code remains the default). The LLM endpoint is also
+  configurable per runner.
+- Not multi-harness via bespoke adapters — only ACP-speaking runners are
+  first-class (ADR-0034 Decision 4). Non-ACP CLIs enter via an ACP bridge.
 
 ## What to NOT build without explicit maintainer approval
 
@@ -35,10 +41,13 @@ The roadmap locks these in. Do not propose or start PRs for them unless a
 maintainer assigns the issue from the right phase.
 
 **Never** (out of scope):
-- Open-core edition flag (`AEGIS_EDITION`) — decided against in ADR-0023.
+- Open-core edition flag (`AEGIS_EDITION`) — decided against in ADR-0023;
+  reaffirmed in ADR-0034 Decision 7.
 - Rewrite in another language — not under consideration.
-- First-class integrations with competing CLIs (e.g. Gemini CLI) —
-  Claude Code is the single target runtime.
+- Bespoke per-harness adapters inside the runtime — first-class runners speak
+  ACP; non-ACP CLIs enter via an ACP bridge, not an Aegis adapter
+  (ADR-0034 Decision 4). SaaS-only / preview-ACP CLIs (Copilot CLI today) are
+  watched, not built.
 
 **Not before Phase 3** (team & early-enterprise):
 - SSO / OIDC providers.
@@ -73,5 +82,8 @@ Activation happens via a maintainer-approved PR that:
 
 ## Current phase
 
-Phase 3 — Team & Early-Enterprise. Scope is defined in
-[.claude/epics/phase-3-team-early-enterprise/epic.md](../epics/phase-3-team-early-enterprise/epic.md).
+Phase 3 — Team & Early-Enterprise. Phase 3.6 — Multi-CLI Runtime (Kimi Code,
+Gemini CLI as ACP runners) is now in scope under [ADR-0034](../../docs/adr/0034-positioning-multi-cli-agent-runtime.md).
+Scope is defined in
+[.claude/epics/phase-3-team-early-enterprise/epic.md](../epics/phase-3-team-early-enterprise/epic.md)
+and ROADMAP §Phase 3.6.

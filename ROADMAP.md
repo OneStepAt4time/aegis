@@ -1,32 +1,35 @@
 # Aegis Roadmap
 
-> **Aegis is in Preview.** Planning is organised into four phases driven by
+> **Aegis is in Preview.** Planning is organised into phases driven by
 > audience scale (single dev → team → enterprise). The positioning is locked
-> in [ADR-0023](docs/adr/0023-positioning-claude-code-control-plane.md) and
-> the complete gap analysis lives in
+> in [ADR-0034](docs/adr/0034-positioning-multi-cli-agent-runtime.md)
+> (supersedes [ADR-0023](docs/adr/0023-positioning-claude-code-control-plane.md))
+> and the complete gap analysis lives in
 > [docs/enterprise/00-gap-analysis.md](docs/enterprise/00-gap-analysis.md).
 
 ---
 
 ## North Star
 
-Be the most reliable, pleasant, self-hosted **control plane for Claude Code**
-— used by a single developer orchestrating agents from a phone, a 10-person
-team sharing a deployment, or an enterprise adopting it under SSO.
+Be the most reliable, pleasant, self-hosted **control plane for ACP-compatible
+coding-agent CLIs** (Claude Code default; Kimi Code, Gemini CLI supported) —
+used by a single developer orchestrating agents from a phone, a 10-person team
+sharing a deployment, or an enterprise adopting it under SSO.
 
 The orchestration pattern is the same at every scale; Aegis scales up with the
 audience without rewrites. Aegis never orchestrates agents — it bridges them
-to Claude Code.
+to an ACP-speaking runner.
 
 ---
 
 ## Positioning (locked)
 
-- **Aegis is the control plane of Claude Code.** REST, MCP, SSE, WS, CLI, and
-  notification channels on one server.
+- **Aegis is the control plane for ACP-compatible agent CLIs** (Claude Code
+  default; Kimi Code, Gemini CLI supported). REST, MCP, SSE, WS, CLI, and
+  notification channels on one server. See [ADR-0034](docs/adr/0034-positioning-multi-cli-agent-runtime.md).
 - **MIT, single edition.** No open-core, no BUSL.
-- **BYO LLM is first-class.** Claude Code can point at Anthropic, GLM,
-  OpenRouter, LM Studio, Ollama, Azure OpenAI, etc. Aegis owns no LLM cost.
+- **BYO LLM is first-class, per runner.** Each runner points at its own
+  provider; Aegis owns no LLM cost.
 - **Primary CLI command is `ag`**; `aegis` remains as alias.
 - Self-hosted first. SaaS is off the table until there is demand and funding.
 
@@ -115,6 +118,30 @@ The tracking issue is #2574 and the child issue catalog spans #2575 through
       pause/intervention, terminal debug, and timeline views (#2611–#2619)
 - [x] M5 — soak, cutover, tmux deletion, deployment/docs cleanup, and final gate
       (#2620–#2627)
+
+---
+
+## Phase 3.6 — Multi-CLI Runtime 🟡 PLANNED (authorized by ADR-0034)
+
+**Goal:** host ACP-compatible coding-agent CLIs beyond Claude Code as
+first-class runners, ratifying [ADR-0032](docs/adr/0032-multi-agent-architecture.md)
+at the positioning layer ([ADR-0034](docs/adr/0034-positioning-multi-cli-agent-runtime.md)).
+
+Driven by existential reach (ADR-0032): users pick the tool that supports
+their preferred agent; ACP is now the common denominator (Claude Code via Zed
+adapter, Kimi Code native, Gemini CLI native).
+
+- [ ] M1 — wire `src/runners/` `AgentRunner` into the spawn path (replace
+      dead-code stub wiring; parameterise `AcpBackend` via existing seams)
+- [ ] M2 — implement `KimiRunner` (native ACP, MIT, best approval/plan-mode
+      parity); `KIMI_*` env adapter
+- [ ] M3 — implement `GeminiCliRunner` (native ACP; track `agy` ACP gap)
+- [ ] M4 — per-runner spawn adapters; ACP-event-store-only mode bypassing the
+      CC-specific transcript JSONL + `claude agents --json` discovery
+- [ ] M5 — runner selection API + dashboard surface; end-to-end dogfood
+
+Out of Phase 3.6 scope (watch / bridge): Copilot CLI (SaaS-only, ACP preview),
+Codex (no native ACP — bridge via community `codex-acp` until openai/codex#30052).
 
 ---
 

@@ -329,6 +329,12 @@ The five new ADRs below capture the architectural decisions implied by the P0 qu
 
 ## 15. Positioning & Phasing (2026-04-16 decision)
 
+> ⚠️ **Partially superseded by [ADR-0034](../adr/0034-positioning-multi-cli-agent-runtime.md)
+> (2026-07-07):** Aegis is no longer Claude-Code-only at the runtime layer.
+> The "single target runtime" framing below is retained for the LLM-endpoint
+> (BYO LLM) and scale-of-audience analysis; runtime breadth is now
+> ACP-CLI plural per ADR-0034.
+
 This section locks in the product direction that shapes the roadmap below. It
 supersedes any prior "enterprise-first" framing in earlier reviews.
 
