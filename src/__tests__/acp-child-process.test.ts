@@ -55,6 +55,45 @@ describe('AcpChildProcess supervision', () => {
     expect(stderr.join('')).toContain('fixture stderr ready');
   });
 
+  it('Phase 3.6 / ADR-0034: permissionModeStrategy "none" skips --permission-mode injection (Kimi pattern)', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+      permissionMode: 'acceptEdits',
+      permissionModeStrategy: 'none',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as { argv: string[] };
+    expect(payload.argv).not.toContain('--permission-mode');
+    expect(payload.argv).not.toContain('acceptEdits');
+  });
+
+  it('Phase 3.6 / ADR-0034: default strategy still injects --permission-mode (CC pattern preserved)', async () => {
+    const child = new AcpChildProcess({
+      command: process.execPath,
+      args: [fixturePath, '--fixture-arg'],
+      cwd: process.cwd(),
+      env: { FAKE_ACP_CHILD_MODE: 'print-env' },
+      permissionMode: 'acceptEdits',
+    });
+    const stdout: string[] = [];
+    child.on('stdout', event => stdout.push(event.chunk));
+
+    await child.start();
+    await child.waitForExit();
+
+    const payload = JSON.parse(stdout.join('').trim()) as { argv: string[] };
+    expect(payload.argv).toContain('--permission-mode');
+    expect(payload.argv).toContain('acceptEdits');
+  });
+
   it('injects AEGIS env vars into child process env', async () => {
     const child = new AcpChildProcess({
       command: process.execPath,

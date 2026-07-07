@@ -7,6 +7,13 @@ const AEGIS_BASE_URL_KEY = 'AEGIS_BASE_URL';
 const AEGIS_STATE_DIR_KEY = 'AEGIS_STATE_DIR';
 const AEGIS_PERMISSION_MODE_KEY = 'AEGIS_PERMISSION_MODE';
 
+/**
+ * Default auth env-var prefixes passed through to the ACP child process
+ * (Claude Code). Non-default runners (Kimi: KIMI_/MOONSHOT_, etc.) override
+ * this via buildAcpSpawnEnv's `authEnvPrefixes` arg.
+ */
+const DEFAULT_AUTH_PREFIXES = ['ANTHROPIC_', 'CLAUDE_'];
+
 export function buildAcpResolveEnv(
   overrides: Record<string, string | undefined> | undefined,
   source: NodeJS.ProcessEnv = process.env
@@ -24,10 +31,11 @@ export function buildAcpSpawnEnv(
   source: NodeJS.ProcessEnv = process.env,
   platform: Platform = process.platform,
   sessionId?: string,
-  permissionMode?: string
+  permissionMode?: string,
+  authEnvPrefixes: readonly string[] = DEFAULT_AUTH_PREFIXES
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
-  copyPlatformExecutionEnv(env, source, platform);
+  copyPlatformExecutionEnv(env, source, platform, authEnvPrefixes);
   applyEnvOverrides(env, overrides, platform);
   applyEnvOverrides(env, mappedProviderEnv, platform);
   env.NO_COLOR = overrides?.NO_COLOR ?? source.NO_COLOR ?? '1';
@@ -66,7 +74,8 @@ export function applyAegisRequiredEnv(
 function copyPlatformExecutionEnv(
   target: NodeJS.ProcessEnv,
   source: NodeJS.ProcessEnv,
-  platform: Platform
+  platform: Platform,
+  authEnvPrefixes: readonly string[] = DEFAULT_AUTH_PREFIXES
 ): void {
   if (platform === 'win32') {
     copyCaseInsensitiveEnvKey(target, source, 'Path');
@@ -84,11 +93,12 @@ function copyPlatformExecutionEnv(
     }
   }
 
-  // Issue #3135: Pass through Anthropic/Claude env vars so the ACP child
-  // process can authenticate. Without these, claude-agent-acp cannot find
-  // API keys or credentials and silently fails.
+  // Issue #3135: Pass through auth env vars so the ACP child process can
+  // authenticate. Default prefixes are Anthropic/Claude (claude-agent-acp);
+  // non-default runners (Kimi, etc.) override via authEnvPrefixes. Without
+  // these, the child cannot find API keys/credentials and silently fails.
   for (const key of Object.keys(source)) {
-    if (key.startsWith('ANTHROPIC_') || key.startsWith('CLAUDE_')) {
+    if (authEnvPrefixes.some(prefix => key.startsWith(prefix))) {
       target[key] = source[key];
     }
   }

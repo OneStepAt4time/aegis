@@ -8,6 +8,7 @@ import {
 } from './binary-resolver.js';
 import { applyPermissionModeArgs, assertNoDangerousArgs } from './permission-mode-args-4522.js';
 import { AcpChildProcessStartError } from './acp-child-process-errors.js';
+import type { AcpPermissionModeStrategy } from './runner-profile.js';
 export { AcpChildProcessStartError, type AcpChildProcessErrorDetails } from './acp-child-process-errors.js';
 
 const DEFAULT_SHUTDOWN_GRACE_MS = 2_000;
@@ -96,6 +97,19 @@ export interface AcpChildProcessOptions {
   sessionId?: string;
   /** Issue #4524: Permission mode to enforce on the child process. */
   permissionMode?: string;
+  /**
+   * Phase 3.6 / ADR-0034: How the runner expects its permission mode applied.
+   * `'claude-code-argv'` (default when undefined) injects `--permission-mode`
+   * at spawn; `'none'` leaves permission governance to ACP
+   * `session/request_permission` (Kimi Code, etc.).
+   */
+  permissionModeStrategy?: AcpPermissionModeStrategy;
+  /**
+   * Phase 3.6 / ADR-0034: Auth env-var prefixes to pass through to the child
+   * process. Defaults to ANTHROPIC_/CLAUDE_ (claude-agent-acp); KIMI_/MOONSHOT_
+   * for Kimi. See buildAcpSpawnEnv.
+   */
+  authEnvPrefixes?: readonly string[];
 }
 
 // AcpChildProcessErrorDetails + AcpChildProcessStartError moved to ./acp-child-process-errors.ts (Issue #4522).
@@ -231,7 +245,8 @@ export class AcpChildProcess {
         process.env,
         this.options.platform ?? process.platform,
         this.options.sessionId,
-        this.options.permissionMode
+        this.options.permissionMode,
+        this.options.authEnvPrefixes
       ),
       stdio: 'pipe',
       windowsHide: true,
@@ -357,8 +372,12 @@ export class AcpChildProcess {
       });
     }
 
-    // Issue #4522 AC #3: inject --permission-mode argv + assert no --dangerously-skip-permissions
-    resolved = applyPermissionModeArgs(resolved, this.options.permissionMode);
+    // Issue #4522 AC #3: inject --permission-mode argv + assert no --dangerously-skip-permissions.
+    // Phase 3.6 / ADR-0034: only Claude-Code-pattern runners use the argv
+    // strategy; others (Kimi) govern permissions via ACP session/request_permission.
+    if (this.options.permissionModeStrategy !== 'none') {
+      resolved = applyPermissionModeArgs(resolved, this.options.permissionMode);
+    }
     assertNoDangerousArgs(resolved, this.options.cwd);
 
     return resolved;
