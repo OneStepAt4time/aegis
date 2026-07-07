@@ -1,7 +1,11 @@
 # ADR-0023: Positioning — Claude Code Control Plane, MIT, BYO LLM, `ag` CLI
 
 ## Status
-Proposed
+
+Deprecated — superseded by [ADR-0034](0034-positioning-multi-cli-agent-runtime.md) (2026-07-07).
+
+> ⚠️ **Superseded by [ADR-0034: Multi-CLI Agent Runtime](0034-positioning-multi-cli-agent-runtime.md).**
+> Aegis is no longer Claude-Code-only at the runtime layer. Kept for traceability.
 
 ## Context
 

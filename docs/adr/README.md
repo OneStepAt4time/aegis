@@ -21,7 +21,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0020](0020-env-var-denylist.md) | Env-Var Denylist on Session Create | Proposed | 2026-04-16 | — |
 | [ADR-0021](0021-sse-and-http-drain-timeouts.md) | SSE Idle Timeout and HTTP Drain on Shutdown | Proposed | 2026-04-16 | — |
 | [ADR-0022](0022-sigstore-attestations.md) | Sigstore Attestations for npm and Container Artifacts | Proposed | 2026-04-16 | — |
-| [ADR-0023](0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Proposed | 2026-04-16 | — |
+| [ADR-0023](0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Deprecated | 2026-04-16 | — |
 | [ADR-0024](0024-dashboard-token-in-memory.md) | Dashboard API Token Stays In Memory | Accepted | 2026-04-17 | #1924 |
 | [ADR-0025](0025-tenant-authz-model.md) | Tenant-Aware Authorization Model | Proposed | — | — |
 | [ADR-0026](0026-oidc-trust-model.md) | OIDC Trust Model for Dashboard SSO | Proposed | — | #1942 |
@@ -33,6 +33,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0031](0031-budgets-api-design.md) | /v1/budgets API Design for Cost Alerts | Proposed | 2026-05-25 | #4196 |
 | [ADR-0032](0032-multi-agent-architecture.md) | Multi-Agent Support — Architecture Design | Approved | 2026-05-30 | #3180 |
 | [ADR-0033](0033-positioning-vs-ecc.md) | Positioning vs ECC (affaan-m) — Aegis = Production Platform, ECC = Power-User Config | Proposed | 2026-06-20 | — |
+| [ADR-0034](0034-positioning-multi-cli-agent-runtime.md) | Positioning — Multi-CLI Agent Runtime (supersedes ADR-0023) | Proposed | 2026-07-07 | #3263 |
 
 > **Note on duplicate numbers:** ADR-0030 currently has two files (`0030-network-isolation-scope-by-deployment-tier.md` and `0030-agent-auth-rfc.md`). Both are linked above with disambiguated titles. A follow-up renumbering PR is needed (Boss decision pending). The older duplicates at ADR-0024 and ADR-0025 (pre-existing) are also pending renumbering and out of scope for this index catch-up.
 

@@ -13,7 +13,7 @@
 - **Branch model:** all standard PRs target `develop` (not `main`)
 - **Release model:** `develop` → `release/<version>` → `main` → `v*` tag; Release Please prepares release branches, `release.yml` publishes tags from `main`
 - **Docs alignment:** keep policy docs synchronized in the same PR
-- **Active tracks:** Phase 3 production-use exit evidence and Phase 3.5 ACP backend migration
+- **Active tracks:** Phase 3 production-use exit evidence, Phase 3.5 ACP backend migration, Phase 3.6 multi-CLI runtime (ADR-0034)
 
 ## Non-Negotiable Hygiene Rules
 
@@ -70,14 +70,14 @@ src/
 ## Package
 
 - **Name:** `@onestepat4time/aegis`
-- **CLI binary:** `ag` (primary). `aegis` remains supported as a compatibility alias — see [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
+- **CLI binary:** `ag` (primary). `aegis` remains supported as a compatibility alias — see [ADR-0034](./docs/adr/0034-positioning-multi-cli-agent-runtime.md).
 - **MCP:** `claude mcp add aegis -- ag mcp` (or `claude mcp add aegis -- npx --package=@onestepat4time/aegis ag mcp` without a global install)
 - **Deprecated:** `aegis-bridge` (do not use in new code)
 
 ## Positioning (read before proposing features)
 
-- Aegis is the **control plane of Claude Code** — a bridge, not an orchestrator. See [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md).
-- MIT, single edition. BYO LLM is first-class.
+- Aegis is the **control plane for ACP-compatible coding-agent CLIs** (Claude Code default; Kimi Code and Gemini CLI supported) — a bridge, not an orchestrator. See [ADR-0034](./docs/adr/0034-positioning-multi-cli-agent-runtime.md) (supersedes ADR-0023).
+- MIT, single edition. BYO LLM is first-class, per runner.
 - Current phases and what NOT to build: [ROADMAP.md](./ROADMAP.md), [.claude/epics/phase-3-team-early-enterprise/epic.md](./.claude/epics/phase-3-team-early-enterprise/epic.md), [.claude/epics/phase-3-5-acp-backend-migration/epic.md](./.claude/epics/phase-3-5-acp-backend-migration/epic.md), and [.claude/rules/positioning.md](./.claude/rules/positioning.md).
 - End-to-end workflow: [.claude/rules/workflow.md](./.claude/rules/workflow.md).
 
