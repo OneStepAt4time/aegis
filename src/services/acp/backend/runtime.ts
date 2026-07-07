@@ -18,6 +18,7 @@ import {
   AcpBackendRuntimeUnavailableError,
 } from './errors.js';
 import { resolveAcpRunnerProfile } from '../runner-profile.js';
+import { pickAutoApproveOptionId } from './permission-autoselect.js';
 import type {
   AcpBackendClient,
   AcpBackendClientFactoryContext,
@@ -286,8 +287,11 @@ export function bindRuntime(
         // modes, CC should be allowed to proceed without manual approval.
         const mode = runtime.permissionMode ?? 'default';
         if (mode === 'acceptEdits' || mode === 'bypassPermissions' || mode === 'auto' || mode === 'dontAsk') {
+          // Phase 3.6 / ADR-0034: pick an option the runner actually offered.
+          // Claude Code offers 'allow-once'; Kimi offers 'approve'/'approve_for_session'.
+          // A hardcoded optionId breaks non-CC runners (their edit never applies).
           void runtime.client.respond(request.id, {
-            outcome: { outcome: 'selected', optionId: 'allow-once' },
+            outcome: { outcome: 'selected', optionId: pickAutoApproveOptionId(request.params) },
           });
         } else {
           trackPendingApproval(deps, runtime.sessionId, request);
