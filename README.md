@@ -28,6 +28,26 @@
 - **⚡ `ag run`** — spin up Claude Code sessions from the terminal
 - **🔌 MCP server** — 34 tools for multi-agent workflows → `claude mcp add --scope user aegis -- ag mcp`
 - **📡 REST API** — 65+ endpoints for CI/CD, orchestration, and custom integrations
+- **🤖 Multi-CLI runtime** — Claude Code is the default; [Kimi Code](https://github.com/MoonshotAI/kimi-code) and [Gemini CLI](https://github.com/google-gemini/gemini-cli) run as first-class peers over the Agent Client Protocol. One control plane, every ACP-speaking agent.
+
+---
+
+### 🐕 Aegis develops itself
+
+Aegis is its own first user. Agent sessions driven **through** Aegis implement
+features on the Aegis codebase — the operator delegates, the agent codes,
+Aegis governs every approval. Claude Code and Kimi Code both do the work:
+
+```bash
+# A Kimi Code session, governed through Aegis (ACP handshake + approvals)
+curl -X POST http://127.0.0.1:9100/v1/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"workDir":"./my-repo","runnerName":"kimi","permissionMode":"acceptEdits","prompt":"Add JSDoc to foo.ts"}'
+```
+
+Swap `"runnerName":"claude-code"` (default) for `"kimi"` and the same control
+plane drives a different agent — same REST, same dashboard, same phone
+approvals. See [ADR-0034](docs/adr/0034-positioning-multi-cli-agent-runtime.md).
 
 ---
 
