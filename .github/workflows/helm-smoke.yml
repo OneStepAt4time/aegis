@@ -11,16 +11,10 @@ permissions:
 
 jobs:
   helm-smoke:
-    # Skip on DRAFT PRs: helm-smoke spins up a k3d cluster (~1-5min) and runs
-    # the full chart deploy + ag doctor pipeline. DRAFT PRs are still being
-    # iterated on by the author; this gate keeps CI minutes available for
-    # the ready-for-review signal. Push events are not DRAFT, so the disjunct
-    # form correctly handles the dual trigger (pull_request + push).
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -35,12 +29,14 @@ jobs:
         run: helm lint deploy/helm/aegis
       - name: Helm template
         run: helm template aegis deploy/helm/aegis --set image.repository=aegis-helm-smoke --set image.tag=ci
+      - name: Install k3d
+        run: |
+          curl -fsSL https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64 -o /usr/local/bin/k3d
+          chmod +x /usr/local/bin/k3d
+          k3d version
       - name: Create k3d cluster
-        uses: AbsaOSS/k3d-action@v2
-        with:
-          cluster-name: aegis-helm-smoke
-          args: --agents 1
-          k3d-version: v5.9.0
+        run: |
+          k3d cluster create aegis-helm-smoke --agents 1
       - name: Prepare smoke image assets
         shell: bash
         run: |
