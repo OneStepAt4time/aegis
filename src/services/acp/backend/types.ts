@@ -112,6 +112,13 @@ export interface AcpBackendClientFactoryContext extends AcpSessionScope {
    * v2.1.143 persistence threat.
    */
   permissionMode?: string;
+  /**
+   * Phase 3.6 / ADR-0034: Agent runner name (e.g. 'claude-code' default,
+   * 'kimi'). The client factory resolves an AcpRunnerProfile from this to
+   * pick the spawn binary, auth env prefixes, and permission-mode strategy.
+   * Undefined/empty → Claude Code profile.
+   */
+  runnerName?: string;
 }
 
 export interface AcpBackendInitializeResult {

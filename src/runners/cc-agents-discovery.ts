@@ -76,6 +76,7 @@ export async function detectCcVersion(claudePath?: string, timeoutMs?: number): 
     const { stdout } = await execFileAsync(bin, ['--version'], {
       timeout: timeoutMs ?? 5000,
       encoding: 'utf-8',
+      windowsHide: true,
     });
     // Output format: "2.1.146 (Claude Code)" or "2.1.146"
     const match = stdout.trim().match(/^(\d+\.\d+\.\d+)/);
@@ -146,6 +147,7 @@ export async function discoverCcAgents(
       timeout: timeoutMs,
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024, // 10MB — large session lists
+      windowsHide: true,
     });
 
     const trimmed = stdout.trim();

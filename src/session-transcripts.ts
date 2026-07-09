@@ -90,7 +90,8 @@ export class SessionTranscripts {
     }
 
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
+    // ADR-0034 M4: Skip CC JSONL discovery for non-claude-code runners.
+    if (this.isCcSession(session) && !session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
@@ -100,7 +101,7 @@ export class SessionTranscripts {
 
     // Issue #1768: Filesystem fallback when claudeSessionId was never discovered
     // (e.g. discovery polling timed out or hooks never fired).
-    if (!session.jsonlPath) {
+    if (this.isCcSession(session) && !session.jsonlPath) {
       await this.discoverFromFilesystemFallback(session);
     }
 
@@ -165,7 +166,8 @@ export class SessionTranscripts {
     }
 
     // Try to find JSONL if we don't have it yet (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
+    // ADR-0034 M4: Skip CC JSONL discovery for non-claude-code runners.
+    if (this.isCcSession(session) && !session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
@@ -174,7 +176,7 @@ export class SessionTranscripts {
     }
 
     // Issue #1768: Filesystem fallback when claudeSessionId was never discovered
-    if (!session.jsonlPath) {
+    if (this.isCcSession(session) && !session.jsonlPath) {
       await this.discoverFromFilesystemFallback(session);
     }
 
@@ -247,7 +249,8 @@ export class SessionTranscripts {
     hasMore: boolean;
   }> {
     // Discover JSONL path if not yet known (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
+    // ADR-0034 M4: Skip CC JSONL discovery for non-claude-code runners.
+    if (this.isCcSession(session) && !session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
@@ -305,7 +308,8 @@ export class SessionTranscripts {
     newest_id: number | null;
   }> {
     // Discover JSONL path if not yet known
-    if (!session.jsonlPath && session.claudeSessionId) {
+    // ADR-0034 M4: Skip CC JSONL discovery for non-claude-code runners.
+    if (this.isCcSession(session) && !session.jsonlPath && session.claudeSessionId) {
       const path = await findSessionFile(session.claudeSessionId, this.config.claudeProjectsDir);
       if (path) {
         session.jsonlPath = path;
@@ -563,7 +567,8 @@ export class SessionTranscripts {
    */
   private async getFullEntries(session: SessionInfo): Promise<ParsedEntry[]> {
     // Discover JSONL path if not yet known (Issue #884: worktree-aware)
-    if (!session.jsonlPath && session.claudeSessionId) {
+    // ADR-0034 M4: Skip CC JSONL discovery for non-claude-code runners.
+    if (this.isCcSession(session) && !session.jsonlPath && session.claudeSessionId) {
       const path = await this.findSessionFileMaybeWorktree(session.claudeSessionId);
       if (path) {
         session.jsonlPath = path;
@@ -633,6 +638,11 @@ export class SessionTranscripts {
     } catch {
       // Directory read failed — best effort
     }
+  }
+
+  /** ADR-0034 M4: True only for runners that produce CC-format JSONL transcripts. */
+  private isCcSession(session: SessionInfo): boolean {
+    return session.runnerName === undefined || session.runnerName === 'claude-code';
   }
 
   /** Issue #884: Worktree-aware session file lookup. */
