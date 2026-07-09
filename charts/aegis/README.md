@@ -1,6 +1,6 @@
 # Aegis Helm Chart
 
-Deploys [Aegis](https://github.com/OneStepAt4time/aegis) — the control plane for Claude Code — on Kubernetes.
+Deploys [Aegis](https://github.com/OneStepAt4time/aegis) — the control plane for ACP-compatible coding-agent CLIs (Claude Code default; Kimi Code, Gemini CLI supported) — on Kubernetes.
 
 ## Prerequisites
 

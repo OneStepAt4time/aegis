@@ -10,7 +10,7 @@ Before starting any work, please read:
 
 - [AGENTS.md](./AGENTS.md) — repository-level policy for humans and AI agents
 - [ROADMAP.md](./ROADMAP.md) — current phase and what is in / out of scope
-- [ADR-0023](./docs/adr/0023-positioning-claude-code-control-plane.md) — product positioning (authoritative)
+- [ADR-0034](./docs/adr/0034-positioning-multi-cli-agent-runtime.md) — product positioning (authoritative; supersedes ADR-0023)
 - [.claude/rules/](./.claude/rules/) — scoped rules (branching, commits, PRs, workflow, positioning, TypeScript)
 
 Active work is limited to the roadmap's current tracks: Phase 3

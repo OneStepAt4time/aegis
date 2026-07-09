@@ -756,7 +756,7 @@ curl "http://localhost:9100/v1/sessions?page=1&limit=20&status=working" \
 POST /v1/sessions
 ```
 
-Creates a new Claude Code session. Reuses an existing idle session for the same `workDir` if available. Rate limited: 120 req/min.
+Creates a new ACP session. Reuses an existing idle session for the same `workDir` if available. Rate limited: 120 req/min.
 
 ```bash
 curl -X POST http://localhost:9100/v1/sessions \
@@ -795,6 +795,7 @@ curl -X POST http://localhost:9100/v1/sessions \
 | `memoryKeys` | string[] | no | Pre-load memory entries into session (max 50) |
 | `agentId` | string (UUID) | no | Bind session to an agent — inherits agent identity, profile config, and constraints (see [Agents](#11-agents)) |
 | `effort` | string | no | Reasoning effort level: `low`, `medium`, or `high`. Passed to the CC session via `--effort` flag. |
+| `runnerName` | string | no | Agent runner: `claude-code` (default), `kimi`. See [multi-CLI runtime guide](docs/guides/multi-cli.md). |
 | `systemPrompt` | string | no | Per-session custom system prompt passed via ACP `_meta.systemPrompt` (max 100k chars; ACP only) |
 
 > **Multi-tenancy:** Sessions inherit `tenantId` from the creating API key.
