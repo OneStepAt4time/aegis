@@ -709,7 +709,7 @@ Fastify → SessionManager → AcpBackend → child process
 | **Solo-dev first** | C2: Single-process, file-based state by default; no K8s/RabbitMQ in C2 | ADR-0029 |
 | **Multi-CLI runtime** | C2: Runner registry; C4: `AgentRunner` + stubs; Claude Code default, Kimi/Gemini planned | ADR-0032, ADR-0034 |
 | **BYO LLM** | C1: LLM provider is external; Aegis passes env, never proxies | ADR-0034 |
-| **MIT single edition** | C1: All features ship to all users; no `AEGIS_EDITION` flag | ADR-0023, ADR-0029 |
+| **MIT single edition** | C1: All features ship to all users; no `AEGIS_EDITION` flag | ADR-0034, ADR-0029 |
 | **Server decomposition** | C3: Fastify plugins per concern; `boot/` modules for service wiring | ADR-0007 |
 | **Pluggable state store** | C2: State Store container is abstract; file default, Redis/Postgres optional | ADR-0025 |
 | **MCP remote client** | C2: MCP Server is an outbound client, not inbound server | — |

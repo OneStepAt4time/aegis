@@ -15,7 +15,7 @@ Parent references:
 - Phase 3.5 epic:
   [`.claude/epics/phase-3-5-acp-backend-migration/epic.md`](../.claude/epics/phase-3-5-acp-backend-migration/epic.md)
 - Positioning:
-  [ADR-0023](adr/0023-positioning-claude-code-control-plane.md)
+  [ADR-0034](adr/0034-positioning-multi-cli-agent-runtime.md) (supersedes ADR-0023)
 - Release process: [release-process.md](release-process.md)
 - API versioning policy: [api-versioning.md](api-versioning.md)
 

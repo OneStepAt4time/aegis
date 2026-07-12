@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 **Supersedes:** [ADR-0023](0023-positioning-claude-code-control-plane.md) (Positioning — Claude Code Control Plane, MIT, BYO LLM, `ag` CLI).
 

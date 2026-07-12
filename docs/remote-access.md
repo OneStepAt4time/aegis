@@ -304,5 +304,5 @@ Before leaving a remote-access setup running:
 - [Deployment Guide](./deployment.md) — systemd, Docker, reverse proxy, safer
   host binding.
 - [Enterprise Deployment](./enterprise.md) — auth, rate limiting, hardening.
-- [ADR-0023](./adr/0023-positioning-claude-code-control-plane.md) — why Aegis
+- [ADR-0034](./adr/0034-positioning-multi-cli-agent-runtime.md) — why Aegis
   is a self-hosted control plane and not a SaaS.

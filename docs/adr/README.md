@@ -33,7 +33,7 @@ ADRs document significant architectural decisions made during Aegis development.
 | [ADR-0031](0031-budgets-api-design.md) | /v1/budgets API Design for Cost Alerts | Proposed | 2026-05-25 | #4196 |
 | [ADR-0032](0032-multi-agent-architecture.md) | Multi-Agent Support — Architecture Design | Approved | 2026-05-30 | #3180 |
 | [ADR-0033](0033-positioning-vs-ecc.md) | Positioning vs ECC (affaan-m) — Aegis = Production Platform, ECC = Power-User Config | Proposed | 2026-06-20 | — |
-| [ADR-0034](0034-positioning-multi-cli-agent-runtime.md) | Positioning — Multi-CLI Agent Runtime (supersedes ADR-0023) | Proposed | 2026-07-07 | #3263 |
+| [ADR-0034](0034-positioning-multi-cli-agent-runtime.md) | Positioning — Multi-CLI Agent Runtime (supersedes ADR-0023) | Accepted | 2026-07-07 | #3263 |
 
 > **Note on duplicate numbers:** ADR-0030 currently has two files (`0030-network-isolation-scope-by-deployment-tier.md` and `0030-agent-auth-rfc.md`). Both are linked above with disambiguated titles. A follow-up renumbering PR is needed (Boss decision pending). The older duplicates at ADR-0024 and ADR-0025 (pre-existing) are also pending renumbering and out of scope for this index catch-up.
 

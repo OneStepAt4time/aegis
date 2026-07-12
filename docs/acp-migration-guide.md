@@ -11,7 +11,7 @@ verification.
   [`.claude/epics/phase-3-5-acp-backend-migration/epic.md`](../.claude/epics/phase-3-5-acp-backend-migration/epic.md)
 - ACP cutover release plan:
   [`acp-major-cutover-release-plan.md`](acp-major-cutover-release-plan.md)
-- Positioning: [ADR-0023](adr/0023-positioning-claude-code-control-plane.md)
+- Positioning: [ADR-0034](adr/0034-positioning-multi-cli-agent-runtime.md) (supersedes ADR-0023)
 
 ---
 

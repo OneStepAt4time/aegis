@@ -324,5 +324,5 @@ docker compose --profile backup run --rm backup
 
 - [Audit log architecture](../enterprise/00-gap-analysis.md) — Section on SHA-256 chain design
 - [Security review](./02-security.md) — Auth model and key storage
-- [Positioning ADR-0023](../adr/0023-positioning-claude-code-control-plane.md)
+- [Positioning ADR-0034](../adr/0034-positioning-multi-cli-agent-runtime.md) — MIT single edition, BYO LLM, solo-dev first
 - [REST API reference](https://github.com/OneStepAt4time/aegis#api-reference)

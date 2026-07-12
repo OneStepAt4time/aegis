@@ -44,4 +44,4 @@ to the immediate hardening goal.
 
 - Issue [#1924](https://github.com/OneStepAt4time/aegis/issues/1924)
 - Issue #297 — short-lived SSE tokens
-- [ADR-0023](0023-positioning-claude-code-control-plane.md)
+- [ADR-0034](0034-positioning-multi-cli-agent-runtime.md) — positioning and security posture

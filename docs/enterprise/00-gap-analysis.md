@@ -323,7 +323,7 @@ The five new ADRs below capture the architectural decisions implied by the P0 qu
 | [ADR-0020](../adr/0020-env-var-denylist.md) | Env-var denylist on session create | Proposed |
 | [ADR-0021](../adr/0021-sse-and-http-drain-timeouts.md) | SSE idle timeout and HTTP drain on shutdown | Proposed |
 | [ADR-0022](../adr/0022-sigstore-attestations.md) | Sigstore attestations for npm and container artifacts | Proposed |
-| [ADR-0023](../adr/0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Proposed |
+| [ADR-0023](../adr/0023-positioning-claude-code-control-plane.md) | Positioning: Claude Code Control Plane, MIT, BYO LLM, `ag` CLI | Deprecated (superseded by ADR-0034) |
 
 ---
 
@@ -359,7 +359,7 @@ agents itself. It provides the primitives (sessions, sends, approvals, events,
 pipelines) and optional reusable templates.
 
 See [ADR-0006](../adr/0006-aegis-middleware-not-agent-framework.md) and
-[ADR-0023](../adr/0023-positioning-claude-code-control-plane.md).
+[ADR-0034](../adr/0034-positioning-multi-cli-agent-runtime.md).
 
 ### Licensing
 
@@ -374,7 +374,7 @@ Anthropic-compatible endpoint (GLM via `api.z.ai`, OpenRouter, local models via
 LM Studio or Ollama, etc.). Aegis ships no default credentials and never owns
 LLM cost. This keeps Aegis self-hosted with zero variable cost.
 
-See [ADR-0023](../adr/0023-positioning-claude-code-control-plane.md).
+See [ADR-0034](../adr/0034-positioning-multi-cli-agent-runtime.md).
 
 ### CLI binary
 
@@ -402,7 +402,7 @@ Make Aegis safe, contract-first, and supply-chain-verifiable. Ships quickly.
 
 Make Aegis the tool friends recommend, and good enough for a team of 10.
 
-- `ag` alias + `ag init` interactive setup — [ADR-0023](../adr/0023-positioning-claude-code-control-plane.md)
+- `ag` alias + `ag init` interactive setup — [ADR-0034](../adr/0034-positioning-multi-cli-agent-runtime.md)
 - `ag doctor` diagnostics
 - BYO LLM official support + `examples/byo-llm/` + CI mock coverage
 - Agent / skill / slash-command template gallery (`ag init --from-template`)
