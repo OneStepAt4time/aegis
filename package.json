@@ -91,7 +91,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.77.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
     "@opentelemetry/sdk-node": "^0.220.0",
-    "@opentelemetry/sdk-trace-base": "^2.7.1",
+    "@opentelemetry/sdk-trace-base": "^2.9.0",
     "@types/nodemailer": "^8.0.1",
     "async-mutex": "^0.5.0",
     "fastify": "^5.9.0",
