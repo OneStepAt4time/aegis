@@ -140,7 +140,7 @@
   },
   "optionalDependencies": {
     "@opentelemetry/resources": "^2.7.1",
-    "@opentelemetry/semantic-conventions": "^1.36.0",
+    "@opentelemetry/semantic-conventions": "^1.43.0",
     "ioredis": "^5.11.1",
     "open": "^11.0.0",
     "pg": "^8.22.0",
