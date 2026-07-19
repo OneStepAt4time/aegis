@@ -35,7 +35,7 @@ jobs:
           ref: gh-pages
           path: published
           fetch-depth: 1
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'

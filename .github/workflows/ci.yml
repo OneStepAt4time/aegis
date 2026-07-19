@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -118,7 +118,7 @@ jobs:
               - 'packages/client/**'
               - 'packages/python-client/**'
               - '.github/workflows/ci.yml'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: github.event_name == 'push' || steps.filter.outputs.sdk-related == 'true'
         with:
           node-version: '22'
@@ -155,7 +155,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -246,7 +246,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -284,7 +284,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -378,7 +378,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -411,7 +411,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Install action dependencies
